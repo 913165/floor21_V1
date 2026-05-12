@@ -36,8 +36,7 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<Booking> list() {
-        return bookingRepository.findByBuilder_IdOrderByBookingDateDescCreatedAtDesc(
-                TenantContext.requireBuilderId());
+        return bookingRepository.findByBuilder_IdForListUi(TenantContext.requireBuilderId());
     }
 
     @Transactional(readOnly = true)

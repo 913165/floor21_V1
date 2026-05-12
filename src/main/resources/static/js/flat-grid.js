@@ -138,6 +138,17 @@
     var grid = document.getElementById("flat-grid");
     if (grid) {
       setInterval(refreshGrid, 20000);
+      var focusId = grid.getAttribute("data-focus-flat-id");
+      if (focusId) {
+        var card = document.getElementById("flat-" + focusId);
+        if (card) {
+          card.classList.add("flat-card--focused");
+          card.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+          setTimeout(function () {
+            card.classList.remove("flat-card--focused");
+          }, 4000);
+        }
+      }
     }
   });
 })();

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -55,7 +56,8 @@ public class BuildingController {
     }
 
     @GetMapping("/{id}/flats")
-    public String flatGrid(@PathVariable UUID id, Model model) {
+    public String flatGrid(
+            @PathVariable UUID id, @RequestParam(required = false) UUID focusFlat, Model model) {
         Building b = buildingService.getForTenant(id);
         BuildingConfigDto cfg = new BuildingConfigDto();
         cfg.setTotalFloors(b.getTotalFloors());
@@ -68,6 +70,7 @@ public class BuildingController {
         model.addAttribute("building", b);
         model.addAttribute("floors", flatService.getGridData(id));
         model.addAttribute("config", cfg);
+        model.addAttribute("focusFlatId", focusFlat);
         return "buildings/flat-grid";
     }
 

@@ -44,7 +44,7 @@ public class BrokerController {
         model.addAttribute("broker", broker);
         model.addAttribute(
                 "bookings",
-                bookingRepository.findByBroker_IdAndBuilder_IdOrderByBookingDateDesc(
+                bookingRepository.findByBroker_IdAndBuilder_IdForListUi(
                         id, TenantContext.requireBuilderId()));
         return "brokers/bookings";
     }

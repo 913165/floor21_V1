@@ -12,8 +12,16 @@
         <dt class="col-sm-3">Mobile</dt><dd class="col-sm-9" th:text="${client.mobile1}"></dd>
         <dt class="col-sm-3">Email</dt><dd class="col-sm-9" th:text="${client.email1}"></dd>
       </dl>
-      <a class="btn btn-outline-secondary" th:href="@{/clients/{id}/edit(id=${client.id})}">Edit</a>
-      <a class="btn btn-link" th:href="@{/clients}">Back</a>
+      <div class="mt-3 pt-3 border-top d-flex flex-wrap align-items-center gap-2">
+        <a class="btn btn-outline-secondary" th:href="@{/clients/{id}/edit(id=${client.id})}">Edit</a>
+        <th:block th:if="${!#lists.isEmpty(clientBuildings)}">
+          <a class="btn btn-primary btn-sm"
+             th:each="nav : ${clientBuildings}"
+             th:href="@{/buildings/{bid}/flats(bid=${nav.buildingId()},focusFlat=${nav.focusFlatId()})}"
+             th:text="|Flats — ${nav.buildingName()}|">Flats</a>
+        </th:block>
+        <a class="btn btn-link" th:href="@{/clients}">Back</a>
+      </div>
     </div>
   </div>
 </div>

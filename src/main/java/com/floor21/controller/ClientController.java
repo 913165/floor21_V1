@@ -46,6 +46,7 @@ public class ClientController {
     public String detail(@PathVariable UUID id, Model model) {
         model.addAttribute("pageTitle", "Client");
         model.addAttribute("client", clientService.get(id));
+        model.addAttribute("clientBuildings", clientService.listBuildingsForActiveBookings(id));
         return "clients/detail";
     }
 

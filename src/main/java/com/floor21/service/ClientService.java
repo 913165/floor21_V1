@@ -1,12 +1,19 @@
 package com.floor21.service;
 
+import com.floor21.dto.ClientBuildingNavDto;
+import com.floor21.entity.Booking;
 import com.floor21.entity.Client;
+import com.floor21.entity.Flat;
 import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.ClientRepository;
 import com.floor21.security.TenantContext;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +25,7 @@ public class ClientService {
 
     private final ClientRepository clientRepository;
     private final BuilderRepository builderRepository;
+    private final BookingRepository bookingRepository;
 
     @Transactional(readOnly = true)
     public List<Client> list() {
@@ -37,6 +45,30 @@ public class ClientService {
         return clientRepository
                 .findByIdAndBuilder_Id(id, TenantContext.requireBuilderId())
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+    }
+
+    /**
+     * Distinct buildings where this client has an active booking, with one flat id per building for deep-linking
+     * to the chart.
+     */
+    @Transactional(readOnly = true)
+    public List<ClientBuildingNavDto> listBuildingsForActiveBookings(UUID clientId) {
+        UUID builderId = TenantContext.requireBuilderId();
+        List<Booking> bookings =
+                bookingRepository.findActiveByClientWithFlatAndBuilding(builderId, clientId);
+        Map<UUID, ClientBuildingNavDto> byBuilding = new LinkedHashMap<>();
+        for (Booking b : bookings) {
+            Flat flat = b.getFlat();
+            if (flat == null || flat.getBuilding() == null) {
+                continue;
+            }
+            var building = flat.getBuilding();
+            UUID bid = building.getId();
+            byBuilding.putIfAbsent(
+                    bid,
+                    new ClientBuildingNavDto(bid, building.getBuildingName(), flat.getId()));
+        }
+        return new ArrayList<>(byBuilding.values());
     }
 
     @Transactional

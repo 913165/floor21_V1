@@ -15,7 +15,14 @@
         <td th:text="${b.bookingCode}"></td>
         <td th:text="${b.bookingDate}"></td>
         <td th:text="${b.client.displayName()}"></td>
-        <td th:text="${b.flat.flatNumber}"></td>
+        <td>
+          <a th:if="${b.flat != null and b.flat.building != null}"
+             class="link-primary"
+             th:href="@{/buildings/{bid}/flats(bid=${b.flat.building.id},focusFlat=${b.flat.id})}"
+             th:text="${b.flat.flatNumber}">0802</a>
+          <span th:if="${b.flat == null or b.flat.building == null}"
+                th:text="${b.flat != null ? b.flat.flatNumber : '—'}">—</span>
+        </td>
         <td th:text="${b.status}"></td>
         <td class="text-end">
           <a class="btn btn-sm btn-outline-primary" th:href="@{/bookings/{id}(id=${b.id})}">View</a>

@@ -13,7 +13,14 @@
         <td><a th:href="@{/bookings/{id}(id=${b.id})}" th:text="${b.bookingCode}"></a></td>
         <td th:text="${b.bookingDate}"></td>
         <td th:text="${b.client.displayName()}"></td>
-        <td th:text="${b.flat.flatNumber}"></td>
+        <td>
+          <a th:if="${b.flat != null and b.flat.building != null}"
+             class="link-primary"
+             th:href="@{/buildings/{bid}/flats(bid=${b.flat.building.id},focusFlat=${b.flat.id})}"
+             th:text="${b.flat.flatNumber}">0802</a>
+          <span th:if="${b.flat == null or b.flat.building == null}"
+                th:text="${b.flat != null ? b.flat.flatNumber : '—'}">—</span>
+        </td>
       </tr>
       <tr th:if="${#lists.isEmpty(bookings)}"><td colspan="4" class="text-muted">No bookings</td></tr>
       </tbody>

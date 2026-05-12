@@ -50,10 +50,11 @@
     </div>
   </div>
 
-  <div id="flat-grid" th:attr="data-building-id=${building.id}">
+  <div id="flat-grid"
+       th:attr="data-building-id=${building.id},data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''}">
     <div th:each="floor : ${floors}" class="d-flex flex-wrap align-items-stretch gap-3 mb-3">
       <span class="floor-label text-muted small text-nowrap align-self-center" th:text="${floor.label()}">Floor</span>
-      <div class="d-flex gap-3 flex-wrap flex-grow-1 justify-content-start">
+      <div class="d-flex gap-3 flex-wrap flex-grow-1 justify-content-center">
         <div th:each="flat : ${floor.flats()}"
              th:id="'flat-' + ${flat.id()}"
              th:classappend="${flat.parking()} ? 'flat-parking' : (${flat.status() == 'AVAILABLE'} ? 'flat-available' : (${flat.status() == 'BOOKED'} ? 'flat-booked' : 'flat-hold'))"

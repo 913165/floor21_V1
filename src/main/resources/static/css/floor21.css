@@ -193,6 +193,13 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
+.flat-card--focused {
+  outline: 3px solid var(--bs-warning);
+  outline-offset: 2px;
+  z-index: 5;
+  box-shadow: 0 0 0 4px rgba(var(--bs-warning-rgb), 0.35);
+}
+
 .flat-available {
   background: #d1e7dd;
   border-color: #198754;
