@@ -3,10 +3,13 @@ package com.floor21.service;
 import com.floor21.dto.BuildingConfigDto;
 import com.floor21.dto.FlatGridFlatDto;
 import com.floor21.dto.FlatGridFloorDto;
+import com.floor21.entity.Booking;
 import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
+import com.floor21.entity.Client;
 import com.floor21.entity.Flat;
 import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.FlatRepository;
@@ -15,11 +18,14 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +37,7 @@ public class FlatService {
     private final FlatRepository flatRepository;
     private final BuildingRepository buildingRepository;
     private final BuilderRepository builderRepository;
+    private final BookingRepository bookingRepository;
 
     @Transactional(readOnly = true)
     public List<FlatGridFloorDto> getGridData(UUID buildingId) {
@@ -38,6 +45,7 @@ public class FlatService {
         List<Flat> flats =
                 flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
                         buildingId, builderId);
+        Map<UUID, Booking> bookingByFlatId = activeBookingsByFlatId(builderId, flats);
         Map<Integer, List<Flat>> byFloor =
                 flats.stream().collect(Collectors.groupingBy(Flat::getFloorNumber, TreeMap::new, Collectors.toList()));
         List<Integer> orderedFloors = new ArrayList<>(byFloor.keySet());
@@ -57,11 +65,71 @@ public class FlatService {
                                                     f.getBasePrice(),
                                                     f.getAreaSqft(),
                                                     f.getStatus(),
-                                                    Boolean.TRUE.equals(f.getParking())))
+                                                    Boolean.TRUE.equals(f.getParking()),
+                                                    buildBuyerTooltip(f, bookingByFlatId.get(f.getId()))))
                             .toList();
             rows.add(new FlatGridFloorDto("Floor " + floor, cells));
         }
         return rows;
+    }
+
+    private Map<UUID, Booking> activeBookingsByFlatId(UUID builderId, List<Flat> flats) {
+        List<UUID> flatIds = flats.stream().map(Flat::getId).toList();
+        if (flatIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Booking> map = new HashMap<>();
+        for (Booking b : bookingRepository.findActiveWithClientByFlatIds(builderId, flatIds)) {
+            map.putIfAbsent(b.getFlat().getId(), b);
+        }
+        return map;
+    }
+
+    private static String buildBuyerTooltip(Flat flat, Booking booking) {
+        if (!"BOOKED".equals(flat.getStatus()) || booking == null) {
+            return "";
+        }
+        Client c = booking.getClient();
+        if (c == null) {
+            return "";
+        }
+        String name = c.displayName();
+        if (name.isBlank()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("Buyer: ").append(name);
+        if (booking.getBookingCode() != null && !booking.getBookingCode().isBlank()) {
+            sb.append("\nBooking: ").append(booking.getBookingCode());
+        }
+        String phone = pickPhone(c);
+        if (phone != null) {
+            sb.append("\nPhone: ").append(phone);
+        }
+        String email = pickEmail(c);
+        if (email != null) {
+            sb.append("\nEmail: ").append(email);
+        }
+        return sb.toString();
+    }
+
+    private static String pickEmail(Client c) {
+        if (c.getEmail1() != null && !c.getEmail1().isBlank()) {
+            return c.getEmail1().trim();
+        }
+        if (c.getEmail2() != null && !c.getEmail2().isBlank()) {
+            return c.getEmail2().trim();
+        }
+        return null;
+    }
+
+    private static String pickPhone(Client c) {
+        return Stream.of(c.getMobile1(), c.getMobile2(), c.getPhoneResidence(), c.getPhoneOffice())
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .findFirst()
+                .orElse(null);
     }
 
     @Transactional

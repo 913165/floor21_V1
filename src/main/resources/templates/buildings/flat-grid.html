@@ -64,8 +64,11 @@
                       data-price=${flat.basePrice()},
                       data-status=${flat.status()},
                       data-area=${flat.areaSqft()},
-                      data-parking=${flat.parking()}"
+                      data-parking=${flat.parking()},
+                      data-buyer-tooltip=${flat.buyerTooltip()},
+                      title=${flat.buyerTooltip()}"
              onclick="window.floor21SelectFlat(this)">
+          <div class="flat-card-buyertip" th:if="${!#strings.isEmpty(flat.buyerTooltip())}" th:text="${flat.buyerTooltip()}"></div>
           <span class="flat-number" th:text="${flat.flatNumber()}">0101</span>
           <span class="flat-type" th:text="${flat.bhkType()}">2BHK</span>
         </div>

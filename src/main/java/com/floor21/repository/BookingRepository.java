@@ -1,6 +1,7 @@
 package com.floor21.repository;
 
 import com.floor21.entity.Booking;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,4 +34,10 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByBroker_IdAndBuilder_IdOrderByBookingDateDesc(UUID brokerId, UUID builderId);
 
     long countByBuilder_IdAndBookingDateBetween(UUID builderId, java.time.LocalDate start, java.time.LocalDate end);
+
+    @Query(
+            "select b from Booking b join fetch b.client where b.builder.id = :builderId and b.status = 'ACTIVE' "
+                    + "and b.flat.id in :flatIds order by b.bookingDate desc")
+    List<Booking> findActiveWithClientByFlatIds(
+            @Param("builderId") UUID builderId, @Param("flatIds") Collection<UUID> flatIds);
 }

@@ -15,6 +15,23 @@
 
   var selectedFlatId = null;
 
+  function syncBuyerTooltip(el, text) {
+    var t = text || "";
+    el.setAttribute("data-buyer-tooltip", t);
+    el.setAttribute("title", t);
+    var tip = el.querySelector(".flat-card-buyertip");
+    if (t) {
+      if (!tip) {
+        tip = document.createElement("div");
+        tip.className = "flat-card-buyertip";
+        el.insertBefore(tip, el.firstChild);
+      }
+      tip.textContent = t;
+    } else if (tip) {
+      tip.remove();
+    }
+  }
+
   async function refreshGrid() {
     var grid = document.getElementById("flat-grid");
     if (!grid) return;
@@ -35,6 +52,7 @@
         el.dataset.price = flat.basePrice;
         el.dataset.area = flat.areaSqft;
         el.dataset.parking = flat.parking;
+        syncBuyerTooltip(el, flat.buyerTooltip || "");
         el.classList.remove("flat-available", "flat-booked", "flat-hold", "flat-parking");
         if (flat.parking) el.classList.add("flat-parking");
         else if (flat.status === "AVAILABLE") el.classList.add("flat-available");

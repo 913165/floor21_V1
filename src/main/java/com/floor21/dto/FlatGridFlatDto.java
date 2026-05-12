@@ -11,4 +11,6 @@ public record FlatGridFlatDto(
         BigDecimal basePrice,
         BigDecimal areaSqft,
         String status,
-        boolean parking) {}
+        boolean parking,
+        /** Multiline hover text for booked flats (active booking + client); empty otherwise. */
+        String buyerTooltip) {}
