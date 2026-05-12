@@ -56,17 +56,22 @@ public class FlatService {
                     byFloor.get(floor).stream()
                             .sorted(Comparator.comparing(Flat::getUnitNumber))
                             .map(
-                                    f ->
-                                            new FlatGridFlatDto(
-                                                    f.getId(),
-                                                    f.getFlatNumber(),
-                                                    f.getFloorNumber(),
-                                                    f.getBhkType(),
-                                                    f.getBasePrice(),
-                                                    f.getAreaSqft(),
-                                                    f.getStatus(),
-                                                    Boolean.TRUE.equals(f.getParking()),
-                                                    buildBuyerTooltip(f, bookingByFlatId.get(f.getId()))))
+                                    f -> {
+                                        Booking b = bookingByFlatId.get(f.getId());
+                                        return new FlatGridFlatDto(
+                                                f.getId(),
+                                                f.getFlatNumber(),
+                                                f.getFloorNumber(),
+                                                f.getBhkType(),
+                                                f.getBasePrice(),
+                                                f.getAreaSqft(),
+                                                f.getStatus(),
+                                                Boolean.TRUE.equals(f.getParking()),
+                                                buildBuyerTooltip(f, b),
+                                                resolveBookedClientId(f, b),
+                                                ownerCardTitle(f, b),
+                                                ownerCardSubtitle(f, b));
+                                    })
                             .toList();
             rows.add(new FlatGridFloorDto("Floor " + floor, cells));
         }
@@ -93,7 +98,7 @@ public class FlatService {
         if (c == null) {
             return "";
         }
-        String name = c.displayName();
+        String name = buyerDisplayName(c);
         if (name.isBlank()) {
             return "";
         }
@@ -111,6 +116,50 @@ public class FlatService {
             sb.append("\nEmail: ").append(email);
         }
         return sb.toString();
+    }
+
+    private static String ownerCardTitle(Flat flat, Booking booking) {
+        if (!"BOOKED".equals(flat.getStatus()) || booking == null || booking.getClient() == null) {
+            return "";
+        }
+        return buyerDisplayName(booking.getClient());
+    }
+
+    private static String ownerCardSubtitle(Flat flat, Booking booking) {
+        if (!"BOOKED".equals(flat.getStatus()) || booking == null || booking.getClient() == null) {
+            return "";
+        }
+        Client c = booking.getClient();
+        String phone = pickPhone(c);
+        if (phone != null) {
+            return phone;
+        }
+        String email = pickEmail(c);
+        if (email != null) {
+            return email;
+        }
+        if (booking.getBookingCode() != null && !booking.getBookingCode().isBlank()) {
+            return booking.getBookingCode();
+        }
+        return "";
+    }
+
+    private static String buyerDisplayName(Client c) {
+        String n = c.displayName();
+        if (n != null && !n.isBlank()) {
+            return n.trim();
+        }
+        if (c.getCompanyName() != null && !c.getCompanyName().isBlank()) {
+            return c.getCompanyName().trim();
+        }
+        return "";
+    }
+
+    private static UUID resolveBookedClientId(Flat flat, Booking booking) {
+        if (!"BOOKED".equals(flat.getStatus()) || booking == null || booking.getClient() == null) {
+            return null;
+        }
+        return booking.getClient().getId();
     }
 
     private static String pickEmail(Client c) {

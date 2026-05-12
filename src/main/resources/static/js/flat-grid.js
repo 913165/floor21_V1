@@ -32,6 +32,21 @@
     }
   }
 
+  function syncCardOwner(el, flat) {
+    var inner = el.querySelector(".flat-card-inner");
+    if (!inner) return;
+    var on = inner.querySelector(".flat-owner-name");
+    var od = inner.querySelector(".flat-owner-detail");
+    var owner = inner.querySelector(".flat-card-owner");
+    var odisp = flat.ownerDisplay == null ? "" : String(flat.ownerDisplay).trim();
+    var odet = flat.ownerDetail == null ? "" : String(flat.ownerDetail).trim();
+    if (on) on.textContent = odisp;
+    if (od) od.textContent = odet;
+    if (owner) {
+      owner.classList.toggle("is-blank", !odisp && !odet);
+    }
+  }
+
   async function refreshGrid() {
     var grid = document.getElementById("flat-grid");
     if (!grid) return;
@@ -52,7 +67,13 @@
         el.dataset.price = flat.basePrice;
         el.dataset.area = flat.areaSqft;
         el.dataset.parking = flat.parking;
+        if (flat.clientId) {
+          el.dataset.clientId = flat.clientId;
+        } else {
+          delete el.dataset.clientId;
+        }
         syncBuyerTooltip(el, flat.buyerTooltip || "");
+        syncCardOwner(el, flat);
         el.classList.remove("flat-available", "flat-booked", "flat-hold", "flat-parking");
         if (flat.parking) el.classList.add("flat-parking");
         else if (flat.status === "AVAILABLE") el.classList.add("flat-available");
@@ -88,6 +109,17 @@
     if (book) {
       book.href = appRoot() + "/bookings/new?flatId=" + encodeURIComponent(selectedFlatId);
       book.classList.toggle("disabled", el.dataset.status !== "AVAILABLE" && el.dataset.status !== "HOLD");
+    }
+    var clientInfo = document.getElementById("client-info-btn");
+    if (clientInfo) {
+      var cid = el.dataset.clientId;
+      if (el.dataset.status === "BOOKED" && cid) {
+        clientInfo.href = appRoot() + "/clients/" + encodeURIComponent(cid);
+        clientInfo.classList.remove("d-none");
+      } else {
+        clientInfo.classList.add("d-none");
+        clientInfo.setAttribute("href", "#");
+      }
     }
   };
 

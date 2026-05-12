@@ -34,21 +34,106 @@
 .flat-card {
   box-sizing: border-box;
   position: relative;
-  width: 6.25rem;
-  min-width: 6.25rem;
-  min-height: 2.5rem;
-  border-radius: 6px;
+  width: 15.5rem;
+  min-width: 15.5rem;
+  min-height: 4.85rem;
+  border-radius: 10px;
   border: 2px solid #dee2e6;
   cursor: pointer;
   display: inline-flex;
   flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  text-align: center;
+  padding: 0.4rem 0.55rem 0.4rem 0.45rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.flat-card-inner {
+  display: flex;
+  flex-direction: row;
+  flex: 1 1 auto;
+  align-items: stretch;
+  width: 100%;
+  min-height: 0;
+  gap: 0.5rem;
+}
+
+.flat-card-head {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  padding: 0.25rem 0.35rem;
-  font-size: 0.7rem;
-  line-height: 1.15;
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  min-width: 3.35rem;
+  padding-right: 0.45rem;
+  border-right: 1px dashed rgba(33, 37, 41, 0.2);
+}
+
+.flat-card-owner {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.12rem;
+  min-width: 0;
+  min-height: 2.25rem;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  text-align: left;
+}
+
+.flat-card-owner.is-blank {
+  border-top-color: transparent;
+  opacity: 0;
+  min-height: 2.25rem;
+  pointer-events: none;
+}
+
+.flat-booked .flat-card-head {
+  border-right-color: rgba(13, 110, 253, 0.4);
+}
+
+.flat-owner-name {
+  display: block;
+  font-weight: 700;
+  font-size: 0.74rem;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: inherit;
+}
+
+.flat-owner-detail {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 500;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--bs-secondary-color);
+}
+
+.flat-number {
+  display: block;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.flat-type {
+  display: block;
+  margin-top: 0.08rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .flat-card-buyertip {
@@ -119,6 +204,14 @@
   cursor: default;
 }
 
+.flat-booked .flat-owner-name {
+  color: #052c65;
+}
+
+.flat-booked .flat-owner-detail {
+  color: #0d47a1;
+}
+
 .flat-hold {
   background: #fff3cd;
   border-color: #ffc107;
@@ -128,20 +221,6 @@
   background: #e2e3e5;
   border-color: #6c757d;
   cursor: default;
-}
-
-.flat-number {
-  display: block;
-  font-weight: 600;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-.flat-type {
-  display: block;
-  color: var(--bs-secondary-color);
-  max-width: 100%;
-  overflow-wrap: anywhere;
 }
 
 [data-bs-theme="dark"] .flat-card {
@@ -158,6 +237,14 @@
   border-color: #6ea8fe;
 }
 
+[data-bs-theme="dark"] .flat-booked .flat-owner-name {
+  color: #e7efff;
+}
+
+[data-bs-theme="dark"] .flat-booked .flat-owner-detail {
+  color: #b6d4fe;
+}
+
 [data-bs-theme="dark"] .flat-hold {
   background: rgba(255, 193, 7, 0.2);
   border-color: #ffc107;
@@ -166,6 +253,18 @@
 [data-bs-theme="dark"] .flat-parking {
   background: rgba(108, 117, 125, 0.3);
   border-color: #6c757d;
+}
+
+[data-bs-theme="dark"] .flat-card-head {
+  border-right-color: rgba(255, 255, 255, 0.14);
+}
+
+[data-bs-theme="dark"] .flat-booked .flat-card-head {
+  border-right-color: rgba(110, 168, 254, 0.45);
+}
+
+[data-bs-theme="dark"] .flat-card-owner {
+  border-top: none;
 }
 
 [data-bs-theme="dark"] .flat-card-buyertip {
@@ -185,7 +284,7 @@
 }
 
 .floor-label {
-  width: 5.5rem;
+  width: 6.75rem;
   flex-shrink: 0;
 }
 

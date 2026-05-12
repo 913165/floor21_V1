@@ -51,9 +51,9 @@
   </div>
 
   <div id="flat-grid" th:attr="data-building-id=${building.id}">
-    <div th:each="floor : ${floors}" class="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-2">
-      <span class="floor-label text-muted small text-nowrap" th:text="${floor.label()}">Floor</span>
-      <div class="d-flex gap-2 flex-wrap justify-content-center">
+    <div th:each="floor : ${floors}" class="d-flex flex-wrap align-items-stretch gap-3 mb-3">
+      <span class="floor-label text-muted small text-nowrap align-self-center" th:text="${floor.label()}">Floor</span>
+      <div class="d-flex gap-3 flex-wrap flex-grow-1 justify-content-start">
         <div th:each="flat : ${floor.flats()}"
              th:id="'flat-' + ${flat.id()}"
              th:classappend="${flat.parking()} ? 'flat-parking' : (${flat.status() == 'AVAILABLE'} ? 'flat-available' : (${flat.status() == 'BOOKED'} ? 'flat-booked' : 'flat-hold'))"
@@ -65,12 +65,21 @@
                       data-status=${flat.status()},
                       data-area=${flat.areaSqft()},
                       data-parking=${flat.parking()},
+                      data-client-id=${flat.clientId()},
                       data-buyer-tooltip=${flat.buyerTooltip()},
                       title=${flat.buyerTooltip()}"
              onclick="window.floor21SelectFlat(this)">
           <div class="flat-card-buyertip" th:if="${!#strings.isEmpty(flat.buyerTooltip())}" th:text="${flat.buyerTooltip()}"></div>
-          <span class="flat-number" th:text="${flat.flatNumber()}">0101</span>
-          <span class="flat-type" th:text="${flat.bhkType()}">2BHK</span>
+          <div class="flat-card-inner">
+            <div class="flat-card-head">
+              <span class="flat-number" th:text="${flat.flatNumber()}">0101</span>
+              <span class="flat-type" th:text="${flat.bhkType()}">2BHK</span>
+            </div>
+            <div class="flat-card-owner" th:classappend="${#strings.isEmpty(flat.ownerDisplay()) && #strings.isEmpty(flat.ownerDetail())} ? ' is-blank'">
+              <span class="flat-owner-name" th:text="${flat.ownerDisplay()}"></span>
+              <span class="flat-owner-detail" th:text="${flat.ownerDetail()}"></span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -96,6 +105,7 @@
       <div class="d-flex flex-wrap gap-2 justify-content-center">
         <button type="button" class="btn btn-outline-warning" id="hold-btn">Hold / Release</button>
         <a id="book-btn" href="#" class="btn btn-success">Book this flat</a>
+        <a id="client-info-btn" href="#" class="btn btn-outline-primary d-none">Client info</a>
       </div>
     </div>
   </div>
