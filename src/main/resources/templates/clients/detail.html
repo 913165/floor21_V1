@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3 mb-4" th:text="${pageTitle}">Client</h1>
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <dl class="row mb-0">
+        <dt class="col-sm-3">Name</dt><dd class="col-sm-9" th:text="${client.displayName()}"></dd>
+        <dt class="col-sm-3">City</dt><dd class="col-sm-9" th:text="${client.city}"></dd>
+        <dt class="col-sm-3">Mobile</dt><dd class="col-sm-9" th:text="${client.mobile1}"></dd>
+        <dt class="col-sm-3">Email</dt><dd class="col-sm-9" th:text="${client.email1}"></dd>
+      </dl>
+      <a class="btn btn-outline-secondary" th:href="@{/clients/{id}/edit(id=${client.id})}">Edit</a>
+      <a class="btn btn-link" th:href="@{/clients}">Back</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

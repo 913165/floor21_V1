@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3 mb-2" th:text="${pageTitle}">Booking</h1>
+  <p class="text-muted" th:text="${booking.bookingCode}"></p>
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <div class="card shadow-sm h-100"><div class="card-body">
+        <h6 class="text-muted">Client</h6>
+        <p class="mb-0" th:text="${booking.client.displayName()}"></p>
+      </div></div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm h-100"><div class="card-body">
+        <h6 class="text-muted">Flat</h6>
+        <p class="mb-0" th:text="${booking.flat.building.buildingName + ' — ' + booking.flat.flatNumber}"></p>
+        <small class="text-muted" th:text="${booking.flat.bhkType + ' · ' + booking.flat.status}"></small>
+      </div></div>
+    </div>
+  </div>
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4"><span class="text-muted">Date</span><div th:text="${booking.bookingDate}"></div></div>
+        <div class="col-md-4"><span class="text-muted">Consideration</span><div th:text="${booking.considerationAmt}"></div></div>
+        <div class="col-md-4"><span class="text-muted">Receipts total</span><div th:text="${receiptTotal}"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" th:href="@{/bookings/{id}/edit(id=${booking.id})}">Edit</a>
+    <a class="btn btn-outline-primary" th:href="@{/bookings/{id}/receipts(id=${booking.id})}">Receipts</a>
+    <a class="btn btn-outline-primary" th:href="@{/bookings/{id}/expenses(id=${booking.id})}">Expenses</a>
+    <a class="btn btn-outline-danger" th:if="${booking.status == 'ACTIVE'}"
+       th:href="@{/bookings/{id}/cancel(id=${booking.id})}">Cancel booking</a>
+    <a class="btn btn-link" th:href="@{/bookings}">Back</a>
+  </div>
+</div>
+</body>
+</html>

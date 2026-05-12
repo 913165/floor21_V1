@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3">Not found</h1>
+  <p th:text="${message}">Resource not found</p>
+  <a class="btn btn-primary" th:href="@{/dashboard}">Dashboard</a>
+</div>
+</body>
+</html>

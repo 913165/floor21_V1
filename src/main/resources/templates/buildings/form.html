@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3 mb-4" th:text="${pageTitle}">Building</h1>
+  <form class="card card-body shadow-sm" th:action="@{/buildings/save}" th:object="${building}" method="post">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <input type="hidden" th:field="*{id}"/>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Building name</label>
+        <input class="form-control" th:field="*{buildingName}" required/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Total floors</label>
+        <input class="form-control" type="number" th:field="*{totalFloors}" required min="1"/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Parking floors</label>
+        <input class="form-control" type="number" th:field="*{parkingFloors}" min="0"/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Flats / floor</label>
+        <input class="form-control" type="number" th:field="*{flatsPerFloor}" required min="1"/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">1BHK / floor</label>
+        <input class="form-control" type="number" th:field="*{bhk1PerFloor}" min="0"/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">2BHK / floor</label>
+        <input class="form-control" type="number" th:field="*{bhk2PerFloor}" min="0"/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">3BHK / floor</label>
+        <input class="form-control" type="number" th:field="*{bhk3PerFloor}" min="0"/>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Address</label>
+        <textarea class="form-control" rows="2" th:field="*{address}"></textarea>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">City</label>
+        <input class="form-control" th:field="*{city}"/>
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" th:field="*{active}"/>
+          <label class="form-check-label">Active</label>
+        </div>
+      </div>
+    </div>
+    <div class="mt-3">
+      <button class="btn btn-primary" type="submit">Save</button>
+      <a class="btn btn-link" th:href="@{/buildings}">Cancel</a>
+    </div>
+  </form>
+</div>
+</body>
+</html>

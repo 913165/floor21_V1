@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<aside th:fragment="sidebar" class="floor21-sidebar border-end bg-white py-3 px-2 d-none d-md-block flex-shrink-0">
+  <div class="list-group list-group-flush small">
+    <a class="list-group-item list-group-item-action" th:href="@{/dashboard}">Dashboard</a>
+    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/buildings}">Buildings</a>
+    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/clients}">Clients</a>
+    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/bookings}">Bookings</a>
+    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/brokers}">Brokers</a>
+    <a class="list-group-item list-group-item-action" sec:authorize="hasRole('BUILDER_ADMIN')"
+       th:href="@{/slabs}">Slabs</a>
+    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/cancellations}">Cancellations</a>
+    <a class="list-group-item list-group-item-action" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/admin/builders}">Admin — Builders</a>
+  </div>
+</aside>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3 mb-4" th:text="${pageTitle}">Dashboard</h1>
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="text-muted small">Total flats</div>
+        <div class="fs-4" th:text="${dashboard.totalFlats()}">0</div>
+      </div></div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="text-muted small">Booked</div>
+        <div class="fs-4" th:text="${dashboard.bookedFlats()}">0</div>
+      </div></div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="text-muted small">Available</div>
+        <div class="fs-4" th:text="${dashboard.availableFlats()}">0</div>
+      </div></div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="text-muted small">Active booking value</div>
+        <div class="fs-4" th:text="${dashboard.revenue()}">0</div>
+      </div></div>
+    </div>
+  </div>
+  <div class="card shadow-sm">
+    <div class="card-header">Recent bookings</div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead><tr><th>Code</th><th>Client</th><th>Flat</th><th>Building</th><th>Status</th></tr></thead>
+        <tbody>
+        <tr th:each="r : ${dashboard.recentBookings()}">
+          <td th:text="${r.bookingCode()}"></td>
+          <td th:text="${r.clientName()}"></td>
+          <td th:text="${r.flatNumber()}"></td>
+          <td th:text="${r.buildingName()}"></td>
+          <td th:text="${r.status()}"></td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(dashboard.recentBookings())}"><td colspan="5" class="text-muted">No data yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

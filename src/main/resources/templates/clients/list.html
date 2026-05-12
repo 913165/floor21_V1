@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Clients</h1>
+    <a class="btn btn-primary" th:href="@{/clients/new}">New client</a>
+  </div>
+  <form class="row g-2 mb-3" method="get" th:action="@{/clients}">
+    <div class="col-auto flex-grow-1">
+      <input class="form-control" name="q" th:value="${q}" placeholder="Search name, phone, email"/>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-outline-secondary" type="submit">Search</button>
+    </div>
+  </form>
+  <div class="table-responsive card shadow-sm">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Name</th><th>City</th><th>Mobile</th><th></th></tr></thead>
+      <tbody th:fragment="clientRows">
+      <tr th:each="c : ${clients}">
+        <td th:text="${c.displayName()}"></td>
+        <td th:text="${c.city}"></td>
+        <td th:text="${c.mobile1}"></td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-primary" th:href="@{/clients/{id}(id=${c.id})}">View</a>
+          <a class="btn btn-sm btn-outline-secondary" th:href="@{/clients/{id}/edit(id=${c.id})}">Edit</a>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3">Forbidden</h1>
+  <p th:text="${message}">You do not have access.</p>
+  <a class="btn btn-primary" th:href="@{/dashboard}">Dashboard</a>
+</div>
+</body>
+</html>

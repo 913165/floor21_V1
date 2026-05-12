@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Builders</h1>
+    <a class="btn btn-primary" th:href="@{/admin/builders/new}">New builder</a>
+  </div>
+  <div class="table-responsive card shadow-sm">
+    <table class="table mb-0">
+      <thead><tr><th>Company</th><th>Email</th><th>City</th><th>Active</th><th></th></tr></thead>
+      <tbody>
+      <tr th:each="b : ${builders}">
+        <td th:text="${b.companyName}"></td>
+        <td th:text="${b.email}"></td>
+        <td th:text="${b.city}"></td>
+        <td th:text="${b.active}"></td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-secondary" th:href="@{/admin/builders/{id}/edit(id=${b.id})}">Edit</a>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

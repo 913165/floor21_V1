@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Buildings</h1>
+    <a class="btn btn-primary" th:href="@{/buildings/new}">New building</a>
+  </div>
+  <div class="table-responsive card shadow-sm">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Name</th><th>City</th><th>Floors</th><th></th></tr></thead>
+      <tbody>
+      <tr th:each="b : ${buildings}">
+        <td th:text="${b.buildingName}"></td>
+        <td th:text="${b.city}"></td>
+        <td th:text="${b.totalFloors}"></td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-primary" th:href="@{/buildings/{id}/flats(id=${b.id})}">Flats</a>
+          <a class="btn btn-sm btn-outline-secondary" th:href="@{/buildings/{id}/edit(id=${b.id})}">Edit</a>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

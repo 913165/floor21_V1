@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h3 mb-0" th:text="${pageTitle}">Flats</h1>
+      <div class="text-muted small" th:text="${building.buildingName}"></div>
+    </div>
+    <a class="btn btn-outline-secondary" th:href="@{/buildings}">Back</a>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header">Generate flats</div>
+    <div class="card-body">
+      <form class="row g-2 align-items-end"
+            th:action="@{/buildings/{id}/flats/generate(id=${building.id})}"
+            th:object="${config}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <div class="col-auto">
+          <label class="form-label">Total floors</label>
+          <input class="form-control" type="number" th:field="*{totalFloors}" required min="1"/>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Parking floors</label>
+          <input class="form-control" type="number" th:field="*{parkingFloors}" min="0"/>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Flats / floor</label>
+          <input class="form-control" type="number" th:field="*{flatsPerFloor}" required min="1"/>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">1BHK / floor</label>
+          <input class="form-control" type="number" th:field="*{bhk1PerFloor}" min="0"/>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">2BHK / floor</label>
+          <input class="form-control" type="number" th:field="*{bhk2PerFloor}" min="0"/>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">3BHK / floor</label>
+          <input class="form-control" type="number" th:field="*{bhk3PerFloor}" min="0"/>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-primary" type="submit">Generate</button>
+        </div>
+      </form>
+      <p class="text-muted small mb-0 mt-2">Residential floors = total − parking. 1BHK+2BHK+3BHK must equal flats per floor.</p>
+    </div>
+  </div>
+
+  <div id="flat-grid" th:attr="data-building-id=${building.id}">
+    <div th:each="floor : ${floors}" class="d-flex flex-wrap justify-content-center align-items-center gap-2 mb-2">
+      <span class="floor-label text-muted small text-nowrap" th:text="${floor.label()}">Floor</span>
+      <div class="d-flex gap-2 flex-wrap justify-content-center">
+        <div th:each="flat : ${floor.flats()}"
+             th:id="'flat-' + ${flat.id()}"
+             th:classappend="${flat.parking()} ? 'flat-parking' : (${flat.status() == 'AVAILABLE'} ? 'flat-available' : (${flat.status() == 'BOOKED'} ? 'flat-booked' : 'flat-hold'))"
+             class="flat-card"
+             th:attr="data-flat-id=${flat.id()},
+                      data-type=${flat.bhkType()},
+                      data-floor=${flat.floorNumber()},
+                      data-price=${flat.basePrice()},
+                      data-status=${flat.status()},
+                      data-area=${flat.areaSqft()},
+                      data-parking=${flat.parking()}"
+             onclick="window.floor21SelectFlat(this)">
+          <span class="flat-number" th:text="${flat.flatNumber()}">0101</span>
+          <span class="flat-type" th:text="${flat.bhkType()}">2BHK</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="booking-panel" class="card mt-3 d-none">
+    <div class="card-body">
+      <h5 id="panel-title" class="card-title">Flat details</h5>
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <div class="text-muted small">Type</div>
+          <p id="panel-type" class="mb-2"></p>
+          <div class="text-muted small">Floor</div>
+          <p id="panel-floor" class="mb-0"></p>
+        </div>
+        <div class="col-md-6">
+          <div class="text-muted small">Area (sqft)</div>
+          <p id="panel-area" class="mb-2"></p>
+          <div class="text-muted small">Price</div>
+          <p id="panel-price" class="mb-0"></p>
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2 justify-content-center">
+        <button type="button" class="btn btn-outline-warning" id="hold-btn">Hold / Release</button>
+        <a id="book-btn" href="#" class="btn btn-success">Book this flat</a>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

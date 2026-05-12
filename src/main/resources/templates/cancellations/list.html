@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3 mb-4" th:text="${pageTitle}">Cancellations</h1>
+  <div class="table-responsive card shadow-sm">
+    <table class="table mb-0">
+      <thead><tr><th>Date</th><th>Booking</th><th>Refund</th></tr></thead>
+      <tbody>
+      <tr th:each="c : ${cancellations}">
+        <td th:text="${c.cancelDate}"></td>
+        <td><a th:href="@{/bookings/{id}(id=${c.booking.id})}" th:text="${c.booking.bookingCode}"></a></td>
+        <td th:text="${c.refundAmount}"></td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(cancellations)}"><td colspan="3" class="text-muted">No cancellations</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,14 @@
+package com.floor21.repository;
+
+import com.floor21.entity.Slab;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface SlabRepository extends JpaRepository<Slab, UUID> {
+
+    List<Slab> findByBuilder_IdOrderBySlabNameAsc(UUID builderId);
+
+    Optional<Slab> findByIdAndBuilder_Id(UUID id, UUID builderId);
+}

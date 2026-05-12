@@ -1,0 +1,9 @@
+spring:
+  jpa:
+    show-sql: true
+  thymeleaf:
+    cache: false
+
+logging:
+  level:
+    com.floor21: DEBUG

@@ -1,0 +1,10 @@
+spring:
+  jpa:
+    show-sql: false
+  thymeleaf:
+    cache: true
+
+logging:
+  level:
+    root: INFO
+    com.floor21: INFO
