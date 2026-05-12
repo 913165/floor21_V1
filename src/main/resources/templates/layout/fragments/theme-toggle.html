@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<button th:fragment="themeToggle (navbar)"
+        type="button"
+        class="floor21-theme-toggle btn btn-sm rounded-pill d-inline-flex align-items-center justify-content-center"
+        role="switch"
+        aria-checked="false"
+        aria-label="Toggle color theme"
+        title="Toggle light or dark mode"
+        th:classappend="${navbar} ? ' btn-outline-light' : ' btn-outline-secondary'">
+  <span class="floor21-theme-icon floor21-theme-icon-sun" aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+      <path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"/>
+    </svg>
+  </span>
+  <span class="floor21-theme-icon floor21-theme-icon-moon d-none" aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+      <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 3.981 3.227 7.227 7.229 7.227h.55a.768.768 0 0 1 .188.867c-.054.12-.132.235-.248.334A7.259 7.259 0 0 1 8.229 16c-3.985 0-7.212-3.255-7.212-7.229 0-1.433.413-2.769 1.124-3.892a.768.768 0 0 1 .858-.08z"/>
+    </svg>
+  </span>
+</button>
+</body>
+</html>

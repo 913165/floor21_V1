@@ -5,6 +5,7 @@
   <div class="container-fluid px-3">
     <a class="navbar-brand" th:href="@{/dashboard}">Floor21</a>
     <div class="d-flex align-items-center gap-2 ms-auto">
+      <th:block th:replace="~{layout/fragments/theme-controls :: themeControls}"/>
       <span class="text-white-50 small" sec:authentication="name"></span>
       <form class="m-0" th:action="@{/logout}" method="post">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>

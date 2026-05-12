@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Apply stored theme before paint (avoid flash). Default: light. -->
+<th:block th:fragment="themeScript">
+<script>
+(function(){try{var k='floor21-theme',t=localStorage.getItem(k);if(t!=='dark'&&t!=='light')t='light';document.documentElement.setAttribute('data-bs-theme',t);}catch(e){document.documentElement.setAttribute('data-bs-theme','light');}})();
+</script>
+</th:block>
+</body>
+</html>

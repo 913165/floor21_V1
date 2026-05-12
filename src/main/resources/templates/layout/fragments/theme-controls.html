@@ -1,0 +1,8 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="themeControls" class="d-flex align-items-center me-2">
+  <th:block th:replace="~{layout/fragments/theme-toggle :: themeToggle(true)}"/>
+</div>
+</body>
+</html>

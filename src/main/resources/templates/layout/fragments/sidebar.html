@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
-<aside th:fragment="sidebar" class="floor21-sidebar border-end bg-white py-3 px-2 d-none d-md-block flex-shrink-0">
+<aside th:fragment="sidebar" class="floor21-sidebar border-end bg-body py-3 px-2 d-none d-md-block flex-shrink-0">
   <div class="list-group list-group-flush small">
     <a class="list-group-item list-group-item-action" th:href="@{/dashboard}">Dashboard</a>
     <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
