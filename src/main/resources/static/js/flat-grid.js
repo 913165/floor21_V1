@@ -110,6 +110,17 @@
     }
   }
 
+  function openFloorPlanModal(url, title) {
+    var img = document.getElementById("floor-plan-modal-img");
+    var modalEl = document.getElementById("floor-plan-modal");
+    var titleEl = document.getElementById("floor-plan-modal-title");
+    if (!img || !modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) return;
+    img.src = url;
+    img.alt = title || "Floor plan";
+    if (titleEl) titleEl.textContent = title || "Floor plan";
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+
   window.floor21SelectFlat = function (el) {
     if (el.dataset.parking === "true") return;
     selectedFlatId = el.dataset.flatId;
@@ -142,17 +153,34 @@
       var bid = gridEl ? gridEl.getAttribute("data-building-id") : null;
       var slot = el.dataset.floorPlanSlot;
       if (slot && bid) {
-        fpBtn.href = appRoot() + "/buildings/" + bid + "/floor-plan/" + encodeURIComponent(slot);
+        fpBtn.setAttribute("data-floor-plan-url", appRoot() + "/buildings/" + bid + "/floor-plan/" + encodeURIComponent(slot));
         fpBtn.classList.remove("d-none");
       } else {
         fpBtn.classList.add("d-none");
-        fpBtn.setAttribute("href", "#");
+        fpBtn.removeAttribute("data-floor-plan-url");
       }
     }
     applyBookingSelectionHighlight();
   };
 
   document.addEventListener("DOMContentLoaded", function () {
+    var modalEl = document.getElementById("floor-plan-modal");
+    if (modalEl) {
+      modalEl.addEventListener("hidden.bs.modal", function () {
+        var img = document.getElementById("floor-plan-modal-img");
+        if (img) img.removeAttribute("src");
+      });
+    }
+    var panelFp = document.getElementById("panel-floor-plan-btn");
+    if (panelFp) {
+      panelFp.addEventListener("click", function () {
+        var url = panelFp.getAttribute("data-floor-plan-url");
+        if (!url) return;
+        var typeEl = document.getElementById("panel-type");
+        var sub = typeEl && typeEl.textContent ? typeEl.textContent.trim() + " — Floor plan" : "Floor plan";
+        openFloorPlanModal(url, sub);
+      });
+    }
     var hold = document.getElementById("hold-btn");
     if (hold) {
       hold.addEventListener("click", async function () {
@@ -166,6 +194,24 @@
     }
     var grid = document.getElementById("flat-grid");
     if (grid) {
+      grid.addEventListener("click", function (e) {
+        var fp = e.target.closest(".flat-floor-plan-trigger");
+        if (fp) {
+          e.preventDefault();
+          e.stopPropagation();
+          var url = fp.getAttribute("data-floor-plan-url");
+          if (url) {
+            var c = fp.closest(".flat-card");
+            var typ = c && c.dataset.type ? c.dataset.type + " — Floor plan" : "Floor plan";
+            openFloorPlanModal(url, typ);
+          }
+          return;
+        }
+        var card = e.target.closest(".flat-card");
+        if (!card || !grid.contains(card)) return;
+        if (card.dataset.parking === "true") return;
+        window.floor21SelectFlat(card);
+      });
       setInterval(refreshGrid, 20000);
       var focusId = grid.getAttribute("data-focus-flat-id");
       if (focusId) {

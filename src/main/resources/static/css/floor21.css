@@ -203,6 +203,14 @@
   cursor: pointer;
 }
 
+button.flat-floor-plan-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  text-align: center;
+}
+
 .flat-floor-plan-link:hover {
   color: var(--bs-link-hover-color);
 }
@@ -210,6 +218,10 @@
 .flat-card-row .flat-floor-plan-link {
   font-size: 0.52rem;
   margin-top: 0.12rem;
+}
+
+.floor-plan-modal-dialog {
+  max-width: min(92vw, 560px);
 }
 
 .flat-card-buyertip {

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Payment milestones</h1>
+    <a class="btn btn-primary" th:href="@{/payment-milestones/new}">New milestone</a>
+  </div>
+  <p class="text-muted small">Define the default slab labels and suggested percentages for <strong>your</strong> company. Active milestones are copied into a booking when you use <strong>Slabs (payment schedule)</strong> → “Create rows from platform milestones”.</p>
+  <div class="table-responsive card shadow-sm">
+    <table class="table mb-0">
+      <thead>
+      <tr>
+        <th>Order</th>
+        <th>Milestone</th>
+        <th>Suggested %</th>
+        <th>Active</th>
+        <th></th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="t : ${templates}">
+        <td th:text="${t.sortOrder}"></td>
+        <td th:text="${t.milestoneLabel}"></td>
+        <td th:text="${t.suggestedPercent != null ? t.suggestedPercent : '—'}"></td>
+        <td th:text="${t.active}"></td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-secondary" th:href="@{/payment-milestones/{id}/edit(id=${t.id})}">Edit</a>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

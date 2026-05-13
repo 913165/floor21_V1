@@ -128,19 +128,16 @@
                       data-client-id=${flat.clientId()},
                       data-buyer-tooltip=${flat.buyerTooltip()},
                       data-floor-plan-slot=${fpSlot != null ? fpSlot : ''},
-                      title=${flat.buyerTooltip()}"
-             onclick="window.floor21SelectFlat(this)">
+                      title=${flat.buyerTooltip()}">
           <div class="flat-card-buyertip" th:if="${!#strings.isEmpty(flat.buyerTooltip())}" th:text="${flat.buyerTooltip()}"></div>
           <div class="flat-card-inner">
             <div class="flat-card-head">
               <span class="flat-number" th:text="${flat.flatNumber()}">0101</span>
               <span class="flat-type" th:text="${flat.bhkType()}">2BHK</span>
-              <a th:if="${fpSlot != null}"
-                 th:href="@{/buildings/{bid}/floor-plan/{slot}(bid=${building.id}, slot=${fpSlot})}"
-                 class="flat-floor-plan-link"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 onclick="event.stopPropagation();">Floor plan</a>
+              <button type="button"
+                      th:if="${fpSlot != null}"
+                      class="flat-floor-plan-link flat-floor-plan-trigger"
+                      th:attr="data-floor-plan-url=@{/buildings/{bid}/floor-plan/{slot}(bid=${building.id}, slot=${fpSlot})}">Floor plan</button>
             </div>
             <div class="flat-card-owner" th:classappend="${#strings.isEmpty(flat.ownerDisplay()) && #strings.isEmpty(flat.ownerDetail())} ? ' is-blank'">
               <span class="flat-owner-name" th:text="${flat.ownerDisplay()}"></span>
@@ -170,10 +167,24 @@
         </div>
       </div>
       <div class="d-flex flex-wrap gap-2 justify-content-center">
-        <a id="panel-floor-plan-btn" href="#" class="btn btn-outline-secondary d-none" target="_blank" rel="noopener noreferrer">Floor plan</a>
+        <button type="button" id="panel-floor-plan-btn" class="btn btn-outline-secondary d-none">Floor plan</button>
         <button type="button" class="btn btn-outline-warning" id="hold-btn">Hold / Release</button>
         <a id="book-btn" href="#" class="btn btn-success">Book this flat</a>
         <a id="client-info-btn" href="#" class="btn btn-outline-primary d-none">Client info</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="floor-plan-modal" tabindex="-1" aria-labelledby="floor-plan-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable floor-plan-modal-dialog">
+      <div class="modal-content shadow">
+        <div class="modal-header py-2 px-3">
+          <h6 class="modal-title" id="floor-plan-modal-title">Floor plan</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center p-2 p-md-3">
+          <img id="floor-plan-modal-img" src="" alt="Floor plan" class="img-fluid rounded border" style="max-height: 70vh;"/>
+        </div>
       </div>
     </div>
   </div>

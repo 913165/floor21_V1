@@ -6,7 +6,6 @@ import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.SlabRepository;
-import com.floor21.security.TenantContext;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -14,6 +13,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Rate-per-sqft slabs are maintained by the Floor21 platform admin for each builder. Builders do not
+ * edit these definitions; they only use booking payment schedule for per-buyer instalments.
+ */
 @Service
 @RequiredArgsConstructor
 public class SlabService {
@@ -23,36 +26,34 @@ public class SlabService {
     private final BuilderRepository builderRepository;
 
     @Transactional(readOnly = true)
-    public List<Slab> list() {
-        return slabRepository.findByBuilder_IdOrderBySlabNameAsc(TenantContext.requireBuilderId());
+    public List<Slab> listAllForPlatformAdmin() {
+        return slabRepository.findAllOrderedForAdmin();
     }
 
     @Transactional(readOnly = true)
-    public Slab get(UUID id) {
-        return slabRepository
-                .findByIdAndBuilder_Id(id, TenantContext.requireBuilderId())
-                .orElseThrow(() -> new ResourceNotFoundException("Slab not found"));
+    public Slab getForPlatformAdmin(UUID id) {
+        return slabRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Slab not found"));
     }
 
     @Transactional
-    public Slab save(Slab form) {
-        UUID builderId = TenantContext.requireBuilderId();
-        var builder = builderRepository.findById(builderId).orElseThrow();
+    public Slab saveForPlatformAdmin(Slab form) {
+        if (form.getBuilder() == null || form.getBuilder().getId() == null) {
+            throw new IllegalArgumentException("Builder is required");
+        }
+        UUID targetBuilderId = form.getBuilder().getId();
+        var builder = builderRepository.findById(targetBuilderId).orElseThrow(() -> new ResourceNotFoundException("Builder not found"));
         Slab entity;
         if (form.getId() == null) {
             entity = new Slab();
             entity.setCreatedAt(Instant.now());
         } else {
-            entity =
-                    slabRepository
-                            .findByIdAndBuilder_Id(form.getId(), builderId)
-                            .orElseThrow(() -> new ResourceNotFoundException("Slab not found"));
+            entity = slabRepository.findById(form.getId()).orElseThrow(() -> new ResourceNotFoundException("Slab not found"));
         }
         entity.setBuilder(builder);
         if (form.getBuilding() != null && form.getBuilding().getId() != null) {
             Building b =
                     buildingRepository
-                            .findByIdAndBuilder_Id(form.getBuilding().getId(), builderId)
+                            .findByIdAndBuilder_Id(form.getBuilding().getId(), targetBuilderId)
                             .orElse(null);
             entity.setBuilding(b);
         } else {

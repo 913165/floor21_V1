@@ -9,15 +9,20 @@
     <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/clients}">Clients</a>
     <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/payment-milestones}">Payment milestones</a>
+    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bookings}">Bookings</a>
     <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/bookings/payment-schedule}"
+       title="View your payment milestones and set slab dates, %, and amounts for each booking">Slabs (payment schedule)</a>
+    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/brokers}">Brokers</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasRole('BUILDER_ADMIN')"
-       th:href="@{/slabs}">Slabs</a>
     <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/cancellations}">Cancellations</a>
     <a class="list-group-item list-group-item-action" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/builders}">Admin — Builders</a>
+    <a class="list-group-item list-group-item-action" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/admin/builder-pricing-slabs}">Admin — Builder rate slabs</a>
   </div>
 </aside>
 </body>

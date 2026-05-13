@@ -29,8 +29,6 @@ public class SecurityConfig {
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers("/dashboard")
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
-                                        .requestMatchers("/slabs/**")
-                                        .hasRole("BUILDER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/buildings/save")
                                         .hasRole("BUILDER_ADMIN")
                                         .requestMatchers(HttpMethod.GET, "/buildings/new", "/buildings/*/edit")
