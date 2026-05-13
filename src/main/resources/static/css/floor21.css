@@ -51,6 +51,62 @@
   transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 
+/* One row per floor: cards shrink instead of wrapping when many flats */
+.flat-card-row {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+
+.flat-card-row .flat-card {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 5.25rem;
+  max-width: 15.5rem;
+  padding: 0.32rem 0.4rem 0.32rem 0.35rem;
+}
+
+.flat-card-row .flat-card-inner {
+  gap: 0.28rem;
+}
+
+.flat-card-row .flat-card-head {
+  min-width: 2rem;
+  padding-right: 0.28rem;
+}
+
+.flat-card-row .flat-number {
+  font-size: 0.78rem;
+}
+
+.flat-card-row .flat-type {
+  font-size: 0.64rem;
+  margin-top: 0.04rem;
+}
+
+.flat-card-row .flat-owner-name {
+  font-size: 0.64rem;
+}
+
+.flat-card-row .flat-owner-detail {
+  font-size: 0.56rem;
+}
+
+.flat-card-row .flat-card-owner {
+  min-height: 1.85rem;
+}
+
+.flat-card-row .flat-card-owner.is-blank {
+  min-height: 1.85rem;
+}
+
 .flat-card-inner {
   display: flex;
   flex-direction: row;
