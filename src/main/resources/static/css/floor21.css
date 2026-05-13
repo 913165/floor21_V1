@@ -192,6 +192,26 @@
   overflow-wrap: anywhere;
 }
 
+.flat-floor-plan-link {
+  display: inline-block;
+  margin-top: 0.18rem;
+  font-size: 0.58rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--bs-link-color);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.flat-floor-plan-link:hover {
+  color: var(--bs-link-hover-color);
+}
+
+.flat-card-row .flat-floor-plan-link {
+  font-size: 0.52rem;
+  margin-top: 0.12rem;
+}
+
 .flat-card-buyertip {
   display: block;
   position: absolute;

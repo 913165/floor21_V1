@@ -25,9 +25,13 @@ services:
       SPRING_DATASOURCE_USERNAME: floor21_user
       SPRING_DATASOURCE_PASSWORD: floor21_pass
       SPRING_THYMELEAF_CACHE: "true"
+      FLOOR21_UPLOAD_ROOT: /var/floor21/uploads
+    volumes:
+      - floor21_uploads:/var/floor21/uploads
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   floor21_pgdata:
+  floor21_uploads:

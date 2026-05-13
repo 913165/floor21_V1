@@ -136,6 +136,19 @@
         clientInfo.setAttribute("href", "#");
       }
     }
+    var fpBtn = document.getElementById("panel-floor-plan-btn");
+    if (fpBtn) {
+      var gridEl = document.getElementById("flat-grid");
+      var bid = gridEl ? gridEl.getAttribute("data-building-id") : null;
+      var slot = el.dataset.floorPlanSlot;
+      if (slot && bid) {
+        fpBtn.href = appRoot() + "/buildings/" + bid + "/floor-plan/" + encodeURIComponent(slot);
+        fpBtn.classList.remove("d-none");
+      } else {
+        fpBtn.classList.add("d-none");
+        fpBtn.setAttribute("href", "#");
+      }
+    }
     applyBookingSelectionHighlight();
   };
 

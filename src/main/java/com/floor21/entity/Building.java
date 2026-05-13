@@ -58,6 +58,16 @@ public class Building {
     @Column(name = "is_active")
     private Boolean active = true;
 
+    /** Web path under context, e.g. {@code media/buildings/{id}/1BHK.png}; null if not uploaded. */
+    @Column(name = "floor_plan_1bhk", length = 500)
+    private String floorPlan1Bhk;
+
+    @Column(name = "floor_plan_2bhk", length = 500)
+    private String floorPlan2Bhk;
+
+    @Column(name = "floor_plan_3bhk", length = 500)
+    private String floorPlan3Bhk;
+
     @Column(name = "created_at")
     private Instant createdAt;
 }

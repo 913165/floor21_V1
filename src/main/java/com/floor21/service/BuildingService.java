@@ -37,6 +37,9 @@ public class BuildingService {
     public Building save(Building form) {
         UUID builderId = TenantContext.requireBuilderId();
         Builder builder = builderRepository.findById(builderId).orElseThrow(() -> new UnauthorizedTenantException("Invalid tenant"));
+        String preserveFp1 = null;
+        String preserveFp2 = null;
+        String preserveFp3 = null;
         Building entity;
         if (form.getId() == null) {
             entity = new Building();
@@ -46,6 +49,9 @@ public class BuildingService {
                     buildingRepository
                             .findByIdAndBuilder_Id(form.getId(), builderId)
                             .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+            preserveFp1 = entity.getFloorPlan1Bhk();
+            preserveFp2 = entity.getFloorPlan2Bhk();
+            preserveFp3 = entity.getFloorPlan3Bhk();
         }
         entity.setBuilder(builder);
         entity.setBuildingName(form.getBuildingName());
@@ -58,6 +64,9 @@ public class BuildingService {
         entity.setAddress(form.getAddress());
         entity.setCity(form.getCity());
         entity.setActive(form.getActive() != null ? form.getActive() : true);
+        entity.setFloorPlan1Bhk(preserveFp1);
+        entity.setFloorPlan2Bhk(preserveFp2);
+        entity.setFloorPlan3Bhk(preserveFp3);
         return buildingRepository.save(entity);
     }
 }

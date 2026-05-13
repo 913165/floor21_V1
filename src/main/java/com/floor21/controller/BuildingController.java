@@ -2,11 +2,18 @@ package com.floor21.controller;
 
 import com.floor21.dto.BuildingConfigDto;
 import com.floor21.entity.Building;
+import com.floor21.service.BuildingFloorPlanService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.FlatService;
 import jakarta.validation.Valid;
+import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -16,6 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -25,6 +33,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class BuildingController {
 
     private final BuildingService buildingService;
+    private final BuildingFloorPlanService buildingFloorPlanService;
     private final FlatService flatService;
 
     @GetMapping
@@ -53,6 +62,39 @@ public class BuildingController {
         Building saved = buildingService.save(building);
         ra.addFlashAttribute("successMessage", "Building saved");
         return "redirect:/buildings/" + saved.getId() + "/flats";
+    }
+
+    /**
+     * Serves uploaded floor plan bytes for the current tenant. Uses an explicit URL so Thymeleaf and browsers
+     * always resolve paths correctly with {@code server.servlet.context-path}.
+     */
+    @GetMapping("/{id}/floor-plan/{slot}")
+    public ResponseEntity<Resource> floorPlanImage(@PathVariable UUID id, @PathVariable String slot) {
+        Building b = buildingService.getForTenant(id);
+        String key = slot.toLowerCase(Locale.ROOT);
+        String webPath =
+                switch (key) {
+                    case "1bhk" -> b.getFloorPlan1Bhk();
+                    case "2bhk" -> b.getFloorPlan2Bhk();
+                    case "3bhk" -> b.getFloorPlan3Bhk();
+                    default -> null;
+                };
+        if (webPath == null || webPath.isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+        return buildingFloorPlanService
+                .loadAsResource(webPath)
+                .map(
+                        resource -> {
+                            MediaType contentType =
+                                    MediaTypeFactory.getMediaType(resource.getFilename())
+                                            .orElse(MediaType.APPLICATION_OCTET_STREAM);
+                            return ResponseEntity.ok()
+                                    .cacheControl(CacheControl.noCache())
+                                    .contentType(contentType)
+                                    .body(resource);
+                        })
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{id}/flats")
@@ -92,6 +134,32 @@ public class BuildingController {
         }
         flatService.generateFlats(id, config);
         ra.addFlashAttribute("successMessage", "Flats generated");
+        return "redirect:/buildings/" + id + "/flats";
+    }
+
+    @PostMapping("/{id}/floor-plans")
+    public String uploadFloorPlans(
+            @PathVariable UUID id,
+            @RequestParam(value = "plan1Bhk", required = false) MultipartFile plan1Bhk,
+            @RequestParam(value = "plan2Bhk", required = false) MultipartFile plan2Bhk,
+            @RequestParam(value = "plan3Bhk", required = false) MultipartFile plan3Bhk,
+            RedirectAttributes ra) {
+        boolean any =
+                (plan1Bhk != null && !plan1Bhk.isEmpty())
+                        || (plan2Bhk != null && !plan2Bhk.isEmpty())
+                        || (plan3Bhk != null && !plan3Bhk.isEmpty());
+        if (!any) {
+            ra.addFlashAttribute("errorMessage", "Choose at least one image to upload.");
+            return "redirect:/buildings/" + id + "/flats";
+        }
+        try {
+            buildingFloorPlanService.savePlans(id, plan1Bhk, plan2Bhk, plan3Bhk);
+            ra.addFlashAttribute("successMessage", "Floor plan images updated.");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        } catch (IllegalStateException ex) {
+            ra.addFlashAttribute("errorMessage", "Could not save floor plan files. Check server disk and permissions.");
+        }
         return "redirect:/buildings/" + id + "/flats";
     }
 }

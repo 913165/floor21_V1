@@ -37,6 +37,8 @@ public class SecurityConfig {
                                         .hasRole("BUILDER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/buildings/*/flats/generate")
                                         .hasRole("BUILDER_ADMIN")
+                                        .requestMatchers(HttpMethod.POST, "/buildings/*/floor-plans")
+                                        .hasRole("BUILDER_ADMIN")
                                         .anyRequest()
                                         .hasAnyRole("BUILDER_ADMIN", "EXECUTIVE"))
                 .formLogin(
