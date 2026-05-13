@@ -15,6 +15,20 @@
 
   var selectedFlatId = null;
 
+  function applyBookingSelectionHighlight() {
+    var grid = document.getElementById("flat-grid");
+    if (!grid) return;
+    grid.querySelectorAll(".flat-card").forEach(function (card) {
+      card.classList.remove("flat-card--booking-selected");
+    });
+    if (selectedFlatId) {
+      var sel = document.getElementById("flat-" + selectedFlatId);
+      if (sel) {
+        sel.classList.add("flat-card--booking-selected");
+      }
+    }
+  }
+
   function syncBuyerTooltip(el, text) {
     var t = text || "";
     el.setAttribute("data-buyer-tooltip", t);
@@ -81,6 +95,7 @@
         else el.classList.add("flat-hold");
       });
     });
+    applyBookingSelectionHighlight();
   }
 
   async function postStatus(flatId, status) {
@@ -121,6 +136,7 @@
         clientInfo.setAttribute("href", "#");
       }
     }
+    applyBookingSelectionHighlight();
   };
 
   document.addEventListener("DOMContentLoaded", function () {

@@ -200,6 +200,26 @@
   box-shadow: 0 0 0 4px rgba(var(--bs-warning-rgb), 0.35);
 }
 
+/* Flat chosen in the booking panel */
+.flat-card.flat-card--booking-selected {
+  background: #ffe5cc !important;
+  border-color: #e8590c !important;
+  box-shadow: 0 0 0 2px rgba(232, 89, 12, 0.35);
+}
+
+.flat-card.flat-card--booking-selected .flat-card-head {
+  border-right-color: rgba(232, 89, 12, 0.45);
+}
+
+.flat-card.flat-card--booking-selected .flat-type,
+.flat-card.flat-card--booking-selected .flat-owner-detail {
+  color: #663c00;
+}
+
+.flat-card.flat-card--booking-selected .flat-owner-name {
+  color: #5c2f00;
+}
+
 .flat-available {
   background: #d1e7dd;
   border-color: #198754;
@@ -268,6 +288,25 @@
 
 [data-bs-theme="dark"] .flat-booked .flat-card-head {
   border-right-color: rgba(110, 168, 254, 0.45);
+}
+
+[data-bs-theme="dark"] .flat-card.flat-card--booking-selected {
+  background: rgba(253, 126, 20, 0.32) !important;
+  border-color: #ffa94d !important;
+  box-shadow: 0 0 0 2px rgba(253, 126, 20, 0.3);
+}
+
+[data-bs-theme="dark"] .flat-card.flat-card--booking-selected .flat-card-head {
+  border-right-color: rgba(255, 169, 77, 0.55);
+}
+
+[data-bs-theme="dark"] .flat-card.flat-card--booking-selected .flat-type,
+[data-bs-theme="dark"] .flat-card.flat-card--booking-selected .flat-owner-detail {
+  color: #ffe8cc;
+}
+
+[data-bs-theme="dark"] .flat-card.flat-card--booking-selected .flat-owner-name {
+  color: #fff5eb;
 }
 
 [data-bs-theme="dark"] .flat-card-owner {
