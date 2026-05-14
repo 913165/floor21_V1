@@ -81,7 +81,7 @@ public class BookingController {
                     .findByIdAndBuilder_Id(flatId, TenantContext.requireBuilderId())
                     .ifPresent(booking::setFlat);
         }
-        model.addAttribute("pageTitle", "New Booking");
+        model.addAttribute("pageTitle", "New booking");
         model.addAttribute("booking", booking);
         model.addAttribute("clients", clientService.list());
         model.addAttribute("brokers", brokerService.list());
@@ -106,7 +106,7 @@ public class BookingController {
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable UUID id, Model model) {
         var booking = bookingService.get(id);
-        model.addAttribute("pageTitle", "Edit Booking");
+        model.addAttribute("pageTitle", "Modify booking particulars");
         model.addAttribute("booking", booking);
         model.addAttribute("clients", clientService.list());
         model.addAttribute("brokers", brokerService.list());

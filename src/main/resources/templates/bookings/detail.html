@@ -21,19 +21,123 @@
       </div></div>
     </div>
   </div>
+
   <div class="card shadow-sm mb-3">
+    <div class="card-header">Summary</div>
     <div class="card-body">
-      <div class="row">
-        <div class="col-md-4"><span class="text-muted">Date</span><div th:text="${booking.bookingDate}"></div></div>
-        <div class="col-md-4"><span class="text-muted">Consideration</span><div th:text="${booking.considerationAmt}"></div></div>
-        <div class="col-md-4"><span class="text-muted">Receipts total</span><div th:text="${receiptTotal}"></div></div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <span class="text-muted d-block small">Booking date</span>
+          <span th:text="${booking.bookingDate}"></span>
+        </div>
+        <div class="col-md-6">
+          <span class="text-muted d-block small">Receipts total</span>
+          <span th:text="${receiptTotal}"></span>
+        </div>
       </div>
     </div>
   </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header">Booking particulars</div>
+    <div class="card-body">
+      <div class="row g-3 small">
+        <div class="col-md-4">
+          <span class="text-muted d-block">File no</span>
+          <span th:text="${booking.fileNo != null && !#strings.isEmpty(booking.fileNo)} ? ${booking.fileNo} : '—'">—</span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">Consideration</span>
+          <span th:text="${booking.considerationAmt}"></span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">Quoted amount</span>
+          <span th:text="${booking.quotedAmount} ?: '—'"></span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">Broker</span>
+          <span th:text="${booking.broker != null} ? ${booking.broker.fullName} : '—'">—</span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">Brokerage</span>
+          <span th:text="${booking.brokerage}"></span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">TDS</span>
+          <span th:text="${booking.tds}"></span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">GST</span>
+          <span th:text="${booking.gst}"></span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">Final</span>
+          <span th:text="${booking.finalAmount}"></span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">Due amount date</span>
+          <span th:text="${booking.dueAmountDate} ?: '—'"></span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">Booking intimation date</span>
+          <span th:text="${booking.bookingIntimationDate} ?: '—'"></span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">NOC request date</span>
+          <span th:text="${booking.nocRequestDate} ?: '—'"></span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">Market value</span>
+          <span th:text="${booking.marketValue} ?: '—'"></span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">Executive name</span>
+          <span th:text="${booking.executive != null} ? ${booking.executive.fullName} : '—'">—</span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">Scheme</span>
+          <span th:text="${booking.scheme != null && !#strings.isEmpty(booking.scheme)} ? ${booking.scheme} : '—'">—</span>
+        </div>
+        <div class="col-md-4">
+          <span class="text-muted d-block">Bare flat</span>
+          <span th:text="${booking.bareFlat != null && booking.bareFlat} ? 'Yes' : 'No'"></span>
+        </div>
+        <div class="col-12">
+          <span class="text-muted d-block">Parking info</span>
+          <span class="text-break" th:text="${booking.parkingInfo != null && !#strings.isEmpty(booking.parkingInfo)} ? ${booking.parkingInfo} : '—'">—</span>
+        </div>
+        <div class="col-12">
+          <span class="text-muted d-block">Reference</span>
+          <span class="text-break" th:text="${booking.reference != null && !#strings.isEmpty(booking.reference)} ? ${booking.reference} : '—'">—</span>
+        </div>
+        <div class="col-12">
+          <span class="text-muted d-block">General particulars</span>
+          <span class="text-break" th:text="${booking.particulars != null && !#strings.isEmpty(booking.particulars)} ? ${booking.particulars} : '—'">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header">Registration information</div>
+    <div class="card-body">
+      <div class="row g-3 small">
+        <div class="col-md-6">
+          <span class="text-muted d-block">Stamp duty amount</span>
+          <span th:text="${booking.stampDutyAmount} ?: '—'"></span>
+        </div>
+        <div class="col-md-6">
+          <span class="text-muted d-block">Registration amount</span>
+          <span th:text="${booking.registrationAmount} ?: '—'"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="d-flex flex-wrap gap-2">
     <a class="btn btn-outline-info" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bookings/payment-schedule(bookingId=${booking.id})}">Slabs (schedule)</a>
-    <a class="btn btn-outline-secondary" th:href="@{/bookings/{id}/edit(id=${booking.id})}">Edit</a>
+    <a class="btn btn-primary" th:href="@{/bookings/{id}/edit(id=${booking.id})}">Modify particulars</a>
     <a class="btn btn-outline-primary" th:href="@{/bookings/{id}/receipts(id=${booking.id})}">Receipts</a>
     <a class="btn btn-outline-primary" th:href="@{/bookings/{id}/expenses(id=${booking.id})}">Expenses</a>
     <a class="btn btn-outline-danger" th:if="${booking.status == 'ACTIVE'}"

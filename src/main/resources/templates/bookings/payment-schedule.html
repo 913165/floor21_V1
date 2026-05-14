@@ -120,38 +120,25 @@
         <table class="table table-sm align-middle mb-0">
           <thead class="table-light">
           <tr>
-            <th rowspan="2" class="align-middle text-nowrap" style="min-width: 5rem;">
+            <th class="align-middle text-nowrap" style="min-width: 5rem;">
               Sno<br/><span class="small text-muted fw-normal">(Serial Number)</span>
             </th>
-            <th colspan="3" class="text-center pb-0">Slab Date</th>
-            <th rowspan="2" class="align-middle" style="min-width: 12rem;">
+            <th class="align-middle text-nowrap" style="min-width: 11rem;">Slab date</th>
+            <th class="align-middle" style="min-width: 12rem;">
               Slab<br/><span class="small text-muted fw-normal">(e.g. Initial booking amount)</span>
             </th>
-            <th rowspan="2" class="align-middle">Percent</th>
-            <th rowspan="2" class="align-middle text-nowrap">Agree Slab Amount</th>
-            <th rowspan="2" class="align-middle text-nowrap">Extra Slab Amount</th>
-          </tr>
-          <tr>
-            <th class="small text-center pt-0">DD</th>
-            <th class="small text-center pt-0">MM</th>
-            <th class="small text-center pt-0">YYYY</th>
+            <th class="align-middle">Percent</th>
+            <th class="align-middle text-nowrap">Agree Slab Amount</th>
+            <th class="align-middle text-nowrap">Extra Slab Amount</th>
           </tr>
           </thead>
           <tbody>
           <tr th:each="row, iterStat : ${rows}">
             <td th:text="${iterStat.count}">1</td>
-            <td class="p-1" style="width: 4rem;">
+            <td class="p-1">
               <input type="hidden" th:field="*{lines[__${iterStat.index}__].id}"/>
-              <input class="form-control form-control-sm text-center px-1" type="number" min="1" max="31" placeholder="DD"
-                     th:field="*{lines[__${iterStat.index}__].dueDay}"/>
-            </td>
-            <td class="p-1" style="width: 4rem;">
-              <input class="form-control form-control-sm text-center px-1" type="number" min="1" max="12" placeholder="MM"
-                     th:field="*{lines[__${iterStat.index}__].dueMonth}"/>
-            </td>
-            <td class="p-1" style="width: 5rem;">
-              <input class="form-control form-control-sm text-center px-1" type="number" min="1990" max="2100" placeholder="YYYY"
-                     th:field="*{lines[__${iterStat.index}__].dueYear}"/>
+              <input class="form-control form-control-sm" type="date"
+                     th:field="*{lines[__${iterStat.index}__].dueDate}"/>
             </td>
             <td class="p-1" style="min-width: 10rem;">
               <input class="form-control form-control-sm" type="text" maxlength="800"
@@ -175,7 +162,7 @@
       </div>
       <div class="card-body border-top">
         <button class="btn btn-primary" type="submit">Save schedule</button>
-        <span class="text-muted small ms-2">All columns are saved as entered. Slab Date: leave DD, MM, and YYYY all blank if not set yet.</span>
+        <span class="text-muted small ms-2">All columns are saved as entered. Slab date: leave empty if not set yet.</span>
       </div>
     </form>
   </th:block>

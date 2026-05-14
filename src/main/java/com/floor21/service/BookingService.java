@@ -14,6 +14,7 @@ import com.floor21.repository.FlatRepository;
 import com.floor21.repository.UserRepository;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -86,6 +87,17 @@ public class BookingService {
         entity.setClient(client);
         entity.setBookingDate(form.getBookingDate() != null ? form.getBookingDate() : LocalDate.now());
         entity.setConsiderationAmt(form.getConsiderationAmt());
+        entity.setQuotedAmount(form.getQuotedAmount());
+        entity.setBrokerage(zeroIfNull(form.getBrokerage()));
+        entity.setTds(zeroIfNull(form.getTds()));
+        entity.setGst(zeroIfNull(form.getGst()));
+        entity.setFinalAmount(zeroIfNull(form.getFinalAmount()));
+        entity.setDueAmountDate(form.getDueAmountDate());
+        entity.setBookingIntimationDate(form.getBookingIntimationDate());
+        entity.setNocRequestDate(form.getNocRequestDate());
+        entity.setMarketValue(form.getMarketValue());
+        entity.setStampDutyAmount(form.getStampDutyAmount());
+        entity.setRegistrationAmount(form.getRegistrationAmount());
         entity.setFileNo(form.getFileNo());
         entity.setScheme(form.getScheme());
         entity.setParkingInfo(form.getParkingInfo());
@@ -112,12 +124,16 @@ public class BookingService {
                     .findById(execId)
                     .filter(u -> u.getBuilder().getId().equals(builderId))
                     .ifPresent(entity::setExecutive);
-        } else if (isNew) {
+        } else {
             entity.setExecutive(null);
         }
 
         entity.setUpdatedAt(Instant.now());
         return bookingRepository.save(entity);
+    }
+
+    private static BigDecimal zeroIfNull(BigDecimal v) {
+        return v != null ? v : BigDecimal.ZERO;
     }
 
     private UUID resolveExecutiveId(Booking form) {

@@ -1,10 +1,12 @@
 package com.floor21.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.Data;
+import org.springframework.format.annotation.DateTimeFormat;
 
 @Data
 public class BookingPaymentSlabBatchForm {
@@ -15,12 +17,9 @@ public class BookingPaymentSlabBatchForm {
     @Data
     public static class Line {
         private UUID id;
-        /** Day of month (1–31); use with dueMonth and dueYear, or all null for no date. */
-        private Integer dueDay;
-        /** Month (1–12). */
-        private Integer dueMonth;
-        /** Four-digit year. */
-        private Integer dueYear;
+        /** Slab due date, or null when not set. */
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        private LocalDate dueDate;
         /** Slab description (editable per booking row). */
         private String milestoneLabel;
         private BigDecimal percent;

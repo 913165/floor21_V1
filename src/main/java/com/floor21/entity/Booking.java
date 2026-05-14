@@ -58,6 +58,39 @@ public class Booking {
     @Column(name = "consideration_amt", precision = 15, scale = 2)
     private BigDecimal considerationAmt = BigDecimal.ZERO;
 
+    @Column(name = "quoted_amount", precision = 15, scale = 2)
+    private BigDecimal quotedAmount;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal brokerage = BigDecimal.ZERO;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal tds = BigDecimal.ZERO;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal gst = BigDecimal.ZERO;
+
+    @Column(name = "final_amt", precision = 15, scale = 2)
+    private BigDecimal finalAmount = BigDecimal.ZERO;
+
+    @Column(name = "due_amount_date")
+    private LocalDate dueAmountDate;
+
+    @Column(name = "booking_intimation_date")
+    private LocalDate bookingIntimationDate;
+
+    @Column(name = "noc_request_date")
+    private LocalDate nocRequestDate;
+
+    @Column(name = "market_value", precision = 15, scale = 2)
+    private BigDecimal marketValue;
+
+    @Column(name = "stamp_duty_amount", precision = 15, scale = 2)
+    private BigDecimal stampDutyAmount;
+
+    @Column(name = "registration_amount", precision = 15, scale = 2)
+    private BigDecimal registrationAmount;
+
     @Column(length = 100)
     private String scheme;
 

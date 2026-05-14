@@ -13,7 +13,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.DateTimeException;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -127,7 +126,7 @@ public class BookingPaymentSlabService {
             if (!entity.getBooking().getId().equals(booking.getId())) {
                 throw new IllegalArgumentException("Invalid payment row for this booking");
             }
-            entity.setDueDate(composeSlabDate(line.getDueDay(), line.getDueMonth(), line.getDueYear()));
+            entity.setDueDate(line.getDueDate());
             String label = line.getMilestoneLabel();
             if (label == null || label.isBlank()) {
                 throw new IllegalArgumentException("Slab description cannot be empty.");
@@ -141,24 +140,6 @@ public class BookingPaymentSlabService {
             entity.setAgreedAmount(line.getAgreedAmount());
             entity.setUpdatedAt(now);
             bookingPaymentSlabRepository.save(entity);
-        }
-    }
-
-    /**
-     * All three parts required for a date, or all absent for no date. Mixed partial input is rejected.
-     */
-    private static LocalDate composeSlabDate(Integer day, Integer month, Integer year) {
-        boolean any = day != null || month != null || year != null;
-        if (!any) {
-            return null;
-        }
-        if (day == null || month == null || year == null) {
-            throw new IllegalArgumentException("Slab date needs DD, MM, and YYYY together, or leave all three blank.");
-        }
-        try {
-            return LocalDate.of(year, month, day);
-        } catch (DateTimeException ex) {
-            throw new IllegalArgumentException("Invalid slab date: " + day + "/" + month + "/" + year);
         }
     }
 }

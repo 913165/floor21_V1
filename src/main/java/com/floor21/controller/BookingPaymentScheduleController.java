@@ -7,11 +7,15 @@ import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.service.BookingPaymentSlabService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.PaymentSlabTemplateService;
+import java.beans.PropertyEditorSupport;
+import java.time.LocalDate;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +26,22 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/bookings/payment-schedule")
 @RequiredArgsConstructor
 public class BookingPaymentScheduleController {
+
+    @InitBinder("saveForm")
+    public void initSaveFormBinder(WebDataBinder binder) {
+        binder.registerCustomEditor(
+                LocalDate.class,
+                new PropertyEditorSupport() {
+                    @Override
+                    public void setAsText(String text) {
+                        if (text == null || text.isBlank()) {
+                            setValue(null);
+                        } else {
+                            setValue(LocalDate.parse(text));
+                        }
+                    }
+                });
+    }
 
     private final BuildingService buildingService;
     private final BookingPaymentSlabService bookingPaymentSlabService;
@@ -50,11 +70,7 @@ public class BookingPaymentScheduleController {
             for (BookingPaymentSlab r : rows) {
                 BookingPaymentSlabBatchForm.Line line = new BookingPaymentSlabBatchForm.Line();
                 line.setId(r.getId());
-                if (r.getDueDate() != null) {
-                    line.setDueDay(r.getDueDate().getDayOfMonth());
-                    line.setDueMonth(r.getDueDate().getMonthValue());
-                    line.setDueYear(r.getDueDate().getYear());
-                }
+                line.setDueDate(r.getDueDate());
                 line.setMilestoneLabel(r.getMilestoneLabel());
                 line.setPercent(r.getPercent());
                 line.setAgreedAmount(r.getAgreedAmount());
