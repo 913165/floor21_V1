@@ -1,10 +1,12 @@
 package com.floor21.service;
 
 import com.floor21.dto.BookingReceiptSummary;
+import com.floor21.entity.Bank;
 import com.floor21.entity.Booking;
 import com.floor21.entity.Receipt;
 import com.floor21.entity.User;
 import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.repository.BankRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.ReceiptRepository;
@@ -30,6 +32,7 @@ public class ReceiptService {
     private final ReceiptRepository receiptRepository;
     private final BookingRepository bookingRepository;
     private final BuilderRepository builderRepository;
+    private final BankRepository bankRepository;
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
@@ -153,7 +156,7 @@ public class ReceiptService {
         entity.setPaymentMode(trimToNull(form.getPaymentMode()));
         entity.setChequeNo(trimToNull(form.getChequeNo()));
         entity.setBankName(trimToNull(form.getBankName()));
-        entity.setDepositAccount(trimToNull(form.getDepositAccount()));
+        applyDepositTarget(entity, form, builderId);
         entity.setDishonoured(Boolean.TRUE.equals(form.getDishonoured()));
         entity.setRemarks(trimToNull(form.getRemarks()));
 
@@ -200,6 +203,43 @@ public class ReceiptService {
         Optional<User> staff =
                 userRepository.findFirstByEmailIgnoreCaseAndActiveTrue(email).filter(u -> builderId.equals(u.getBuilder().getId()));
         return staff.map(User::getFullName).orElse(email);
+    }
+
+    private void applyDepositTarget(Receipt entity, Receipt form, UUID builderId) {
+        UUID depositBankId =
+                form.getDepositBank() != null && form.getDepositBank().getId() != null
+                        ? form.getDepositBank().getId()
+                        : null;
+        if (depositBankId != null) {
+            Bank bank =
+                    bankRepository
+                            .findByIdAndBuilder_Id(depositBankId, builderId)
+                            .orElseThrow(
+                                    () ->
+                                            new IllegalArgumentException(
+                                                    "Choose a bank account from the list, or clear the selection."));
+            if (!Boolean.TRUE.equals(bank.getActive())) {
+                throw new IllegalArgumentException(
+                        "That bank account is inactive. Pick another or reactivate it under Bank accounts.");
+            }
+            entity.setDepositBank(bank);
+            entity.setDepositAccount(buildDepositAccountLabel(bank));
+        } else {
+            entity.setDepositBank(null);
+            entity.setDepositAccount(trimToNull(form.getDepositAccount()));
+        }
+    }
+
+    private static String buildDepositAccountLabel(Bank bank) {
+        StringBuilder sb = new StringBuilder(bank.getBankName().trim());
+        if (bank.getBranch() != null && !bank.getBranch().isBlank()) {
+            sb.append(" — ").append(bank.getBranch().trim());
+        }
+        if (bank.getAccountNumber() != null && !bank.getAccountNumber().isBlank()) {
+            sb.append(" — ").append(bank.getAccountNumber().trim());
+        }
+        String s = sb.toString();
+        return s.length() > 200 ? s.substring(0, 200) : s;
     }
 
     private static BigDecimal agreementBase(Booking booking) {

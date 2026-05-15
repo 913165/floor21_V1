@@ -80,6 +80,10 @@ public class Receipt {
     @Column(name = "deposit_account", length = 200)
     private String depositAccount;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deposit_bank_id")
+    private Bank depositBank;
+
     @Column(nullable = false)
     private Boolean dishonoured = Boolean.FALSE;
 

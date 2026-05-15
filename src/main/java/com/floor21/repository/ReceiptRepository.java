@@ -10,9 +10,17 @@ import org.springframework.data.repository.query.Param;
 
 public interface ReceiptRepository extends JpaRepository<Receipt, UUID> {
 
-    List<Receipt> findByBooking_IdAndBuilder_IdOrderByReceiptSerialAscCreatedAtAsc(UUID bookingId, UUID builderId);
+    @Query(
+            "select r from Receipt r left join fetch r.depositBank where r.booking.id = :bookingId and "
+                    + "r.builder.id = :builderId order by r.receiptSerial asc, r.createdAt asc")
+    List<Receipt> findByBooking_IdAndBuilder_IdOrderByReceiptSerialAscCreatedAtAsc(
+            @Param("bookingId") UUID bookingId, @Param("builderId") UUID builderId);
 
-    Optional<Receipt> findByIdAndBooking_IdAndBuilder_Id(UUID id, UUID bookingId, UUID builderId);
+    @Query(
+            "select r from Receipt r left join fetch r.depositBank where r.id = :rid and r.booking.id = :bookingId "
+                    + "and r.builder.id = :builderId")
+    Optional<Receipt> findByIdAndBooking_IdAndBuilder_Id(
+            @Param("rid") UUID id, @Param("bookingId") UUID bookingId, @Param("builderId") UUID builderId);
 
     Optional<Receipt> findFirstByBooking_IdAndBuilder_IdOrderByReceiptSerialDesc(
             UUID bookingId, UUID builderId);
@@ -24,8 +32,9 @@ public interface ReceiptRepository extends JpaRepository<Receipt, UUID> {
             @Param("bookingId") UUID bookingId, @Param("builderId") UUID builderId);
 
     @Query(
-            "select r from Receipt r join fetch r.booking b join fetch b.client join fetch b.flat f join fetch "
-                    + "f.building where r.id = :id and b.id = :bookingId and r.builder.id = :builderId")
+            "select r from Receipt r left join fetch r.depositBank join fetch r.builder "
+                    + "join fetch r.booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                    + "where r.id = :id and b.id = :bookingId and r.builder.id = :builderId")
     Optional<Receipt> findByIdForPrintView(
             @Param("id") UUID id, @Param("bookingId") UUID bookingId, @Param("builderId") UUID builderId);
 

@@ -25,6 +25,12 @@ public class BankService {
     }
 
     @Transactional(readOnly = true)
+    public List<Bank> listActiveForReceipts() {
+        return bankRepository.findByBuilder_IdAndActiveTrueOrderByBankNameAscBranchAscIdAsc(
+                TenantContext.requireBuilderId());
+    }
+
+    @Transactional(readOnly = true)
     public Bank get(UUID id) {
         return bankRepository
                 .findByIdAndBuilder_Id(id, TenantContext.requireBuilderId())

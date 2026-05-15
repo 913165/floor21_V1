@@ -171,8 +171,22 @@
           </div>
           <div class="col-md-6">
             <label class="form-label">Account (deposited to)</label>
-            <input class="form-control" th:field="*{depositAccount}" maxlength="200" placeholder="e.g. match label from Bank accounts"/>
-            <div class="form-text"><a th:href="@{/bank-accounts}">Bank accounts</a> — manage your company accounts here.</div>
+            <select class="form-select" th:field="*{depositBank.id}">
+              <option value="">— Choose saved bank account</option>
+              <option th:each="ba : ${bankAccounts}"
+                      th:value="${ba.id}"
+                      th:text="|${ba.bankName}${(ba.branch != null && !#strings.isEmpty(ba.branch)) ? ' — ' + ba.branch : ''}${(ba.accountNumber != null && !#strings.isEmpty(ba.accountNumber)) ? ' · ' + ba.accountNumber : ''}|"></option>
+            </select>
+            <div class="form-text">
+              Manage accounts under <a th:href="@{/bank-accounts}">Bank accounts</a>.
+              Inactive accounts are not listed.
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Other deposit label <span class="text-muted fw-normal">(optional)</span></label>
+            <input class="form-control" th:field="*{depositAccount}" maxlength="200"
+                   placeholder="Only if you leave the account dropdown empty"/>
+            <div class="form-text text-muted">Ignored when a saved bank account is selected.</div>
           </div>
           <div class="col-12">
             <label class="form-label">Particulars</label>

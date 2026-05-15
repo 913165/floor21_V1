@@ -3,42 +3,125 @@
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content">
-  <div class="receipt-print-area card shadow-sm p-4 mx-auto" style="max-width: 720px;">
-    <h1 class="h5 mb-3" th:text="${pageTitle}">Receipt</h1>
-    <p class="small text-muted mb-4" th:text="|Booking ${booking.bookingCode} — ${booking.client.displayName()} — ${booking.flat.building.buildingName} ${booking.flat.flatNumber}|"></p>
-    <table class="table table-sm">
-      <tbody>
-      <tr><th class="w-25">Date</th><td th:text="${receipt.receiptDate}"></td></tr>
-      <tr th:if="${receipt.receiptNumber != null && !#strings.isEmpty(receipt.receiptNumber)}">
-        <th>Receipt no.</th><td th:text="${receipt.receiptNumber}"></td></tr>
-      <tr><th>Amount</th><td th:text="${receipt.amount}"></td></tr>
-      <tr><th>Mode</th><td th:text="${receipt.paymentMode} ?: '—'"></td></tr>
-      <tr><th>Bank</th><td th:text="${receipt.bankName} ?: '—'"></td></tr>
-      <tr><th>Cheque / ref.</th><td th:text="${receipt.chequeNo} ?: '—'"></td></tr>
-      <tr th:if="${receipt.chequeDate != null}"><th>Cheque date</th><td th:text="${receipt.chequeDate}"></td></tr>
-      <tr><th>Breakdown</th><td class="small">
-        Consideration <span th:text="${receipt.amountConsideration}"></span>,
-        Extra <span th:text="${receipt.amountExtraCharges}"></span>,
-        Int. (agr.) <span th:text="${receipt.amountInterestAgreement}"></span>,
-        Int. (GST) <span th:text="${receipt.amountInterestGst}"></span>,
-        TDS <span th:text="${receipt.amountTds}"></span>,
-        GST <span th:text="${receipt.amountGstComponent}"></span>
-      </td></tr>
-      <tr th:if="${receipt.depositAccount != null && !#strings.isEmpty(receipt.depositAccount)}">
-        <th>Account</th><td th:text="${receipt.depositAccount}"></td></tr>
-      <tr th:if="${receipt.remarks != null && !#strings.isEmpty(receipt.remarks)}">
-        <th>Particulars</th><td th:text="${receipt.remarks}"></td></tr>
-      <tr th:if="${receipt.enteredByDisplay != null && !#strings.isEmpty(receipt.enteredByDisplay)}">
-        <th>Entered by</th><td th:text="${receipt.enteredByDisplay}"></td></tr>
-      </tbody>
-    </table>
-    <button type="button" class="btn btn-primary mt-3 d-print-none" onclick="window.print()">Print</button>
-    <a class="btn btn-link d-print-none" th:href="@{/receipts(bookingId=${booking.id})}">Back to receipts entry</a>
+  <div class="receipt-letter mx-auto">
+    <div th:if="${receipt.dishonoured != null && receipt.dishonoured}" class="alert alert-warning py-2 small d-print-none mb-3">
+      This receipt is marked dishonoured.
+    </div>
+    <div class="receipt-letter-head d-flex justify-content-between align-items-baseline flex-wrap gap-2 mb-4">
+      <div>
+        Receipt No.:
+        <strong th:text="${(receipt.receiptNumber != null && !#strings.isEmpty(receipt.receiptNumber)) ? receipt.receiptNumber : '—'}">44</strong>
+      </div>
+      <div>
+        Date:-
+        <strong th:text="${receiptDateFormatted}">26-Apr-2026</strong>
+      </div>
+    </div>
+
+    <p class="receipt-narrative mb-0">
+      Received with thanks from
+      <strong th:text="${payerNamesPrint}">Customer</strong>
+      a sum of
+      <strong th:text="${amountFiguresPrint}">Rs. 0/-</strong>
+      (<strong th:text="${amountWordsPrint}">Rupees Zero Only</strong>)
+      vide
+      <strong th:text="${paymentInstrumentPrint}">—</strong>
+      dated
+      <strong th:text="${instrumentDateFormatted}">—</strong>,
+      drawn on
+      <strong th:text="${drawnOnBankPrint}">—</strong>,
+      Payment towards
+      <strong th:text="${purposeNarrativePrint}">Consideration</strong>
+      against
+      <strong>Flat No.<span th:text="${flatNumberPrint}">0000</span></strong>
+      on
+      <strong th:text="${floorPhrasePrint}">—</strong>
+      in the Project Known as
+      <strong th:text="${projectNamePrint}">Project</strong>
+      situated at
+      <strong th:text="${siteAddressPrint}">Address</strong>.
+    </p>
+
+    <div class="receipt-sign-block d-flex flex-wrap justify-content-between align-items-end gap-4 mt-5 pt-2">
+      <div class="receipt-amount-box">
+        <span th:text="${amountFiguresPrint}">Rs. 0/-</span>
+      </div>
+      <div class="receipt-signatory text-end ms-auto">
+        <p class="mb-1">For <strong th:text="${builderCompanyPrint}">Builder</strong></p>
+        <p class="mb-0 receipt-signatory-line">Authorised Signatory</p>
+      </div>
+    </div>
+
+    <p class="receipt-disclaimer mt-5 mb-0" th:if="${showChequeRealizationDisclaimer}">
+      This receipt is issued subject to realization of the Cheque, if bounced, it stands automatically cancelled.
+    </p>
+    <p class="receipt-disclaimer mt-5 mb-0" th:unless="${showChequeRealizationDisclaimer}">
+      This receipt is issued on record against the particulars stated herein.
+    </p>
+
+    <div class="d-print-none mt-4">
+      <button type="button" class="btn btn-primary" onclick="window.print()">Print</button>
+      <a class="btn btn-link" th:href="@{/receipts(bookingId=${booking.id})}">Back to receipts entry</a>
+    </div>
   </div>
+
   <style>
+    .receipt-letter {
+      max-width: 720px;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 12pt;
+      line-height: 1.65;
+      color: #000;
+    }
+
+    .receipt-letter-head {
+      font-size: 12pt;
+    }
+
+    .receipt-narrative {
+      text-align: justify;
+    }
+
+    .receipt-narrative strong {
+      font-weight: 700;
+    }
+
+    .receipt-amount-box {
+      border: 1px solid #333;
+      border-radius: 0.35rem;
+      padding: 0.4rem 1rem;
+      font-weight: 700;
+      font-size: 12pt;
+    }
+
+    .receipt-signatory-line {
+      font-size: 11pt;
+      color: #000;
+    }
+
+    .receipt-disclaimer {
+      font-size: 9.5pt;
+      color: #333;
+    }
+
     @media print {
-      header, .floor21-sidebar, .d-print-none, footer { display: none !important; }
-      .receipt-print-area { box-shadow: none !important; border: none !important; max-width: 100% !important; }
+      header, .floor21-sidebar, .d-print-none, footer {
+        display: none !important;
+      }
+
+      .floor21-panel {
+        padding: 0 !important;
+        overflow: visible !important;
+      }
+
+      .receipt-letter {
+        max-width: 100% !important;
+        box-shadow: none !important;
+      }
+
+      @page {
+        margin: 14mm;
+      }
     }
   </style>
 </div>

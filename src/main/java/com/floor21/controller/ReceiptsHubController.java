@@ -5,7 +5,9 @@ import com.floor21.entity.Receipt;
 import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BookingRepository;
 import com.floor21.security.TenantContext;
+import com.floor21.service.BankService;
 import com.floor21.service.BuildingService;
+import com.floor21.service.ReceiptPrintService;
 import com.floor21.service.ReceiptService;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
@@ -58,11 +60,26 @@ public class ReceiptsHubController {
                         }
                     }
                 });
+        binder.registerCustomEditor(
+                UUID.class,
+                "depositBank.id",
+                new PropertyEditorSupport() {
+                    @Override
+                    public void setAsText(String text) {
+                        if (text == null || text.isBlank()) {
+                            setValue(null);
+                        } else {
+                            setValue(UUID.fromString(text));
+                        }
+                    }
+                });
     }
 
     private final BuildingService buildingService;
     private final BookingRepository bookingRepository;
     private final ReceiptService receiptService;
+    private final BankService bankService;
+    private final ReceiptPrintService receiptPrintService;
 
     @GetMapping
     public String entry(
@@ -118,6 +135,7 @@ public class ReceiptsHubController {
         model.addAttribute("receipt", receipt);
         model.addAttribute("booking", receipt.getBooking());
         model.addAttribute("pageTitle", "Receipt " + (receipt.getReceiptNumber() != null ? receipt.getReceiptNumber() : id));
+        receiptPrintService.addPrintAttributes(model, receipt);
         return "receipts/print";
     }
 
@@ -158,6 +176,7 @@ public class ReceiptsHubController {
             model.addAttribute(
                     "nextReceiptNumberPreview", receiptService.previewNextReceiptNumber(bookingId));
         }
+        model.addAttribute("bankAccounts", bankService.listActiveForReceipts());
     }
 
     private static Receipt newReceiptDraft() {
