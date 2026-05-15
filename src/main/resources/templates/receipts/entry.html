@@ -171,7 +171,8 @@
           </div>
           <div class="col-md-6">
             <label class="form-label">Account (deposited to)</label>
-            <input class="form-control" th:field="*{depositAccount}" maxlength="200" placeholder="Company bank account"/>
+            <input class="form-control" th:field="*{depositAccount}" maxlength="200" placeholder="e.g. match label from Bank accounts"/>
+            <div class="form-text"><a th:href="@{/bank-accounts}">Bank accounts</a> — manage your company accounts here.</div>
           </div>
           <div class="col-12">
             <label class="form-label">Particulars</label>

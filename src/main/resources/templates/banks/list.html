@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Bank accounts</h1>
+    <a class="btn btn-primary" th:href="@{/bank-accounts/new}">New bank account</a>
+  </div>
+  <p class="text-muted small">Your organisation’s bank accounts (branch, IFSC, account details). Use as reference when recording receipts (e.g. deposit account).</p>
+  <div class="table-responsive card shadow-sm">
+    <table class="table table-hover table-sm mb-0 align-middle">
+      <thead class="table-light">
+      <tr>
+        <th>Bank name</th>
+        <th>Branch</th>
+        <th>IFSC</th>
+        <th>Account</th>
+        <th>Holder</th>
+        <th>Active</th>
+        <th></th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="b : ${banks}">
+        <td th:text="${b.bankName}"></td>
+        <td th:text="${b.branch != null && !#strings.isEmpty(b.branch)} ? ${b.branch} : '—'">—</td>
+        <td class="text-nowrap" th:text="${b.ifscCode != null && !#strings.isEmpty(b.ifscCode)} ? ${b.ifscCode} : '—'">—</td>
+        <td class="text-nowrap small" th:text="${b.accountNumber != null && !#strings.isEmpty(b.accountNumber)} ? ${b.accountNumber} : '—'">—</td>
+        <td th:text="${b.accountHolderName != null && !#strings.isEmpty(b.accountHolderName)} ? ${b.accountHolderName} : '—'">—</td>
+        <td>
+          <span th:if="${b.active != null && b.active}" class="badge text-bg-success rounded-pill">Yes</span>
+          <span th:unless="${b.active != null && b.active}" class="badge text-bg-secondary rounded-pill">No</span>
+        </td>
+        <td class="text-end text-nowrap">
+          <a class="btn btn-sm btn-outline-secondary" th:href="@{/bank-accounts/{id}/edit(id=${b.id})}">Edit</a>
+        </td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(banks)}">
+        <td colspan="7" class="text-muted text-center py-4">No bank accounts yet. Add your first one.</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>
