@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="receipt-print-area card shadow-sm p-4 mx-auto" style="max-width: 720px;">
+    <h1 class="h5 mb-3" th:text="${pageTitle}">Receipt</h1>
+    <p class="small text-muted mb-4" th:text="|Booking ${booking.bookingCode} — ${booking.client.displayName()} — ${booking.flat.building.buildingName} ${booking.flat.flatNumber}|"></p>
+    <table class="table table-sm">
+      <tbody>
+      <tr><th class="w-25">Date</th><td th:text="${receipt.receiptDate}"></td></tr>
+      <tr th:if="${receipt.receiptNumber != null && !#strings.isEmpty(receipt.receiptNumber)}">
+        <th>Receipt no.</th><td th:text="${receipt.receiptNumber}"></td></tr>
+      <tr><th>Amount</th><td th:text="${receipt.amount}"></td></tr>
+      <tr><th>Mode</th><td th:text="${receipt.paymentMode} ?: '—'"></td></tr>
+      <tr><th>Bank</th><td th:text="${receipt.bankName} ?: '—'"></td></tr>
+      <tr><th>Cheque / ref.</th><td th:text="${receipt.chequeNo} ?: '—'"></td></tr>
+      <tr th:if="${receipt.chequeDate != null}"><th>Cheque date</th><td th:text="${receipt.chequeDate}"></td></tr>
+      <tr><th>Breakdown</th><td class="small">
+        Consideration <span th:text="${receipt.amountConsideration}"></span>,
+        Extra <span th:text="${receipt.amountExtraCharges}"></span>,
+        Int. (agr.) <span th:text="${receipt.amountInterestAgreement}"></span>,
+        Int. (GST) <span th:text="${receipt.amountInterestGst}"></span>,
+        TDS <span th:text="${receipt.amountTds}"></span>,
+        GST <span th:text="${receipt.amountGstComponent}"></span>
+      </td></tr>
+      <tr th:if="${receipt.depositAccount != null && !#strings.isEmpty(receipt.depositAccount)}">
+        <th>Account</th><td th:text="${receipt.depositAccount}"></td></tr>
+      <tr th:if="${receipt.remarks != null && !#strings.isEmpty(receipt.remarks)}">
+        <th>Particulars</th><td th:text="${receipt.remarks}"></td></tr>
+      <tr th:if="${receipt.enteredByDisplay != null && !#strings.isEmpty(receipt.enteredByDisplay)}">
+        <th>Entered by</th><td th:text="${receipt.enteredByDisplay}"></td></tr>
+      </tbody>
+    </table>
+    <button type="button" class="btn btn-primary mt-3 d-print-none" onclick="window.print()">Print</button>
+    <a class="btn btn-link d-print-none" th:href="@{/receipts(bookingId=${booking.id})}">Back to receipts entry</a>
+  </div>
+  <style>
+    @media print {
+      header, .floor21-sidebar, .d-print-none, footer { display: none !important; }
+      .receipt-print-area { box-shadow: none !important; border: none !important; max-width: 100% !important; }
+    }
+  </style>
+</div>
+</body>
+</html>

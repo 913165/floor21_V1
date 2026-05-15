@@ -5,7 +5,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,6 +19,10 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByBuilder_IdForListUi(@Param("builderId") UUID builderId);
 
     Optional<Booking> findByIdAndBuilder_Id(UUID id, UUID builderId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from Booking b where b.id = :id and b.builder.id = :builderId")
+    Optional<Booking> findByIdAndBuilder_IdForUpdate(@Param("id") UUID id, @Param("builderId") UUID builderId);
 
     @Query("select count(b) from Booking b where b.builder.id = :builderId and b.status = 'ACTIVE'")
     long countActiveByBuilder(@Param("builderId") UUID builderId);

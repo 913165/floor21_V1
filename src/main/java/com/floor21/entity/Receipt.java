@@ -34,11 +34,39 @@ public class Receipt {
     @JoinColumn(name = "booking_id", nullable = false)
     private Booking booking;
 
+    @Column(name = "receipt_number", length = 64)
+    private String receiptNumber;
+
+    @Column(name = "receipt_serial", nullable = false)
+    private Integer receiptSerial;
+
     @Column(name = "receipt_date", nullable = false)
     private LocalDate receiptDate;
 
+    @Column(name = "cheque_date")
+    private LocalDate chequeDate;
+
+    /** Total for the receipt (sum of allocation lines). */
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
+
+    @Column(name = "amount_consideration", nullable = false, precision = 15, scale = 2)
+    private BigDecimal amountConsideration = BigDecimal.ZERO;
+
+    @Column(name = "amount_extra_charges", nullable = false, precision = 15, scale = 2)
+    private BigDecimal amountExtraCharges = BigDecimal.ZERO;
+
+    @Column(name = "amount_interest_agreement", nullable = false, precision = 15, scale = 2)
+    private BigDecimal amountInterestAgreement = BigDecimal.ZERO;
+
+    @Column(name = "amount_interest_gst", nullable = false, precision = 15, scale = 2)
+    private BigDecimal amountInterestGst = BigDecimal.ZERO;
+
+    @Column(name = "amount_tds", nullable = false, precision = 15, scale = 2)
+    private BigDecimal amountTds = BigDecimal.ZERO;
+
+    @Column(name = "amount_gst_component", nullable = false, precision = 15, scale = 2)
+    private BigDecimal amountGstComponent = BigDecimal.ZERO;
 
     @Column(name = "payment_mode", length = 50)
     private String paymentMode;
@@ -48,6 +76,15 @@ public class Receipt {
 
     @Column(name = "bank_name", length = 100)
     private String bankName;
+
+    @Column(name = "deposit_account", length = 200)
+    private String depositAccount;
+
+    @Column(nullable = false)
+    private Boolean dishonoured = Boolean.FALSE;
+
+    @Column(name = "entered_by_display", length = 200)
+    private String enteredByDisplay;
 
     @Column(columnDefinition = "TEXT")
     private String remarks;

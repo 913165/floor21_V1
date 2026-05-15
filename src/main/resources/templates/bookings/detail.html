@@ -138,7 +138,7 @@
     <a class="btn btn-outline-info" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bookings/payment-schedule(bookingId=${booking.id})}">Slabs (schedule)</a>
     <a class="btn btn-primary" th:href="@{/bookings/{id}/edit(id=${booking.id})}">Modify particulars</a>
-    <a class="btn btn-outline-primary" th:href="@{/bookings/{id}/receipts(id=${booking.id})}">Receipts</a>
+    <a class="btn btn-outline-primary" th:href="@{/receipts(bookingId=${booking.id})}">Receipts</a>
     <a class="btn btn-outline-primary" th:href="@{/bookings/{id}/expenses(id=${booking.id})}">Expenses</a>
     <a class="btn btn-outline-danger" th:if="${booking.status == 'ACTIVE'}"
        th:href="@{/bookings/{id}/cancel(id=${booking.id})}">Cancel booking</a>
