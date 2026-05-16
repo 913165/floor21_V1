@@ -30,6 +30,10 @@ public class Builder {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    /** BCrypt (or delegating) hash of the vault PIN; separate from login password. */
+    @Column(name = "vault_pin_hash", length = 255)
+    private String vaultPinHash;
+
     @Column(length = 20)
     private String phone;
 

@@ -16,6 +16,8 @@
        th:href="@{/receipts}">Receipts entry</a>
     <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bank-accounts}">Bank accounts</a>
+    <a class="list-group-item list-group-item-action" sec:authorize="hasRole('BUILDER_ADMIN')"
+       th:href="@{/vault}">Vault</a>
     <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bookings/payment-schedule}"
        title="View your payment milestones and set slab dates, %, and amounts for each booking">Slabs (payment schedule)</a>
