@@ -30,8 +30,22 @@ public class VaultEntry {
     @JoinColumn(name = "builder_id", nullable = false)
     private Builder builder;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id")
+    private Booking booking;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_slab_id")
+    private BookingPaymentSlab paymentSlab;
+
     @Column(name = "client_name", nullable = false, length = 200)
     private String clientName;
+
+    @Column(name = "flat_number", length = 50)
+    private String flatNumber;
+
+    @Column(name = "payment_mode", length = 30)
+    private String paymentMode;
 
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;

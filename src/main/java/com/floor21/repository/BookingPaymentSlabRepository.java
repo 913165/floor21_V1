@@ -9,6 +9,8 @@ public interface BookingPaymentSlabRepository extends JpaRepository<BookingPayme
 
     List<BookingPaymentSlab> findByBooking_IdOrderBySortOrderAscIdAsc(UUID bookingId);
 
+    java.util.Optional<BookingPaymentSlab> findByIdAndBooking_Id(UUID id, UUID bookingId);
+
     long countByBooking_Id(UUID bookingId);
 
     void deleteByBooking_Id(UUID bookingId);

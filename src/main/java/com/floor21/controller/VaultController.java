@@ -1,8 +1,13 @@
 package com.floor21.controller;
 
+import com.floor21.dto.VaultEntryBatchForm;
+import com.floor21.entity.Booking;
 import com.floor21.entity.VaultEntry;
+import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.repository.BookingRepository;
 import com.floor21.security.TenantContext;
 import com.floor21.security.VaultSession;
+import com.floor21.service.BuildingService;
 import com.floor21.service.VaultEntryService;
 import com.floor21.service.VaultPinService;
 import jakarta.servlet.http.HttpSession;
@@ -10,6 +15,7 @@ import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,12 +38,14 @@ public class VaultController {
 
     private final VaultEntryService vaultEntryService;
     private final VaultPinService vaultPinService;
+    private final BuildingService buildingService;
+    private final BookingRepository bookingRepository;
 
     @Value("${floor21.vault.unlock-timeout-minutes:15}")
     private int unlockTimeoutMinutes;
 
-    @InitBinder("entry")
-    public void entryBinder(WebDataBinder binder) {
+    @InitBinder({"saveForm", "extraEntryForm"})
+    public void formBinder(WebDataBinder binder) {
         binder.registerCustomEditor(
                 LocalDate.class,
                 new PropertyEditorSupport() {
@@ -123,54 +131,99 @@ public class VaultController {
     }
 
     @GetMapping
-    public String list(Model model, HttpSession session) {
+    public String list(
+            @RequestParam(required = false) UUID buildingId,
+            @RequestParam(required = false) UUID bookingId,
+            @RequestParam(required = false) boolean addExtra,
+            @RequestParam(required = false) UUID editExtraId,
+            Model model,
+            HttpSession session) {
         model.addAttribute("pageTitle", "Vault");
-        model.addAttribute("entries", vaultEntryService.list());
-        model.addAttribute("totalAmount", vaultEntryService.totalAmount());
         model.addAttribute("unlockTimeoutMinutes", unlockTimeoutMinutes);
         model.addAttribute(
                 "vaultUnlocked",
                 VaultSession.isUnlocked(
                         session, TenantContext.requireBuilderId(), Duration.ofMinutes(unlockTimeoutMinutes)));
+        addPicker(model, buildingId, bookingId);
+        if (bookingId == null) {
+            return "vault/list";
+        }
+        try {
+            addWorkspace(model, buildingId, bookingId, addExtra, editExtraId);
+        } catch (ResourceNotFoundException ex) {
+            model.addAttribute("errorMessage", ex.getMessage());
+        }
         return "vault/list";
     }
 
     @GetMapping("/new")
-    public String formNew(Model model) {
-        VaultEntry entry = new VaultEntry();
-        entry.setEntryDate(LocalDate.now());
-        model.addAttribute("pageTitle", "New vault entry");
-        model.addAttribute("entry", entry);
-        return "vault/form";
-    }
-
-    @GetMapping("/{id}/edit")
-    public String formEdit(@PathVariable UUID id, Model model) {
-        model.addAttribute("pageTitle", "Edit vault entry");
-        model.addAttribute("entry", vaultEntryService.get(id));
-        return "vault/form";
+    public String legacyNew(
+            @RequestParam(required = false) UUID buildingId,
+            @RequestParam(required = false) UUID bookingId) {
+        if (bookingId != null) {
+            return redirectToVault(bookingId, buildingId);
+        }
+        return "redirect:/vault";
     }
 
     @PostMapping("/save")
-    public String save(@ModelAttribute VaultEntry entry, RedirectAttributes ra) {
+    public String save(
+            @RequestParam(required = false) UUID buildingId,
+            @ModelAttribute("saveForm") VaultEntryBatchForm saveForm,
+            Model model,
+            RedirectAttributes ra) {
+        UUID bookingId = saveForm.getBookingId();
+        addPicker(model, buildingId, bookingId);
         try {
-            vaultEntryService.save(entry);
-            ra.addFlashAttribute("successMessage", "Vault entry saved.");
-            return "redirect:/vault";
-        } catch (IllegalArgumentException ex) {
-            ra.addFlashAttribute("errorMessage", ex.getMessage());
-            if (entry.getId() != null) {
-                return "redirect:/vault/" + entry.getId() + "/edit";
+            vaultEntryService.saveBatch(saveForm);
+            ra.addFlashAttribute("successMessage", "Vault payments saved.");
+            return redirectToVault(bookingId, buildingId);
+        } catch (IllegalArgumentException | ResourceNotFoundException ex) {
+            model.addAttribute("errorMessage", ex.getMessage());
+            try {
+                addWorkspace(model, buildingId, bookingId, false, null);
+                model.addAttribute("saveForm", saveForm);
+            } catch (ResourceNotFoundException e) {
+                ra.addFlashAttribute("errorMessage", ex.getMessage());
+                return redirectToVault(bookingId, buildingId);
             }
-            return "redirect:/vault/new";
+            return "vault/list";
         }
     }
 
-    @PostMapping("/{id}/delete")
-    public String delete(@PathVariable UUID id, RedirectAttributes ra) {
-        vaultEntryService.delete(id);
-        ra.addFlashAttribute("successMessage", "Vault entry removed.");
-        return "redirect:/vault";
+    @PostMapping("/extra/save")
+    public String saveExtra(
+            @RequestParam UUID bookingId,
+            @RequestParam(required = false) UUID buildingId,
+            @ModelAttribute("extraEntryForm") VaultEntry extraEntryForm,
+            Model model,
+            RedirectAttributes ra) {
+        addPicker(model, buildingId, bookingId);
+        try {
+            boolean updating = extraEntryForm.getId() != null;
+            vaultEntryService.saveExtra(bookingId, extraEntryForm);
+            ra.addFlashAttribute(
+                    "successMessage", updating ? "Additional vault entry updated." : "Additional vault entry saved.");
+            return redirectToVault(bookingId, buildingId);
+        } catch (IllegalArgumentException | ResourceNotFoundException ex) {
+            model.addAttribute("errorMessage", ex.getMessage());
+            addWorkspace(model, buildingId, bookingId, true, extraEntryForm.getId());
+            model.addAttribute("extraEntryForm", extraEntryForm);
+            model.addAttribute("showExtraForm", true);
+            model.addAttribute("editingExtra", extraEntryForm.getId() != null);
+            return "vault/list";
+        }
+    }
+
+    @PostMapping("/extra/{id}/delete")
+    public String deleteExtra(
+            @PathVariable UUID id,
+            @RequestParam UUID bookingId,
+            @RequestParam(required = false) UUID buildingId,
+            RedirectAttributes ra) {
+        vaultEntryService.deleteExtra(id, bookingId);
+        ra.addFlashAttribute("successMessage", "Additional vault entry removed.");
+        return redirectToVault(bookingId, buildingId);
     }
 
     @GetMapping("/change-pin")
@@ -197,6 +250,52 @@ public class VaultController {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
             return "redirect:/vault/change-pin";
         }
+    }
+
+    private void addPicker(Model model, UUID buildingId, UUID bookingId) {
+        model.addAttribute("buildings", buildingService.listForTenant());
+        model.addAttribute("selectedBuildingId", buildingId);
+        UUID builderId = TenantContext.requireBuilderId();
+        List<Booking> bookings =
+                buildingId == null
+                        ? bookingRepository.findActiveForPaymentSchedule(builderId)
+                        : bookingRepository.findActiveForPaymentScheduleByBuilding(builderId, buildingId);
+        model.addAttribute("bookings", bookings);
+        model.addAttribute("selectedBookingId", bookingId);
+    }
+
+    private void addWorkspace(
+            Model model, UUID buildingId, UUID bookingId, boolean addExtra, UUID editExtraId) {
+        UUID builderId = TenantContext.requireBuilderId();
+        Booking booking =
+                bookingRepository
+                        .findByIdAndBuilder_IdForSchedule(bookingId, builderId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        model.addAttribute("selectedBooking", booking);
+        model.addAttribute("slabRows", vaultEntryService.listSlabsForBooking(bookingId));
+        model.addAttribute("saveForm", vaultEntryService.buildSaveForm(bookingId));
+        model.addAttribute("extraEntries", vaultEntryService.listExtraForBooking(bookingId));
+        model.addAttribute("bookingTotal", vaultEntryService.totalForBooking(bookingId));
+        model.addAttribute("selectedBuildingId", buildingId);
+
+        boolean showExtraForm = addExtra || editExtraId != null;
+        model.addAttribute("showExtraForm", showExtraForm);
+        if (showExtraForm) {
+            VaultEntry extraForm =
+                    editExtraId != null
+                            ? vaultEntryService.getExtraForBooking(editExtraId, bookingId)
+                            : vaultEntryService.newExtraDraft(booking);
+            model.addAttribute("extraEntryForm", extraForm);
+            model.addAttribute("editingExtra", editExtraId != null);
+        }
+    }
+
+    private static String redirectToVault(UUID bookingId, UUID buildingId) {
+        StringBuilder sb = new StringBuilder("redirect:/vault?bookingId=").append(bookingId);
+        if (buildingId != null) {
+            sb.append("&buildingId=").append(buildingId);
+        }
+        return sb.toString();
     }
 
     private static String sanitizeRedirect(String redirect) {
