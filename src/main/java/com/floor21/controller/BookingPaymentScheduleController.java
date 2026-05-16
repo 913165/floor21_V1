@@ -8,6 +8,7 @@ import com.floor21.service.BookingPaymentSlabService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.PaymentSlabTemplateService;
 import java.beans.PropertyEditorSupport;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,18 @@ public class BookingPaymentScheduleController {
                             setValue(null);
                         } else {
                             setValue(LocalDate.parse(text));
+                        }
+                    }
+                });
+        binder.registerCustomEditor(
+                BigDecimal.class,
+                new PropertyEditorSupport() {
+                    @Override
+                    public void setAsText(String text) {
+                        if (text == null || text.isBlank()) {
+                            setValue(null);
+                        } else {
+                            setValue(new BigDecimal(text.replace(",", "").trim()));
                         }
                     }
                 });
@@ -72,6 +85,7 @@ public class BookingPaymentScheduleController {
             model.addAttribute("baseAmount", base);
             var rows = bookingPaymentSlabService.listLines(bookingId);
             model.addAttribute("rows", rows);
+            model.addAttribute("scheduleSummary", bookingPaymentSlabService.summarizeLines(bookingId));
             BookingPaymentSlabBatchForm saveForm = new BookingPaymentSlabBatchForm();
             saveForm.setBookingId(bookingId);
             for (BookingPaymentSlab r : rows) {
@@ -112,8 +126,8 @@ public class BookingPaymentScheduleController {
             @RequestParam(required = false) UUID buildingId,
             RedirectAttributes ra) {
         try {
-            bookingPaymentSlabService.saveLines(form);
-            ra.addFlashAttribute("successMessage", "Payment schedule saved.");
+            int saved = bookingPaymentSlabService.saveLines(form);
+            ra.addFlashAttribute("successMessage", "Payment schedule saved (" + saved + " rows).");
         } catch (IllegalArgumentException | ResourceNotFoundException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
         }

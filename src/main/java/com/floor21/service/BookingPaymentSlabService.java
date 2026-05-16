@@ -1,6 +1,7 @@
 package com.floor21.service;
 
 import com.floor21.dto.BookingPaymentSlabBatchForm;
+import com.floor21.dto.SlabScheduleSummary;
 import com.floor21.entity.Booking;
 import com.floor21.entity.BookingPaymentSlab;
 import com.floor21.entity.PaymentSlabTemplate;
@@ -22,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class BookingPaymentSlabService {
+
+    private static final BigDecimal ZERO = BigDecimal.ZERO;
 
     private final BookingRepository bookingRepository;
     private final BookingPaymentSlabRepository bookingPaymentSlabRepository;
@@ -48,6 +51,25 @@ public class BookingPaymentSlabService {
     public List<BookingPaymentSlab> listLines(UUID bookingId) {
         getBookingForSchedule(bookingId);
         return bookingPaymentSlabRepository.findByBooking_IdOrderBySortOrderAscIdAsc(bookingId);
+    }
+
+    @Transactional(readOnly = true)
+    public SlabScheduleSummary summarizeLines(UUID bookingId) {
+        BigDecimal agreed = ZERO;
+        BigDecimal extra = ZERO;
+        BigDecimal percent = ZERO;
+        for (BookingPaymentSlab slab : listLines(bookingId)) {
+            if (slab.getAgreedAmount() != null) {
+                agreed = agreed.add(slab.getAgreedAmount());
+            }
+            if (slab.getExtraAmount() != null) {
+                extra = extra.add(slab.getExtraAmount());
+            }
+            if (slab.getPercent() != null) {
+                percent = percent.add(slab.getPercent());
+            }
+        }
+        return new SlabScheduleSummary(agreed, extra, agreed.add(extra), percent);
     }
 
     public BigDecimal baseConsideration(Booking booking) {
@@ -106,15 +128,16 @@ public class BookingPaymentSlabService {
     }
 
     @Transactional
-    public void saveLines(BookingPaymentSlabBatchForm form) {
+    public int saveLines(BookingPaymentSlabBatchForm form) {
         if (form.getBookingId() == null) {
             throw new IllegalArgumentException("Booking is required");
         }
         Booking booking = getBookingForSchedule(form.getBookingId());
         Instant now = Instant.now();
         if (form.getLines() == null || form.getLines().isEmpty()) {
-            return;
+            throw new IllegalArgumentException("No slab rows to save. Reload the booking and try again.");
         }
+        int saved = 0;
         for (BookingPaymentSlabBatchForm.Line line : form.getLines()) {
             if (line.getId() == null) {
                 continue;
@@ -140,6 +163,12 @@ public class BookingPaymentSlabService {
             entity.setAgreedAmount(line.getAgreedAmount());
             entity.setUpdatedAt(now);
             bookingPaymentSlabRepository.save(entity);
+            saved++;
         }
+        if (saved == 0) {
+            throw new IllegalArgumentException(
+                    "No slab rows were saved. Reload the page and try again — if this persists, contact support.");
+        }
+        return saved;
     }
 }

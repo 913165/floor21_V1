@@ -76,7 +76,7 @@
     form.querySelectorAll('.js-amount-input').forEach(initDisplayInput);
     form.addEventListener('submit', function () {
       form.querySelectorAll('.js-amount-input').forEach(formatDisplayInput);
-    });
+    }, true);
   }
 
   global.Floor21Amount = {

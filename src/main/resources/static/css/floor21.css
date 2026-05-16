@@ -573,3 +573,157 @@ button.flat-floor-plan-link {
   font-size: 0.875rem;
   padding: 0.55rem 1rem;
 }
+
+/* Slabs — payment schedule page */
+.slab-schedule-picker {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  background: var(--bs-body-bg);
+}
+
+.slab-schedule-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.75rem;
+}
+
+.slab-schedule-summary__item {
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.4rem;
+  padding: 0.65rem 0.85rem;
+}
+
+.slab-schedule-summary__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bs-secondary-color);
+  margin-bottom: 0.2rem;
+}
+
+.slab-schedule-summary__value {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.slab-schedule-summary__value--amount {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.slab-schedule-card {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.slab-schedule-card .card-header {
+  background: var(--bs-tertiary-bg);
+  border-bottom: 1px solid var(--bs-border-color);
+  padding: 0.75rem 1rem;
+}
+
+.slab-schedule-table thead th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.slab-schedule-table tbody tr:hover {
+  background: rgba(var(--bs-primary-rgb), 0.04);
+}
+
+.slab-schedule-table tfoot td {
+  border-top: 2px solid var(--bs-border-color);
+  font-size: 0.9rem;
+}
+
+.slab-schedule-table .form-control-sm.text-end {
+  font-variant-numeric: tabular-nums;
+}
+
+.slab-schedule-table .col-sno {
+  width: 3rem;
+  color: var(--bs-secondary-color);
+  font-weight: 600;
+}
+
+/* Slab amount colors (aligned with vault: agreed/register = blue, extra = tan) */
+.slab-amt--base,
+.slab-amt--agreed {
+  color: #1565a8;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.slab-amt--extra {
+  color: #7a5c3a;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.slab-amt--total {
+  color: var(--bs-body-color);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-bs-theme="dark"] .slab-amt--base,
+[data-bs-theme="dark"] .slab-amt--agreed {
+  color: #8ec5f0;
+}
+
+[data-bs-theme="dark"] .slab-amt--extra {
+  color: #e8d4b8;
+}
+
+.slab-schedule-table thead th.slab-schedule-th--agreed {
+  color: #1565a8;
+}
+
+.slab-schedule-table thead th.slab-schedule-th--extra {
+  color: #7a5c3a;
+}
+
+[data-bs-theme="dark"] .slab-schedule-table thead th.slab-schedule-th--agreed {
+  color: #8ec5f0;
+}
+
+[data-bs-theme="dark"] .slab-schedule-table thead th.slab-schedule-th--extra {
+  color: #e8d4b8;
+}
+
+.slab-schedule-table .form-control.slab-amt-input--agreed {
+  color: #1565a8;
+  font-weight: 600;
+  border-color: rgba(21, 101, 168, 0.35);
+  background-color: rgba(21, 101, 168, 0.04);
+}
+
+.slab-schedule-table .form-control.slab-amt-input--extra {
+  color: #7a5c3a;
+  font-weight: 600;
+  border-color: rgba(122, 92, 58, 0.35);
+  background-color: rgba(122, 92, 58, 0.06);
+}
+
+[data-bs-theme="dark"] .slab-schedule-table .form-control.slab-amt-input--agreed {
+  color: #8ec5f0;
+  border-color: rgba(142, 197, 240, 0.35);
+  background-color: rgba(21, 101, 168, 0.12);
+}
+
+[data-bs-theme="dark"] .slab-schedule-table .form-control.slab-amt-input--extra {
+  color: #e8d4b8;
+  border-color: rgba(232, 212, 184, 0.25);
+  background-color: rgba(122, 92, 58, 0.15);
+}
+
+.slab-schedule-table tfoot .slab-amt--agreed,
+.slab-schedule-table tfoot .slab-amt--extra {
+  font-size: 1rem;
+}
