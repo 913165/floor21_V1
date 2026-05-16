@@ -1,6 +1,6 @@
 package com.floor21.service;
 
-import com.floor21.dto.VaultEntryBatchForm;
+import com.floor21.dto.VaultBookingAmountSummary;
 import com.floor21.entity.Booking;
 import com.floor21.entity.BookingPaymentSlab;
 import com.floor21.entity.Builder;
@@ -14,9 +14,7 @@ import com.floor21.security.TenantContext;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class VaultEntryService {
+
+    private static final BigDecimal ZERO = BigDecimal.ZERO;
 
     private final VaultEntryRepository vaultEntryRepository;
     private final BuilderRepository builderRepository;
@@ -37,12 +37,11 @@ public class VaultEntryService {
         return bookingPaymentSlabRepository.findByBooking_IdOrderBySortOrderAscIdAsc(bookingId);
     }
 
-    /** Extra vault-only rows (not linked to a slab line). Never written to slabs. */
+    /** Vault payments for a booking — by date only, not tied to slab schedule. */
     @Transactional(readOnly = true)
-    public List<VaultEntry> listExtraForBooking(UUID bookingId) {
+    public List<VaultEntry> listPaymentsForBooking(UUID bookingId) {
         requireBooking(bookingId);
-        return vaultEntryRepository.findByBooking_IdAndPaymentSlabIsNullOrderByEntryDateDescCreatedAtDesc(
-                bookingId);
+        return vaultEntryRepository.findByBooking_IdOrderByEntryDateDescCreatedAtDesc(bookingId);
     }
 
     @Transactional(readOnly = true)
@@ -52,116 +51,34 @@ public class VaultEntryService {
     }
 
     @Transactional(readOnly = true)
-    public VaultEntryBatchForm buildSaveForm(UUID bookingId) {
+    public VaultBookingAmountSummary summarizeAmounts(UUID bookingId) {
         requireBooking(bookingId);
-        List<BookingPaymentSlab> slabs =
-                bookingPaymentSlabRepository.findByBooking_IdOrderBySortOrderAscIdAsc(bookingId);
-        Map<UUID, VaultEntry> vaultBySlabId = new HashMap<>();
-        for (VaultEntry v :
-                vaultEntryRepository.findByBooking_IdAndPaymentSlabIsNotNullOrderByPaymentSlab_SortOrderAscIdAsc(
-                        bookingId)) {
-            if (v.getPaymentSlab() != null) {
-                vaultBySlabId.putIfAbsent(v.getPaymentSlab().getId(), v);
-            }
+        BigDecimal totalFlat = ZERO;
+        BigDecimal totalExtra = ZERO;
+        for (BookingPaymentSlab slab : listSlabsForBooking(bookingId)) {
+            totalFlat = totalFlat.add(zeroIfNull(slab.getAgreedAmount()));
+            totalExtra = totalExtra.add(zeroIfNull(slab.getExtraAmount()));
         }
-
-        VaultEntryBatchForm form = new VaultEntryBatchForm();
-        form.setBookingId(bookingId);
-        for (BookingPaymentSlab slab : slabs) {
-            VaultEntryBatchForm.Line line = new VaultEntryBatchForm.Line();
-            line.setPaymentSlabId(slab.getId());
-            VaultEntry existing = vaultBySlabId.get(slab.getId());
-            if (existing != null) {
-                line.setId(existing.getId());
-                line.setPaymentMode(existing.getPaymentMode());
-                line.setAmount(existing.getAmount());
-                line.setEntryDate(existing.getEntryDate());
-                line.setNotes(existing.getNotes());
-            }
-            form.getLines().add(line);
-        }
-        return form;
+        BigDecimal vaultTotal = vaultEntryRepository.sumAmountByBookingId(bookingId);
+        return new VaultBookingAmountSummary(
+                totalFlat,
+                totalExtra,
+                totalFlat.add(totalExtra),
+                vaultTotal,
+                vaultTotal,
+                vaultTotal);
     }
 
-    /**
-     * Persists vault payments tied to slab rows only. Does not read or write {@link BookingPaymentSlab}
-     * amounts — slab schedule is maintained on the payment-schedule page.
-     */
-    @Transactional
-    public void saveBatch(VaultEntryBatchForm form) {
-        if (form.getBookingId() == null) {
-            throw new IllegalArgumentException("Booking is required.");
-        }
-        Booking booking = requireBooking(form.getBookingId());
-        UUID builderId = TenantContext.requireBuilderId();
-        Builder builder = builderRepository.findById(builderId).orElseThrow();
-        Instant now = Instant.now();
-        String flatNumber = flatNumberFrom(booking);
-        String ownerName = ownerNameFrom(booking);
-
-        if (form.getLines() == null) {
-            return;
-        }
-        for (VaultEntryBatchForm.Line line : form.getLines()) {
-            if (line.getPaymentSlabId() == null) {
-                continue;
-            }
-            BookingPaymentSlab slab =
-                    bookingPaymentSlabRepository
-                            .findByIdAndBooking_Id(line.getPaymentSlabId(), booking.getId())
-                            .orElseThrow(() -> new IllegalArgumentException("Invalid slab row for this booking."));
-
-            boolean hasPayment =
-                    line.getAmount() != null && line.getAmount().compareTo(BigDecimal.ZERO) > 0;
-            if (!hasPayment) {
-                if (line.getId() != null) {
-                    vaultEntryRepository
-                            .findByIdAndBooking_IdAndBuilder_Id(line.getId(), booking.getId(), builderId)
-                            .ifPresent(vaultEntryRepository::delete);
-                }
-                continue;
-            }
-            if (line.getEntryDate() == null) {
-                throw new IllegalArgumentException(
-                        "Date is required on every vault row with a payment amount.");
-            }
-
-            VaultEntry entity;
-            if (line.getId() != null) {
-                entity =
-                        vaultEntryRepository
-                                .findByIdAndBooking_IdAndBuilder_Id(
-                                        line.getId(), booking.getId(), builderId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Vault entry not found"));
-            } else {
-                entity = new VaultEntry();
-                entity.setCreatedAt(now);
-            }
-
-            entity.setBuilder(builder);
-            entity.setBooking(booking);
-            entity.setPaymentSlab(slab);
-            entity.setClientName(ownerName);
-            entity.setFlatNumber(flatNumber);
-            entity.setPaymentMode(trimToNull(line.getPaymentMode()));
-            entity.setAmount(line.getAmount());
-            entity.setEntryDate(line.getEntryDate());
-            entity.setNotes(trimToNull(line.getNotes()));
-            entity.setUpdatedAt(now);
-            vaultEntryRepository.save(entity);
-        }
+    private static BigDecimal zeroIfNull(BigDecimal v) {
+        return v != null ? v : ZERO;
     }
 
     @Transactional(readOnly = true)
-    public VaultEntry getExtraForBooking(UUID id, UUID bookingId) {
-        VaultEntry entry = getForBookingInternal(id, bookingId);
-        if (entry.getPaymentSlab() != null) {
-            throw new ResourceNotFoundException("Vault entry not found");
-        }
-        return entry;
+    public VaultEntry getPaymentForBooking(UUID id, UUID bookingId) {
+        return getForBookingInternal(id, bookingId);
     }
 
-    public VaultEntry newExtraDraft(Booking booking) {
+    public VaultEntry newPaymentDraft(Booking booking) {
         VaultEntry entry = new VaultEntry();
         entry.setEntryDate(LocalDate.now());
         entry.setClientName(ownerNameFrom(booking));
@@ -169,9 +86,9 @@ public class VaultEntryService {
         return entry;
     }
 
-    /** Standalone vault row — never updates slab schedule. */
+    /** Date-based vault payment — never linked to slab schedule or booking amounts. */
     @Transactional
-    public VaultEntry saveExtra(UUID bookingId, VaultEntry form) {
+    public VaultEntry savePayment(UUID bookingId, VaultEntry form) {
         Booking booking = requireBooking(bookingId);
         UUID builderId = TenantContext.requireBuilderId();
         Builder builder = builderRepository.findById(builderId).orElseThrow();
@@ -189,7 +106,7 @@ public class VaultEntryService {
             entity = new VaultEntry();
             entity.setCreatedAt(now);
         } else {
-            entity = getExtraForBooking(form.getId(), bookingId);
+            entity = getPaymentForBooking(form.getId(), bookingId);
         }
 
         entity.setBuilder(builder);
@@ -206,8 +123,8 @@ public class VaultEntryService {
     }
 
     @Transactional
-    public void deleteExtra(UUID id, UUID bookingId) {
-        VaultEntry entity = getExtraForBooking(id, bookingId);
+    public void deletePayment(UUID id, UUID bookingId) {
+        VaultEntry entity = getPaymentForBooking(id, bookingId);
         vaultEntryRepository.delete(entity);
     }
 

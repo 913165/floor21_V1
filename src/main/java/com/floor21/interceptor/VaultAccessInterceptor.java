@@ -28,7 +28,10 @@ public class VaultAccessInterceptor implements HandlerInterceptor {
         if (!path.startsWith("/vault")) {
             return true;
         }
-        if (path.equals("/vault/unlock") || path.startsWith("/vault/unlock/")) {
+        if (path.equals("/vault/unlock")
+                || path.startsWith("/vault/unlock/")
+                || path.equals("/vault/reset-pin")
+                || path.startsWith("/vault/reset-pin/")) {
             return true;
         }
 

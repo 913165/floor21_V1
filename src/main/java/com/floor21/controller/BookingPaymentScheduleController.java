@@ -60,6 +60,13 @@ public class BookingPaymentScheduleController {
         model.addAttribute("selectedBookingId", bookingId);
         if (bookingId != null) {
             Booking booking = bookingPaymentSlabService.getBookingForSchedule(bookingId);
+            if (!bookingMatchesBuilding(booking, buildingId)) {
+                model.addAttribute(
+                        "errorMessage",
+                        "That booking is not in the selected building. Choose a booking from the filtered list.");
+                model.addAttribute("selectedBookingId", null);
+                return "bookings/payment-schedule";
+            }
             model.addAttribute("selectedBooking", booking);
             var base = bookingPaymentSlabService.baseConsideration(booking);
             model.addAttribute("baseAmount", base);
@@ -119,5 +126,15 @@ public class BookingPaymentScheduleController {
             sb.append("&buildingId=").append(buildingId);
         }
         return sb.toString();
+    }
+
+    private static boolean bookingMatchesBuilding(Booking booking, UUID buildingId) {
+        if (buildingId == null) {
+            return true;
+        }
+        if (booking.getFlat() == null || booking.getFlat().getBuilding() == null) {
+            return false;
+        }
+        return buildingId.equals(booking.getFlat().getBuilding().getId());
     }
 }

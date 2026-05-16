@@ -443,3 +443,133 @@ button.flat-floor-plan-link {
 .floor21-theme-toggle:focus-visible {
   box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.35);
 }
+
+/* Vault: deal amount breakdown panel */
+.vault-deal-panel {
+  background: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  padding: 1.25rem 1.35rem 1.1rem;
+}
+
+.vault-deal-panel__title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--bs-secondary-color);
+  margin-bottom: 1.1rem;
+}
+
+.vault-deal-field__label-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+}
+
+.vault-deal-field__icon {
+  width: 1rem;
+  height: 1rem;
+  opacity: 0.65;
+}
+
+.vault-deal-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.25rem;
+}
+
+.vault-deal-badge--cheque {
+  background: #e8f4fc;
+  color: #1565a8;
+}
+
+.vault-deal-badge--cash {
+  background: #f5efe6;
+  color: #7a5c3a;
+}
+
+[data-bs-theme="dark"] .vault-deal-badge--cheque {
+  background: rgba(21, 101, 168, 0.25);
+  color: #8ec5f0;
+}
+
+[data-bs-theme="dark"] .vault-deal-badge--cash {
+  background: rgba(122, 92, 58, 0.35);
+  color: #e8d4b8;
+}
+
+.vault-deal-field .form-control {
+  font-size: 1rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.vault-deal-field .form-text {
+  font-size: 0.75rem;
+  margin-top: 0.35rem;
+}
+
+.vault-deal-calc {
+  border-top: 1px solid var(--bs-border-color);
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+}
+
+.vault-deal-calc__label {
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+  margin-bottom: 0.15rem;
+}
+
+.vault-deal-calc__value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.vault-deal-calc__value--muted {
+  color: var(--bs-secondary-color);
+  font-weight: 600;
+}
+
+.vault-deal-stat {
+  background: #faf8f5;
+  border: 1px solid #ebe6df;
+  border-radius: 0.35rem;
+  padding: 0.65rem 0.75rem;
+  text-align: center;
+}
+
+[data-bs-theme="dark"] .vault-deal-stat {
+  background: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color);
+}
+
+.vault-deal-stat__label {
+  font-size: 0.7rem;
+  color: var(--bs-secondary-color);
+  margin-bottom: 0.2rem;
+}
+
+.vault-deal-stat__value {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.vault-deal-stat__value--register {
+  color: #1565a8;
+}
+
+.vault-deal-stat__value--extra {
+  color: #7a5c3a;
+}
+
+.vault-deal-actions .btn {
+  font-size: 0.875rem;
+  padding: 0.55rem 1rem;
+}

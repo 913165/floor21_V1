@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="row justify-content-center">
+    <div class="col-lg-5 col-md-7">
+      <h1 class="h3 mb-2" th:text="${pageTitle}">Reset vault PIN</h1>
+      <p class="text-muted small mb-4" th:if="${pinAlreadyConfigured}">
+        Forgot your vault PIN? Confirm your <strong>login password</strong> (the one you use to sign in to Floor21),
+        then choose a new vault PIN.
+      </p>
+      <p class="text-muted small mb-4" th:unless="${pinAlreadyConfigured}">
+        Set a vault PIN using your login password to confirm your identity.
+      </p>
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <form th:action="@{/vault/reset-pin}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" name="redirect" th:value="${redirectPath}"/>
+            <div class="mb-3">
+              <label class="form-label">Account password</label>
+              <input class="form-control" type="password" name="accountPassword" autocomplete="current-password"
+                     required autofocus/>
+              <div class="form-text">Your Floor21 sign-in password, not the vault PIN.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">New vault PIN</label>
+              <input class="form-control" type="password" name="newPin" inputmode="numeric" pattern="[0-9]{4,8}"
+                     maxlength="8" autocomplete="new-password" required/>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Confirm new vault PIN</label>
+              <input class="form-control" type="password" name="confirmPin" inputmode="numeric" pattern="[0-9]{4,8}"
+                     maxlength="8" autocomplete="new-password" required/>
+            </div>
+            <button class="btn btn-primary w-100" type="submit">Reset PIN and open vault</button>
+          </form>
+        </div>
+      </div>
+      <a class="btn btn-link btn-sm mt-2 px-0" th:href="@{/vault/unlock(redirect=${redirectPath})}">Back to unlock</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -45,11 +45,11 @@
     </div>
   </div>
 
-  <form class="card card-body shadow-sm mb-3" method="get" th:action="@{/bookings/payment-schedule}">
+  <form id="schedulePickerForm" class="card card-body shadow-sm mb-3" method="get" th:action="@{/bookings/payment-schedule}">
     <div class="row g-2 align-items-end">
       <div class="col-md-4">
         <label class="form-label">Building</label>
-        <select class="form-select" name="buildingId">
+        <select class="form-select" name="buildingId" id="scheduleBuilding">
           <option value="">All buildings</option>
           <option th:each="bl : ${buildings}"
                   th:value="${bl.id}"
@@ -59,19 +59,33 @@
       </div>
       <div class="col-md-5">
         <label class="form-label">Booking</label>
-        <select class="form-select" name="bookingId" required>
+        <select class="form-select" name="bookingId" id="scheduleBooking">
           <option value="" th:selected="${selectedBookingId == null}">Choose booking…</option>
           <option th:each="bk : ${bookings}"
                   th:value="${bk.id}"
                   th:selected="${selectedBookingId != null && selectedBookingId == bk.id}"
-                  th:text="|${bk.flat != null ? bk.flat.flatNumber : '—'} — ${bk.client.displayName()}|"></option>
+                  th:text="${selectedBuildingId == null && bk.flat != null && bk.flat.building != null}
+                    ? |${bk.flat.building.buildingName} — ${bk.flat.flatNumber} — ${bk.client.displayName()}|
+                    : |${bk.flat != null ? bk.flat.flatNumber : '—'} — ${bk.client.displayName()}|"></option>
         </select>
       </div>
       <div class="col-md-3">
-        <button class="btn btn-primary w-100" type="submit">Load</button>
+        <button class="btn btn-primary w-100" type="submit">Load booking</button>
       </div>
     </div>
   </form>
+  <script>
+    (function () {
+      const building = document.getElementById('scheduleBuilding');
+      const booking = document.getElementById('scheduleBooking');
+      const form = document.getElementById('schedulePickerForm');
+      if (!building || !booking || !form) return;
+      building.addEventListener('change', function () {
+        booking.value = '';
+        form.submit();
+      });
+    })();
+  </script>
 
   <th:block th:if="${selectedBooking != null}">
     <div class="card shadow-sm mb-3">

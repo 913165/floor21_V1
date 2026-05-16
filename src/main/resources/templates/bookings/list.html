@@ -9,12 +9,19 @@
   </div>
   <div class="table-responsive card shadow-sm">
     <table class="table table-hover mb-0">
-      <thead><tr><th>Code</th><th>Date</th><th>Client</th><th>Flat</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Code</th><th>Date</th><th>Client</th><th>Building</th><th>Flat</th><th>Status</th><th></th></tr></thead>
       <tbody>
       <tr th:each="b : ${bookings}">
         <td th:text="${b.bookingCode}"></td>
         <td th:text="${b.bookingDate}"></td>
         <td th:text="${b.client.displayName()}"></td>
+        <td>
+          <a th:if="${b.flat != null and b.flat.building != null}"
+             class="link-primary"
+             th:href="@{/buildings/{bid}/flats(bid=${b.flat.building.id})}"
+             th:text="${b.flat.building.buildingName}">Tower A</a>
+          <span th:unless="${b.flat != null and b.flat.building != null}">—</span>
+        </td>
         <td>
           <a th:if="${b.flat != null and b.flat.building != null}"
              class="link-primary"

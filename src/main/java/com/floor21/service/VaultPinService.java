@@ -2,10 +2,13 @@ package com.floor21.service;
 
 import com.floor21.entity.Builder;
 import com.floor21.repository.BuilderRepository;
+import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +56,30 @@ public class VaultPinService {
             throw new IllegalArgumentException("New PIN must be different from the current PIN.");
         }
         setPin(newPin);
+    }
+
+    /** Resets vault PIN after verifying the signed-in user's login password (not the vault PIN). */
+    @Transactional
+    public void resetPinWithAccountPassword(String accountPassword, String newPin) {
+        verifyAccountPassword(accountPassword);
+        validatePinFormat(newPin);
+        if (hasPinConfigured() && verifyPin(newPin)) {
+            throw new IllegalArgumentException("New PIN must be different from the current vault PIN.");
+        }
+        setPin(newPin);
+    }
+
+    public void verifyAccountPassword(String accountPassword) {
+        if (accountPassword == null || accountPassword.isBlank()) {
+            throw new IllegalArgumentException("Enter your account password.");
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof Floor21UserPrincipal principal)) {
+            throw new IllegalStateException("You must be signed in to reset the vault PIN.");
+        }
+        if (!passwordEncoder.matches(accountPassword, principal.getPassword())) {
+            throw new IllegalArgumentException("Account password is incorrect.");
+        }
     }
 
     public static void validatePinFormat(String pin) {

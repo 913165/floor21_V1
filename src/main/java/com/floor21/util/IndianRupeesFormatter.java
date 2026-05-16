@@ -17,6 +17,41 @@ public final class IndianRupeesFormatter {
 
     private IndianRupeesFormatter() {}
 
+    /** Indian lakh-style grouping for UI, e.g. {@code 1,50,000} or {@code 1,50,000.50}. */
+    public static String formatComma(BigDecimal amount) {
+        if (amount == null) {
+            return null;
+        }
+        BigDecimal scaled = amount.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros();
+        String plain = scaled.toPlainString();
+        int dot = plain.indexOf('.');
+        String intDigits = dot >= 0 ? plain.substring(0, dot) : plain;
+        String frac = dot >= 0 ? plain.substring(dot + 1) : null;
+        boolean negative = intDigits.startsWith("-");
+        if (negative) {
+            intDigits = intDigits.substring(1);
+        }
+        if (intDigits.isEmpty()) {
+            intDigits = "0";
+        }
+        String grouped = indianCommaDigits(intDigits);
+        if (negative) {
+            grouped = "-" + grouped;
+        }
+        if (frac != null && !frac.isEmpty()) {
+            return grouped + "." + frac;
+        }
+        return grouped;
+    }
+
+    /** {@link #formatComma} or em dash when null (read-only tables and labels). */
+    public static String formatAmountDisplay(BigDecimal amount) {
+        if (amount == null) {
+            return "\u2014";
+        }
+        return formatComma(amount);
+    }
+
     /** e.g. {@code Rs. 1,50,000/-} or {@code Rs. 1,234.56/-} when fractional paise matter. */
     public static String formatFigures(BigDecimal amount) {
         if (amount == null) {

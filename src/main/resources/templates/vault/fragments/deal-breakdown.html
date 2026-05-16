@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="panel(amountForm, amountSummary, selectedBooking, selectedBuildingId)"
+          th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}">
+  <div class="vault-deal-panel shadow-sm mb-3">
+    <div class="vault-deal-panel__title">DEAL AMOUNT BREAKDOWN</div>
+    <form th:action="@{/vault/amounts/save}" th:object="${amountForm}" method="post" id="vaultAmountForm">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <input type="hidden" name="buildingId" th:value="${selectedBuildingId}" th:if="${selectedBuildingId != null}"/>
+      <input type="hidden" th:field="*{bookingId}"/>
+
+      <div class="row g-4">
+        <div class="col-md-6 vault-deal-field">
+          <div class="vault-deal-field__label-row">
+            <svg class="vault-deal-field__icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M1 3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1H1V3zm0 3h14v7a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V6zm2 2v1h2V8H3zm0 2h2v1H3v-1zm4-2h6v1H7V8zm0 2h6v1H7v-1z"/>
+            </svg>
+            <span>Agreement / Registered amount</span>
+            <span class="vault-deal-badge vault-deal-badge--cheque">Cheque</span>
+          </div>
+          <input type="hidden" th:field="*{registerValue}" id="vaultRegisterValue"/>
+          <input class="form-control js-amount-input text-end" type="text" id="vaultRegisterDisplay"
+                 data-amount-hidden="vaultRegisterValue" inputmode="decimal" autocomplete="off"
+                 th:value="${amountForm.registerValue != null ? amt.formatComma(amountForm.registerValue) : ''}"
+                 placeholder="e.g. 1,20,00,000"/>
+          <div class="form-text">Official amount in sale deed &amp; registration documents</div>
+        </div>
+        <div class="col-md-6 vault-deal-field">
+          <div class="vault-deal-field__label-row">
+            <svg class="vault-deal-field__icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 1.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11zm-.75 2v1.25H6.5v1h.75v.5c0 .83.67 1.5 1.5 1.5h.5v-1h-.5a.5.5 0 0 1-.5-.5V6h1.25V4.5H7.25z"/>
+            </svg>
+            <span>Extra / On-top amount</span>
+            <span class="vault-deal-badge vault-deal-badge--cash">Cash</span>
+          </div>
+          <input type="hidden" th:field="*{extraAmount}" id="vaultExtraAmount"/>
+          <input class="form-control js-amount-input text-end" type="text" id="vaultExtraDisplay"
+                 data-amount-hidden="vaultExtraAmount" inputmode="decimal" autocomplete="off"
+                 th:value="${amountForm.extraAmount != null ? amt.formatComma(amountForm.extraAmount) : ''}"
+                 placeholder="e.g. 54,00,000"/>
+          <div class="form-text">Amount paid over &amp; above the agreement value</div>
+        </div>
+      </div>
+
+      <div class="vault-deal-calc row g-3 align-items-end">
+        <div class="col-md-7">
+          <div class="vault-deal-calc__label">Total deal value (auto-calculated)</div>
+          <div class="vault-deal-calc__value" id="vaultDealTotalDisplay">&#8377; &#8212;</div>
+        </div>
+        <div class="col-md-5 text-md-end">
+          <div class="vault-deal-calc__label">Extra as % of total</div>
+          <div class="vault-deal-calc__value vault-deal-calc__value--muted" id="vaultDealPctDisplay">&#8212; %</div>
+        </div>
+      </div>
+
+      <div class="row g-2 mt-2 mb-3">
+        <div class="col-4">
+          <div class="vault-deal-stat">
+            <div class="vault-deal-stat__label">Registered amt</div>
+            <div class="vault-deal-stat__value vault-deal-stat__value--register" id="vaultStatRegister">&#8377; &#8212;</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="vault-deal-stat">
+            <div class="vault-deal-stat__label">Cash / extra</div>
+            <div class="vault-deal-stat__value vault-deal-stat__value--extra" id="vaultStatExtra">&#8377; &#8212;</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="vault-deal-stat">
+            <div class="vault-deal-stat__label">Total</div>
+            <div class="vault-deal-stat__value" id="vaultStatTotal">&#8377; &#8212;</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-2 vault-deal-actions">
+        <div class="col-md-6">
+          <button class="btn btn-outline-secondary w-100" type="submit">
+            <span aria-hidden="true">&#128190;</span> Save deal amounts
+          </button>
+        </div>
+        <div class="col-md-6">
+          <a class="btn btn-outline-secondary w-100"
+             th:href="@{/bookings/payment-schedule(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId})}">
+            How to add to slab schedule &#8599;
+          </a>
+        </div>
+      </div>
+    </form>
+
+    <details class="mt-3 small" th:if="${amountSummary != null}">
+      <summary class="text-muted" style="cursor:pointer">Slab reference &amp; vault received</summary>
+      <div class="table-responsive mt-2">
+        <table class="table table-sm mb-0">
+          <tbody>
+          <tr><td>Sum of agreed (slabs)</td><td class="text-end" th:text="${amt.formatAmountDisplay(amountSummary.totalFlatAmount)}">0</td></tr>
+          <tr><td>Sum of extra (slabs)</td><td class="text-end" th:text="${amt.formatAmountDisplay(amountSummary.totalExtraAmount)}">0</td></tr>
+          <tr class="fw-semibold"><td>Vault received (by date)</td><td class="text-end" th:text="${amt.formatAmountDisplay(amountSummary.vaultReceivedTotal)}">0</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+  <script th:src="@{/js/amount-format.js}"></script>
+  <script>
+    (function () {
+      const form = document.getElementById('vaultAmountForm');
+      const registerDisplay = document.getElementById('vaultRegisterDisplay');
+      const extraDisplay = document.getElementById('vaultExtraDisplay');
+      if (!form || !registerDisplay || !extraDisplay || !window.Floor21Amount) return;
+
+      Floor21Amount.bindAmountForm(form);
+
+      const elTotal = document.getElementById('vaultDealTotalDisplay');
+      const elPct = document.getElementById('vaultDealPctDisplay');
+      const elStatReg = document.getElementById('vaultStatRegister');
+      const elStatExt = document.getElementById('vaultStatExtra');
+      const elStatTot = document.getElementById('vaultStatTotal');
+
+      function readAmount(displayEl) {
+        Floor21Amount.syncDisplayToHidden(displayEl);
+        return Floor21Amount.parseAmount(displayEl.value);
+      }
+
+      function recalc() {
+        const r = readAmount(registerDisplay);
+        const e = readAmount(extraDisplay);
+        const total = (r != null && e != null) ? r + e : (r != null ? r : (e != null ? e : null));
+        const pct = (total != null && total > 0 && e != null) ? (e / total) * 100 : null;
+        if (elTotal) elTotal.textContent = Floor21Amount.formatRupee(total);
+        if (elPct) {
+          elPct.textContent = pct != null ? Floor21Amount.formatAmount(pct) + ' %' : '\u2014 %';
+        }
+        if (elStatReg) elStatReg.textContent = Floor21Amount.formatRupee(r);
+        if (elStatExt) elStatExt.textContent = Floor21Amount.formatRupee(e);
+        if (elStatTot) elStatTot.textContent = Floor21Amount.formatRupee(total);
+      }
+
+      registerDisplay.addEventListener('input', recalc);
+      extraDisplay.addEventListener('input', recalc);
+      recalc();
+    })();
+  </script>
+</th:block>
+</body>
+</html>

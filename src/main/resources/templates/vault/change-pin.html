@@ -24,6 +24,9 @@
     <button class="btn btn-primary" type="submit">Update PIN</button>
     <a class="btn btn-link" th:href="@{/vault}">Cancel</a>
   </form>
+  <p class="small mt-3 mb-0">
+    <a th:href="@{/vault/reset-pin(redirect='/vault')}">Forgot vault PIN? Reset with login password</a>
+  </p>
 </div>
 </body>
 </html>
