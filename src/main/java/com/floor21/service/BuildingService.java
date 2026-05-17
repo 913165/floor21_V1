@@ -33,6 +33,24 @@ public class BuildingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
     }
 
+    /**
+     * Resolves a building for the signed-in builder tenant, or for platform admin viewing any tenant building
+     * (e.g. from the all-buildings list without impersonation).
+     */
+    @Transactional(readOnly = true)
+    public Building resolveForAccess(UUID id) {
+        UUID tenantId = TenantContext.getBuilderIdOrNull();
+        if (tenantId != null) {
+            return buildingRepository
+                    .findByIdAndBuilder_Id(id, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+        }
+        return buildingRepository
+                .findByIdWithBuilder(id)
+                .filter(b -> b.getBuilder() != null && !b.getBuilder().isPlatformAdmin())
+                .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+    }
+
     @Transactional(readOnly = true)
     public List<Building> listAllForPlatformAdmin() {
         return buildingRepository.findAllForPlatformAdminOrderByBuilderAndName();

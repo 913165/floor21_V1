@@ -116,7 +116,7 @@ public class BuildingController {
     @GetMapping("/{id}/flats")
     public String flatGrid(
             @PathVariable UUID id, @RequestParam(required = false) UUID focusFlat, Model model) {
-        Building b = buildingService.getForTenant(id);
+        Building b = buildingService.resolveForAccess(id);
         BuildingConfigDto cfg = new BuildingConfigDto();
         cfg.setTotalFloors(b.getTotalFloors());
         cfg.setParkingFloors(b.getParkingFloors() != null ? b.getParkingFloors() : 0);
@@ -124,11 +124,16 @@ public class BuildingController {
         cfg.setBhk1PerFloor(b.getBhk1PerFloor() != null ? b.getBhk1PerFloor() : 0);
         cfg.setBhk2PerFloor(b.getBhk2PerFloor() != null ? b.getBhk2PerFloor() : 0);
         cfg.setBhk3PerFloor(b.getBhk3PerFloor() != null ? b.getBhk3PerFloor() : 0);
+        long flatCount = flatService.countFlatsForBuilding(id);
+        long activeBookings = flatService.countActiveBookingsForBuilding(id);
         model.addAttribute("pageTitle", "Flat Grid — " + b.getBuildingName());
         model.addAttribute("building", b);
         model.addAttribute("floors", flatService.getGridData(id));
         model.addAttribute("config", cfg);
         model.addAttribute("focusFlatId", focusFlat);
+        model.addAttribute("flatCount", flatCount);
+        model.addAttribute("activeBookingCount", activeBookings);
+        model.addAttribute("platformAdminView", isPlatformAdmin());
         return "buildings/flat-grid";
     }
 
@@ -143,13 +148,18 @@ public class BuildingController {
             @PathVariable UUID id,
             @Valid @ModelAttribute("config") BuildingConfigDto config,
             BindingResult br,
+            @RequestParam(defaultValue = "false") boolean confirmReplace,
             RedirectAttributes ra) {
         if (br.hasErrors()) {
             ra.addFlashAttribute("errorMessage", "Invalid configuration");
             return "redirect:/buildings/" + id + "/flats";
         }
-        flatService.generateFlats(id, config);
-        ra.addFlashAttribute("successMessage", "Flats generated");
+        try {
+            flatService.generateFlats(id, config, confirmReplace);
+            ra.addFlashAttribute("successMessage", "Flats generated");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
         return "redirect:/buildings/" + id + "/flats";
     }
 

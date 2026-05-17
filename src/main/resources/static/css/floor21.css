@@ -236,9 +236,14 @@
   }
 }
 
+#flat-grid {
+  overflow: visible;
+}
+
 .flat-card {
   box-sizing: border-box;
   position: relative;
+  overflow: visible;
   width: 15.5rem;
   min-width: 15.5rem;
   min-height: 4.85rem;
@@ -266,7 +271,9 @@
   width: 100%;
   min-width: 0;
   overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
+  padding-top: 0.35rem;
   padding-bottom: 2px;
 }
 
@@ -429,13 +436,55 @@ button.flat-floor-plan-link {
   max-width: min(92vw, 560px);
 }
 
+.flat-card-buyertip__title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #6366f1;
+  margin-bottom: 0.3rem;
+}
+
+.flat-card-buyertip__name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 0.35rem;
+  line-height: 1.25;
+}
+
+.flat-card-buyertip__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: #475569;
+  margin-top: 0.15rem;
+}
+
+.flat-card-buyertip__row span:first-child {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.flat-card-buyertip__row span:last-child {
+  text-align: right;
+  word-break: break-word;
+}
+
+.flat-card-buyertip__email {
+  font-size: 0.64rem;
+}
+
 .flat-card-buyertip {
   display: block;
   position: absolute;
   left: 50%;
   bottom: calc(100% + 10px);
   transform: translate(-50%, 8px);
-  z-index: 20;
+  z-index: 50;
   min-width: 11rem;
   max-width: 17rem;
   padding: 0.6rem 0.75rem 0.65rem 0.85rem;
@@ -475,6 +524,7 @@ button.flat-floor-plan-link {
   filter: drop-shadow(0 2px 2px rgba(99, 102, 241, 0.2));
 }
 
+.flat-card--has-buyer:hover .flat-card-buyertip,
 .flat-card:hover .flat-card-buyertip {
   opacity: 1;
   visibility: visible;
@@ -604,6 +654,18 @@ button.flat-floor-plan-link {
 
 [data-bs-theme="dark"] .flat-card-owner {
   border-top: none;
+}
+
+[data-bs-theme="dark"] .flat-card-buyertip__title {
+  color: #c4b5fd;
+}
+
+[data-bs-theme="dark"] .flat-card-buyertip__name {
+  color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .flat-card-buyertip__row {
+  color: #cbd5e1;
 }
 
 [data-bs-theme="dark"] .flat-card-buyertip {

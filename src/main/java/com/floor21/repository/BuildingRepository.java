@@ -6,12 +6,16 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface BuildingRepository extends JpaRepository<Building, UUID> {
 
     List<Building> findByBuilder_IdOrderByBuildingNameAsc(UUID builderId);
 
     Optional<Building> findByIdAndBuilder_Id(UUID id, UUID builderId);
+
+    @Query("select b from Building b join fetch b.builder where b.id = :id")
+    Optional<Building> findByIdWithBuilder(@Param("id") UUID id);
 
     @Query(
             "select b from Building b join fetch b.builder br order by lower(br.companyName), lower(b.buildingName)")

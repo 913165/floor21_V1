@@ -29,21 +29,66 @@
     }
   }
 
-  function syncBuyerTooltip(el, text) {
-    var t = text || "";
-    el.setAttribute("data-buyer-tooltip", t);
-    el.setAttribute("title", t);
-    var tip = el.querySelector(".flat-card-buyertip");
-    if (t) {
-      if (!tip) {
-        tip = document.createElement("div");
-        tip.className = "flat-card-buyertip";
-        el.insertBefore(tip, el.firstChild);
-      }
-      tip.textContent = t;
-    } else if (tip) {
-      tip.remove();
+  function tipRow(label, value) {
+    if (!value) return null;
+    var row = document.createElement("div");
+    row.className = "flat-card-buyertip__row";
+    var lbl = document.createElement("span");
+    lbl.textContent = label;
+    var val = document.createElement("span");
+    val.textContent = value;
+    if (label === "Email") val.className = "flat-card-buyertip__email";
+    row.appendChild(lbl);
+    row.appendChild(val);
+    return row;
+  }
+
+  function buildBuyerTip(flat) {
+    var name = flat.ownerDisplay == null ? "" : String(flat.ownerDisplay).trim();
+    if (!name || flat.status !== "BOOKED") return null;
+    var tip = document.createElement("div");
+    tip.className = "flat-card-buyertip";
+    var title = document.createElement("div");
+    title.className = "flat-card-buyertip__title";
+    title.textContent = "Buyer";
+    var nameEl = document.createElement("div");
+    nameEl.className = "flat-card-buyertip__name";
+    nameEl.textContent = name;
+    tip.appendChild(title);
+    tip.appendChild(nameEl);
+    var code = flat.bookingCode == null ? "" : String(flat.bookingCode).trim();
+    var phone = flat.buyerPhone == null ? "" : String(flat.buyerPhone).trim();
+    var email = flat.buyerEmail == null ? "" : String(flat.buyerEmail).trim();
+    var r;
+    if (code) {
+      r = tipRow("Booking", code);
+      if (r) tip.appendChild(r);
     }
+    if (phone) {
+      r = tipRow("Phone", phone);
+      if (r) tip.appendChild(r);
+    }
+    if (email) {
+      r = tipRow("Email", email);
+      if (r) tip.appendChild(r);
+    }
+    return tip;
+  }
+
+  function syncBuyerTooltip(el, flat) {
+    var name = flat.ownerDisplay == null ? "" : String(flat.ownerDisplay).trim();
+    var hasBuyer = flat.status === "BOOKED" && name;
+    el.classList.toggle("flat-card--has-buyer", !!hasBuyer);
+    el.removeAttribute("title");
+    var tip = el.querySelector(".flat-card-buyertip");
+    if (!hasBuyer) {
+      if (tip) tip.remove();
+      return;
+    }
+    var built = buildBuyerTip(flat);
+    if (!built) return;
+    if (tip) tip.replaceWith(built);
+    else el.insertBefore(built, el.firstChild);
   }
 
   function syncCardOwner(el, flat) {
@@ -86,7 +131,7 @@
         } else {
           delete el.dataset.clientId;
         }
-        syncBuyerTooltip(el, flat.buyerTooltip || "");
+        syncBuyerTooltip(el, flat);
         syncCardOwner(el, flat);
         el.classList.remove("flat-available", "flat-booked", "flat-hold", "flat-parking");
         if (flat.parking) el.classList.add("flat-parking");

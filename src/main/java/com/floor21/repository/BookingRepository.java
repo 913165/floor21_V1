@@ -28,6 +28,12 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     long countActiveByBuilder(@Param("builderId") UUID builderId);
 
     @Query(
+            "select count(b) from Booking b where b.builder.id = :builderId and b.flat.building.id = :buildingId "
+                    + "and b.status = 'ACTIVE'")
+    long countActiveByBuilding(
+            @Param("builderId") UUID builderId, @Param("buildingId") UUID buildingId);
+
+    @Query(
             "select coalesce(sum(b.considerationAmt),0) from Booking b where b.builder.id = :builderId and "
                     + "b.status = 'ACTIVE'")
     java.math.BigDecimal sumActiveConsideration(@Param("builderId") UUID builderId);

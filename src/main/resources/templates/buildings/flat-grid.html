@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout/base :: layout(~{::content})}">
@@ -12,10 +12,25 @@
     <a class="btn btn-outline-secondary" th:href="@{/buildings}">Back</a>
   </div>
 
+  <div class="alert alert-warning" th:if="${activeBookingCount != null && activeBookingCount > 0 && flatCount != null && flatCount == 0}">
+    <strong>Bookings exist but the flat grid is empty.</strong>
+    You have <span th:text="${activeBookingCount}">0</span> active booking(s).
+    View them under <a th:href="@{/bookings}">Bookings</a>. Regenerating flats is blocked while they exist.
+  </div>
+
+  <div class="alert alert-info" th:if="${(flatCount == null || flatCount == 0) && (activeBookingCount == null || activeBookingCount == 0)}">
+    <strong>No flats on the grid yet.</strong> Use <em>Generate flats</em> with your floor layout (total floors, parking, BHK mix).
+  </div>
+
+  <div class="alert alert-secondary py-2 mb-3" th:if="${flatCount != null && flatCount > 0}">
+    <span th:text="${flatCount}">0</span> flats on this grid
+    <span th:if="${activeBookingCount != null && activeBookingCount > 0}"> &middot; <span th:text="${activeBookingCount}">0</span> active booking(s)</span>
+  </div>
+
   <div class="card shadow-sm mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
       <span>Floor plan images (by BHK)</span>
-      <span class="text-muted small">PNG, JPEG, WebP, or GIF — up to 8&nbsp;MB each</span>
+      <span class="text-muted small">PNG, JPEG, WebP, or GIF - up to 8&nbsp;MB each</span>
     </div>
     <div class="card-body">
       <div class="row g-3 mb-3">
@@ -69,9 +84,15 @@
     </div>
   </div>
 
-  <div class="card shadow-sm mb-3">
+  <div class="card shadow-sm mb-3" sec:authorize="hasRole('BUILDER_ADMIN')">
     <div class="card-header">Generate flats</div>
     <div class="card-body">
+      <p class="text-muted small mb-2" th:if="${flatCount != null && flatCount > 0}">
+        Your <span th:text="${flatCount}">0</span> flats are in the grid below. Generate only rebuilds the layout; it is not required to view existing flats.
+      </p>
+      <p class="text-danger small" th:if="${activeBookingCount != null && activeBookingCount > 0}">
+        Generate is disabled while active bookings exist for this building.
+      </p>
       <form class="row g-2 align-items-end"
             th:action="@{/buildings/{id}/flats/generate(id=${building.id})}"
             th:object="${config}" method="post">
@@ -100,24 +121,34 @@
           <label class="form-label">3BHK / floor</label>
           <input class="form-control" type="number" th:field="*{bhk3PerFloor}" min="0"/>
         </div>
+        <div class="col-12" th:if="${flatCount != null && flatCount > 0 && (activeBookingCount == null || activeBookingCount == 0)}">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="confirmReplace" value="true" id="confirmReplace"/>
+            <label class="form-check-label text-danger small" for="confirmReplace">
+              Replace all existing flats (removes current grid layout)
+            </label>
+          </div>
+        </div>
         <div class="col-auto">
-          <button class="btn btn-primary" type="submit">Generate</button>
+          <button class="btn btn-primary" type="submit"
+                  th:disabled="${activeBookingCount != null && activeBookingCount > 0}">Generate</button>
         </div>
       </form>
-      <p class="text-muted small mb-0 mt-2">Residential floors = total − parking. 1BHK+2BHK+3BHK must equal flats per floor.</p>
+      <p class="text-muted small mb-0 mt-2">Residential floors = total minus parking. 1BHK+2BHK+3BHK must equal flats per floor.</p>
     </div>
   </div>
 
-  <div id="flat-grid"
+  <div id="flat-grid" class="mb-3"
        th:attr="data-building-id=${building.id},data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''}">
+    <p class="text-muted py-4 text-center border rounded bg-body-secondary"
+       th:if="${#lists.isEmpty(floors)}">No flat rows to display. Use Generate flats above.</p>
     <div th:each="floor : ${floors}" class="d-flex flex-wrap align-items-stretch gap-3 mb-3">
       <span class="floor-label text-muted small text-nowrap align-self-center" th:text="${floor.label()}">Floor</span>
       <div class="flat-card-row flex-grow-1 min-w-0">
         <div th:each="flat : ${floor.flats()}"
              th:id="'flat-' + ${flat.id()}"
              th:with="fpSlot=${flat.parking() ? null : (flat.bhkType() == '1BHK' && building.floorPlan1Bhk != null ? '1bhk' : (flat.bhkType() == '2BHK' && building.floorPlan2Bhk != null ? '2bhk' : (flat.bhkType() == '3BHK' && building.floorPlan3Bhk != null ? '3bhk' : null)))}"
-             th:classappend="${flat.parking()} ? 'flat-parking' : (${flat.status() == 'AVAILABLE'} ? 'flat-available' : (${flat.status() == 'BOOKED'} ? 'flat-booked' : 'flat-hold'))"
-             class="flat-card"
+             th:class="${flat.cardClass()}"
              th:attr="data-flat-id=${flat.id()},
                       data-type=${flat.bhkType()},
                       data-floor=${flat.floorNumber()},
@@ -126,10 +157,25 @@
                       data-area=${flat.areaSqft()},
                       data-parking=${flat.parking()},
                       data-client-id=${flat.clientId()},
-                      data-buyer-tooltip=${flat.buyerTooltip()},
-                      data-floor-plan-slot=${fpSlot != null ? fpSlot : ''},
-                      title=${flat.buyerTooltip()}">
-          <div class="flat-card-buyertip" th:if="${!#strings.isEmpty(flat.buyerTooltip())}" th:text="${flat.buyerTooltip()}"></div>
+                      data-owner-display=${flat.ownerDisplay()},
+                      data-owner-detail=${flat.ownerDetail()},
+                      data-booking-code=${flat.bookingCode()},
+                      data-buyer-phone=${flat.buyerPhone()},
+                      data-buyer-email=${flat.buyerEmail()},
+                      data-floor-plan-slot=${fpSlot != null ? fpSlot : ''}">
+          <div class="flat-card-buyertip" th:if="${flat.status() == 'BOOKED' && !#strings.isEmpty(flat.ownerDisplay())}">
+            <div class="flat-card-buyertip__title">Buyer</div>
+            <div class="flat-card-buyertip__name" th:text="${flat.ownerDisplay()}">-</div>
+            <div class="flat-card-buyertip__row" th:if="${flat.bookingCode() != null}">
+              <span>Booking</span><span th:text="${flat.bookingCode()}">-</span>
+            </div>
+            <div class="flat-card-buyertip__row" th:if="${flat.buyerPhone() != null}">
+              <span>Phone</span><span th:text="${flat.buyerPhone()}">-</span>
+            </div>
+            <div class="flat-card-buyertip__row" th:if="${flat.buyerEmail() != null}">
+              <span>Email</span><span class="flat-card-buyertip__email" th:text="${flat.buyerEmail()}">-</span>
+            </div>
+          </div>
           <div class="flat-card-inner">
             <div class="flat-card-head">
               <span class="flat-number" th:text="${flat.flatNumber()}">0101</span>

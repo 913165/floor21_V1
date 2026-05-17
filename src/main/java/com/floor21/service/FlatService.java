@@ -36,12 +36,26 @@ public class FlatService {
 
     private final FlatRepository flatRepository;
     private final BuildingRepository buildingRepository;
+    private final BuildingService buildingService;
     private final BuilderRepository builderRepository;
     private final BookingRepository bookingRepository;
 
     @Transactional(readOnly = true)
+    public long countFlatsForBuilding(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        return flatRepository.countByBuilding_IdAndBuilder_Id(buildingId, building.getBuilder().getId());
+    }
+
+    @Transactional(readOnly = true)
+    public long countActiveBookingsForBuilding(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        return bookingRepository.countActiveByBuilding(building.getBuilder().getId(), buildingId);
+    }
+
+    @Transactional(readOnly = true)
     public List<FlatGridFloorDto> getGridData(UUID buildingId) {
-        UUID builderId = TenantContext.requireBuilderId();
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
         List<Flat> flats =
                 flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
                         buildingId, builderId);
@@ -58,6 +72,8 @@ public class FlatService {
                             .map(
                                     f -> {
                                         Booking b = bookingByFlatId.get(f.getId());
+                                        Client bookedClient =
+                                                b != null && "BOOKED".equals(f.getStatus()) ? b.getClient() : null;
                                         return new FlatGridFlatDto(
                                                 f.getId(),
                                                 f.getFlatNumber(),
@@ -70,7 +86,11 @@ public class FlatService {
                                                 buildBuyerTooltip(f, b),
                                                 resolveBookedClientId(f, b),
                                                 ownerCardTitle(f, b),
-                                                ownerCardSubtitle(f, b));
+                                                ownerCardSubtitle(f, b),
+                                                bookingCodeForTooltip(b),
+                                                bookedClient != null ? pickPhone(bookedClient) : null,
+                                                bookedClient != null ? pickEmail(bookedClient) : null,
+                                                resolveCardClass(f, b));
                                     })
                             .toList();
             rows.add(new FlatGridFloorDto("Floor " + floor, cells));
@@ -88,6 +108,22 @@ public class FlatService {
             map.putIfAbsent(b.getFlat().getId(), b);
         }
         return map;
+    }
+
+    private static String resolveCardClass(Flat flat, Booking booking) {
+        String tone;
+        if (Boolean.TRUE.equals(flat.getParking())) {
+            tone = "flat-parking";
+        } else if ("AVAILABLE".equals(flat.getStatus())) {
+            tone = "flat-available";
+        } else if ("BOOKED".equals(flat.getStatus())) {
+            tone = "flat-booked";
+        } else {
+            tone = "flat-hold";
+        }
+        String owner = ownerCardTitle(flat, booking);
+        boolean hasBuyer = "BOOKED".equals(flat.getStatus()) && owner != null && !owner.isBlank();
+        return hasBuyer ? "flat-card " + tone + " flat-card--has-buyer" : "flat-card " + tone;
     }
 
     private static String buildBuyerTooltip(Flat flat, Booking booking) {
@@ -155,6 +191,13 @@ public class FlatService {
         return "";
     }
 
+    private static String bookingCodeForTooltip(Booking booking) {
+        if (booking == null || booking.getBookingCode() == null || booking.getBookingCode().isBlank()) {
+            return null;
+        }
+        return booking.getBookingCode().trim();
+    }
+
     private static UUID resolveBookedClientId(Flat flat, Booking booking) {
         if (!"BOOKED".equals(flat.getStatus()) || booking == null || booking.getClient() == null) {
             return null;
@@ -182,12 +225,24 @@ public class FlatService {
     }
 
     @Transactional
-    public void generateFlats(UUID buildingId, BuildingConfigDto cfg) {
-        UUID builderId = TenantContext.requireBuilderId();
-        Building building =
-                buildingRepository
-                        .findByIdAndBuilder_Id(buildingId, builderId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+    public void generateFlats(UUID buildingId, BuildingConfigDto cfg, boolean confirmReplace) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        long activeBookings = bookingRepository.countActiveByBuilding(builderId, buildingId);
+        if (activeBookings > 0) {
+            throw new IllegalArgumentException(
+                    "Cannot regenerate flats while "
+                            + activeBookings
+                            + " active booking(s) exist for this building. Open Bookings to view them. "
+                            + "Regenerating would remove flat numbers tied to those deals.");
+        }
+        long existingFlats = flatRepository.countByBuilding_IdAndBuilder_Id(buildingId, builderId);
+        if (existingFlats > 0 && !confirmReplace) {
+            throw new IllegalArgumentException(
+                    "This building already has "
+                            + existingFlats
+                            + " flats. Check the confirmation box to replace the entire grid (only when there are no active bookings).");
+        }
         int total = cfg.getTotalFloors();
         int parking = cfg.getParkingFloors();
         int perFloor = cfg.getFlatsPerFloor();

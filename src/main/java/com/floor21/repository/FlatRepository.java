@@ -13,6 +13,8 @@ public interface FlatRepository extends JpaRepository<Flat, UUID> {
 
     List<Flat> findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(UUID buildingId, UUID builderId);
 
+    long countByBuilding_IdAndBuilder_Id(UUID buildingId, UUID builderId);
+
     Optional<Flat> findByIdAndBuilder_Id(UUID id, UUID builderId);
 
     java.util.List<Flat> findByBuilder_IdAndParkingFalseAndStatusInOrderByBuilding_BuildingNameAscFloorNumberAscUnitNumberAsc(
