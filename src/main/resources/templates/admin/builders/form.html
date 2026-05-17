@@ -40,8 +40,11 @@
         </div>
       </div>
     </div>
-    <div class="mt-3">
+    <div class="mt-3 d-flex flex-wrap align-items-center gap-2">
       <button class="btn btn-primary" type="submit">Save</button>
+      <a class="btn btn-outline-primary"
+         th:if="${builder.id != null}"
+         th:href="@{/admin/builders/{id}/buildings/new(id=${builder.id})}">Add building for this builder</a>
       <a class="btn btn-link" th:href="@{/admin/builders}">Cancel</a>
     </div>
   </form>

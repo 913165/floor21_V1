@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
-<div th:fragment="content">
+<div th:fragment="content" th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}">
   <h1 class="h3 mb-4" th:text="${pageTitle}">Dashboard</h1>
   <div class="row g-3 mb-4">
     <div class="col-md-3">
@@ -26,7 +26,7 @@
     <div class="col-md-3">
       <div class="card shadow-sm"><div class="card-body">
         <div class="text-muted small">Active booking value</div>
-        <div class="fs-4" th:text="${dashboard.revenue()}">0</div>
+        <div class="fs-4" th:text="${amt.formatAmountDisplay(dashboard.revenue())}">0</div>
       </div></div>
     </div>
   </div>

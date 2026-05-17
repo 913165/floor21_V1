@@ -33,28 +33,71 @@ public class BuildingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
     }
 
+    @Transactional(readOnly = true)
+    public List<Building> listAllForPlatformAdmin() {
+        return buildingRepository.findAllForPlatformAdminOrderByBuilderAndName();
+    }
+
+    /** New buildings are created by the Floor21 platform admin only (see {@link #createForBuilder}). */
+    @Transactional
+    public Building createForBuilder(UUID builderId, Building form) {
+        Builder builder =
+                builderRepository
+                        .findById(builderId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Builder not found"));
+        if (builder.isPlatformAdmin()) {
+            throw new IllegalArgumentException("Cannot attach buildings to the platform admin account.");
+        }
+        validateBuildingForm(form);
+        Building entity = new Building();
+        entity.setCreatedAt(Instant.now());
+        applyFormFields(entity, builder, form, null, null, null);
+        return buildingRepository.save(entity);
+    }
+
     @Transactional
     public Building save(Building form) {
+        if (form.getId() == null) {
+            throw new IllegalArgumentException(
+                    "New buildings can only be created by the Floor21 platform administrator.");
+        }
         UUID builderId = TenantContext.requireBuilderId();
         Builder builder = builderRepository.findById(builderId).orElseThrow(() -> new UnauthorizedTenantException("Invalid tenant"));
         String preserveFp1 = null;
         String preserveFp2 = null;
         String preserveFp3 = null;
-        Building entity;
-        if (form.getId() == null) {
-            entity = new Building();
-            entity.setCreatedAt(Instant.now());
-        } else {
-            entity =
-                    buildingRepository
-                            .findByIdAndBuilder_Id(form.getId(), builderId)
-                            .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
-            preserveFp1 = entity.getFloorPlan1Bhk();
-            preserveFp2 = entity.getFloorPlan2Bhk();
-            preserveFp3 = entity.getFloorPlan3Bhk();
+        Building entity =
+                buildingRepository
+                        .findByIdAndBuilder_Id(form.getId(), builderId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+        preserveFp1 = entity.getFloorPlan1Bhk();
+        preserveFp2 = entity.getFloorPlan2Bhk();
+        preserveFp3 = entity.getFloorPlan3Bhk();
+        applyFormFields(entity, builder, form, preserveFp1, preserveFp2, preserveFp3);
+        return buildingRepository.save(entity);
+    }
+
+    private static void validateBuildingForm(Building form) {
+        if (form.getBuildingName() == null || form.getBuildingName().isBlank()) {
+            throw new IllegalArgumentException("Building name is required.");
         }
+        if (form.getTotalFloors() == null || form.getTotalFloors() < 1) {
+            throw new IllegalArgumentException("Total floors must be at least 1.");
+        }
+        if (form.getFlatsPerFloor() == null || form.getFlatsPerFloor() < 1) {
+            throw new IllegalArgumentException("Flats per floor must be at least 1.");
+        }
+    }
+
+    private static void applyFormFields(
+            Building entity,
+            Builder builder,
+            Building form,
+            String preserveFp1,
+            String preserveFp2,
+            String preserveFp3) {
         entity.setBuilder(builder);
-        entity.setBuildingName(form.getBuildingName());
+        entity.setBuildingName(form.getBuildingName().trim());
         entity.setTotalFloors(form.getTotalFloors());
         entity.setParkingFloors(form.getParkingFloors() != null ? form.getParkingFloors() : 0);
         entity.setFlatsPerFloor(form.getFlatsPerFloor());
@@ -64,9 +107,10 @@ public class BuildingService {
         entity.setAddress(form.getAddress());
         entity.setCity(form.getCity());
         entity.setActive(form.getActive() != null ? form.getActive() : true);
-        entity.setFloorPlan1Bhk(preserveFp1);
-        entity.setFloorPlan2Bhk(preserveFp2);
-        entity.setFloorPlan3Bhk(preserveFp3);
-        return buildingRepository.save(entity);
+        if (preserveFp1 != null || preserveFp2 != null || preserveFp3 != null) {
+            entity.setFloorPlan1Bhk(preserveFp1);
+            entity.setFloorPlan2Bhk(preserveFp2);
+            entity.setFloorPlan3Bhk(preserveFp3);
+        }
     }
 }

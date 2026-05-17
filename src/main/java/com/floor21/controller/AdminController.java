@@ -1,7 +1,9 @@
 package com.floor21.controller;
 
+import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
 import com.floor21.repository.BuilderRepository;
+import com.floor21.service.BuildingService;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class AdminController {
 
     private final BuilderRepository builderRepository;
+    private final BuildingService buildingService;
     private final PasswordEncoder passwordEncoder;
 
     @GetMapping
@@ -79,5 +82,37 @@ public class AdminController {
         builderRepository.save(entity);
         ra.addFlashAttribute("successMessage", "Builder saved");
         return "redirect:/admin/builders";
+    }
+
+    @GetMapping("/{builderId}/buildings/new")
+    public String newBuilding(@PathVariable UUID builderId, Model model) {
+        Builder builder = builderRepository.findById(builderId).orElseThrow();
+        model.addAttribute("pageTitle", "New building — " + builder.getCompanyName());
+        model.addAttribute("building", new Building());
+        model.addAttribute("builderLabel", builder.getCompanyName() + " (" + builder.getEmail() + ")");
+        model.addAttribute("formAction", "/admin/builders/" + builderId + "/buildings/save");
+        model.addAttribute("cancelHref", "/admin/builders/" + builderId + "/edit");
+        return "buildings/form";
+    }
+
+    @PostMapping("/{builderId}/buildings/save")
+    public String saveBuilding(
+            @PathVariable UUID builderId,
+            @ModelAttribute Building building,
+            RedirectAttributes ra) {
+        try {
+            Building saved = buildingService.createForBuilder(builderId, building);
+            ra.addFlashAttribute(
+                    "successMessage",
+                    "Building \""
+                            + saved.getBuildingName()
+                            + "\" created for "
+                            + saved.getBuilder().getCompanyName()
+                            + ". The builder can open it under Buildings to generate flats.");
+            return "redirect:/admin/builders/" + builderId + "/edit";
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/admin/builders/" + builderId + "/buildings/new";
+        }
     }
 }

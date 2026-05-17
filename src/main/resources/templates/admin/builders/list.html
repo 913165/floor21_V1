@@ -16,7 +16,8 @@
         <td th:text="${b.email}"></td>
         <td th:text="${b.city}"></td>
         <td th:text="${b.active}"></td>
-        <td class="text-end">
+        <td class="text-end text-nowrap">
+          <a class="btn btn-sm btn-outline-primary" th:href="@{/admin/builders/{id}/buildings/new(id=${b.id})}">Add building</a>
           <a class="btn btn-sm btn-outline-secondary" th:href="@{/admin/builders/{id}/edit(id=${b.id})}">Edit</a>
         </td>
       </tr>

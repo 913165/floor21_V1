@@ -2,9 +2,12 @@ package com.floor21.controller;
 
 import com.floor21.dto.BuildingConfigDto;
 import com.floor21.entity.Building;
+import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.service.BuildingFloorPlanService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.FlatService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import jakarta.validation.Valid;
 import java.util.Locale;
 import java.util.UUID;
@@ -39,15 +42,14 @@ public class BuildingController {
     @GetMapping
     public String list(Model model) {
         model.addAttribute("pageTitle", "Buildings");
-        model.addAttribute("buildings", buildingService.listForTenant());
+        if (isPlatformAdmin()) {
+            model.addAttribute("platformAdminView", true);
+            model.addAttribute("buildings", buildingService.listAllForPlatformAdmin());
+        } else {
+            model.addAttribute("platformAdminView", false);
+            model.addAttribute("buildings", buildingService.listForTenant());
+        }
         return "buildings/list";
-    }
-
-    @GetMapping("/new")
-    public String createForm(Model model) {
-        model.addAttribute("pageTitle", "New Building");
-        model.addAttribute("building", new Building());
-        return "buildings/form";
     }
 
     @GetMapping("/{id}/edit")
@@ -59,9 +61,23 @@ public class BuildingController {
 
     @PostMapping("/save")
     public String save(@ModelAttribute Building building, RedirectAttributes ra) {
-        Building saved = buildingService.save(building);
-        ra.addFlashAttribute("successMessage", "Building saved");
-        return "redirect:/buildings/" + saved.getId() + "/flats";
+        try {
+            Building saved = buildingService.save(building);
+            ra.addFlashAttribute("successMessage", "Building saved");
+            return "redirect:/buildings/" + saved.getId() + "/flats";
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+            return building.getId() != null
+                    ? "redirect:/buildings/" + building.getId() + "/edit"
+                    : "redirect:/buildings";
+        }
+    }
+
+    private static boolean isPlatformAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null
+                && auth.getPrincipal() instanceof Floor21UserPrincipal p
+                && p.isSuperAdmin();
     }
 
     /**

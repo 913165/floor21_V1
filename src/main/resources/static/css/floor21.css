@@ -80,6 +80,41 @@
   color: #fff;
 }
 
+.floor21-profile-menu__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: 14rem;
+}
+
+.floor21-profile-menu__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0f2744;
+  background: linear-gradient(145deg, #7eeadb, #c4f0ff);
+}
+
+.floor21-profile-menu__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 9rem;
+}
+
+.floor21-profile-menu .dropdown-menu {
+  min-width: 12rem;
+}
+
+.floor21-profile-menu .dropdown-item {
+  font-size: 0.9rem;
+}
+
 /* Side menu */
 .floor21-sidebar {
   width: var(--f21-sidebar-width);
