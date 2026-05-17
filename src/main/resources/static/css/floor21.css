@@ -727,3 +727,48 @@ button.flat-floor-plan-link {
 .slab-schedule-table tfoot .slab-amt--extra {
   font-size: 1rem;
 }
+
+/* Footer totals align under amount columns (slab + vault tables) */
+.f21-table-totals {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.f21-table-totals col.f21-col-sno {
+  width: 3rem;
+}
+
+.f21-table-totals col.f21-col-date {
+  width: 11rem;
+}
+
+.f21-table-totals col.f21-col-label {
+  width: auto;
+}
+
+.f21-table-totals col.f21-col-pct {
+  width: 5.5rem;
+}
+
+.f21-table-totals col.f21-col-amount {
+  width: 9rem;
+}
+
+.f21-table-totals col.f21-col-actions {
+  width: 8.5rem;
+}
+
+.f21-table-totals tfoot td {
+  border-top: 2px solid var(--bs-border-color);
+  vertical-align: middle;
+}
+
+.f21-table-totals tfoot .text-end,
+.f21-table-totals thead .text-end {
+  text-align: right !important;
+}
+
+.f21-table-totals .f21-total-amount-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

@@ -9,4 +9,8 @@ public record VaultBookingAmountSummary(
         BigDecimal totalAmount,
         BigDecimal vaultReceivedOnSlabs,
         BigDecimal vaultReceivedExtra,
-        BigDecimal vaultReceivedTotal) {}
+        BigDecimal vaultReceivedTotal,
+        /** Vault deal total (register + extra from vault profile). */
+        BigDecimal dealTotal,
+        /** {@code dealTotal - vaultReceivedTotal}; null when deal total is unknown. */
+        BigDecimal remainingAmount) {}

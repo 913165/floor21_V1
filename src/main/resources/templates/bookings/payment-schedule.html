@@ -140,7 +140,15 @@
       <input type="hidden" name="buildingId" th:value="${selectedBuildingId}"/>
       <input type="hidden" th:field="*{bookingId}"/>
       <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0 slab-schedule-table">
+        <table class="table table-sm align-middle mb-0 slab-schedule-table f21-table-totals">
+          <colgroup>
+            <col class="f21-col-sno"/>
+            <col class="f21-col-date"/>
+            <col class="f21-col-label"/>
+            <col class="f21-col-pct"/>
+            <col class="f21-col-amount"/>
+            <col class="f21-col-amount"/>
+          </colgroup>
           <thead class="table-light">
           <tr>
             <th class="align-middle text-nowrap" style="min-width: 5rem;">
@@ -195,7 +203,7 @@
           </tbody>
           <tfoot class="table-light" th:if="${scheduleSummary != null}" id="scheduleTotalsFoot">
           <tr class="fw-semibold">
-            <td colspan="4" class="text-end">Total</td>
+            <td colspan="3" class="text-end">Total</td>
             <td class="text-end" id="scheduleTotalPercent"
                 th:text="${scheduleSummary.totalPercent != null ? amt.formatComma(scheduleSummary.totalPercent) : '—'}">0</td>
             <td class="text-end slab-amt--agreed" id="scheduleTotalAgreed"
@@ -204,11 +212,10 @@
                 th:text="${amt.formatAmountDisplay(scheduleSummary.totalExtraAmount)}">0</td>
           </tr>
           <tr class="fw-semibold">
-            <td colspan="4" class="text-end">Combined slab total</td>
+            <td colspan="3" class="text-end">Combined slab total</td>
             <td class="text-end text-muted">—</td>
-            <td class="text-end slab-amt--total" id="scheduleTotalCombined"
+            <td colspan="2" class="text-end slab-amt--total" id="scheduleTotalCombined"
                 th:text="${amt.formatAmountDisplay(scheduleSummary.totalAmount)}">0</td>
-            <td class="text-end text-muted">—</td>
           </tr>
           </tfoot>
         </table>

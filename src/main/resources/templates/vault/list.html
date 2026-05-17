@@ -78,13 +78,13 @@
         </div>
       </div>
       <div class="card-body row g-2 small">
-        <div class="col-md-2"><span class="text-muted">Flat</span><br/><span th:text="${selectedBooking.flat != null ? selectedBooking.flat.flatNumber : '—'}">—</span></div>
-        <div class="col-md-2"><span class="text-muted">BHK / unit type</span><br/><span class="fw-semibold" th:text="${selectedBooking.flat != null && selectedBooking.flat.bhkType != null ? selectedBooking.flat.bhkType : '—'}">—</span></div>
-        <div class="col-md-2"><span class="text-muted">Building</span><br/><span th:text="${selectedBooking.flat != null && selectedBooking.flat.building != null ? selectedBooking.flat.building.buildingName : '—'}">—</span></div>
-        <div class="col-md-3"><span class="text-muted">Deal total (vault)</span><br/><span class="slab-amt--base" th:text="${amountForm != null && amountForm.totalConsideration != null ? amt.formatAmountDisplay(amountForm.totalConsideration) : '—'}">—</span></div>
-        <div class="col-md-3"><span class="text-muted">Booked</span><br/><span th:text="${selectedBooking.bookingDate}">—</span></div>
-        <div class="col-md-6"><span class="text-muted">Client</span><br/><span th:text="${selectedBooking.client.displayName()}">—</span></div>
-        <div class="col-md-6"><span class="text-muted">Booking code</span><br/><span th:text="${selectedBooking.bookingCode}">—</span></div>
+        <div class="col-md-2"><span class="text-muted">Flat</span><br/><span th:text="${selectedBooking.flat != null ? selectedBooking.flat.flatNumber : '???'}">???</span></div>
+        <div class="col-md-2"><span class="text-muted">BHK / unit type</span><br/><span class="fw-semibold" th:text="${selectedBooking.flat != null && selectedBooking.flat.bhkType != null ? selectedBooking.flat.bhkType : '???'}">???</span></div>
+        <div class="col-md-2"><span class="text-muted">Building</span><br/><span th:text="${selectedBooking.flat != null && selectedBooking.flat.building != null ? selectedBooking.flat.building.buildingName : '???'}">???</span></div>
+        <div class="col-md-3"><span class="text-muted">Deal total (vault)</span><br/><span class="slab-amt--base" th:text="${amountForm != null && amountForm.totalConsideration != null ? amt.formatAmountDisplay(amountForm.totalConsideration) : '???'}">???</span></div>
+        <div class="col-md-3"><span class="text-muted">Booked</span><br/><span th:text="${selectedBooking.bookingDate}">???</span></div>
+        <div class="col-md-6"><span class="text-muted">Client</span><br/><span th:text="${selectedBooking.client.displayName()}">???</span></div>
+        <div class="col-md-6"><span class="text-muted">Booking code</span><br/><span th:text="${selectedBooking.bookingCode}">???</span></div>
       </div>
     </div>
 
@@ -104,15 +104,23 @@
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-sm mb-0">
+          <table class="table table-sm mb-0 align-middle slab-schedule-table f21-table-totals">
+            <colgroup>
+              <col class="f21-col-sno"/>
+              <col class="f21-col-date"/>
+              <col class="f21-col-label"/>
+              <col class="f21-col-pct"/>
+              <col class="f21-col-amount"/>
+              <col class="f21-col-amount"/>
+            </colgroup>
             <thead class="table-light">
             <tr>
-              <th style="width:3rem;">Sno</th>
+              <th>Sno</th>
               <th>Slab date</th>
               <th>Slab</th>
               <th class="text-end">%</th>
-              <th class="text-end">Agree amount</th>
-              <th class="text-end">Extra amount</th>
+              <th class="text-end slab-schedule-th--agreed">Agree amount</th>
+              <th class="text-end slab-schedule-th--extra">Extra amount</th>
             </tr>
             </thead>
             <tbody>
@@ -127,9 +135,10 @@
             </tbody>
             <tfoot class="table-light" th:if="${amountSummary != null}">
             <tr class="fw-semibold">
-              <td colspan="4" class="text-end">Total</td>
-              <td class="text-end" th:text="${amt.formatAmountDisplay(amountSummary.totalFlatAmount)}">0</td>
-              <td class="text-end" th:text="${amt.formatAmountDisplay(amountSummary.totalExtraAmount)}">0</td>
+              <td colspan="3" class="text-end">Total</td>
+              <td class="text-end text-muted">?</td>
+              <td class="text-end slab-amt--agreed" th:text="${amt.formatAmountDisplay(amountSummary.totalFlatAmount)}">0</td>
+              <td class="text-end slab-amt--extra" th:text="${amt.formatAmountDisplay(amountSummary.totalExtraAmount)}">0</td>
             </tr>
             </tfoot>
           </table>
@@ -203,10 +212,19 @@
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-sm mb-0 align-middle">
+          <table class="table table-sm mb-0 align-middle f21-table-totals">
+            <colgroup>
+              <col class="f21-col-sno"/>
+              <col/>
+              <col/>
+              <col/>
+              <col class="f21-col-amount"/>
+              <col class="f21-col-date"/>
+              <col class="f21-col-actions"/>
+            </colgroup>
             <thead class="table-light">
             <tr>
-              <th style="width:3rem;">Sno</th>
+              <th>Sno</th>
               <th>Flat number</th>
               <th>Owner name</th>
               <th>Mode payment</th>
@@ -241,9 +259,17 @@
             </tbody>
             <tfoot class="table-light" th:if="${amountSummary != null}">
             <tr class="fw-semibold">
-              <td colspan="4" class="text-end">Total</td>
-              <td class="text-end" th:text="${amt.formatAmountDisplay(amountSummary.vaultReceivedTotal)}">0</td>
-              <td colspan="2"></td>
+              <td colspan="3"></td>
+              <td class="text-end">Total</td>
+              <td class="text-end f21-total-amount-cell">
+                <span class="d-block" th:text="${amt.formatAmountDisplay(amountSummary.vaultReceivedTotal)}">0</span>
+                <span class="d-block text-muted fw-normal small"
+                      th:if="${amountSummary.remainingAmount != null}">
+                  (<span th:text="${amt.formatAmountDisplay(amountSummary.remainingAmount)}">0</span> remaining)
+                </span>
+              </td>
+              <td></td>
+              <td></td>
             </tr>
             </tfoot>
           </table>

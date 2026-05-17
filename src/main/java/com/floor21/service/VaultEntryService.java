@@ -30,6 +30,7 @@ public class VaultEntryService {
     private final BuilderRepository builderRepository;
     private final BookingRepository bookingRepository;
     private final BookingPaymentSlabRepository bookingPaymentSlabRepository;
+    private final VaultBookingProfileService vaultBookingProfileService;
 
     @Transactional(readOnly = true)
     public List<BookingPaymentSlab> listSlabsForBooking(UUID bookingId) {
@@ -59,14 +60,19 @@ public class VaultEntryService {
             totalFlat = totalFlat.add(zeroIfNull(slab.getAgreedAmount()));
             totalExtra = totalExtra.add(zeroIfNull(slab.getExtraAmount()));
         }
-        BigDecimal vaultTotal = vaultEntryRepository.sumAmountByBookingId(bookingId);
+        BigDecimal vaultTotal = zeroIfNull(vaultEntryRepository.sumAmountByBookingId(bookingId));
+        BigDecimal dealTotal = vaultBookingProfileService.getAmountForm(bookingId).getTotalConsideration();
+        BigDecimal remaining =
+                dealTotal != null ? dealTotal.subtract(vaultTotal) : null;
         return new VaultBookingAmountSummary(
                 totalFlat,
                 totalExtra,
                 totalFlat.add(totalExtra),
                 vaultTotal,
                 vaultTotal,
-                vaultTotal);
+                vaultTotal,
+                dealTotal,
+                remaining);
     }
 
     private static BigDecimal zeroIfNull(BigDecimal v) {
