@@ -141,7 +141,7 @@
   </div>
 
   <div id="flat-grid" class="mb-3"
-       th:attr="data-building-id=${building.id},data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''}">
+       th:attr="data-building-id=${building.id},data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''},data-platform-admin-edit=${platformAdminView}">
     <p class="text-muted py-4 text-center border rounded bg-body-secondary"
        th:if="${#lists.isEmpty(floors)}">
       <span sec:authorize="hasRole('SUPER_ADMIN')">No flat rows to display. Use Generate flats above.</span>
@@ -222,6 +222,50 @@
         <button type="button" class="btn btn-outline-warning" id="hold-btn">Hold / Release</button>
         <a id="book-btn" href="#" class="btn btn-success">Book this flat</a>
         <a id="client-info-btn" href="#" class="btn btn-outline-primary d-none">Client info</a>
+      </div>
+      <div id="flat-admin-panel" class="border-top pt-3 mt-3 d-none" sec:authorize="hasRole('SUPER_ADMIN')">
+        <h6 class="text-primary mb-2">Platform admin — edit flat layout</h6>
+        <p class="text-muted small mb-2">
+          Change type, area, or price after generate. To combine two units (e.g. two 2BHK into one 4BHK), select the flat to
+          <strong>keep</strong>, pick another unit on this floor to remove, then merge.
+        </p>
+        <div class="row g-2 mb-2">
+          <div class="col-md-3">
+            <label class="form-label small mb-0" for="admin-bhk">BHK type</label>
+            <select class="form-select form-select-sm" id="admin-bhk">
+              <option value="1BHK">1BHK</option>
+              <option value="2BHK">2BHK</option>
+              <option value="3BHK">3BHK</option>
+              <option value="4BHK">4BHK</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-0" for="admin-area">Area (sqft)</label>
+            <input class="form-control form-control-sm" type="number" id="admin-area" min="1" step="1"/>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-0" for="admin-price">Base price</label>
+            <input class="form-control form-control-sm" type="number" id="admin-price" min="0" step="1"/>
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <button type="button" class="btn btn-sm btn-primary w-100" id="admin-save-btn">Save details</button>
+          </div>
+        </div>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-6">
+            <label class="form-label small mb-0" for="admin-merge-remove">Merge: remove unit on this floor</label>
+            <select class="form-select form-select-sm" id="admin-merge-remove">
+              <option value="">— Select flat to remove —</option>
+            </select>
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <button type="button" class="btn btn-sm btn-outline-primary w-100" id="admin-merge-btn">Merge into kept flat</button>
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <button type="button" class="btn btn-sm btn-outline-danger w-100" id="admin-delete-btn">Remove this flat</button>
+          </div>
+        </div>
+        <p class="text-danger small mb-0 d-none" id="admin-error"></p>
       </div>
     </div>
   </div>

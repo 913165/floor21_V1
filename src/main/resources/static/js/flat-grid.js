@@ -15,6 +15,87 @@
 
   var selectedFlatId = null;
 
+  function isPlatformAdminEdit() {
+    var grid = document.getElementById("flat-grid");
+    return grid && grid.getAttribute("data-platform-admin-edit") === "true";
+  }
+
+  function showAdminError(message) {
+    var el = document.getElementById("admin-error");
+    if (!el) return;
+    if (!message) {
+      el.textContent = "";
+      el.classList.add("d-none");
+      return;
+    }
+    el.textContent = message;
+    el.classList.remove("d-none");
+  }
+
+  function readAdminForm() {
+    var bhk = document.getElementById("admin-bhk");
+    var area = document.getElementById("admin-area");
+    var price = document.getElementById("admin-price");
+    return {
+      bhkType: bhk ? bhk.value : "",
+      areaSqft: area && area.value !== "" ? Number(area.value) : null,
+      basePrice: price && price.value !== "" ? Number(price.value) : null,
+    };
+  }
+
+  function applyFlatDataToCard(cardEl, flat) {
+    if (!cardEl || !flat) return;
+    if (flat.bhkType != null) cardEl.dataset.type = flat.bhkType;
+    if (flat.areaSqft != null) cardEl.dataset.area = String(flat.areaSqft);
+    if (flat.basePrice != null) cardEl.dataset.price = String(flat.basePrice);
+    if (flat.status != null) cardEl.dataset.status = flat.status;
+    if (flat.floorNumber != null) cardEl.dataset.floor = String(flat.floorNumber);
+    var typeSpan = cardEl.querySelector(".flat-type");
+    if (typeSpan && flat.bhkType) typeSpan.textContent = flat.bhkType;
+  }
+
+  async function loadMergeCandidates(flatId) {
+    var select = document.getElementById("admin-merge-remove");
+    if (!select) return;
+    select.innerHTML = '<option value="">— Select flat to remove —</option>';
+    var res = await fetch(appRoot() + "/flats/" + flatId + "/merge-candidates", {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return;
+    var list = await res.json();
+    list.forEach(function (c) {
+      var opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent =
+        (c.flatNumber || c.id) + " · " + (c.bhkType || "") + " · " + (c.status || "");
+      select.appendChild(opt);
+    });
+  }
+
+  async function parseErrorResponse(res) {
+    try {
+      var data = await res.json();
+      if (data && data.error) return String(data.error);
+    } catch (e) {
+      /* ignore */
+    }
+    return "Request failed (" + res.status + ")";
+  }
+
+  function syncAdminPanel(cardEl) {
+    var panel = document.getElementById("flat-admin-panel");
+    if (!panel || !isPlatformAdminEdit()) return;
+    panel.classList.remove("d-none");
+    showAdminError("");
+    var bhk = document.getElementById("admin-bhk");
+    var area = document.getElementById("admin-area");
+    var price = document.getElementById("admin-price");
+    if (bhk) bhk.value = cardEl.dataset.type || "2BHK";
+    if (area) area.value = cardEl.dataset.area || "";
+    if (price) price.value = cardEl.dataset.price || "";
+    if (selectedFlatId) loadMergeCandidates(selectedFlatId);
+  }
+
   function applyBookingSelectionHighlight() {
     var grid = document.getElementById("flat-grid");
     if (!grid) return;
@@ -133,6 +214,8 @@
         }
         syncBuyerTooltip(el, flat);
         syncCardOwner(el, flat);
+        var typeSpan = el.querySelector(".flat-type");
+        if (typeSpan && flat.bhkType) typeSpan.textContent = flat.bhkType;
         el.classList.remove("flat-available", "flat-booked", "flat-hold", "flat-parking");
         if (flat.parking) el.classList.add("flat-parking");
         else if (flat.status === "AVAILABLE") el.classList.add("flat-available");
@@ -206,6 +289,7 @@
       }
     }
     applyBookingSelectionHighlight();
+    syncAdminPanel(el);
   };
 
   document.addEventListener("DOMContentLoaded", function () {
@@ -237,6 +321,89 @@
         await refreshGrid();
       });
     }
+
+    var adminSave = document.getElementById("admin-save-btn");
+    if (adminSave) {
+      adminSave.addEventListener("click", async function () {
+        if (!selectedFlatId) return;
+        showAdminError("");
+        var form = readAdminForm();
+        var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+        var res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/details", {
+          method: "POST",
+          headers: headers,
+          body: JSON.stringify(form),
+        });
+        if (!res.ok) {
+          showAdminError(await parseErrorResponse(res));
+          return;
+        }
+        var flat = await res.json();
+        var card = document.getElementById("flat-" + selectedFlatId);
+        applyFlatDataToCard(card, flat);
+        document.getElementById("panel-type").textContent = flat.bhkType || "";
+        document.getElementById("panel-area").textContent = flat.areaSqft != null ? String(flat.areaSqft) : "";
+        document.getElementById("panel-price").textContent = flat.basePrice != null ? String(flat.basePrice) : "";
+        if (card) syncAdminPanel(card);
+      });
+    }
+
+    var adminDelete = document.getElementById("admin-delete-btn");
+    if (adminDelete) {
+      adminDelete.addEventListener("click", async function () {
+        if (!selectedFlatId) return;
+        var card = document.getElementById("flat-" + selectedFlatId);
+        var label = card && card.querySelector(".flat-number") ? card.querySelector(".flat-number").textContent : selectedFlatId;
+        if (!window.confirm("Remove flat " + label + "? This cannot be undone.")) return;
+        showAdminError("");
+        var headers = Object.assign({}, csrfHeaders());
+        var res = await fetch(appRoot() + "/flats/" + selectedFlatId, {
+          method: "DELETE",
+          headers: headers,
+        });
+        if (!res.ok) {
+          showAdminError(await parseErrorResponse(res));
+          return;
+        }
+        window.location.reload();
+      });
+    }
+
+    var adminMerge = document.getElementById("admin-merge-btn");
+    if (adminMerge) {
+      adminMerge.addEventListener("click", async function () {
+        if (!selectedFlatId) return;
+        var removeSel = document.getElementById("admin-merge-remove");
+        var removeId = removeSel ? removeSel.value : "";
+        if (!removeId) {
+          showAdminError("Choose which flat to remove on this floor.");
+          return;
+        }
+        var form = readAdminForm();
+        if (!window.confirm("Merge will delete the selected unit and keep this flat with the details above. Continue?")) {
+          return;
+        }
+        showAdminError("");
+        var body = {
+          removeFlatId: removeId,
+          bhkType: form.bhkType,
+          areaSqft: form.areaSqft,
+          basePrice: form.basePrice,
+        };
+        var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+        var res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/merge", {
+          method: "POST",
+          headers: headers,
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          showAdminError(await parseErrorResponse(res));
+          return;
+        }
+        window.location.reload();
+      });
+    }
+
     var grid = document.getElementById("flat-grid");
     if (grid) {
       grid.addEventListener("click", function (e) {

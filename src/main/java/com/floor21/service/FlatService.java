@@ -1,8 +1,10 @@
 package com.floor21.service;
 
 import com.floor21.dto.BuildingConfigDto;
+import com.floor21.dto.FlatAdminUpdateDto;
 import com.floor21.dto.FlatGridFlatDto;
 import com.floor21.dto.FlatGridFloorDto;
+import com.floor21.dto.FlatMergeDto;
 import com.floor21.entity.Booking;
 import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
@@ -16,6 +18,7 @@ import com.floor21.repository.FlatRepository;
 import com.floor21.security.TenantContext;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -33,6 +36,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class FlatService {
+
+    private static final List<String> RESIDENTIAL_BHK_TYPES =
+            List.of("1BHK", "2BHK", "3BHK", "4BHK");
 
     private final FlatRepository flatRepository;
     private final BuildingRepository buildingRepository;
@@ -348,5 +354,148 @@ public class FlatService {
         }
         flat.setStatus(status);
         return flatRepository.save(flat);
+    }
+
+    @Transactional
+    public Flat updateFlatAsPlatformAdmin(UUID flatId, FlatAdminUpdateDto dto) {
+        Flat flat = requireResidentialFlatForAdmin(flatId);
+        assertNoActiveBooking(flatId, "Cannot edit flat details while an active booking exists.");
+        String bhk = normalizeBhkType(dto.bhkType());
+        flat.setBhkType(bhk);
+        if (dto.areaSqft() != null) {
+            if (dto.areaSqft().signum() <= 0) {
+                throw new IllegalArgumentException("Area must be greater than zero.");
+            }
+            flat.setAreaSqft(dto.areaSqft());
+        }
+        if (dto.basePrice() != null) {
+            if (dto.basePrice().signum() < 0) {
+                throw new IllegalArgumentException("Price cannot be negative.");
+            }
+            flat.setBasePrice(dto.basePrice());
+        }
+        return flatRepository.save(flat);
+    }
+
+    @Transactional
+    public void deleteFlatAsPlatformAdmin(UUID flatId) {
+        Flat flat = requireResidentialFlatForAdmin(flatId);
+        assertNoActiveBooking(flatId, "Cannot remove a flat that has an active booking.");
+        if ("BOOKED".equals(flat.getStatus())) {
+            throw new IllegalArgumentException("Cannot remove a booked flat. Cancel the booking first.");
+        }
+        flatRepository.delete(flat);
+    }
+
+    @Transactional
+    public Flat mergeFlatsAsPlatformAdmin(UUID keepFlatId, FlatMergeDto dto) {
+        if (dto.removeFlatId() == null) {
+            throw new IllegalArgumentException("Choose which flat to remove.");
+        }
+        if (keepFlatId.equals(dto.removeFlatId())) {
+            throw new IllegalArgumentException("Cannot merge a flat with itself.");
+        }
+        Flat keep = requireResidentialFlatForAdmin(keepFlatId);
+        Flat remove = requireResidentialFlatForAdmin(dto.removeFlatId());
+        if (!keep.getBuilding().getId().equals(remove.getBuilding().getId())) {
+            throw new IllegalArgumentException("Both flats must belong to the same building.");
+        }
+        if (!Objects.equals(keep.getFloorNumber(), remove.getFloorNumber())) {
+            throw new IllegalArgumentException("Merge is only supported for flats on the same floor.");
+        }
+        assertNoActiveBooking(keep.getId(), "Cannot merge while the kept flat has an active booking.");
+        assertNoActiveBooking(remove.getId(), "Cannot merge while the removed flat has an active booking.");
+        if ("BOOKED".equals(remove.getStatus())) {
+            throw new IllegalArgumentException("Cannot remove a booked flat. Cancel that booking first.");
+        }
+        if (!List.of("AVAILABLE", "HOLD").contains(remove.getStatus())) {
+            throw new IllegalArgumentException("Only an available or on-hold flat can be removed in a merge.");
+        }
+        flatRepository.delete(remove);
+        String bhk = dto.bhkType() != null && !dto.bhkType().isBlank()
+                ? normalizeBhkType(dto.bhkType())
+                : keep.getBhkType();
+        keep.setBhkType(bhk);
+        if (dto.areaSqft() != null) {
+            if (dto.areaSqft().signum() <= 0) {
+                throw new IllegalArgumentException("Area must be greater than zero.");
+            }
+            keep.setAreaSqft(dto.areaSqft());
+        }
+        if (dto.basePrice() != null) {
+            if (dto.basePrice().signum() < 0) {
+                throw new IllegalArgumentException("Price cannot be negative.");
+            }
+            keep.setBasePrice(dto.basePrice());
+        }
+        return flatRepository.save(keep);
+    }
+
+    @Transactional(readOnly = true)
+    public List<FlatGridFlatDto> listMergeCandidatesOnFloor(UUID keepFlatId) {
+        Flat keep = requireResidentialFlatForAdmin(keepFlatId);
+        UUID buildingId = keep.getBuilding().getId();
+        UUID builderId = keep.getBuilder().getId();
+        return flatRepository
+                .findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(buildingId, builderId)
+                .stream()
+                .filter(f -> !Boolean.TRUE.equals(f.getParking()))
+                .filter(f -> Objects.equals(f.getFloorNumber(), keep.getFloorNumber()))
+                .filter(f -> !f.getId().equals(keep.getId()))
+                .filter(f -> List.of("AVAILABLE", "HOLD").contains(f.getStatus()))
+                .filter(f -> bookingRepository.countActiveByFlatId(f.getId()) == 0)
+                .map(f -> toGridFlatDto(f, null))
+                .toList();
+    }
+
+    private FlatGridFlatDto toGridFlatDto(Flat f, Booking booking) {
+        Client bookedClient =
+                booking != null && "BOOKED".equals(f.getStatus()) ? booking.getClient() : null;
+        return new FlatGridFlatDto(
+                f.getId(),
+                f.getFlatNumber(),
+                f.getFloorNumber(),
+                f.getBhkType(),
+                f.getBasePrice(),
+                f.getAreaSqft(),
+                f.getStatus(),
+                Boolean.TRUE.equals(f.getParking()),
+                buildBuyerTooltip(f, booking),
+                resolveBookedClientId(f, booking),
+                ownerCardTitle(f, booking),
+                ownerCardSubtitle(f, booking),
+                bookingCodeForTooltip(booking),
+                bookedClient != null ? pickPhone(bookedClient) : null,
+                bookedClient != null ? pickEmail(bookedClient) : null,
+                resolveCardClass(f, booking));
+    }
+
+    private Flat requireResidentialFlatForAdmin(UUID flatId) {
+        Flat flat =
+                flatRepository
+                        .findByIdWithBuilding(flatId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
+        buildingService.resolveForAccess(flat.getBuilding().getId());
+        if (Boolean.TRUE.equals(flat.getParking())) {
+            throw new IllegalArgumentException("Parking slots cannot be edited.");
+        }
+        return flat;
+    }
+
+    private void assertNoActiveBooking(UUID flatId, String message) {
+        if (bookingRepository.countActiveByFlatId(flatId) > 0) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
+    private static String normalizeBhkType(String bhkType) {
+        if (bhkType == null || bhkType.isBlank()) {
+            throw new IllegalArgumentException("BHK type is required.");
+        }
+        String normalized = bhkType.trim().toUpperCase(Locale.ROOT);
+        if (!RESIDENTIAL_BHK_TYPES.contains(normalized)) {
+            throw new IllegalArgumentException("BHK type must be one of: " + String.join(", ", RESIDENTIAL_BHK_TYPES));
+        }
+        return normalized;
     }
 }

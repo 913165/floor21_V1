@@ -17,6 +17,9 @@ public interface FlatRepository extends JpaRepository<Flat, UUID> {
 
     Optional<Flat> findByIdAndBuilder_Id(UUID id, UUID builderId);
 
+    @Query("select f from Flat f join fetch f.building b join fetch b.builder where f.id = :id")
+    Optional<Flat> findByIdWithBuilding(@Param("id") UUID id);
+
     java.util.List<Flat> findByBuilder_IdAndParkingFalseAndStatusInOrderByBuilding_BuildingNameAscFloorNumberAscUnitNumberAsc(
             UUID builderId, java.util.Collection<String> statuses);
 
