@@ -772,3 +772,22 @@ button.flat-floor-plan-link {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* Remaining balance under vault payment total (readable in light + dark) */
+.f21-remaining-line {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #7a5c3a;
+  margin-top: 0.15rem;
+}
+
+[data-bs-theme="dark"] .f21-remaining-line {
+  color: #f0d4a8;
+}
+
+[data-bs-theme="dark"] .f21-table-totals tfoot.table-light {
+  --bs-table-bg: var(--bs-tertiary-bg);
+  --bs-table-color: var(--bs-body-color);
+  --bs-table-border-color: var(--bs-border-color);
+}

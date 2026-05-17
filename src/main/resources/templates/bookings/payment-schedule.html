@@ -135,7 +135,8 @@
     <form th:action="@{/bookings/payment-schedule/save}"
           th:object="${saveForm}"
           method="post"
-          id="scheduleSaveForm">
+          id="scheduleSaveForm"
+          th:attr="data-consideration-base=${baseAmount != null ? baseAmount : 0}">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
       <input type="hidden" name="buildingId" th:value="${selectedBuildingId}"/>
       <input type="hidden" th:field="*{bookingId}"/>
@@ -217,6 +218,14 @@
             <td colspan="2" class="text-end slab-amt--total" id="scheduleTotalCombined"
                 th:text="${amt.formatAmountDisplay(scheduleSummary.totalAmount)}">0</td>
           </tr>
+          <tr class="fw-semibold"
+              th:if="${scheduleSummary.remainingAgreedAmount != null}">
+            <td colspan="3" class="text-end">Remaining (vs consideration)</td>
+            <td class="text-end text-muted">—</td>
+            <td class="text-end slab-amt--base" id="scheduleRemainingAgreed"
+                th:text="${amt.formatAmountDisplay(scheduleSummary.remainingAgreedAmount)}">0</td>
+            <td class="text-end text-muted">—</td>
+          </tr>
           </tfoot>
         </table>
       </div>
@@ -236,6 +245,8 @@
         const elExtra = document.getElementById('scheduleTotalExtra');
         const elPct = document.getElementById('scheduleTotalPercent');
         const elCombined = document.getElementById('scheduleTotalCombined');
+        const elRemaining = document.getElementById('scheduleRemainingAgreed');
+        const considerationBase = parseFloat(form.getAttribute('data-consideration-base') || '0');
         function recalcTotals() {
           let sumAgreed = 0, sumExtra = 0, sumPct = 0, hasAgreed = false, hasExtra = false, hasPct = false;
           form.querySelectorAll('[id^="slabAgreedDisplay_"]').forEach(function (el) {
@@ -256,6 +267,10 @@
           if (elCombined) {
             const combined = (hasAgreed ? sumAgreed : 0) + (hasExtra ? sumExtra : 0);
             elCombined.textContent = (hasAgreed || hasExtra) ? Floor21Amount.formatAmount(combined) : '—';
+          }
+          if (elRemaining && considerationBase > 0) {
+            const rem = considerationBase - (hasAgreed ? sumAgreed : 0);
+            elRemaining.textContent = Floor21Amount.formatAmount(rem);
           }
         }
         form.addEventListener('input', recalcTotals);

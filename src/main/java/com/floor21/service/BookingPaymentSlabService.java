@@ -55,6 +55,7 @@ public class BookingPaymentSlabService {
 
     @Transactional(readOnly = true)
     public SlabScheduleSummary summarizeLines(UUID bookingId) {
+        Booking booking = getBookingForSchedule(bookingId);
         BigDecimal agreed = ZERO;
         BigDecimal extra = ZERO;
         BigDecimal percent = ZERO;
@@ -69,7 +70,13 @@ public class BookingPaymentSlabService {
                 percent = percent.add(slab.getPercent());
             }
         }
-        return new SlabScheduleSummary(agreed, extra, agreed.add(extra), percent);
+        BigDecimal consideration = baseConsideration(booking);
+        BigDecimal remaining =
+                consideration != null && consideration.signum() > 0
+                        ? consideration.subtract(agreed)
+                        : null;
+        return new SlabScheduleSummary(
+                agreed, extra, agreed.add(extra), percent, consideration, remaining);
     }
 
     public BigDecimal baseConsideration(Booking booking) {

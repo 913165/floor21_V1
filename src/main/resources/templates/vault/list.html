@@ -263,7 +263,7 @@
               <td class="text-end">Total</td>
               <td class="text-end f21-total-amount-cell">
                 <span class="d-block" th:text="${amt.formatAmountDisplay(amountSummary.vaultReceivedTotal)}">0</span>
-                <span class="d-block text-muted fw-normal small"
+                <span class="d-block f21-remaining-line"
                       th:if="${amountSummary.remainingAmount != null}">
                   (<span th:text="${amt.formatAmountDisplay(amountSummary.remainingAmount)}">0</span> remaining)
                 </span>
