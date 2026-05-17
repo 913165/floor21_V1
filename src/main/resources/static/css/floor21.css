@@ -115,6 +115,13 @@
   font-size: 0.9rem;
 }
 
+.floor21-impersonation-banner {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  color: #1a1a1a;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
 /* Side menu */
 .floor21-sidebar {
   width: var(--f21-sidebar-width);

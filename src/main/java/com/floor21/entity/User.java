@@ -45,4 +45,7 @@ public class User {
 
     @Column(name = "created_at")
     private Instant createdAt;
+
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
 }

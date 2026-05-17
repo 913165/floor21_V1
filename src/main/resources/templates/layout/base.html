@@ -15,6 +15,13 @@
 </head>
 <body class="floor21-body d-flex flex-column min-vh-100 bg-body" th:attr="data-app-root=@{/}">
 <header th:replace="~{layout/fragments/navbar :: navbar}"></header>
+<div th:if="${impersonationActive}" class="floor21-impersonation-banner text-center small py-2 px-3">
+  Viewing as <strong th:text="${impersonationBuilderName}">builder</strong>.
+  <form class="d-inline ms-2" th:action="@{/impersonate/end}" method="post">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <button class="btn btn-sm btn-warning" type="submit">End impersonation</button>
+  </form>
+</div>
 <div class="floor21-shell d-flex flex-grow-1 w-100 min-vh-0">
   <aside th:replace="~{layout/fragments/sidebar :: sidebar}"></aside>
   <main class="floor21-panel flex-grow-1 py-3 px-3 px-md-4 overflow-auto">

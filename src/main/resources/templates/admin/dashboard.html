@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content" th:with="pd=${platformDashboard}, amt=${T(com.floor21.util.IndianRupeesFormatter)}">
+  <h1 class="h3 mb-4" th:text="${pageTitle}">Platform dashboard</h1>
+  
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted small">Builders (active)</div>
+          <div class="fs-4" th:text="${pd.activeBuilders()} + ' / ' + ${pd.totalBuilders()}">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted small">Buildings</div>
+          <div class="fs-4" th:text="${pd.totalBuildings()}">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted small">Flats (booked / total)</div>
+          <div class="fs-4" th:text="${pd.bookedFlats()} + ' / ' + ${pd.totalFlats()}">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted small">Bookings this month</div>
+          <div class="fs-4" th:text="${pd.bookingsThisMonth()}">0</div>
+          <div class="text-muted small mt-1">Value: <span th:text="${amt.formatAmountDisplay(pd.activeBookingValue())}">0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-header">Recent bookings (all tenants)</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Code</th><th>Client</th><th>Flat</th><th>Building</th><th>Status</th></tr></thead>
+            <tbody>
+            <tr th:each="r : ${pd.recentBookings()}">
+              <td th:text="${r.bookingCode()}"></td>
+              <td th:text="${r.clientName()}"></td>
+              <td th:text="${r.flatNumber()}"></td>
+              <td th:text="${r.buildingName()}"></td>
+              <td th:text="${r.status()}"></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(pd.recentBookings())}"><td colspan="5" class="text-muted">No bookings yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header">Newest builders</div>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item d-flex justify-content-between" th:each="b : ${pd.recentBuilders()}">
+            <span th:text="${b.companyName()}">—</span>
+            <span class="text-muted small" th:text="${b.city()}">—</span>
+          </li>
+          <li class="list-group-item text-muted" th:if="${#lists.isEmpty(pd.recentBuilders())}">No builders.</li>
+        </ul>
+      </div>
+      <a class="btn btn-outline-primary btn-sm" th:href="@{/admin/activity}">View all activity</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
+
+

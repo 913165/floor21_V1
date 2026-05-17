@@ -5,10 +5,20 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface BuilderRepository extends JpaRepository<Builder, UUID> {
 
     Optional<Builder> findByEmailIgnoreCase(String email);
 
     List<Builder> findAllByOrderByCompanyNameAsc();
+
+    @Query("select b from Builder b where b.platformAdmin = false order by lower(b.companyName)")
+    List<Builder> findAllTenantsOrderByCompanyNameAsc();
+
+    long countByPlatformAdminFalse();
+
+    long countByPlatformAdminFalseAndActiveTrue();
+
+    long countByPlatformAdminFalseAndActiveFalse();
 }

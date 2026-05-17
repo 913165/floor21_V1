@@ -1,5 +1,6 @@
 package com.floor21.config;
 
+import com.floor21.security.Floor21LoginSuccessHandler;
 import com.floor21.security.Floor21UserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     private final Floor21UserDetailsService userDetailsService;
+    private final Floor21LoginSuccessHandler loginSuccessHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -31,6 +33,8 @@ public class SecurityConfig {
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
                                         .requestMatchers("/profile/**")
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
+                                        .requestMatchers(HttpMethod.POST, "/impersonate/**")
+                                        .authenticated()
                                         .requestMatchers(HttpMethod.POST, "/buildings/save")
                                         .hasRole("BUILDER_ADMIN")
                                         .requestMatchers(HttpMethod.GET, "/buildings/*/edit")
@@ -49,7 +53,7 @@ public class SecurityConfig {
                         form ->
                                 form.loginPage("/login")
                                         .loginProcessingUrl("/login")
-                                        .defaultSuccessUrl("/dashboard", true)
+                                        .successHandler(loginSuccessHandler)
                                         .failureUrl("/login?error=true")
                                         .permitAll())
                 .logout(

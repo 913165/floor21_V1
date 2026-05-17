@@ -56,10 +56,25 @@
     <p class="floor21-nav__section" sec:authorize="hasRole('SUPER_ADMIN')">Platform</p>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/builders}"
-       th:classappend="${#strings.startsWith(path, '/admin/builders')} ? ' is-active' : ''">Admin — Builders</a>
+       th:classappend="${#strings.startsWith(path, '/admin/builders')} ? ' is-active' : ''">Builders</a>
+    <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/admin/buildings}"
+       th:classappend="${path == '/admin/buildings'} ? ' is-active' : ''">All buildings</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/builder-pricing-slabs}"
-       th:classappend="${#strings.startsWith(path, '/admin/builder-pricing-slabs')} ? ' is-active' : ''">Admin — Builder rate slabs</a>
+       th:classappend="${#strings.startsWith(path, '/admin/builder-pricing-slabs')} ? ' is-active' : ''">Rate slabs</a>
+    <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/admin/activity}"
+       th:classappend="${path == '/admin/activity'} ? ' is-active' : ''">Activity</a>
+    <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/admin/reports}"
+       th:classappend="${path == '/admin/reports'} ? ' is-active' : ''">Reports</a>
+    <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/admin/audit-log}"
+       th:classappend="${path == '/admin/audit-log'} ? ' is-active' : ''">Audit log</a>
+    <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/admin/settings}"
+       th:classappend="${path == '/admin/settings'} ? ' is-active' : ''">Settings</a>
   </nav>
 </aside>
 </body>

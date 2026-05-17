@@ -61,4 +61,7 @@ public class Builder {
 
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
 }

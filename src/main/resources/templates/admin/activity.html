@@ -1,0 +1,61 @@
+﻿<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3 mb-4" th:text="${pageTitle}">Platform activity</h1>
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header">Recent bookings</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>Code</th><th>Client</th><th>Building</th><th>Status</th></tr></thead>
+            <tbody>
+            <tr th:each="r : ${recentBookings}">
+              <td th:text="${r.bookingCode()}"></td>
+              <td th:text="${r.clientName()}"></td>
+              <td th:text="${r.buildingName()}"></td>
+              <td th:text="${r.status()}"></td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header">Recent builder logins</div>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item d-flex justify-content-between" th:each="b : ${recentLogins}">
+            <span th:text="${b.companyName()}">-</span>
+            <span class="text-muted small" th:text="${b.lastLoginAt() != null ? #temporals.format(b.lastLoginAt(), 'dd MMM yyyy HH:mm') : 'Never'}">-</span>
+          </li>
+          <li class="list-group-item text-muted" th:if="${#lists.isEmpty(recentLogins)}">No login data yet.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header">Recent audit events</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Details</th></tr></thead>
+            <tbody>
+            <tr th:each="e : ${recentAudit}">
+              <td class="text-nowrap" th:text="${#temporals.format(e.createdAt, 'dd MMM yyyy HH:mm')}"></td>
+              <td th:text="${e.actorEmail}"></td>
+              <td th:text="${e.action}"></td>
+              <td class="small text-muted" th:text="${e.details}"></td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mb-0 p-3"><a th:href="@{/admin/audit-log}">Full audit log</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+

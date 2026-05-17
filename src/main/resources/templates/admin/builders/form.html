@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
@@ -7,6 +7,8 @@
   <form class="card card-body shadow-sm" th:action="@{/admin/builders/save}" th:object="${builder}" method="post">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
     <input type="hidden" th:field="*{id}"/>
+    
+    
     <div class="row g-3">
       <div class="col-md-6">
         <label class="form-label">Company name</label>
@@ -44,10 +46,25 @@
       <button class="btn btn-primary" type="submit">Save</button>
       <a class="btn btn-outline-primary"
          th:if="${builder.id != null}"
-         th:href="@{/admin/builders/{id}/buildings/new(id=${builder.id})}">Add building for this builder</a>
+         th:href="@{/admin/builders/{id}/buildings/new(id=${builder.id})}">Add building</a>
+      <a class="btn btn-outline-primary"
+         th:if="${builder.id != null}"
+         th:href="@{/admin/builders/{id}/staff(id=${builder.id})}">Manage staff</a>
       <a class="btn btn-link" th:href="@{/admin/builders}">Cancel</a>
     </div>
   </form>
+  <div class="mt-3 d-flex flex-wrap gap-2" th:if="${builder.id != null}">
+    <form th:if="${builder.active}" th:action="@{/admin/builders/{id}/impersonate(id=${builder.id})}" method="post">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button class="btn btn-warning" type="submit">Open as this builder</button>
+    </form>
+    <form th:if="${builder.active}" th:action="@{/admin/builders/{id}/deactivate(id=${builder.id})}" method="post"
+          onsubmit="return confirm('Deactivate this builder? They will not be able to sign in.');">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button class="btn btn-outline-danger" type="submit">Deactivate</button>
+    </form>
+  </div>
 </div>
 </body>
 </html>
+

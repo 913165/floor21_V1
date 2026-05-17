@@ -1,0 +1,19 @@
+﻿<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3 mb-4" th:text="${pageTitle}">Reports</h1>
+  <p class="text-muted small mb-3">Download CSV exports for platform operations.</p>
+  
+  <div class="list-group col-lg-6 shadow-sm">
+    <a class="list-group-item list-group-item-action" th:href="@{/admin/reports/builders.csv}">Builders (company, email, status, buildings)</a>
+    <a class="list-group-item list-group-item-action" th:href="@{/admin/reports/buildings.csv}">All buildings</a>
+    <a class="list-group-item list-group-item-action" th:href="@{/admin/reports/inventory.csv}">Flat inventory summary</a>
+  </div>
+</div>
+</body>
+</html>
+
+
+

@@ -38,6 +38,11 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     List<Booking> findTop10ByOrderByCreatedAtDesc();
 
+    List<Booking> findTop20ByOrderByCreatedAtDesc();
+
+    @Query("select count(b) from Booking b where b.createdAt >= :since")
+    long countCreatedSince(@Param("since") java.time.Instant since);
+
     List<Booking> findTop5ByBuilder_IdOrderByCreatedAtDesc(UUID builderId);
 
     @Query(

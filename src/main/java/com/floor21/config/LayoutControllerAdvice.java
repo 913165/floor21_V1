@@ -1,8 +1,10 @@
 package com.floor21.config;
 
 import com.floor21.security.Floor21UserPrincipal;
+import com.floor21.security.ImpersonationSession;
 import com.floor21.service.AccountService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -43,6 +45,16 @@ public class LayoutControllerAdvice {
             return "";
         }
         return authentication.getName();
+    }
+
+    @ModelAttribute
+    public void impersonationFlags(HttpServletRequest request, org.springframework.ui.Model model) {
+        HttpSession session = request != null ? request.getSession(false) : null;
+        if (session != null && Boolean.TRUE.equals(session.getAttribute(ImpersonationSession.ACTIVE))) {
+            model.addAttribute("impersonationActive", true);
+            model.addAttribute(
+                    "impersonationBuilderName", session.getAttribute(ImpersonationSession.BUILDER_NAME));
+        }
     }
 
     @ModelAttribute("navAccountInitial")

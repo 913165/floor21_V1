@@ -1,0 +1,39 @@
+﻿<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3 mb-4" th:text="${pageTitle}">Staff</h1>
+  <form class="card card-body shadow-sm col-lg-6"
+        th:action="@{/admin/builders/{bid}/staff/save(bid=${builder.id})}"
+        th:object="${staff}" method="post">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <input type="hidden" th:field="*{id}"/>
+    <div class="mb-3">
+      <label class="form-label">Full name</label>
+      <input class="form-control" th:field="*{fullName}" required/>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Email (login)</label>
+      <input class="form-control" type="email" th:field="*{email}" required/>
+    
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Password</label>
+      <input class="form-control" type="password" name="rawPassword" autocomplete="new-password"
+             th:placeholder="${staff.id != null} ? 'Leave blank to keep current' : 'Required'"/>
+    </div>
+    <div class="mb-3 form-check">
+      <input class="form-check-input" type="checkbox" th:field="*{active}"/>
+      <label class="form-check-label">Active</label>
+    </div>
+    <p class="small text-muted">Role: Executive (sales staff)</p>
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-link" th:href="@{/admin/builders/{id}/staff(id=${builder.id})}">Cancel</a>
+  </form>
+</div>
+</body>
+</html>
+
+
+

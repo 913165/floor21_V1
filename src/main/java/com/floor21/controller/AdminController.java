@@ -4,9 +4,12 @@ import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.service.BuildingService;
+import com.floor21.service.PlatformAdminService;
+import com.floor21.service.PlatformAuditService;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,11 +29,13 @@ public class AdminController {
     private final BuilderRepository builderRepository;
     private final BuildingService buildingService;
     private final PasswordEncoder passwordEncoder;
+    private final PlatformAdminService platformAdminService;
+    private final PlatformAuditService auditService;
 
     @GetMapping
     public String list(Model model) {
-        model.addAttribute("pageTitle", "Builders (Admin)");
-        model.addAttribute("builders", builderRepository.findAllByOrderByCompanyNameAsc());
+        model.addAttribute("pageTitle", "Builders");
+        model.addAttribute("builders", platformAdminService.listBuilders());
         return "admin/builders/list";
     }
 
@@ -80,8 +85,26 @@ public class AdminController {
         }
         entity.setUpdatedAt(Instant.now());
         builderRepository.save(entity);
+        auditService.log(
+                form.getId() == null ? "BUILDER_CREATED" : "BUILDER_UPDATED",
+                "builder",
+                entity.getId().toString(),
+                entity.getId(),
+                entity.getCompanyName());
         ra.addFlashAttribute("successMessage", "Builder saved");
         return "redirect:/admin/builders";
+    }
+
+    @PostMapping("/{id}/deactivate")
+    public String deactivate(@PathVariable UUID id, Authentication authentication, RedirectAttributes ra) {
+        try {
+            String actor = authentication != null ? authentication.getName() : "admin";
+            platformAdminService.deactivateBuilder(id, actor);
+            ra.addFlashAttribute("successMessage", "Builder deactivated.");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/admin/builders/" + id + "/edit";
     }
 
     @GetMapping("/{builderId}/buildings/new")

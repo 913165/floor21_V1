@@ -16,4 +16,8 @@ public interface BuildingRepository extends JpaRepository<Building, UUID> {
     @Query(
             "select b from Building b join fetch b.builder br order by lower(br.companyName), lower(b.buildingName)")
     List<Building> findAllForPlatformAdminOrderByBuilderAndName();
+
+    long countByBuilder_Id(UUID builderId);
+
+    long countByBuilder_PlatformAdminFalse();
 }
