@@ -250,7 +250,7 @@
   overflow: visible;
   width: 15.5rem;
   min-width: 15.5rem;
-  min-height: 4.85rem;
+  min-height: 5.35rem;
   border-radius: 10px;
   border: 2px solid #dee2e6;
   cursor: pointer;
@@ -259,9 +259,9 @@
   align-items: stretch;
   justify-content: flex-start;
   text-align: center;
-  padding: 0.4rem 0.55rem 0.4rem 0.45rem;
-  font-size: 0.75rem;
-  line-height: 1.2;
+  padding: 0.45rem 0.6rem 0.45rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
   transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 
@@ -297,28 +297,28 @@
 }
 
 .flat-card-row .flat-number {
-  font-size: 0.78rem;
+  font-size: 0.95rem;
 }
 
 .flat-card-row .flat-type {
-  font-size: 0.64rem;
-  margin-top: 0.04rem;
+  font-size: 0.8rem;
+  margin-top: 0.05rem;
 }
 
 .flat-card-row .flat-owner-name {
-  font-size: 0.64rem;
+  font-size: 0.8rem;
 }
 
 .flat-card-row .flat-owner-detail {
-  font-size: 0.56rem;
+  font-size: 0.72rem;
 }
 
 .flat-card-row .flat-card-owner {
-  min-height: 1.85rem;
+  min-height: 2.1rem;
 }
 
 .flat-card-row .flat-card-owner.is-blank {
-  min-height: 1.85rem;
+  min-height: 2.1rem;
 }
 
 .flat-card-inner {
@@ -349,7 +349,7 @@
   justify-content: center;
   gap: 0.12rem;
   min-width: 0;
-  min-height: 2.25rem;
+  min-height: 2.5rem;
   margin-top: 0;
   padding-top: 0;
   border-top: none;
@@ -359,7 +359,7 @@
 .flat-card-owner.is-blank {
   border-top-color: transparent;
   opacity: 0;
-  min-height: 2.25rem;
+  min-height: 2.5rem;
   pointer-events: none;
 }
 
@@ -370,8 +370,8 @@
 .flat-owner-name {
   display: block;
   font-weight: 700;
-  font-size: 0.74rem;
-  line-height: 1.2;
+  font-size: 0.875rem;
+  line-height: 1.25;
   max-width: 100%;
   overflow-wrap: anywhere;
   color: inherit;
@@ -379,9 +379,9 @@
 
 .flat-owner-detail {
   display: block;
-  font-size: 0.66rem;
+  font-size: 0.78rem;
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.25;
   max-width: 100%;
   overflow-wrap: anywhere;
   color: var(--bs-secondary-color);
@@ -390,7 +390,7 @@
 .flat-number {
   display: block;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 1.05rem;
   letter-spacing: 0.02em;
   max-width: 100%;
   overflow-wrap: anywhere;
@@ -399,7 +399,7 @@
 .flat-type {
   display: block;
   margin-top: 0.08rem;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--bs-secondary-color);
   max-width: 100%;
@@ -409,9 +409,9 @@
 .flat-floor-plan-link {
   display: inline-block;
   margin-top: 0.18rem;
-  font-size: 0.58rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.2;
   color: var(--bs-link-color);
   text-decoration: underline;
   cursor: pointer;
@@ -430,7 +430,7 @@ button.flat-floor-plan-link {
 }
 
 .flat-card-row .flat-floor-plan-link {
-  font-size: 0.52rem;
+  font-size: 0.65rem;
   margin-top: 0.12rem;
 }
 
