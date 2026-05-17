@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout/base :: layout(~{::content})}">
@@ -19,7 +19,9 @@
   </div>
 
   <div class="alert alert-info" th:if="${(flatCount == null || flatCount == 0) && (activeBookingCount == null || activeBookingCount == 0)}">
-    <strong>No flats on the grid yet.</strong> Use <em>Generate flats</em> with your floor layout (total floors, parking, BHK mix).
+    <strong>No flats on the grid yet.</strong>
+    <span sec:authorize="hasRole('SUPER_ADMIN')">Use <em>Generate flats</em> below with your floor layout (total floors, parking, BHK mix).</span>
+    <span sec:authorize="!hasRole('SUPER_ADMIN')">Contact your Floor21 platform administrator to generate the flat layout for this building.</span>
   </div>
 
   <div class="alert alert-secondary py-2 mb-3" th:if="${flatCount != null && flatCount > 0}">
@@ -84,7 +86,7 @@
     </div>
   </div>
 
-  <div class="card shadow-sm mb-3" sec:authorize="hasRole('BUILDER_ADMIN')">
+  <div class="card shadow-sm mb-3" sec:authorize="hasRole('SUPER_ADMIN')">
     <div class="card-header">Generate flats</div>
     <div class="card-body">
       <p class="text-muted small mb-2" th:if="${flatCount != null && flatCount > 0}">
@@ -141,7 +143,10 @@
   <div id="flat-grid" class="mb-3"
        th:attr="data-building-id=${building.id},data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''}">
     <p class="text-muted py-4 text-center border rounded bg-body-secondary"
-       th:if="${#lists.isEmpty(floors)}">No flat rows to display. Use Generate flats above.</p>
+       th:if="${#lists.isEmpty(floors)}">
+      <span sec:authorize="hasRole('SUPER_ADMIN')">No flat rows to display. Use Generate flats above.</span>
+      <span sec:authorize="!hasRole('SUPER_ADMIN')">No flat rows to display yet.</span>
+    </p>
     <div th:each="floor : ${floors}" class="d-flex flex-wrap align-items-stretch gap-3 mb-3">
       <span class="floor-label text-muted small text-nowrap align-self-center" th:text="${floor.label()}">Floor</span>
       <div class="flat-card-row flex-grow-1 min-w-0">

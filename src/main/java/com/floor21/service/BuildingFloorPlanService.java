@@ -3,7 +3,6 @@ package com.floor21.service;
 import com.floor21.entity.Building;
 import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BuildingRepository;
-import com.floor21.security.TenantContext;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,13 +32,11 @@ public class BuildingFloorPlanService {
     @Value("${floor21.upload-root}")
     private String uploadRoot;
 
+    private final BuildingService buildingService;
+
     @Transactional
     public void savePlans(UUID buildingId, MultipartFile plan1Bhk, MultipartFile plan2Bhk, MultipartFile plan3Bhk) {
-        UUID builderId = TenantContext.requireBuilderId();
-        Building building =
-                buildingRepository
-                        .findByIdAndBuilder_Id(buildingId, builderId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+        Building building = buildingService.resolveForAccess(buildingId);
 
         Path base = Paths.get(uploadRoot).toAbsolutePath().normalize();
         Path buildingDir = base.resolve("buildings").resolve(buildingId.toString());

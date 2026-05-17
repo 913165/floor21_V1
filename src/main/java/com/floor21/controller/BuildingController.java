@@ -6,6 +6,7 @@ import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.service.BuildingFloorPlanService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.FlatService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import jakarta.validation.Valid;
@@ -54,8 +55,15 @@ public class BuildingController {
 
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable UUID id, Model model) {
+        Building building = buildingService.resolveForAccess(id);
         model.addAttribute("pageTitle", "Edit Building");
-        model.addAttribute("building", buildingService.getForTenant(id));
+        model.addAttribute("building", building);
+        if (isPlatformAdmin() && building.getBuilder() != null) {
+            model.addAttribute(
+                    "builderLabel",
+                    building.getBuilder().getCompanyName() + " (" + building.getBuilder().getEmail() + ")");
+        }
+        model.addAttribute("platformAdminView", isPlatformAdmin());
         return "buildings/form";
     }
 
@@ -86,7 +94,7 @@ public class BuildingController {
      */
     @GetMapping("/{id}/floor-plan/{slot}")
     public ResponseEntity<Resource> floorPlanImage(@PathVariable UUID id, @PathVariable String slot) {
-        Building b = buildingService.getForTenant(id);
+        Building b = buildingService.resolveForAccess(id);
         String key = slot.toLowerCase(Locale.ROOT);
         String webPath =
                 switch (key) {
@@ -144,6 +152,7 @@ public class BuildingController {
     }
 
     @PostMapping("/{id}/flats/generate")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public String generate(
             @PathVariable UUID id,
             @Valid @ModelAttribute("config") BuildingConfigDto config,

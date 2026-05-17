@@ -3,7 +3,6 @@ package com.floor21.service;
 import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
 import com.floor21.exception.ResourceNotFoundException;
-import com.floor21.exception.UnauthorizedTenantException;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.security.TenantContext;
@@ -79,18 +78,15 @@ public class BuildingService {
             throw new IllegalArgumentException(
                     "New buildings can only be created by the Floor21 platform administrator.");
         }
-        UUID builderId = TenantContext.requireBuilderId();
-        Builder builder = builderRepository.findById(builderId).orElseThrow(() -> new UnauthorizedTenantException("Invalid tenant"));
-        String preserveFp1 = null;
-        String preserveFp2 = null;
-        String preserveFp3 = null;
-        Building entity =
-                buildingRepository
-                        .findByIdAndBuilder_Id(form.getId(), builderId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
-        preserveFp1 = entity.getFloorPlan1Bhk();
-        preserveFp2 = entity.getFloorPlan2Bhk();
-        preserveFp3 = entity.getFloorPlan3Bhk();
+        validateBuildingForm(form);
+        Building entity = resolveForAccess(form.getId());
+        Builder builder = entity.getBuilder();
+        if (builder == null || builder.isPlatformAdmin()) {
+            throw new ResourceNotFoundException("Building not found");
+        }
+        String preserveFp1 = entity.getFloorPlan1Bhk();
+        String preserveFp2 = entity.getFloorPlan2Bhk();
+        String preserveFp3 = entity.getFloorPlan3Bhk();
         applyFormFields(entity, builder, form, preserveFp1, preserveFp2, preserveFp3);
         return buildingRepository.save(entity);
     }
