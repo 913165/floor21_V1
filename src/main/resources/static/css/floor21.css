@@ -240,6 +240,10 @@
   overflow: visible;
 }
 
+#flat-grid > .d-flex {
+  overflow: visible;
+}
+
 .flat-card {
   box-sizing: border-box;
   position: relative;
@@ -261,7 +265,7 @@
   transition: transform 0.08s ease, box-shadow 0.08s ease;
 }
 
-/* One row per floor: cards shrink instead of wrapping when many flats */
+/* One row per floor: cards shrink to fit — no row scrollbar */
 .flat-card-row {
   display: flex;
   flex-wrap: nowrap;
@@ -270,9 +274,7 @@
   gap: 0.35rem;
   width: 100%;
   min-width: 0;
-  overflow-x: auto;
-  overflow-y: visible;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;
   padding-top: 0.35rem;
   padding-bottom: 2px;
 }
@@ -436,63 +438,103 @@ button.flat-floor-plan-link {
   max-width: min(92vw, 560px);
 }
 
+.flat-card-buyertip:has(.flat-card-buyertip__row)::before {
+  content: "";
+  width: 100%;
+  height: 0;
+  order: 2;
+}
+
 .flat-card-buyertip__title {
+  order: 0;
+  display: inline;
   font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: #6366f1;
-  margin-bottom: 0.3rem;
+  margin: 0 0.35rem 0 0;
+}
+
+.flat-card-buyertip__title::after {
+  content: ":";
 }
 
 .flat-card-buyertip__name {
-  font-size: 0.8rem;
+  order: 1;
+  display: inline;
+  font-size: 0.76rem;
   font-weight: 600;
   color: #0f172a;
-  margin-bottom: 0.35rem;
-  line-height: 1.25;
+  line-height: 1.2;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 9rem;
 }
 
 .flat-card-buyertip__row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.5rem;
-  font-size: 0.68rem;
-  line-height: 1.35;
+  order: 3;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.25rem;
+  font-size: 0.62rem;
+  line-height: 1.25;
   color: #475569;
-  margin-top: 0.15rem;
+  margin: 0;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 .flat-card-buyertip__row span:first-child {
   flex-shrink: 0;
-  opacity: 0.8;
+  opacity: 0.85;
+  font-weight: 600;
+}
+
+.flat-card-buyertip__row span:first-child::after {
+  content: ":";
 }
 
 .flat-card-buyertip__row span:last-child {
-  text-align: right;
-  word-break: break-word;
+  text-align: left;
+  word-break: normal;
 }
 
 .flat-card-buyertip__email {
-  font-size: 0.64rem;
+  font-size: 0.62rem;
+  max-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .flat-card-buyertip {
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: center;
+  justify-content: flex-start;
+  column-gap: 0.5rem;
+  row-gap: 0.28rem;
+  box-sizing: border-box;
   position: absolute;
   left: 50%;
   bottom: calc(100% + 10px);
   transform: translate(-50%, 8px);
   z-index: 50;
-  min-width: 11rem;
-  max-width: 17rem;
-  padding: 0.6rem 0.75rem 0.65rem 0.85rem;
+  width: 14rem;
+  aspect-ratio: 16 / 9;
+  max-width: min(14rem, 88vw);
+  min-width: 11.5rem;
+  padding: 0.42rem 0.55rem 0.48rem;
   font-size: 0.74rem;
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 1.35;
   letter-spacing: 0.01em;
-  white-space: pre-line;
+  white-space: normal;
   text-align: left;
   color: #0f172a;
   background: linear-gradient(155deg, #eef2ff 0%, #e0f2fe 42%, #fae8ff 100%);
@@ -524,8 +566,7 @@ button.flat-floor-plan-link {
   filter: drop-shadow(0 2px 2px rgba(99, 102, 241, 0.2));
 }
 
-.flat-card--has-buyer:hover .flat-card-buyertip,
-.flat-card:hover .flat-card-buyertip {
+.flat-card--has-buyer:hover .flat-card-buyertip {
   opacity: 1;
   visibility: visible;
   transform: translate(-50%, 0);
@@ -666,6 +707,10 @@ button.flat-floor-plan-link {
 
 [data-bs-theme="dark"] .flat-card-buyertip__row {
   color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .flat-card-buyertip__row span:first-child {
+  color: #a5b4fc;
 }
 
 [data-bs-theme="dark"] .flat-card-buyertip {

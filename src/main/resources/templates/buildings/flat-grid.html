@@ -163,7 +163,7 @@
                       data-buyer-phone=${flat.buyerPhone()},
                       data-buyer-email=${flat.buyerEmail()},
                       data-floor-plan-slot=${fpSlot != null ? fpSlot : ''}">
-          <div class="flat-card-buyertip" th:if="${flat.status() == 'BOOKED' && !#strings.isEmpty(flat.ownerDisplay())}">
+          <div class="flat-card-buyertip" th:if="${flat.status() == 'BOOKED' and !#strings.isEmpty(flat.ownerDisplay())}">
             <div class="flat-card-buyertip__title">Buyer</div>
             <div class="flat-card-buyertip__name" th:text="${flat.ownerDisplay()}">-</div>
             <div class="flat-card-buyertip__row" th:if="${flat.bookingCode() != null}">
