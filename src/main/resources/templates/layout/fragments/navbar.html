@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
-<nav th:fragment="navbar" class="navbar navbar-dark bg-primary navbar-expand-lg flex-shrink-0 shadow-sm">
+<nav th:fragment="navbar" class="navbar navbar-dark floor21-topbar navbar-expand-lg flex-shrink-0">
   <div class="container-fluid px-3">
-    <a class="navbar-brand" th:href="@{/dashboard}">Floor21</a>
+    <a class="navbar-brand floor21-topbar__brand" th:href="@{/dashboard}">
+      <span class="floor21-topbar__mark" aria-hidden="true">F21</span>
+      <span>Floor21</span>
+    </a>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <th:block th:replace="~{layout/fragments/theme-controls :: themeControls}"/>
       <span class="text-white-50 small" sec:authentication="name"></span>

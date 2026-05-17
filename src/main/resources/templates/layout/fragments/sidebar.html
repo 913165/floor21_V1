@@ -1,35 +1,63 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
-<aside th:fragment="sidebar" class="floor21-sidebar border-end bg-body py-3 px-2 d-none d-md-block flex-shrink-0">
-  <div class="list-group list-group-flush small">
-    <a class="list-group-item list-group-item-action" th:href="@{/dashboard}">Dashboard</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/buildings}">Buildings</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/clients}">Clients</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/payment-milestones}">Payment milestones</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/bookings}">Bookings</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/receipts}">Receipts entry</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/bank-accounts}">Bank accounts</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasRole('BUILDER_ADMIN')"
-       th:href="@{/vault}">Vault</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/bookings/payment-schedule}"
-       title="View your payment milestones and set slab dates, %, and amounts for each booking">Slabs (payment schedule)</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/brokers}">Brokers</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/cancellations}">Cancellations</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasRole('SUPER_ADMIN')"
-       th:href="@{/admin/builders}">Admin — Builders</a>
-    <a class="list-group-item list-group-item-action" sec:authorize="hasRole('SUPER_ADMIN')"
-       th:href="@{/admin/builder-pricing-slabs}">Admin — Builder rate slabs</a>
+<aside th:fragment="sidebar"
+       class="floor21-sidebar d-none d-md-flex flex-column flex-shrink-0"
+       th:with="path=${navServletPath}">
+  <div class="floor21-sidebar__head">
+    <span class="floor21-sidebar__label">Navigation</span>
   </div>
+  <nav class="floor21-nav flex-grow-1" aria-label="Main">
+    <p class="floor21-nav__section">Overview</p>
+    <a class="floor21-nav__link"
+       th:href="@{/dashboard}"
+       th:classappend="${#strings.startsWith(path, '/dashboard')} ? ' is-active' : ''">Dashboard</a>
+
+    <p class="floor21-nav__section" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Property</p>
+    <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/buildings}"
+       th:classappend="${#strings.startsWith(path, '/buildings')} ? ' is-active' : ''">Buildings</a>
+    <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/clients}"
+       th:classappend="${#strings.startsWith(path, '/clients')} ? ' is-active' : ''">Clients</a>
+    <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/payment-milestones}"
+       th:classappend="${#strings.startsWith(path, '/payment-milestones')} ? ' is-active' : ''">Payment milestones</a>
+
+    <p class="floor21-nav__section" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Sales</p>
+    <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/bookings}"
+       th:classappend="${#strings.startsWith(path, '/bookings') and !#strings.startsWith(path, '/bookings/payment-schedule')} ? ' is-active' : ''">Bookings</a>
+    <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/receipts}"
+       th:classappend="${#strings.startsWith(path, '/receipts')} ? ' is-active' : ''">Receipts entry</a>
+    <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/bookings/payment-schedule}"
+       th:classappend="${#strings.startsWith(path, '/bookings/payment-schedule')} ? ' is-active' : ''"
+       title="View your payment milestones and set slab dates, %, and amounts for each booking">Slabs (payment schedule)</a>
+    <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/brokers}"
+       th:classappend="${#strings.startsWith(path, '/brokers')} ? ' is-active' : ''">Brokers</a>
+    <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/cancellations}"
+       th:classappend="${#strings.startsWith(path, '/cancellations')} ? ' is-active' : ''">Cancellations</a>
+
+    <p class="floor21-nav__section" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Finance</p>
+    <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/bank-accounts}"
+       th:classappend="${#strings.startsWith(path, '/bank-accounts')} ? ' is-active' : ''">Bank accounts</a>
+    <a class="floor21-nav__link floor21-nav__link--vault" sec:authorize="hasRole('BUILDER_ADMIN')"
+       th:href="@{/vault}"
+       th:classappend="${#strings.startsWith(path, '/vault')} ? ' is-active' : ''">Vault</a>
+
+    <p class="floor21-nav__section" sec:authorize="hasRole('SUPER_ADMIN')">Platform</p>
+    <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/admin/builders}"
+       th:classappend="${#strings.startsWith(path, '/admin/builders')} ? ' is-active' : ''">Admin — Builders</a>
+    <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/admin/builder-pricing-slabs}"
+       th:classappend="${#strings.startsWith(path, '/admin/builder-pricing-slabs')} ? ' is-active' : ''">Admin — Builder rate slabs</a>
+  </nav>
 </aside>
 </body>
 </html>
