@@ -14,6 +14,8 @@
   --f21-nav-active-accent: #2dd4bf;
   --f21-vault-text: #f5d9a8;
   --f21-vault-active-bg: rgba(240, 198, 116, 0.14);
+  --f21-expenses-text: #d4b8f0;
+  --f21-expenses-active-bg: rgba(180, 140, 220, 0.16);
 }
 
 [data-bs-theme="dark"] {
@@ -162,6 +164,22 @@
   color: #fff3d6;
   background: var(--f21-vault-active-bg);
   border-left-color: #f0c674;
+}
+
+.floor21-nav__link--expenses {
+  color: var(--f21-expenses-text);
+}
+
+.floor21-nav__link--expenses:hover,
+.floor21-nav__link--expenses:focus-visible {
+  color: #f3ebff;
+  background: var(--f21-expenses-active-bg);
+}
+
+.floor21-nav__link--expenses.is-active {
+  color: #f3ebff;
+  background: var(--f21-expenses-active-bg);
+  border-left-color: #c4a0e8;
 }
 
 .floor21-panel {

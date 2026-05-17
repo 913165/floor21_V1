@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3 mb-4" th:text="${pageTitle}">Change expenses PIN</h1>
+  <form class="card card-body shadow-sm col-lg-5" th:action="@{/expenses/change-pin}" method="post">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <div class="mb-3">
+      <label class="form-label">Current PIN</label>
+      <input class="form-control" type="password" name="currentPin" inputmode="numeric" pattern="[0-9]{4,8}"
+             maxlength="8" required/>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">New PIN</label>
+      <input class="form-control" type="password" name="newPin" inputmode="numeric" pattern="[0-9]{4,8}"
+             maxlength="8" required/>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Confirm new PIN</label>
+      <input class="form-control" type="password" name="confirmPin" inputmode="numeric" pattern="[0-9]{4,8}"
+             maxlength="8" required/>
+    </div>
+    <button class="btn btn-primary" type="submit">Update PIN</button>
+    <a class="btn btn-link" th:href="@{/expenses}">Cancel</a>
+  </form>
+  <p class="small mt-3 mb-0">
+    <a th:href="@{/expenses/reset-pin(redirect='/expenses')}">Forgot expenses PIN? Reset with login password</a>
+  </p>
+</div>
+</body>
+</html>

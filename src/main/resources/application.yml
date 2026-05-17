@@ -50,6 +50,8 @@ floor21:
     timeout: 3600
   vault:
     unlock-timeout-minutes: 15
+  expenses:
+    unlock-timeout-minutes: 15
   app:
     name: Floor21
     version: 1.0.0

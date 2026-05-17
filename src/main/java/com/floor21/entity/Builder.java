@@ -34,6 +34,10 @@ public class Builder {
     @Column(name = "vault_pin_hash", length = 255)
     private String vaultPinHash;
 
+    /** Hash of the expenses hub PIN; separate from login and vault PIN. */
+    @Column(name = "expenses_pin_hash", length = 255)
+    private String expensesPinHash;
+
     @Column(length = 20)
     private String phone;
 

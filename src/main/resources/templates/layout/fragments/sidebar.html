@@ -49,6 +49,9 @@
     <a class="floor21-nav__link floor21-nav__link--vault" sec:authorize="hasRole('BUILDER_ADMIN')"
        th:href="@{/vault}"
        th:classappend="${#strings.startsWith(path, '/vault')} ? ' is-active' : ''">Vault</a>
+    <a class="floor21-nav__link floor21-nav__link--expenses" sec:authorize="hasRole('BUILDER_ADMIN')"
+       th:href="@{/expenses}"
+       th:classappend="${#strings.startsWith(path, '/expenses')} ? ' is-active' : ''">Expenses</a>
 
     <p class="floor21-nav__section" sec:authorize="hasRole('SUPER_ADMIN')">Platform</p>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
