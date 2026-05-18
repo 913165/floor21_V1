@@ -26,5 +26,16 @@ public class BookingPaymentSlabBatchForm {
         /** Portion from consideration × percent, or user-entered override. */
         private BigDecimal agreedAmount;
         private BigDecimal extraAmount;
+        private List<PaymentLine> payments = new ArrayList<>();
+    }
+
+    @Data
+    public static class PaymentLine {
+        private UUID id;
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        private LocalDate paymentDate;
+        private BigDecimal amount;
+        /** Mode, cheque no., or short note. */
+        private String reference;
     }
 }

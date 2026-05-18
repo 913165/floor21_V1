@@ -1,24 +1,26 @@
 package com.floor21.service;
 
 import com.floor21.dto.BookingPaymentSlabBatchForm;
+import com.floor21.dto.SlabPaymentSlice;
 import com.floor21.dto.SlabScheduleLineView;
 import com.floor21.dto.SlabScheduleSummary;
 import com.floor21.entity.Booking;
 import com.floor21.entity.BookingPaymentSlab;
+import com.floor21.entity.BookingSlabPayment;
 import com.floor21.entity.PaymentSlabTemplate;
 import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BookingPaymentSlabRepository;
 import com.floor21.repository.BookingRepository;
+import com.floor21.repository.BookingSlabPaymentRepository;
 import com.floor21.repository.PaymentSlabTemplateRepository;
-import com.floor21.repository.ReceiptRepository;
-import com.floor21.repository.VaultEntryRepository;
 import com.floor21.security.TenantContext;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,9 +34,8 @@ public class BookingPaymentSlabService {
 
     private final BookingRepository bookingRepository;
     private final BookingPaymentSlabRepository bookingPaymentSlabRepository;
+    private final BookingSlabPaymentRepository bookingSlabPaymentRepository;
     private final PaymentSlabTemplateRepository paymentSlabTemplateRepository;
-    private final VaultEntryRepository vaultEntryRepository;
-    private final ReceiptRepository receiptRepository;
 
     @Transactional(readOnly = true)
     public List<Booking> listBookingsForSchedule(UUID buildingId) {
@@ -59,42 +60,42 @@ public class BookingPaymentSlabService {
         return bookingPaymentSlabRepository.findByBooking_IdOrderBySortOrderAscIdAsc(bookingId);
     }
 
-    /**
-     * Paid / balance per slab: vault payments linked to a slab, then remaining receipts + vault
-     * (unlinked) applied in slab order against agreed + extra due per row.
-     */
+    /** Paid / balance per slab from payment rows entered on this schedule. */
     @Transactional(readOnly = true)
     public List<SlabScheduleLineView> listLineViews(UUID bookingId) {
-        UUID builderId = TenantContext.requireBuilderId();
         getBookingForSchedule(bookingId);
         List<BookingPaymentSlab> slabs = listLines(bookingId);
-        BigDecimal paymentPool = totalReceivedForBooking(bookingId, builderId);
+        Map<UUID, List<BookingSlabPayment>> paymentsBySlab = groupPaymentsBySlab(bookingId);
 
         List<SlabScheduleLineView> views = new ArrayList<>();
-        BigDecimal remainingPool = paymentPool;
-
         for (BookingPaymentSlab slab : slabs) {
             BigDecimal due = slabDueAmount(slab);
-            BigDecimal directPaid =
-                    zeroIfNull(vaultEntryRepository.sumAmountByPaymentSlabId(slab.getId()));
-            if (directPaid.compareTo(due) > 0) {
-                directPaid = due;
+            List<BookingSlabPayment> slabPayments =
+                    paymentsBySlab.getOrDefault(slab.getId(), List.of());
+            List<SlabPaymentSlice> slices = new ArrayList<>();
+            BigDecimal paid = ZERO;
+            for (BookingSlabPayment p : slabPayments) {
+                paid = paid.add(p.getAmount());
+                slices.add(
+                        new SlabPaymentSlice(
+                                p.getId(),
+                                p.getPaymentDate(),
+                                p.getAmount(),
+                                p.getReference()));
             }
-            remainingPool = remainingPool.subtract(directPaid);
-            BigDecimal paid = directPaid;
-            if (remainingPool.compareTo(ZERO) > 0 && due.compareTo(paid) > 0) {
-                BigDecimal need = due.subtract(paid);
-                BigDecimal fromPool = remainingPool.min(need);
-                paid = paid.add(fromPool);
-                remainingPool = remainingPool.subtract(fromPool);
-            }
-            BigDecimal balance = due.subtract(paid);
-            if (balance.signum() < 0) {
-                balance = ZERO;
-            }
-            views.add(new SlabScheduleLineView(slab, due, paid, balance));
+            BigDecimal balance = due.subtract(paid).max(ZERO);
+            views.add(new SlabScheduleLineView(slab, due, paid, balance, List.copyOf(slices)));
         }
         return views;
+    }
+
+    private Map<UUID, List<BookingSlabPayment>> groupPaymentsBySlab(UUID bookingId) {
+        Map<UUID, List<BookingSlabPayment>> map = new LinkedHashMap<>();
+        for (BookingSlabPayment p :
+                bookingSlabPaymentRepository.findByBookingIdOrderBySlabAndDate(bookingId)) {
+            map.computeIfAbsent(p.getPaymentSlab().getId(), k -> new ArrayList<>()).add(p);
+        }
+        return map;
     }
 
     @Transactional(readOnly = true)
@@ -127,12 +128,6 @@ public class BookingPaymentSlabService {
                         : null;
         return new SlabScheduleSummary(
                 agreed, extra, agreed.add(extra), percent, consideration, remaining, paid, balance);
-    }
-
-    private BigDecimal totalReceivedForBooking(UUID bookingId, UUID builderId) {
-        BigDecimal vault = zeroIfNull(vaultEntryRepository.sumAmountByBookingId(bookingId));
-        BigDecimal receipts = zeroIfNull(receiptRepository.sumAmountForBooking(bookingId, builderId));
-        return vault.add(receipts);
     }
 
     private static BigDecimal slabDueAmount(BookingPaymentSlab slab) {
@@ -234,6 +229,7 @@ public class BookingPaymentSlabService {
             entity.setAgreedAmount(line.getAgreedAmount());
             entity.setUpdatedAt(now);
             bookingPaymentSlabRepository.save(entity);
+            savePaymentsForSlab(entity, line.getPayments(), now);
             saved++;
         }
         if (saved == 0) {
@@ -241,5 +237,59 @@ public class BookingPaymentSlabService {
                     "No slab rows were saved. Reload the page and try again — if this persists, contact support.");
         }
         return saved;
+    }
+
+    private void savePaymentsForSlab(
+            BookingPaymentSlab slab, List<BookingPaymentSlabBatchForm.PaymentLine> lines, Instant now) {
+        List<UUID> keepIds = new ArrayList<>();
+        int sort = 0;
+        if (lines != null) {
+            for (BookingPaymentSlabBatchForm.PaymentLine line : lines) {
+                if (line.getAmount() == null || line.getAmount().compareTo(ZERO) <= 0) {
+                    continue;
+                }
+                if (line.getPaymentDate() == null) {
+                    throw new IllegalArgumentException(
+                            "Each payment on slab “"
+                                    + slab.getMilestoneLabel()
+                                    + "” needs a date.");
+                }
+                BookingSlabPayment entity;
+                if (line.getId() != null) {
+                    entity =
+                            bookingSlabPaymentRepository
+                                    .findById(line.getId())
+                                    .orElseThrow(
+                                            () -> new ResourceNotFoundException("Slab payment not found"));
+                    if (!entity.getPaymentSlab().getId().equals(slab.getId())) {
+                        throw new IllegalArgumentException("Invalid payment row for this slab");
+                    }
+                } else {
+                    entity = new BookingSlabPayment();
+                    entity.setPaymentSlab(slab);
+                    entity.setCreatedAt(now);
+                }
+                entity.setPaymentDate(line.getPaymentDate());
+                entity.setAmount(line.getAmount());
+                entity.setReference(trimToNull(line.getReference()));
+                entity.setSortOrder(sort++);
+                entity.setUpdatedAt(now);
+                bookingSlabPaymentRepository.save(entity);
+                keepIds.add(entity.getId());
+            }
+        }
+        if (keepIds.isEmpty()) {
+            bookingSlabPaymentRepository.deleteByPaymentSlab_Id(slab.getId());
+        } else {
+            bookingSlabPaymentRepository.deleteByPaymentSlab_IdAndIdNotIn(slab.getId(), keepIds);
+        }
+    }
+
+    private static String trimToNull(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
     }
 }

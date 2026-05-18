@@ -118,7 +118,7 @@
           <span class="fw-semibold">Slab schedule</span>
           <span class="text-muted small d-block">Amounts use Indian comma format (e.g. 12,00,000)</span>
           <span class="text-muted small d-block mt-1">
-            Paid / balance from vault payments and receipts (non-dishonoured), applied to slabs in order.
+            Enter <strong>due</strong> on each row; use <strong>+</strong> to expand and add <strong>payment</strong> lines (date, amount, reference). Paid and balance update from those payments. Save schedule to persist.
           </span>
           <span class="small d-block mt-1">
             <span class="slab-amt--agreed">Agreed</span>
@@ -172,8 +172,20 @@
           </tr>
           </thead>
           <tbody>
-          <tr th:each="line, iterStat : ${lineViews}" th:with="row=${line.slab()}">
-            <td class="col-sno" th:text="${iterStat.count}">1</td>
+          <th:block th:each="line, iterStat : ${lineViews}"
+                    th:with="row=${line.slab()}, formLine=${saveForm.lines[iterStat.index]}">
+          <tr class="slab-schedule-data-row">
+            <td class="col-sno text-nowrap">
+              <button type="button"
+                      class="btn btn-link btn-sm p-0 me-1 slab-tree-toggle slab-tree-toggle--plus"
+                      th:data-slab-index="${iterStat.index}"
+                      th:data-tree-id="|slabPayTree${iterStat.index}|"
+                      aria-expanded="false"
+                      title="Add payment row for this slab">
+                <span class="slab-tree-chevron" aria-hidden="true">+</span>
+              </button>
+              <span th:text="${iterStat.count}">1</span>
+            </td>
             <td class="p-1">
               <input type="hidden" th:field="*{lines[__${iterStat.index}__].id}"/>
               <input class="form-control form-control-sm" type="date"
@@ -207,12 +219,79 @@
                      th:value="${row.extraAmount != null ? amt.formatComma(row.extraAmount) : ''}"
                      placeholder="0"/>
             </td>
-            <td class="text-end text-nowrap slab-amt--paid" style="width: 8rem;"
-                th:text="${amt.formatAmountDisplay(line.paidAmount())}">0</td>
-            <td class="text-end text-nowrap" style="width: 8rem;"
-                th:classappend="${line.balanceAmount() != null and line.balanceAmount().signum() > 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
-                th:text="${amt.formatAmountDisplay(line.balanceAmount())}">0</td>
+            <td class="text-end text-nowrap slab-amt--paid" style="width: 8rem;">
+              <span th:id="|slabPaidDisplay_${iterStat.index}|" th:text="${amt.formatAmountDisplay(line.paidAmount())}">0</span>
+            </td>
+            <td class="text-end text-nowrap" style="width: 8rem;">
+              <span th:id="|slabBalanceDisplay_${iterStat.index}|"
+                    th:classappend="${line.balanceAmount() != null and line.balanceAmount().signum() > 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
+                    th:text="${amt.formatAmountDisplay(line.balanceAmount())}">0</span>
+            </td>
           </tr>
+          <tr class="slab-payment-tree-row">
+            <td colspan="8" class="p-0 border-0 bg-body-tertiary">
+              <div class="collapse slab-payment-collapse"
+                   th:id="|slabPayTree${iterStat.index}|"
+                   th:classappend="${!#lists.isEmpty(formLine.payments)} ? ' show' : ''">
+              <div class="slab-payment-tree-panel" th:attr="data-slab-index=${iterStat.index}">
+                <div class="slab-payment-tree-summary small mb-2">
+                  <span class="text-muted">Due</span>
+                  <span class="fw-semibold ms-1 slab-tree-summary-due" th:text="${amt.formatAmountDisplay(line.dueAmount())}">0</span>
+                  <span class="text-muted ms-2">· Paid</span>
+                  <span class="fw-semibold ms-1 slab-amt--paid slab-tree-summary-paid" th:text="${amt.formatAmountDisplay(line.paidAmount())}">0</span>
+                  <span class="text-muted ms-2">· Balance</span>
+                  <span class="fw-semibold ms-1 slab-tree-summary-balance"
+                        th:classappend="${line.balanceAmount() != null and line.balanceAmount().signum() > 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
+                        th:text="${amt.formatAmountDisplay(line.balanceAmount())}">0</span>
+                </div>
+                <table class="table table-sm table-borderless mb-2 slab-payment-entry-table">
+                  <thead>
+                  <tr class="small text-muted">
+                    <th style="width: 11rem;">Payment date</th>
+                    <th style="width: 9rem;" class="text-end">Amount</th>
+                    <th>Reference</th>
+                    <th style="width: 2.5rem;"></th>
+                  </tr>
+                  </thead>
+                  <tbody class="slab-payment-rows">
+                  <tr th:each="p, payStat : ${formLine.payments}"
+                      class="slab-payment-entry-row"
+                      th:attr="data-pay-index=${payStat.index}">
+                    <td class="slab-payment-entry-date p-1">
+                      <input type="hidden"
+                             th:if="${p.id != null}"
+                             th:field="*{lines[__${iterStat.index}__].payments[__${payStat.index}__].id}"/>
+                      <input class="form-control form-control-sm" type="date"
+                             th:field="*{lines[__${iterStat.index}__].payments[__${payStat.index}__].paymentDate}"/>
+                    </td>
+                    <td class="slab-payment-entry-amt p-1">
+                      <input type="hidden"
+                             class="js-slab-pay-amount-hidden"
+                             th:field="*{lines[__${iterStat.index}__].payments[__${payStat.index}__].amount}"
+                             th:id="|slabPayAmountHidden_${iterStat.index}_${payStat.index}|"/>
+                      <input class="form-control form-control-sm text-end js-amount-input js-slab-pay-amount-display"
+                             type="text" inputmode="decimal" autocomplete="off" placeholder="0"
+                             th:id="|slabPayAmountDisplay_${iterStat.index}_${payStat.index}|"
+                             th:attr="data-amount-hidden=|slabPayAmountHidden_${iterStat.index}_${payStat.index}|"
+                             th:value="${p.amount != null ? amt.formatComma(p.amount) : ''}"/>
+                    </td>
+                    <td class="slab-payment-entry-ref p-1">
+                      <input class="form-control form-control-sm" type="text" maxlength="200"
+                             placeholder="Cheque / NEFT / note"
+                             th:field="*{lines[__${iterStat.index}__].payments[__${payStat.index}__].reference}"/>
+                    </td>
+                    <td class="slab-payment-entry-actions p-1 text-end">
+                      <button type="button" class="btn btn-sm btn-outline-danger slab-remove-payment-btn" title="Remove">×</button>
+                    </td>
+                  </tr>
+                  </tbody>
+                </table>
+                <button type="button" class="btn btn-sm btn-outline-primary slab-add-payment-btn">+ Add payment</button>
+              </div>
+              </div>
+            </td>
+          </tr>
+          </th:block>
           </tbody>
           <tfoot class="table-light" th:if="${scheduleSummary != null}" id="scheduleTotalsFoot">
           <tr class="fw-semibold">
@@ -248,16 +327,19 @@
       </div>
       <div class="card-body border-top bg-body-tertiary">
         <button class="btn btn-primary" type="submit">Save schedule</button>
-        <span class="text-muted small ms-2">Slab date can be left empty until fixed. Percent and amounts are saved as entered.</span>
+        <span class="text-muted small ms-2">Slab date can be left empty until fixed. Use <strong>+</strong> on each row to record payments, then save.</span>
       </div>
     </form>
     </div>
     <script th:src="@{/js/amount-format.js}"></script>
+    <script th:src="@{/js/slab-schedule-payments.js(v=2)}"></script>
     <script>
       (function () {
         const form = document.getElementById('scheduleSaveForm');
-        if (!form || !window.Floor21Amount) return;
-        Floor21Amount.bindAmountForm(form);
+        if (!form) return;
+        if (window.Floor21Amount) {
+          Floor21Amount.bindAmountForm(form);
+        }
         const elAgreed = document.getElementById('scheduleTotalAgreed');
         const elExtra = document.getElementById('scheduleTotalExtra');
         const elPct = document.getElementById('scheduleTotalPercent');
@@ -293,6 +375,13 @@
         form.addEventListener('input', recalcTotals);
         recalcTotals();
       })();
+    </script>
+    <script>
+      window.addEventListener('load', function () {
+        if (window.Floor21SlabPayments) {
+          Floor21SlabPayments.init();
+        }
+      });
     </script>
   </th:block>
 </div>

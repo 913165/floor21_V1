@@ -15,6 +15,8 @@ public interface VaultEntryRepository extends JpaRepository<VaultEntry, UUID> {
 
     List<VaultEntry> findByBooking_IdOrderByEntryDateDescCreatedAtDesc(UUID bookingId);
 
+    List<VaultEntry> findByBooking_IdOrderByEntryDateAscCreatedAtAsc(UUID bookingId);
+
     List<VaultEntry> findByBooking_IdAndPaymentSlabIsNotNullOrderByPaymentSlab_SortOrderAscIdAsc(
             UUID bookingId);
 

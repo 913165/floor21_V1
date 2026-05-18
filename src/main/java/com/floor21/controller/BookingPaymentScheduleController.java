@@ -1,6 +1,7 @@
 package com.floor21.controller;
 
 import com.floor21.dto.BookingPaymentSlabBatchForm;
+import com.floor21.dto.SlabPaymentSlice;
 import com.floor21.entity.Booking;
 import com.floor21.entity.BookingPaymentSlab;
 import com.floor21.exception.ResourceNotFoundException;
@@ -97,6 +98,14 @@ public class BookingPaymentScheduleController {
                 formLine.setPercent(r.getPercent());
                 formLine.setAgreedAmount(r.getAgreedAmount());
                 formLine.setExtraAmount(r.getExtraAmount());
+                for (SlabPaymentSlice p : view.payments()) {
+                    BookingPaymentSlabBatchForm.PaymentLine pay = new BookingPaymentSlabBatchForm.PaymentLine();
+                    pay.setId(p.id());
+                    pay.setPaymentDate(p.paymentDate());
+                    pay.setAmount(p.amount());
+                    pay.setReference(p.reference());
+                    formLine.getPayments().add(pay);
+                }
                 saveForm.getLines().add(formLine);
             }
             model.addAttribute("saveForm", saveForm);

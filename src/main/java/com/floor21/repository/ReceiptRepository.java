@@ -17,6 +17,13 @@ public interface ReceiptRepository extends JpaRepository<Receipt, UUID> {
             @Param("bookingId") UUID bookingId, @Param("builderId") UUID builderId);
 
     @Query(
+            "select r from Receipt r where r.booking.id = :bookingId and r.builder.id = :builderId "
+                    + "and (r.dishonoured = false or r.dishonoured is null) "
+                    + "order by r.receiptDate asc, r.createdAt asc")
+    List<Receipt> findActiveByBooking_IdOrderByReceiptDateAsc(
+            @Param("bookingId") UUID bookingId, @Param("builderId") UUID builderId);
+
+    @Query(
             "select r from Receipt r left join fetch r.depositBank where r.id = :rid and r.booking.id = :bookingId "
                     + "and r.builder.id = :builderId")
     Optional<Receipt> findByIdAndBooking_IdAndBuilder_Id(
