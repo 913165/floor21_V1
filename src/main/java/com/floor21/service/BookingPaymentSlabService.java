@@ -1,6 +1,7 @@
 package com.floor21.service;
 
 import com.floor21.dto.BookingPaymentSlabBatchForm;
+import com.floor21.dto.SlabScheduleLineView;
 import com.floor21.dto.SlabScheduleSummary;
 import com.floor21.entity.Booking;
 import com.floor21.entity.BookingPaymentSlab;
@@ -9,11 +10,14 @@ import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BookingPaymentSlabRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.PaymentSlabTemplateRepository;
+import com.floor21.repository.ReceiptRepository;
+import com.floor21.repository.VaultEntryRepository;
 import com.floor21.security.TenantContext;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +33,8 @@ public class BookingPaymentSlabService {
     private final BookingRepository bookingRepository;
     private final BookingPaymentSlabRepository bookingPaymentSlabRepository;
     private final PaymentSlabTemplateRepository paymentSlabTemplateRepository;
+    private final VaultEntryRepository vaultEntryRepository;
+    private final ReceiptRepository receiptRepository;
 
     @Transactional(readOnly = true)
     public List<Booking> listBookingsForSchedule(UUID buildingId) {
@@ -53,13 +59,55 @@ public class BookingPaymentSlabService {
         return bookingPaymentSlabRepository.findByBooking_IdOrderBySortOrderAscIdAsc(bookingId);
     }
 
+    /**
+     * Paid / balance per slab: vault payments linked to a slab, then remaining receipts + vault
+     * (unlinked) applied in slab order against agreed + extra due per row.
+     */
+    @Transactional(readOnly = true)
+    public List<SlabScheduleLineView> listLineViews(UUID bookingId) {
+        UUID builderId = TenantContext.requireBuilderId();
+        getBookingForSchedule(bookingId);
+        List<BookingPaymentSlab> slabs = listLines(bookingId);
+        BigDecimal paymentPool = totalReceivedForBooking(bookingId, builderId);
+
+        List<SlabScheduleLineView> views = new ArrayList<>();
+        BigDecimal remainingPool = paymentPool;
+
+        for (BookingPaymentSlab slab : slabs) {
+            BigDecimal due = slabDueAmount(slab);
+            BigDecimal directPaid =
+                    zeroIfNull(vaultEntryRepository.sumAmountByPaymentSlabId(slab.getId()));
+            if (directPaid.compareTo(due) > 0) {
+                directPaid = due;
+            }
+            remainingPool = remainingPool.subtract(directPaid);
+            BigDecimal paid = directPaid;
+            if (remainingPool.compareTo(ZERO) > 0 && due.compareTo(paid) > 0) {
+                BigDecimal need = due.subtract(paid);
+                BigDecimal fromPool = remainingPool.min(need);
+                paid = paid.add(fromPool);
+                remainingPool = remainingPool.subtract(fromPool);
+            }
+            BigDecimal balance = due.subtract(paid);
+            if (balance.signum() < 0) {
+                balance = ZERO;
+            }
+            views.add(new SlabScheduleLineView(slab, due, paid, balance));
+        }
+        return views;
+    }
+
     @Transactional(readOnly = true)
     public SlabScheduleSummary summarizeLines(UUID bookingId) {
         Booking booking = getBookingForSchedule(bookingId);
+        List<SlabScheduleLineView> views = listLineViews(bookingId);
         BigDecimal agreed = ZERO;
         BigDecimal extra = ZERO;
         BigDecimal percent = ZERO;
-        for (BookingPaymentSlab slab : listLines(bookingId)) {
+        BigDecimal paid = ZERO;
+        BigDecimal balance = ZERO;
+        for (SlabScheduleLineView line : views) {
+            BookingPaymentSlab slab = line.slab();
             if (slab.getAgreedAmount() != null) {
                 agreed = agreed.add(slab.getAgreedAmount());
             }
@@ -69,6 +117,8 @@ public class BookingPaymentSlabService {
             if (slab.getPercent() != null) {
                 percent = percent.add(slab.getPercent());
             }
+            paid = paid.add(line.paidAmount());
+            balance = balance.add(line.balanceAmount());
         }
         BigDecimal consideration = baseConsideration(booking);
         BigDecimal remaining =
@@ -76,7 +126,21 @@ public class BookingPaymentSlabService {
                         ? consideration.subtract(agreed)
                         : null;
         return new SlabScheduleSummary(
-                agreed, extra, agreed.add(extra), percent, consideration, remaining);
+                agreed, extra, agreed.add(extra), percent, consideration, remaining, paid, balance);
+    }
+
+    private BigDecimal totalReceivedForBooking(UUID bookingId, UUID builderId) {
+        BigDecimal vault = zeroIfNull(vaultEntryRepository.sumAmountByBookingId(bookingId));
+        BigDecimal receipts = zeroIfNull(receiptRepository.sumAmountForBooking(bookingId, builderId));
+        return vault.add(receipts);
+    }
+
+    private static BigDecimal slabDueAmount(BookingPaymentSlab slab) {
+        return zeroIfNull(slab.getAgreedAmount()).add(zeroIfNull(slab.getExtraAmount()));
+    }
+
+    private static BigDecimal zeroIfNull(BigDecimal v) {
+        return v != null ? v : ZERO;
     }
 
     public BigDecimal baseConsideration(Booking booking) {

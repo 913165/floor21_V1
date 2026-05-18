@@ -83,20 +83,21 @@ public class BookingPaymentScheduleController {
             model.addAttribute("selectedBooking", booking);
             var base = bookingPaymentSlabService.baseConsideration(booking);
             model.addAttribute("baseAmount", base);
-            var rows = bookingPaymentSlabService.listLines(bookingId);
-            model.addAttribute("rows", rows);
+            var lineViews = bookingPaymentSlabService.listLineViews(bookingId);
+            model.addAttribute("lineViews", lineViews);
             model.addAttribute("scheduleSummary", bookingPaymentSlabService.summarizeLines(bookingId));
             BookingPaymentSlabBatchForm saveForm = new BookingPaymentSlabBatchForm();
             saveForm.setBookingId(bookingId);
-            for (BookingPaymentSlab r : rows) {
-                BookingPaymentSlabBatchForm.Line line = new BookingPaymentSlabBatchForm.Line();
-                line.setId(r.getId());
-                line.setDueDate(r.getDueDate());
-                line.setMilestoneLabel(r.getMilestoneLabel());
-                line.setPercent(r.getPercent());
-                line.setAgreedAmount(r.getAgreedAmount());
-                line.setExtraAmount(r.getExtraAmount());
-                saveForm.getLines().add(line);
+            for (var view : lineViews) {
+                BookingPaymentSlab r = view.slab();
+                BookingPaymentSlabBatchForm.Line formLine = new BookingPaymentSlabBatchForm.Line();
+                formLine.setId(r.getId());
+                formLine.setDueDate(r.getDueDate());
+                formLine.setMilestoneLabel(r.getMilestoneLabel());
+                formLine.setPercent(r.getPercent());
+                formLine.setAgreedAmount(r.getAgreedAmount());
+                formLine.setExtraAmount(r.getExtraAmount());
+                saveForm.getLines().add(formLine);
             }
             model.addAttribute("saveForm", saveForm);
         }

@@ -964,6 +964,17 @@ button.flat-floor-plan-link {
   font-variant-numeric: tabular-nums;
 }
 
+.slab-amt--paid {
+  color: var(--bs-success);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.slab-amt--balance {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .slab-schedule-table .col-sno {
   width: 3rem;
   color: var(--bs-secondary-color);

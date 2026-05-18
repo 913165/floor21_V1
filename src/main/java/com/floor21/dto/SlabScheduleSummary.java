@@ -11,4 +11,6 @@ public record SlabScheduleSummary(
         /** Flat consideration / booking base used as schedule target. */
         BigDecimal considerationTotal,
         /** {@code considerationTotal - totalAgreedAmount}; null when consideration is unknown. */
-        BigDecimal remainingAgreedAmount) {}
+        BigDecimal remainingAgreedAmount,
+        BigDecimal totalPaidAmount,
+        BigDecimal totalBalanceAmount) {}

@@ -42,4 +42,9 @@ public interface VaultEntryRepository extends JpaRepository<VaultEntry, UUID> {
             "select coalesce(sum(v.amount), 0) from VaultEntry v where v.booking.id = :bookingId "
                     + "and v.paymentSlab is null")
     BigDecimal sumAmountByBookingIdExtraOnly(@Param("bookingId") UUID bookingId);
+
+    @Query(
+            "select coalesce(sum(v.amount), 0) from VaultEntry v "
+                    + "where v.paymentSlab.id = :slabId")
+    BigDecimal sumAmountByPaymentSlabId(@Param("slabId") UUID slabId);
 }
