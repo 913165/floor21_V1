@@ -1,6 +1,8 @@
 package com.floor21.service;
 
 import com.floor21.dto.BookingPaymentSlabBatchForm;
+import com.floor21.dto.SlabPaymentSaveRequest;
+import com.floor21.dto.SlabPaymentSaveResponse;
 import com.floor21.dto.SlabPaymentSlice;
 import com.floor21.dto.SlabScheduleLineView;
 import com.floor21.dto.SlabScheduleSummary;
@@ -291,5 +293,104 @@ public class BookingPaymentSlabService {
         }
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    @Transactional
+    public SlabPaymentSaveResponse saveSinglePayment(SlabPaymentSaveRequest request) {
+        if (request.bookingId() == null || request.slabId() == null) {
+            throw new IllegalArgumentException("Booking and slab are required.");
+        }
+        Booking booking = getBookingForSchedule(request.bookingId());
+        BookingPaymentSlab slab = requireSlabForBooking(request.slabId(), booking.getId());
+        if (request.amount() == null || request.amount().compareTo(ZERO) <= 0) {
+            throw new IllegalArgumentException("Payment amount must be greater than zero.");
+        }
+        if (request.paymentDate() == null) {
+            throw new IllegalArgumentException("Payment date is required.");
+        }
+        Instant now = Instant.now();
+        BookingSlabPayment entity = upsertSinglePayment(slab, request, now);
+        return buildPaymentSaveResponse(booking.getId(), slab, entity.getId());
+    }
+
+    @Transactional
+    public SlabPaymentSaveResponse deleteSinglePayment(UUID bookingId, UUID slabId, UUID paymentId) {
+        if (bookingId == null || slabId == null || paymentId == null) {
+            throw new IllegalArgumentException("Booking, slab, and payment are required.");
+        }
+        getBookingForSchedule(bookingId);
+        requireSlabForBooking(slabId, bookingId);
+        BookingSlabPayment entity =
+                bookingSlabPaymentRepository
+                        .findById(paymentId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Slab payment not found"));
+        if (!entity.getPaymentSlab().getId().equals(slabId)) {
+            throw new IllegalArgumentException("Invalid payment row for this slab");
+        }
+        bookingSlabPaymentRepository.delete(entity);
+        BookingPaymentSlab slab =
+                bookingPaymentSlabRepository
+                        .findById(slabId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Payment row not found"));
+        return buildPaymentSaveResponse(bookingId, slab, null);
+    }
+
+    private BookingPaymentSlab requireSlabForBooking(UUID slabId, UUID bookingId) {
+        BookingPaymentSlab slab =
+                bookingPaymentSlabRepository
+                        .findById(slabId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Payment row not found"));
+        if (!slab.getBooking().getId().equals(bookingId)) {
+            throw new IllegalArgumentException("Invalid payment row for this booking");
+        }
+        return slab;
+    }
+
+    private BookingSlabPayment upsertSinglePayment(
+            BookingPaymentSlab slab, SlabPaymentSaveRequest request, Instant now) {
+        BookingSlabPayment entity;
+        if (request.id() != null) {
+            entity =
+                    bookingSlabPaymentRepository
+                            .findById(request.id())
+                            .orElseThrow(() -> new ResourceNotFoundException("Slab payment not found"));
+            if (!entity.getPaymentSlab().getId().equals(slab.getId())) {
+                throw new IllegalArgumentException("Invalid payment row for this slab");
+            }
+        } else {
+            entity = new BookingSlabPayment();
+            entity.setPaymentSlab(slab);
+            entity.setCreatedAt(now);
+            int nextSort =
+                    bookingSlabPaymentRepository
+                            .findByPaymentSlab_IdOrderByPaymentDateAscSortOrderAscIdAsc(slab.getId())
+                            .size();
+            entity.setSortOrder(nextSort);
+        }
+        entity.setPaymentDate(request.paymentDate());
+        entity.setAmount(request.amount());
+        entity.setReference(trimToNull(request.reference()));
+        entity.setUpdatedAt(now);
+        return bookingSlabPaymentRepository.save(entity);
+    }
+
+    private SlabPaymentSaveResponse buildPaymentSaveResponse(
+            UUID bookingId, BookingPaymentSlab slab, UUID savedPaymentId) {
+        BigDecimal due = slabDueAmount(slab);
+        BigDecimal paid = ZERO;
+        for (BookingSlabPayment p :
+                bookingSlabPaymentRepository.findByPaymentSlab_IdOrderByPaymentDateAscSortOrderAscIdAsc(
+                        slab.getId())) {
+            paid = paid.add(p.getAmount());
+        }
+        BigDecimal balance = due.subtract(paid).max(ZERO);
+        SlabScheduleSummary totals = summarizeLines(bookingId);
+        return new SlabPaymentSaveResponse(
+                savedPaymentId,
+                due,
+                paid,
+                balance,
+                totals.totalPaidAmount(),
+                totals.totalBalanceAmount());
     }
 }

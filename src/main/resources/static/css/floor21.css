@@ -964,10 +964,33 @@ button.flat-floor-plan-link {
   font-variant-numeric: tabular-nums;
 }
 
-.slab-amt--paid {
-  color: var(--bs-success);
+.slab-amt--paid,
+.slab-amt--paid span,
+[id^="slabPaidDisplay_"],
+.slab-tree-summary-paid,
+#scheduleTotalPaid,
+.slab-schedule-th--paid {
+  color: #198754 !important;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.slab-payment-entry-table .slab-payment-entry-amt .form-control,
+.slab-payment-entry-table .slab-payment-entry-amt .js-slab-pay-amount-display {
+  color: #198754 !important;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-bs-theme="dark"] .slab-amt--paid,
+[data-bs-theme="dark"] .slab-amt--paid span,
+[data-bs-theme="dark"] [id^="slabPaidDisplay_"],
+[data-bs-theme="dark"] .slab-tree-summary-paid,
+[data-bs-theme="dark"] #scheduleTotalPaid,
+[data-bs-theme="dark"] .slab-schedule-th--paid,
+[data-bs-theme="dark"] .slab-payment-entry-table .slab-payment-entry-amt .form-control,
+[data-bs-theme="dark"] .slab-payment-entry-table .slab-payment-entry-amt .js-slab-pay-amount-display {
+  color: #75b798 !important;
 }
 
 .slab-amt--balance {
@@ -1121,6 +1144,29 @@ button.flat-floor-plan-link {
   font-size: 1rem;
   font-weight: 700;
   line-height: 1;
+}
+
+.slab-save-payment-btn {
+  min-width: 1.75rem;
+  font-weight: 700;
+}
+
+.slab-save-payment-btn--saved {
+  color: var(--bs-success) !important;
+  border-color: var(--bs-success) !important;
+}
+
+.slab-save-payment-btn--error {
+  color: var(--bs-danger) !important;
+  border-color: var(--bs-danger) !important;
+}
+
+.slab-payment-entry-row--saved .slab-save-payment-btn {
+  border-color: var(--bs-success);
+}
+
+.slab-payment-entry-actions .btn + .btn {
+  margin-left: 0.15rem;
 }
 
 /* Footer totals align under amount columns (slab + vault tables) */

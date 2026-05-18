@@ -1,27 +1,38 @@
 package com.floor21.controller;
 
 import com.floor21.dto.BookingPaymentSlabBatchForm;
+import com.floor21.dto.SlabPaymentSaveRequest;
+import com.floor21.dto.SlabPaymentSaveResponse;
 import com.floor21.dto.SlabPaymentSlice;
 import com.floor21.entity.Booking;
 import com.floor21.entity.BookingPaymentSlab;
 import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.service.BookingPaymentSlabService;
 import com.floor21.service.BuildingService;
+import com.floor21.service.DemandDraftService;
 import com.floor21.service.PaymentSlabTemplateService;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -60,6 +71,7 @@ public class BookingPaymentScheduleController {
     private final BuildingService buildingService;
     private final BookingPaymentSlabService bookingPaymentSlabService;
     private final PaymentSlabTemplateService paymentSlabTemplateService;
+    private final DemandDraftService demandDraftService;
 
     @GetMapping
     public String page(
@@ -128,6 +140,35 @@ public class BookingPaymentScheduleController {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
         }
         return redirectBack(bookingId, buildingId);
+    }
+
+    @GetMapping("/demand-draft")
+    public ResponseEntity<byte[]> demandDraft(@RequestParam UUID bookingId) {
+        byte[] body = demandDraftService.generate(bookingId);
+        String filename = demandDraftService.suggestedFilename(bookingId);
+        ContentDisposition disposition =
+                ContentDisposition.attachment().filename(filename).build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(
+                        MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+                .body(body);
+    }
+
+    @PostMapping(value = "/payments/save", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public SlabPaymentSaveResponse savePayment(@RequestBody SlabPaymentSaveRequest request) {
+        return bookingPaymentSlabService.saveSinglePayment(request);
+    }
+
+    @DeleteMapping(value = "/payments/{paymentId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public SlabPaymentSaveResponse deletePayment(
+            @PathVariable UUID paymentId,
+            @RequestParam UUID bookingId,
+            @RequestParam UUID slabId) {
+        return bookingPaymentSlabService.deleteSinglePayment(bookingId, slabId, paymentId);
     }
 
     @PostMapping("/save")
