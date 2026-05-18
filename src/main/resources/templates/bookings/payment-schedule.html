@@ -118,7 +118,7 @@
           <span class="fw-semibold">Slab schedule</span>
           <span class="text-muted small d-block">Amounts use Indian comma format (e.g. 12,00,000)</span>
           <span class="text-muted small d-block mt-1">
-            Enter <strong>due</strong> on each row; use <strong>+</strong> to expand and add <strong>payment</strong> lines (date, amount, reference). Paid and balance update from those payments. Save schedule to persist.
+            Enter <strong>due</strong> on each row; use <strong>+</strong> to expand (and open a first payment line when none exist). Use <strong>+ Add payment</strong> inside the panel for more lines. Paid and balance update from saved payments.
           </span>
           <span class="small d-block mt-1">
             <span class="slab-amt--agreed">Agreed</span>
@@ -189,7 +189,7 @@
                       th:data-slab-index="${iterStat.index}"
                       th:data-tree-id="|slabPayTree${iterStat.index}|"
                       aria-expanded="false"
-                      title="Add payment row for this slab">
+                      title="Expand payments (adds first row only when none exist)">
                 <span class="slab-tree-chevron" aria-hidden="true">+</span>
               </button>
               <span th:text="${iterStat.count}">1</span>
@@ -343,7 +343,7 @@
     </form>
     </div>
     <script th:src="@{/js/amount-format.js}"></script>
-    <script th:src="@{/js/slab-schedule-payments.js(v=3)}"></script>
+    <script th:src="@{/js/slab-schedule-payments.js(v=4)}"></script>
     <script>
       (function () {
         const form = document.getElementById('scheduleSaveForm');

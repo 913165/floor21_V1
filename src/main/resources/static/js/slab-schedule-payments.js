@@ -513,6 +513,11 @@
     return row;
   }
 
+  function hasPaymentRows(panel) {
+    const tbody = panel.querySelector('.slab-payment-rows');
+    return tbody != null && tbody.querySelectorAll('.slab-payment-entry-row').length > 0;
+  }
+
   function handlePlusClick(btn) {
     const parts = findSlabParts(btn);
     if (!parts) {
@@ -525,7 +530,9 @@
       return;
     }
     showPanel(parts.collapse, btn);
-    addPaymentRow(parts.panel);
+    if (!hasPaymentRows(parts.panel)) {
+      addPaymentRow(parts.panel);
+    }
   }
 
   function init() {
