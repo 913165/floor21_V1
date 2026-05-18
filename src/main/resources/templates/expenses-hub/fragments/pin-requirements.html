@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="pinRequirements" class="alert alert-secondary border small mb-3 py-2">
+  <div class="fw-semibold mb-1">Expenses PIN requirements</div>
+  <ul class="mb-0 ps-3">
+    <li th:text="${pinRequirementsHint != null ? pinRequirementsHint : '4–8 digits, numbers only (not your login or vault PIN).'}">
+      4–8 digits, numbers only
+    </li>
+    <li>New PIN and confirmation must match.</li>
+    <li th:if="${unlockTimeoutMinutes != null}">
+      After you unlock, expenses stays open for
+      <span th:text="${unlockTimeoutMinutes}">15</span> minutes, then asks for the PIN again.
+    </li>
+    <li>Only builder administrators can open the expenses hub.</li>
+  </ul>
+</div>
+</body>
+</html>

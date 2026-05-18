@@ -93,7 +93,8 @@ public class ImpersonationService {
                         builder.getPasswordHash(),
                         List.of(new SimpleGrantedAuthority("ROLE_BUILDER_ADMIN")));
         Floor21UserPrincipal principal =
-                new Floor21UserPrincipal(builder.getId(), builder.getEmail(), builder.getPasswordHash(), false, delegate);
+                new Floor21UserPrincipal(
+                        builder.getId(), null, builder.getEmail(), builder.getPasswordHash(), false, delegate);
         UsernamePasswordAuthenticationToken token =
                 new UsernamePasswordAuthenticationToken(principal, principal.getPassword(), principal.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(token);

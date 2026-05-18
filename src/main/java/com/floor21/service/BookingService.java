@@ -37,14 +37,32 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<Booking> list() {
-        return bookingRepository.findByBuilder_IdForListUi(TenantContext.requireBuilderId());
+        List<Booking> all = bookingRepository.findByBuilder_IdForListUi(TenantContext.requireBuilderId());
+        if (TenantContext.hasUnrestrictedBuildingAccess()) {
+            return all;
+        }
+        return all.stream()
+                .filter(
+                        b ->
+                                b.getFlat() != null
+                                        && b.getFlat().getBuilding() != null
+                                        && TenantContext.canAccessBuilding(
+                                                b.getFlat().getBuilding().getId()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public Booking get(UUID id) {
-        return bookingRepository
-                .findByIdAndBuilder_Id(id, TenantContext.requireBuilderId())
-                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        Booking booking =
+                bookingRepository
+                        .findByIdAndBuilder_Id(id, TenantContext.requireBuilderId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        if (booking.getFlat() != null
+                && booking.getFlat().getBuilding() != null
+                && !TenantContext.canAccessBuilding(booking.getFlat().getBuilding().getId())) {
+            throw new ResourceNotFoundException("Booking not found");
+        }
+        return booking;
     }
 
     @Transactional
@@ -56,6 +74,10 @@ public class BookingService {
                 flatRepository
                         .findByIdAndBuilder_Id(form.getFlat().getId(), builderId)
                         .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
+        if (flat.getBuilding() != null
+                && !TenantContext.canAccessBuilding(flat.getBuilding().getId())) {
+            throw new ResourceNotFoundException("Flat not found");
+        }
         Client client =
                 clientRepository
                         .findByIdAndBuilder_Id(form.getClient().getId(), builderId)

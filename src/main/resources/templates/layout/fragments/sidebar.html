@@ -56,7 +56,7 @@
     <p class="floor21-nav__section" sec:authorize="hasRole('SUPER_ADMIN')">Platform</p>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/builders}"
-       th:classappend="${#strings.startsWith(path, '/admin/builders')} ? ' is-active' : ''">Builders</a>
+       th:classappend="${#strings.startsWith(path, '/admin/builders') and !#strings.contains(path, '/staff')} ? ' is-active' : ''">Builders</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/buildings}"
        th:classappend="${path == '/admin/buildings'} ? ' is-active' : ''">All buildings</a>

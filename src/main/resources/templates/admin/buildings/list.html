@@ -29,6 +29,8 @@
         <td class="text-end text-nowrap">
           <a class="btn btn-sm btn-outline-primary" th:href="@{/buildings/{id}/flats(id=${b.id})}">Flats</a>
           <a class="btn btn-sm btn-outline-secondary"
+             th:href="@{/admin/buildings/{id}/staff(id=${b.id})}">Staff</a>
+          <a class="btn btn-sm btn-outline-secondary"
              th:if="${b.builder != null}"
              th:href="@{/admin/builders/{id}/edit(id=${b.builder.id})}">Builder</a>
         </td>

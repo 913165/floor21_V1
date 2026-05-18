@@ -35,12 +35,6 @@
                   th:classappend="${profile.vaultPinConfigured()} ? 'text-bg-success' : 'text-bg-secondary'"
                   th:text="${profile.vaultPinConfigured()} ? 'Set' : 'Not set'">—</span>
           </li>
-          <li class="mb-2" th:if="${profile.builderAdmin()}">
-            <a class="btn btn-outline-secondary btn-sm" th:href="@{/expenses/change-pin}">Change expenses PIN</a>
-            <span class="badge ms-1"
-                  th:classappend="${profile.expensesPinConfigured()} ? 'text-bg-success' : 'text-bg-secondary'"
-                  th:text="${profile.expensesPinConfigured()} ? 'Set' : 'Not set'">—</span>
-          </li>
           <li class="mb-0" th:if="${profile.builderAdmin()}">
             <a class="text-muted small" th:href="@{/vault/reset-pin(redirect='/profile')}">Forgot vault PIN? Reset with password</a>
           </li>

@@ -10,6 +10,8 @@ public class Floor21UserPrincipal implements UserDetails {
     public static final String SESSION_BUILDER_ID = "FLOOR21_BUILDER_ID";
 
     private final UUID builderId;
+    /** Set when the account is a row in {@code users}; null for builder-table login. */
+    private final UUID staffUserId;
     private final String email;
     private final String password;
     private final boolean superAdmin;
@@ -17,11 +19,13 @@ public class Floor21UserPrincipal implements UserDetails {
 
     public Floor21UserPrincipal(
             UUID builderId,
+            UUID staffUserId,
             String email,
             String password,
             boolean superAdmin,
             org.springframework.security.core.userdetails.User delegate) {
         this.builderId = builderId;
+        this.staffUserId = staffUserId;
         this.email = email;
         this.password = password;
         this.superAdmin = superAdmin;

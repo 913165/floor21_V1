@@ -7,17 +7,12 @@
     <h1 class="h3 mb-0" th:text="${pageTitle}">Expenses</h1>
     <div class="d-flex flex-wrap gap-2">
       <a class="btn btn-outline-secondary" th:href="@{/dashboard}">Dashboard</a>
-      <a class="btn btn-outline-secondary" th:href="@{/expenses/change-pin}">Change PIN</a>
-      <form class="m-0" th:action="@{/expenses/lock}" method="post">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-        <button class="btn btn-outline-warning" type="submit">Lock expenses</button>
-      </form>
     </div>
   </div>
 
   <p class="text-muted small mb-3">
     <strong>Builder expenses only.</strong> Independent from vault, receipts, bookings, and the dashboard.
-    Unlocked for <span th:text="${unlockTimeoutMinutes}">15</span> minutes after PIN entry.
+    Open with your normal login — no separate expenses PIN.
   </p>
 
   <div th:if="${showExpenseForm}" class="card shadow-sm mb-3 border-primary border-opacity-50">

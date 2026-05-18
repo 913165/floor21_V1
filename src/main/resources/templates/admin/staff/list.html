@@ -3,38 +3,83 @@
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content">
+  <div class="alert alert-success" th:if="${successMessage}" th:text="${successMessage}"></div>
+  <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <div>
       <h1 class="h3 mb-0" th:text="${pageTitle}">Staff</h1>
-      <p class="text-muted small mb-0" th:text="${builder.companyName}">Builder</p>
+      <p class="text-muted small mb-0">
+        <span th:text="${builder.companyName}">Builder</span>
+        <span th:if="${building != null}"> &middot; <span th:text="${building.buildingName}">Building</span></span>
+      </p>
     </div>
-    <div class="d-flex gap-2">
-      <a class="btn btn-primary btn-sm" th:href="@{/admin/builders/{id}/staff/new(id=${builder.id})}">Add staff</a>
-      <a class="btn btn-outline-secondary btn-sm" th:href="@{/admin/builders/{id}/edit(id=${builder.id})}">Back to builder</a>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-primary btn-sm"
+         th:if="${building != null}"
+         th:href="@{/admin/buildings/{bid}/staff/new(bid=${building.id})}">Add staff for this building</a>
+      <a class="btn btn-primary btn-sm"
+         th:if="${building == null}"
+         th:href="@{/admin/builders/{id}/staff/new(id=${builder.id})}">Add staff</a>
+      <a class="btn btn-outline-secondary btn-sm"
+         th:if="${building != null}"
+         th:href="@{/admin/builders/{id}/staff(id=${builder.id})}">All builder staff</a>
+      <a class="btn btn-outline-secondary btn-sm"
+         th:if="${building == null}"
+         th:href="@{/admin/builders/{id}/edit(id=${builder.id})}">Back to builder</a>
+      <a class="btn btn-outline-secondary btn-sm"
+         th:if="${building != null}"
+         th:href="@{/admin/buildings}">All buildings</a>
     </div>
   </div>
+
+  <p class="text-muted small" th:if="${building == null}">
+    Create builder admin accounts (full access) or sales / partner users limited to selected buildings.
+  </p>
+  <p class="text-muted small" th:if="${building != null}">
+    Users with access to this building: builder admins (all buildings), unscoped executives, and partners assigned here.
+  </p>
+
   <div class="table-responsive card shadow-sm">
     <table class="table mb-0">
-      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Active</th><th>Last login</th><th></th></tr></thead>
+      <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Building access</th>
+        <th>Active</th>
+        <th>Last login</th>
+        <th></th>
+      </tr>
+      </thead>
       <tbody>
       <tr th:each="u : ${staff}">
-        <td th:text="${u.fullName}"></td>
-        <td th:text="${u.email}"></td>
-        <td th:text="${u.role}"></td>
-        <td th:text="${u.active}"></td>
-        <td th:text="${u.lastLoginAt != null ? #temporals.format(u.lastLoginAt, 'dd MMM yyyy HH:mm') : 'â€”'}"></td>
+        <td th:text="${u.fullName()}"></td>
+        <td th:text="${u.email()}"></td>
+        <td>
+          <span class="badge text-bg-secondary" th:if="${u.role() == 'EXECUTIVE'}">Sales / partner</span>
+          <span class="badge text-bg-primary" th:if="${u.role() == 'BUILDER_ADMIN'}">Builder admin</span>
+          <span th:if="${u.role() != 'EXECUTIVE' and u.role() != 'BUILDER_ADMIN'}" th:text="${u.role()}"></span>
+        </td>
+        <td class="small" th:text="${#strings.listJoin(u.buildingAccess(), ', ')}">—</td>
+        <td>
+          <span class="badge" th:classappend="${u.active()} ? 'text-bg-success' : 'text-bg-secondary'"
+                th:text="${u.active()} ? 'Yes' : 'No'">—</span>
+        </td>
+        <td class="text-nowrap small"
+            th:text="${u.lastLoginAt() != null ? #temporals.format(u.lastLoginAt(), 'dd MMM yyyy HH:mm') : '—'}">—</td>
         <td class="text-end">
           <a class="btn btn-sm btn-outline-secondary"
-             th:href="@{/admin/builders/{bid}/staff/{uid}/edit(bid=${builder.id}, uid=${u.id})}">Edit</a>
+             th:href="@{/admin/builders/{bid}/staff/{uid}/edit(bid=${builder.id}, uid=${u.id()})}">Edit</a>
         </td>
       </tr>
-      <tr th:if="${#lists.isEmpty(staff)}"><td colspan="6" class="text-muted">No staff yet.</td></tr>
+      <tr th:if="${#lists.isEmpty(staff)}">
+        <td colspan="7" class="text-muted">No staff yet. Add a user so they can sign in and work on flats and bookings.</td>
+      </tr>
       </tbody>
     </table>
   </div>
 </div>
 </body>
 </html>
-
-
-

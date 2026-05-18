@@ -27,6 +27,21 @@ public interface FlatRepository extends JpaRepository<Flat, UUID> {
 
     long countByBuilder_IdAndStatus(UUID builderId, String status);
 
+    @Query(
+            "select count(f) from Flat f where f.builder.id = :builderId and f.building.id in :buildingIds")
+    long countByBuilder_IdAndBuilding_IdIn(
+            @Param("builderId") UUID builderId, @Param("buildingIds") java.util.Collection<UUID> buildingIds);
+
+    @Query(
+            """
+            select count(f) from Flat f
+            where f.builder.id = :builderId and f.status = :status and f.building.id in :buildingIds
+            """)
+    long countByBuilder_IdAndStatusAndBuilding_IdIn(
+            @Param("builderId") UUID builderId,
+            @Param("status") String status,
+            @Param("buildingIds") java.util.Collection<UUID> buildingIds);
+
     @Query("select count(f) from Flat f where f.status = :status")
     long countAllByStatus(@Param("status") String status);
 

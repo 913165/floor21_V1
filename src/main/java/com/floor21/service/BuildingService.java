@@ -22,14 +22,34 @@ public class BuildingService {
 
     @Transactional(readOnly = true)
     public List<Building> listForTenant() {
-        return buildingRepository.findByBuilder_IdOrderByBuildingNameAsc(TenantContext.requireBuilderId());
+        List<Building> all =
+                buildingRepository.findByBuilder_IdOrderByBuildingNameAsc(TenantContext.requireBuilderId());
+        return filterByBuildingAccess(all);
     }
 
     @Transactional(readOnly = true)
     public Building getForTenant(UUID id) {
-        return buildingRepository
-                .findByIdAndBuilder_Id(id, TenantContext.requireBuilderId())
-                .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+        Building building =
+                buildingRepository
+                        .findByIdAndBuilder_Id(id, TenantContext.requireBuilderId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+        assertBuildingAccess(building.getId());
+        return building;
+    }
+
+    private static List<Building> filterByBuildingAccess(List<Building> buildings) {
+        if (TenantContext.hasUnrestrictedBuildingAccess()) {
+            return buildings;
+        }
+        return buildings.stream()
+                .filter(b -> TenantContext.canAccessBuilding(b.getId()))
+                .toList();
+    }
+
+    private static void assertBuildingAccess(UUID buildingId) {
+        if (!TenantContext.canAccessBuilding(buildingId)) {
+            throw new ResourceNotFoundException("Building not found");
+        }
     }
 
     /**
@@ -40,9 +60,12 @@ public class BuildingService {
     public Building resolveForAccess(UUID id) {
         UUID tenantId = TenantContext.getBuilderIdOrNull();
         if (tenantId != null) {
-            return buildingRepository
-                    .findByIdAndBuilder_Id(id, tenantId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+            Building building =
+                    buildingRepository
+                            .findByIdAndBuilder_Id(id, tenantId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+            assertBuildingAccess(building.getId());
+            return building;
         }
         return buildingRepository
                 .findByIdWithBuilder(id)

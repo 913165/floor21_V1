@@ -39,7 +39,8 @@ public class Floor21UserDetailsService implements UserDetailsService {
                         staff.getEmail(),
                         staff.getPasswordHash(),
                         List.of(new SimpleGrantedAuthority(role)));
-        return new Floor21UserPrincipal(builderId, staff.getEmail(), staff.getPasswordHash(), false, delegate);
+        return new Floor21UserPrincipal(
+                builderId, staff.getId(), staff.getEmail(), staff.getPasswordHash(), false, delegate);
     }
 
     private UserDetails builderPrincipal(Builder builder) {
@@ -53,7 +54,7 @@ public class Floor21UserDetailsService implements UserDetailsService {
                             builder.getEmail(),
                             builder.getPasswordHash(),
                             List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")));
-            return new Floor21UserPrincipal(null, builder.getEmail(), builder.getPasswordHash(), true, delegate);
+            return new Floor21UserPrincipal(null, null, builder.getEmail(), builder.getPasswordHash(), true, delegate);
         }
         UUID builderId = builder.getId();
         var delegate =
@@ -61,6 +62,6 @@ public class Floor21UserDetailsService implements UserDetailsService {
                         builder.getEmail(),
                         builder.getPasswordHash(),
                         List.of(new SimpleGrantedAuthority("ROLE_BUILDER_ADMIN")));
-        return new Floor21UserPrincipal(builderId, builder.getEmail(), builder.getPasswordHash(), false, delegate);
+        return new Floor21UserPrincipal(builderId, null, builder.getEmail(), builder.getPasswordHash(), false, delegate);
     }
 }

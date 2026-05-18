@@ -6,10 +6,12 @@
   <div class="row justify-content-center">
     <div class="col-lg-5 col-md-7">
       <h1 class="h3 mb-2" th:text="${pageTitle}">Expenses access</h1>
-      <p class="text-muted small mb-4">
+      <p class="text-muted small mb-3">
         Builder expenses are separate from your login and from the vault. Only builder administrators can open this area.
-        Access stays unlocked for <span th:text="${unlockTimeoutMinutes}">15</span> minutes after you enter the PIN.
       </p>
+
+      <div th:replace="~{expenses-hub/fragments/pin-requirements :: pinRequirements}"></div>
+
       <div class="card shadow-sm">
         <div class="card-body">
           <form th:action="@{/expenses/unlock}" method="post">
@@ -17,11 +19,12 @@
             <input type="hidden" name="redirect" th:value="${redirectPath}"/>
 
             <th:block th:if="${pinSetupRequired}">
-              <p class="small text-warning mb-3">Create your expenses PIN (4–8 digits). You will use this each time you open expenses.</p>
+              <p class="small text-warning mb-3">First time: create your expenses PIN below.</p>
               <div class="mb-3">
                 <label class="form-label">New expenses PIN</label>
                 <input class="form-control" type="password" name="newPin" inputmode="numeric" pattern="[0-9]{4,8}"
                        maxlength="8" autocomplete="new-password" required/>
+                <div class="form-text" th:text="${pinRequirementsHint}">4–8 digits</div>
               </div>
               <div class="mb-3">
                 <label class="form-label">Confirm PIN</label>
@@ -35,14 +38,19 @@
                 <label class="form-label">Expenses PIN</label>
                 <input class="form-control" type="password" name="pin" inputmode="numeric" pattern="[0-9]{4,8}"
                        maxlength="8" autocomplete="off" required autofocus/>
+                <div class="form-text" th:text="${pinRequirementsHint}">4–8 digits</div>
               </div>
             </th:block>
 
             <button class="btn btn-primary w-100" type="submit"
                     th:text="${pinSetupRequired} ? 'Create PIN and open expenses' : 'Unlock expenses'">Unlock</button>
           </form>
-          <p class="small text-center mt-3 mb-0" th:unless="${pinSetupRequired}">
+          <p class="small text-center mt-3 mb-2" th:unless="${pinSetupRequired}">
             <a th:href="@{/expenses/reset-pin(redirect=${redirectPath})}">Forgot expenses PIN? Reset with login password</a>
+          </p>
+          <p class="small text-center mb-0">
+            <a th:href="@{/expenses/change-pin}">Change expenses PIN</a>
+            <span class="text-muted" th:unless="${pinSetupRequired}"> (requires current PIN)</span>
           </p>
         </div>
       </div>

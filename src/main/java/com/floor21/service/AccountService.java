@@ -28,7 +28,6 @@ public class AccountService {
     private final PasswordEncoder passwordEncoder;
     private final UserDetailsService userDetailsService;
     private final VaultPinService vaultPinService;
-    private final ExpensesPinService expensesPinService;
 
     @Transactional(readOnly = true)
     public String currentDisplayName() {
@@ -90,12 +89,8 @@ public class AccountService {
                 builderRepository
                         .findByEmailIgnoreCase(email)
                         .orElseThrow(() -> new IllegalStateException("Account not found"));
-        boolean vaultConfigured = false;
-        boolean expensesConfigured = false;
-        if (principal.getBuilderId() != null) {
-            vaultConfigured = vaultPinService.hasPinConfigured();
-            expensesConfigured = expensesPinService.hasPinConfigured();
-        }
+        boolean vaultConfigured =
+                principal.getBuilderId() != null && vaultPinService.hasPinConfigured();
         return new AccountProfileView(
                 builder.getCompanyName(),
                 email,
@@ -104,7 +99,7 @@ public class AccountService {
                 true,
                 false,
                 vaultConfigured,
-                expensesConfigured);
+                false);
     }
 
     @Transactional

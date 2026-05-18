@@ -1,7 +1,10 @@
 package com.floor21.service;
 
+import com.floor21.dto.StaffMemberView;
 import com.floor21.entity.Builder;
+import com.floor21.entity.Building;
 import com.floor21.entity.User;
+import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.UserRepository;
 import java.time.Instant;
@@ -17,12 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AdminStaffService {
 
-    private static final String ROLE_EXECUTIVE = "EXECUTIVE";
-
     private final UserRepository userRepository;
     private final BuilderRepository builderRepository;
+    private final BuildingRepository buildingRepository;
     private final PasswordEncoder passwordEncoder;
     private final PlatformAuditService auditService;
+    private final StaffBuildingAccessService staffBuildingAccessService;
 
     @Transactional(readOnly = true)
     public Builder requireTenantBuilder(UUID builderId) {
@@ -33,9 +36,34 @@ public class AdminStaffService {
     }
 
     @Transactional(readOnly = true)
-    public List<User> listStaff(UUID builderId) {
+    public Building requireTenantBuilding(UUID buildingId) {
+        return buildingRepository
+                .findByIdWithBuilder(buildingId)
+                .filter(b -> b.getBuilder() != null && !b.getBuilder().isPlatformAdmin())
+                .orElseThrow(() -> new IllegalArgumentException("Building not found."));
+    }
+
+    @Transactional(readOnly = true)
+    public List<StaffMemberView> listStaffViews(UUID builderId) {
         requireTenantBuilder(builderId);
-        return userRepository.findByBuilder_IdOrderByFullNameAsc(builderId);
+        return userRepository.findByBuilder_IdOrderByFullNameAsc(builderId).stream()
+                .map(
+                        u ->
+                                StaffMemberView.from(
+                                        u, staffBuildingAccessService.describeBuildingAccess(u.getId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<StaffMemberView> listStaffViewsForBuilding(UUID buildingId) {
+        Building building = requireTenantBuilding(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        return staffBuildingAccessService.listStaffForBuilding(buildingId, builderId).stream()
+                .map(
+                        u ->
+                                StaffMemberView.from(
+                                        u, staffBuildingAccessService.describeBuildingAccess(u.getId())))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -46,11 +74,19 @@ public class AdminStaffService {
                 .orElseThrow(() -> new IllegalArgumentException("Staff member not found."));
     }
 
+    @Transactional(readOnly = true)
+    public List<Building> listBuilderBuildings(UUID builderId) {
+        requireTenantBuilder(builderId);
+        return buildingRepository.findByBuilder_IdOrderByBuildingNameAsc(builderId);
+    }
+
     @Transactional
-    public User save(UUID builderId, User form, String rawPassword) {
+    public User save(UUID builderId, User form, String rawPassword, String role, List<UUID> buildingIds) {
         Builder builder = requireTenantBuilder(builderId);
+        String normalizedRole = StaffBuildingAccessService.normalizeRole(role);
         User entity;
-        if (form.getId() == null) {
+        boolean created = form.getId() == null;
+        if (created) {
             if (rawPassword == null || rawPassword.isBlank()) {
                 throw new IllegalArgumentException("Password is required for new staff.");
             }
@@ -60,7 +96,6 @@ public class AdminStaffService {
             entity = new User();
             entity.setBuilder(builder);
             entity.setCreatedAt(Instant.now());
-            entity.setRole(ROLE_EXECUTIVE);
             entity.setPasswordHash(passwordEncoder.encode(rawPassword));
         } else {
             entity = getStaff(builderId, form.getId());
@@ -72,16 +107,18 @@ public class AdminStaffService {
                 entity.setPasswordHash(passwordEncoder.encode(rawPassword));
             }
         }
+        entity.setRole(normalizedRole);
         entity.setFullName(form.getFullName().trim());
         entity.setEmail(form.getEmail().trim().toLowerCase(Locale.ROOT));
         entity.setActive(form.getActive() != null ? form.getActive() : true);
         User saved = userRepository.save(entity);
+        staffBuildingAccessService.replaceAssignments(builderId, saved, normalizedRole, buildingIds);
         auditService.log(
-                form.getId() == null ? "STAFF_CREATED" : "STAFF_UPDATED",
+                created ? "STAFF_CREATED" : "STAFF_UPDATED",
                 "user",
                 saved.getId().toString(),
                 builderId,
-                saved.getEmail());
+                saved.getEmail() + " (" + normalizedRole + ")");
         return saved;
     }
 }

@@ -19,6 +19,9 @@ public class ExpensesPinService {
 
     private static final Pattern PIN_PATTERN = Pattern.compile("^\\d{4,8}$");
 
+    /** Shown on expenses unlock / PIN screens. */
+    public static final String PIN_REQUIREMENTS_HINT = "4–8 digits, numbers only (not your login or vault PIN).";
+
     private final BuilderRepository builderRepository;
     private final PasswordEncoder passwordEncoder;
 

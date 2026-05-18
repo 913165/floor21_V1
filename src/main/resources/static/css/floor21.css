@@ -218,6 +218,12 @@
   background: var(--f21-expenses-active-bg);
 }
 
+.floor21-nav__link--sub {
+  font-size: 0.8125rem;
+  opacity: 0.92;
+  padding-left: 1.35rem !important;
+}
+
 .floor21-nav__link--expenses.is-active {
   color: #f3ebff;
   background: var(--f21-expenses-active-bg);

@@ -9,6 +9,7 @@ import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,12 +38,30 @@ public class DashboardService {
             return new DashboardDto(true, total, booked, available, revenue, recent);
         }
         UUID builderId = TenantContext.requireBuilderId();
-        long total = flatRepository.countByBuilder_Id(builderId);
-        long booked = flatRepository.countByBuilder_IdAndStatus(builderId, "BOOKED");
-        long available = flatRepository.countByBuilder_IdAndStatus(builderId, "AVAILABLE");
+        Set<UUID> allowed = TenantContext.getAllowedBuildingIdsOrNull();
+        long total;
+        long booked;
+        long available;
+        if (allowed == null) {
+            total = flatRepository.countByBuilder_Id(builderId);
+            booked = flatRepository.countByBuilder_IdAndStatus(builderId, "BOOKED");
+            available = flatRepository.countByBuilder_IdAndStatus(builderId, "AVAILABLE");
+        } else {
+            total = flatRepository.countByBuilder_IdAndBuilding_IdIn(builderId, allowed);
+            booked = flatRepository.countByBuilder_IdAndStatusAndBuilding_IdIn(builderId, "BOOKED", allowed);
+            available =
+                    flatRepository.countByBuilder_IdAndStatusAndBuilding_IdIn(builderId, "AVAILABLE", allowed);
+        }
         BigDecimal revenue = bookingRepository.sumActiveConsideration(builderId);
         List<RecentBookingRow> recent =
                 bookingRepository.findTop5ByBuilder_IdOrderByCreatedAtDesc(builderId).stream()
+                        .filter(
+                                b ->
+                                        allowed == null
+                                                || (b.getFlat() != null
+                                                        && b.getFlat().getBuilding() != null
+                                                        && allowed.contains(
+                                                                b.getFlat().getBuilding().getId())))
                         .map(this::toRow)
                         .toList();
         return new DashboardDto(false, total, booked, available, revenue, recent);
