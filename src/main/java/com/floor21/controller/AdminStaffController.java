@@ -26,7 +26,7 @@ public class AdminStaffController {
     @GetMapping("/admin/builders/{builderId}/staff")
     public String listForBuilder(@PathVariable UUID builderId, Model model) {
         var builder = adminStaffService.requireTenantBuilder(builderId);
-        model.addAttribute("pageTitle", "Staff & partners — " + builder.getCompanyName());
+        model.addAttribute("pageTitle", "Partners — " + builder.getCompanyName());
         model.addAttribute("builder", builder);
         model.addAttribute("building", null);
         model.addAttribute("staff", adminStaffService.listStaffViews(builderId));
@@ -37,7 +37,7 @@ public class AdminStaffController {
     public String listForBuilding(@PathVariable UUID buildingId, Model model) {
         var building = adminStaffService.requireTenantBuilding(buildingId);
         var builder = building.getBuilder();
-        model.addAttribute("pageTitle", "Staff — " + building.getBuildingName());
+        model.addAttribute("pageTitle", "Partners — " + building.getBuildingName());
         model.addAttribute("builder", builder);
         model.addAttribute("building", building);
         model.addAttribute("staff", adminStaffService.listStaffViewsForBuilding(buildingId));

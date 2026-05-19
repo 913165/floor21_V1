@@ -17,13 +17,13 @@
     <div class="d-flex gap-2 flex-wrap">
       <a class="btn btn-primary btn-sm"
          th:if="${building != null}"
-         th:href="@{/admin/buildings/{bid}/staff/new(bid=${building.id})}">Add staff for this building</a>
+         th:href="@{/admin/buildings/{bid}/staff/new(bid=${building.id})}">Add partners for this building</a>
       <a class="btn btn-primary btn-sm"
          th:if="${building == null}"
-         th:href="@{/admin/builders/{id}/staff/new(id=${builder.id})}">Add staff</a>
+         th:href="@{/admin/builders/{id}/staff/new(id=${builder.id})}">Add user</a>
       <a class="btn btn-outline-secondary btn-sm"
          th:if="${building != null}"
-         th:href="@{/admin/builders/{id}/staff(id=${builder.id})}">All builder staff</a>
+         th:href="@{/admin/builders/{id}/staff(id=${builder.id})}">All builder partners</a>
       <a class="btn btn-outline-secondary btn-sm"
          th:if="${building == null}"
          th:href="@{/admin/builders/{id}/edit(id=${builder.id})}">Back to builder</a>
@@ -75,7 +75,12 @@
         </td>
       </tr>
       <tr th:if="${#lists.isEmpty(staff)}">
-        <td colspan="7" class="text-muted">No staff yet. Add a user so they can sign in and work on flats and bookings.</td>
+        <td colspan="7" class="text-muted"
+            th:text="${building != null}
+              ? 'No partners assigned to this building yet. Use Add partners for this building to give sales partners access.'
+              : 'No users yet. Add a builder admin or sales partner so they can sign in and work on flats and bookings.'">
+          No users yet.
+        </td>
       </tr>
       </tbody>
     </table>

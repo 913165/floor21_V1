@@ -37,7 +37,7 @@
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
             <button class="btn btn-sm btn-warning" type="submit">Open as</button>
           </form>
-          <a class="btn btn-sm btn-outline-primary" th:href="@{/admin/builders/{id}/staff(id=${b.id()})}">Staff</a>
+          <a class="btn btn-sm btn-outline-primary" th:href="@{/admin/builders/{id}/staff(id=${b.id()})}">Partners</a>
           <a class="btn btn-sm btn-outline-primary" th:href="@{/admin/builders/{id}/buildings/new(id=${b.id()})}">Add building</a>
           <a class="btn btn-sm btn-outline-secondary" th:href="@{/admin/builders/{id}/edit(id=${b.id()})}">Edit</a>
         </td>

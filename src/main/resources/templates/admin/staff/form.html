@@ -7,8 +7,8 @@
 
   <h1 class="h3 mb-2" th:text="${pageTitle}">Staff</h1>
   <p class="text-muted small mb-4" th:if="${building != null}">
-    Adding access for <strong th:text="${building.buildingName}">building</strong>
-    (<span th:text="${builder.companyName}">builder</span>).
+    Add a partner for <strong th:text="${building.buildingName}">building</strong>
+    (<span th:text="${builder.companyName}">builder</span>). A building may have multiple partners (e.g. three sales partners).
   </p>
 
   <form class="card card-body shadow-sm col-lg-8"
