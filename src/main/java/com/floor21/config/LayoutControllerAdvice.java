@@ -27,6 +27,67 @@ public class LayoutControllerAdvice {
         return path != null ? path : "";
     }
 
+    /** Theme key for sidebar/topbar chrome: overview, property, sales, receipts, slabs, banking, vault, expenses, platform. */
+    @ModelAttribute("navArea")
+    public String navArea(HttpServletRequest request) {
+        return resolveNavArea(navServletPath(request));
+    }
+
+    @ModelAttribute("navAreaLabel")
+    public String navAreaLabel(HttpServletRequest request) {
+        return resolveNavAreaLabel(resolveNavArea(navServletPath(request)));
+    }
+
+    static String resolveNavArea(String path) {
+        if (path == null) {
+            path = "";
+        }
+        if (path.startsWith("/admin")) {
+            return "platform";
+        }
+        if (path.startsWith("/vault")) {
+            return "vault";
+        }
+        if (path.startsWith("/expenses")) {
+            return "expenses";
+        }
+        if (path.startsWith("/bank-accounts")) {
+            return "banking";
+        }
+        if (path.startsWith("/bookings/payment-schedule")) {
+            return "slabs";
+        }
+        if (path.startsWith("/receipts")) {
+            return "receipts";
+        }
+        if (path.startsWith("/buildings") || path.startsWith("/clients")) {
+            return "property";
+        }
+        if (path.startsWith("/bookings")
+                || path.startsWith("/brokers")
+                || path.startsWith("/cancellations")) {
+            return "sales";
+        }
+        if (path.startsWith("/dashboard") || path.startsWith("/profile")) {
+            return "overview";
+        }
+        return "overview";
+    }
+
+    static String resolveNavAreaLabel(String area) {
+        return switch (area) {
+            case "property" -> "Property";
+            case "sales" -> "Sales";
+            case "receipts" -> "Receipts";
+            case "slabs" -> "Payment schedule";
+            case "banking" -> "Banking";
+            case "vault" -> "Vault";
+            case "expenses" -> "Expenses";
+            case "platform" -> "Platform admin";
+            default -> "Home";
+        };
+    }
+
     @ModelAttribute("navAccountLabel")
     public String navAccountLabel(Authentication authentication) {
         if (!isSignedIn(authentication)) {

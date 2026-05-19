@@ -16,12 +16,112 @@
   --f21-vault-active-bg: rgba(240, 198, 116, 0.14);
   --f21-expenses-text: #d4b8f0;
   --f21-expenses-active-bg: rgba(180, 140, 220, 0.16);
+  --f21-area-accent: #2dd4bf;
+  --f21-area-glow: rgba(45, 212, 191, 0.18);
 }
 
 [data-bs-theme="dark"] {
   --f21-topbar-bg: linear-gradient(118deg, #0c1424 0%, #123347 55%, #0a4a42 100%);
   --f21-sidebar-bg: #0a101a;
   --f21-sidebar-border: rgba(255, 255, 255, 0.05);
+}
+
+/* Chrome tints by section (body data-nav-area from LayoutControllerAdvice) */
+.floor21-body[data-nav-area="overview"] {
+  --f21-topbar-bg: linear-gradient(118deg, #152a52 0%, #1e4d6b 52%, #0d6e62 100%);
+  --f21-sidebar-bg: linear-gradient(175deg, #1a2a42 0%, #121c2e 62%);
+  --f21-area-accent: #2dd4bf;
+  --f21-area-glow: rgba(45, 212, 191, 0.22);
+}
+
+.floor21-body[data-nav-area="property"] {
+  --f21-topbar-bg: linear-gradient(118deg, #1a3352 0%, #2d4a62 48%, #3a5240 100%);
+  --f21-sidebar-bg: linear-gradient(175deg, #1b2838 0%, #152218 42%, #121c2e 100%);
+  --f21-area-accent: #8fb4d9;
+  --f21-area-glow: rgba(143, 180, 217, 0.2);
+}
+
+.floor21-body[data-nav-area="sales"] {
+  --f21-topbar-bg: linear-gradient(118deg, #1a2f5c 0%, #1e5a7a 55%, #157a7a 100%);
+  --f21-sidebar-bg: linear-gradient(175deg, #162238 0%, #12303a 50%, #121c2e 100%);
+  --f21-area-accent: #5eb8e8;
+  --f21-area-glow: rgba(94, 184, 232, 0.2);
+}
+
+.floor21-body[data-nav-area="receipts"] {
+  --f21-topbar-bg: linear-gradient(118deg, #152a52 0%, #1a5c48 60%, #0d6e52 100%);
+  --f21-sidebar-bg: linear-gradient(175deg, #142a28 0%, #121f2a 55%, #121c2e 100%);
+  --f21-area-accent: #6ee7b7;
+  --f21-area-glow: rgba(110, 231, 183, 0.18);
+}
+
+.floor21-body[data-nav-area="slabs"] {
+  --f21-topbar-bg: linear-gradient(118deg, #2a2548 0%, #1e4d6b 50%, #1a5568 100%);
+  --f21-sidebar-bg: linear-gradient(175deg, #1e1c32 0%, #152535 55%, #121c2e 100%);
+  --f21-area-accent: #a5b4fc;
+  --f21-area-glow: rgba(165, 180, 252, 0.18);
+}
+
+.floor21-body[data-nav-area="banking"] {
+  --f21-topbar-bg: linear-gradient(118deg, #0f1e38 0%, #1a3a5c 55%, #243650 100%);
+  --f21-sidebar-bg: linear-gradient(175deg, #121c2e 0%, #0f1a28 100%);
+  --f21-area-accent: #94a3b8;
+  --f21-area-glow: rgba(148, 163, 184, 0.16);
+}
+
+.floor21-body[data-nav-area="vault"] {
+  --f21-topbar-bg: linear-gradient(118deg, #2a2010 0%, #4a3a18 45%, #1e4d4a 100%);
+  --f21-sidebar-bg: linear-gradient(175deg, #2a2218 0%, #1a2420 50%, #121c2e 100%);
+  --f21-area-accent: #f0c674;
+  --f21-area-glow: rgba(240, 198, 116, 0.2);
+}
+
+.floor21-body[data-nav-area="expenses"] {
+  --f21-topbar-bg: linear-gradient(118deg, #2a1a3a 0%, #3d2a5a 50%, #1e3a52 100%);
+  --f21-sidebar-bg: linear-gradient(175deg, #221a2e 0%, #1a2230 55%, #121c2e 100%);
+  --f21-area-accent: #c4a0e8;
+  --f21-area-glow: rgba(196, 160, 232, 0.18);
+}
+
+.floor21-body[data-nav-area="platform"] {
+  --f21-topbar-bg: linear-gradient(118deg, #1f1838 0%, #2d3a6b 55%, #1a4558 100%);
+  --f21-sidebar-bg: linear-gradient(175deg, #1c1830 0%, #152030 55%, #0a101a 100%);
+  --f21-area-accent: #818cf8;
+  --f21-area-glow: rgba(129, 140, 248, 0.2);
+}
+
+[data-bs-theme="dark"] .floor21-body[data-nav-area="overview"] {
+  --f21-topbar-bg: linear-gradient(118deg, #0c1424 0%, #123347 55%, #0a4a42 100%);
+  --f21-sidebar-bg: linear-gradient(175deg, #101828 0%, #0a101a 100%);
+}
+
+[data-bs-theme="dark"] .floor21-body[data-nav-area="property"] {
+  --f21-topbar-bg: linear-gradient(118deg, #121f32 0%, #1e3545 50%, #243528 100%);
+  --f21-sidebar-bg: linear-gradient(175deg, #141c24 0%, #101a14 55%, #0a101a 100%);
+}
+
+[data-bs-theme="dark"] .floor21-body[data-nav-area="sales"] {
+  --f21-topbar-bg: linear-gradient(118deg, #101c38 0%, #143848 55%, #0f4040 100%);
+}
+
+[data-bs-theme="dark"] .floor21-body[data-nav-area="receipts"] {
+  --f21-topbar-bg: linear-gradient(118deg, #0c1424 0%, #123830 60%, #0a4038 100%);
+}
+
+[data-bs-theme="dark"] .floor21-body[data-nav-area="slabs"] {
+  --f21-topbar-bg: linear-gradient(118deg, #181528 0%, #123040 55%, #103848 100%);
+}
+
+[data-bs-theme="dark"] .floor21-body[data-nav-area="vault"] {
+  --f21-topbar-bg: linear-gradient(118deg, #1a1408 0%, #322810 45%, #123838 100%);
+}
+
+[data-bs-theme="dark"] .floor21-body[data-nav-area="expenses"] {
+  --f21-topbar-bg: linear-gradient(118deg, #181020 0%, #281838 50%, #122838 100%);
+}
+
+[data-bs-theme="dark"] .floor21-body[data-nav-area="platform"] {
+  --f21-topbar-bg: linear-gradient(118deg, #141020 0%, #1e2848 55%, #123040 100%);
 }
 
 .floor21-body {
@@ -34,12 +134,18 @@
   align-items: stretch;
 }
 
-/* Top menu bar */
+/* Top menu bar (background textures in floor21-chrome.css) */
 .floor21-topbar {
   min-height: var(--f21-topbar-height);
-  background: var(--f21-topbar-bg);
   border-bottom: 1px solid var(--f21-topbar-border);
   box-shadow: 0 4px 18px rgba(8, 20, 40, 0.28);
+  position: relative;
+  isolation: isolate;
+}
+
+.floor21-topbar .container-fluid {
+  position: relative;
+  z-index: 1;
 }
 
 .floor21-topbar__brand {
@@ -122,7 +228,7 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 
-/* Side menu */
+/* Side menu (textures: floor21-chrome.css) */
 .floor21-sidebar {
   width: var(--f21-sidebar-width);
   max-width: 100%;
@@ -131,23 +237,38 @@
   top: 0;
   align-self: flex-start;
   max-height: calc(100vh - var(--f21-topbar-height));
-  background: var(--f21-sidebar-bg);
-  border-right: 1px solid var(--f21-sidebar-border);
-  padding: 0.85rem 0.65rem 1rem;
+  border-right: 1px solid rgba(0, 0, 0, 0.35);
+  padding: 0.65rem 0.55rem 1rem;
+  isolation: isolate;
+  --f21-nav-text: rgba(255, 255, 255, 0.82);
+  --f21-nav-muted: rgba(210, 180, 155, 0.55);
+  --f21-nav-hover-bg: rgba(255, 255, 255, 0.08);
+  --f21-nav-active-bg: rgba(255, 255, 255, 0.12);
+  --f21-nav-active-text: #ffffff;
+  --f21-nav-active-accent: #2dd4bf;
+  --f21-nav-bullet: rgba(160, 120, 90, 0.55);
 }
 
-.floor21-sidebar__head {
-  padding: 0.15rem 0.55rem 0.65rem;
-  border-bottom: 1px solid var(--f21-sidebar-border);
-  margin-bottom: 0.55rem;
+[data-bs-theme="dark"] .floor21-sidebar {
+  border-right-color: rgba(255, 255, 255, 0.08);
+  --f21-nav-text: rgba(226, 232, 240, 0.88);
+  --f21-nav-muted: rgba(148, 163, 184, 0.62);
+  --f21-nav-hover-bg: rgba(255, 255, 255, 0.06);
+  --f21-nav-active-bg: rgba(255, 255, 255, 0.09);
+  --f21-nav-bullet: rgba(100, 116, 139, 0.65);
 }
 
-.floor21-sidebar__label {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--f21-nav-muted);
+.floor21-sidebar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.floor21-sidebar > * {
+  position: relative;
+  z-index: 1;
 }
 
 .floor21-nav__section {
@@ -165,17 +286,28 @@
 }
 
 .floor21-nav__link {
-  display: block;
-  margin: 0.12rem 0;
-  padding: 0.48rem 0.65rem 0.48rem 0.75rem;
-  border-radius: 0.45rem;
-  border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.14rem 0;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.5rem;
+  border-left: none;
   font-size: 0.875rem;
   font-weight: 500;
   line-height: 1.35;
   color: var(--f21-nav-text);
   text-decoration: none;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.floor21-nav__link::before {
+  content: "";
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--f21-nav-bullet, rgba(160, 120, 90, 0.55));
 }
 
 .floor21-nav__link:hover,
@@ -188,8 +320,12 @@
 .floor21-nav__link.is-active {
   color: var(--f21-nav-active-text);
   background: var(--f21-nav-active-bg);
-  border-left-color: var(--f21-nav-active-accent);
   font-weight: 600;
+}
+
+.floor21-nav__link.is-active::before {
+  background: var(--f21-nav-active-accent);
+  box-shadow: 0 0 8px rgba(45, 212, 191, 0.55);
 }
 
 .floor21-nav__link--vault {
@@ -204,8 +340,12 @@
 
 .floor21-nav__link--vault.is-active {
   color: #fff3d6;
-  background: var(--f21-vault-active-bg);
-  border-left-color: #f0c674;
+  background: rgba(240, 198, 116, 0.14);
+}
+
+.floor21-nav__link--vault.is-active::before {
+  background: #f0c674;
+  box-shadow: 0 0 8px rgba(240, 198, 116, 0.45);
 }
 
 .floor21-nav__link--expenses {
@@ -226,8 +366,12 @@
 
 .floor21-nav__link--expenses.is-active {
   color: #f3ebff;
-  background: var(--f21-expenses-active-bg);
-  border-left-color: #c4a0e8;
+  background: rgba(196, 160, 232, 0.14);
+}
+
+.floor21-nav__link--expenses.is-active::before {
+  background: #c4a0e8;
+  box-shadow: 0 0 8px rgba(196, 160, 232, 0.45);
 }
 
 .floor21-panel {
