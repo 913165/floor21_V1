@@ -10,11 +10,9 @@ import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.service.BookingPaymentSlabService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.DemandDraftService;
-import com.floor21.service.PaymentSlabTemplateService;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
@@ -71,7 +69,6 @@ public class BookingPaymentScheduleController {
 
     private final BuildingService buildingService;
     private final BookingPaymentSlabService bookingPaymentSlabService;
-    private final PaymentSlabTemplateService paymentSlabTemplateService;
     private final DemandDraftService demandDraftService;
 
     @GetMapping
@@ -80,11 +77,6 @@ public class BookingPaymentScheduleController {
             @RequestParam(required = false) UUID bookingId,
             Model model) {
         model.addAttribute("pageTitle", "Slabs — payment schedule");
-        if (buildingId != null) {
-            model.addAttribute("platformMilestones", paymentSlabTemplateService.listForBuilding(buildingId));
-        } else {
-            model.addAttribute("platformMilestones", Collections.emptyList());
-        }
         model.addAttribute("buildings", buildingService.listForTenant());
         model.addAttribute("selectedBuildingId", buildingId);
         model.addAttribute("bookings", bookingPaymentSlabService.listBookingsForSchedule(buildingId));
@@ -99,9 +91,6 @@ public class BookingPaymentScheduleController {
             }
             if (effectiveBuildingId != null) {
                 model.addAttribute("selectedBuildingId", effectiveBuildingId);
-                model.addAttribute(
-                        "platformMilestones",
-                        paymentSlabTemplateService.listForBuilding(effectiveBuildingId));
             }
             if (!bookingMatchesBuilding(booking, buildingId)) {
                 model.addAttribute(

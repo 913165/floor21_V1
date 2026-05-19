@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
@@ -50,44 +50,6 @@
       });
     })();
   </script>
-
-  <div class="card shadow-sm mb-3" th:if="${selectedBuildingId != null}">
-    <div class="card-header">
-      <span>Payment milestones for this building <span class="text-muted small fw-normal">(read-only)</span></span>
-    </div>
-    <div class="card-body p-0" th:if="${!#lists.isEmpty(platformMilestones)}">
-      <div class="table-responsive">
-        <table class="table table-sm mb-0">
-          <thead class="table-light">
-          <tr>
-            <th style="width:4rem;">Order</th>
-            <th>Slab (description)</th>
-            <th style="width:7rem;" class="text-end">Percentage</th>
-            <th style="width:6rem;">Active</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr th:each="m : ${platformMilestones}">
-            <td th:text="${m.sortOrder}">0</td>
-            <td class="small" th:text="${m.milestoneLabel}">—</td>
-            <td class="text-end"
-                th:text="${T(com.floor21.util.PercentageFormatter).formatDisplay(m.suggestedPercent)}">—</td>
-            <td>
-              <span th:if="${m.active != null && m.active}" class="badge text-bg-success rounded-pill">Yes</span>
-              <span th:unless="${m.active != null && m.active}" class="badge text-bg-secondary rounded-pill">No</span>
-            </td>
-          </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <div class="card-body" th:if="${#lists.isEmpty(platformMilestones)}">
-      <p class="text-muted mb-0">No payment milestones for this building yet. The Floor21 administrator must add them under <strong>Admin → Payment milestones</strong>.</p>
-    </div>
-  </div>
-  <div class="alert alert-info mb-3" th:if="${selectedBuildingId == null}">
-    Select a building above to view its payment milestones, or load a booking to see milestones for that flat's building.
-  </div>
 
   <th:block th:if="${selectedBooking != null}"
             th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}, pct=${T(com.floor21.util.PercentageFormatter)}">
@@ -142,14 +104,14 @@
             </colgroup>
             <thead class="table-light">
             <tr>
-              <th class="align-middle text-nowrap">Sno</th>
-              <th class="align-middle text-nowrap">Slab date</th>
-              <th class="align-middle">Slab</th>
-              <th class="align-middle text-end">Percent</th>
-              <th class="align-middle text-nowrap slab-schedule-th--agreed">Agree slab amount</th>
-              <th class="align-middle text-nowrap slab-schedule-th--extra">Extra slab amount</th>
-              <th class="align-middle text-nowrap slab-schedule-th--paid">Paid</th>
-              <th class="align-middle text-nowrap">Balance</th>
+              <th class="align-middle text-center text-nowrap">Sno</th>
+              <th class="align-middle text-center text-nowrap">Slab date</th>
+              <th class="align-middle text-center">Slab</th>
+              <th class="align-middle text-center text-nowrap">Percent</th>
+              <th class="align-middle text-center text-nowrap slab-schedule-th--agreed">Agree slab amount</th>
+              <th class="align-middle text-center text-nowrap slab-schedule-th--extra">Extra slab amount</th>
+              <th class="align-middle text-center text-nowrap slab-schedule-th--paid">Paid</th>
+              <th class="align-middle text-center text-nowrap">Balance</th>
             </tr>
             </thead>
             <tbody>
