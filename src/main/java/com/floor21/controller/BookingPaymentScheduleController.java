@@ -10,6 +10,7 @@ import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.service.BookingPaymentSlabService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.DemandDraftService;
+import com.floor21.service.SlabScheduleLedgerService;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -69,6 +70,7 @@ public class BookingPaymentScheduleController {
 
     private final BuildingService buildingService;
     private final BookingPaymentSlabService bookingPaymentSlabService;
+    private final SlabScheduleLedgerService slabScheduleLedgerService;
     private final DemandDraftService demandDraftService;
 
     @GetMapping
@@ -107,10 +109,9 @@ public class BookingPaymentScheduleController {
                         "successMessage",
                         "Payment schedule created from platform milestones for this building.");
             }
-            bookingPaymentSlabService.ensureAllActiveMilestoneRows(bookingId);
-            bookingPaymentSlabService.syncAgreedAmountsFromPercent(bookingId);
-            model.addAttribute("scheduleRows", bookingPaymentSlabService.buildScheduleDisplay(bookingId));
-            model.addAttribute("scheduleSummary", bookingPaymentSlabService.summarizeLines(bookingId));
+            var ledgerRows = slabScheduleLedgerService.buildLedger(bookingId);
+            model.addAttribute("ledgerRows", ledgerRows);
+            model.addAttribute("ledgerSummary", slabScheduleLedgerService.summarizeLedger(ledgerRows));
         }
         return "bookings/payment-schedule";
     }

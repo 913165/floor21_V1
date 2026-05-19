@@ -30,6 +30,10 @@ public class BookingSlabPayment {
     @JoinColumn(name = "payment_slab_id", nullable = false)
     private BookingPaymentSlab paymentSlab;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "receipt_id")
+    private Receipt receipt;
+
     @Column(name = "payment_date", nullable = false)
     private LocalDate paymentDate;
 

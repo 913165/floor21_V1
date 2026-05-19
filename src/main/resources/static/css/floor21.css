@@ -957,6 +957,41 @@ button.flat-floor-plan-link {
   text-align: center !important;
 }
 
+.slab-schedule-ledger-table .slab-ledger-row--milestone td {
+  font-weight: 600;
+  background: rgba(21, 101, 168, 0.1);
+  border-top: 2px solid rgba(21, 101, 168, 0.35);
+}
+
+.slab-schedule-ledger-table .slab-ledger-milestone-title {
+  color: #1565a8;
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.slab-schedule-ledger-table .slab-ledger-row--milestone .slab-amt--agreed {
+  color: #1565a8;
+  font-weight: 700;
+}
+
+.slab-schedule-ledger-table .slab-ledger-row--today td {
+  border-top: 1px dashed var(--bs-border-color);
+}
+
+.slab-schedule-ledger-table .slab-ledger-row--receipt td {
+  font-size: 0.875rem;
+}
+
+[data-bs-theme="dark"] .slab-schedule-ledger-table .slab-ledger-row--milestone td {
+  background: rgba(110, 181, 247, 0.12);
+  border-top-color: rgba(110, 181, 247, 0.4);
+}
+
+[data-bs-theme="dark"] .slab-schedule-ledger-table .slab-ledger-milestone-title,
+[data-bs-theme="dark"] .slab-schedule-ledger-table .slab-ledger-row--milestone .slab-amt--agreed {
+  color: #7ec8ff;
+}
+
 .slab-schedule-table tbody tr:hover {
   background: rgba(var(--bs-primary-rgb), 0.04);
 }

@@ -34,4 +34,32 @@ public interface BookingSlabPaymentRepository extends JpaRepository<BookingSlabP
     @Transactional
     @Query("delete from BookingSlabPayment p where p.paymentSlab.id = :slabId")
     int deleteByPaymentSlab_Id(@Param("slabId") UUID slabId);
+
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query(
+            """
+            delete from BookingSlabPayment p
+            where p.paymentSlab.id in (
+                select s.id from BookingPaymentSlab s where s.booking.id = :bookingId
+            )
+            """)
+    int deleteAllForBooking(@Param("bookingId") UUID bookingId);
+
+    @Query(
+            """
+            select p from BookingSlabPayment p
+            join fetch p.paymentSlab s
+            left join fetch p.receipt r
+            where s.booking.id = :bookingId
+            order by s.sortOrder asc, s.id asc, p.paymentDate asc, p.sortOrder asc, p.id asc
+            """)
+    List<BookingSlabPayment> findByBookingIdWithReceipt(@Param("bookingId") UUID bookingId);
+
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query(
+            "update BookingSlabPayment p set p.paymentSlab.id = :targetSlabId where p.paymentSlab.id = :sourceSlabId")
+    int reassignPaymentsToSlab(
+            @Param("sourceSlabId") UUID sourceSlabId, @Param("targetSlabId") UUID targetSlabId);
 }

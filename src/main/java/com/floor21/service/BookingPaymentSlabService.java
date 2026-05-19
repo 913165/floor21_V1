@@ -1,6 +1,7 @@
 package com.floor21.service;
 
 import com.floor21.dto.BookingPaymentSlabBatchForm;
+import com.floor21.dto.ReceiptSlabAllocationSlice;
 import com.floor21.dto.SlabPaymentSaveRequest;
 import com.floor21.dto.SlabPaymentSaveResponse;
 import com.floor21.dto.SlabPaymentSlice;
@@ -15,11 +16,14 @@ import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BookingPaymentSlabRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BookingSlabPaymentRepository;
+import com.floor21.repository.ReceiptRepository;
 import com.floor21.security.TenantContext;
+import com.floor21.util.SlabReceiptWaterfall;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,6 +43,7 @@ public class BookingPaymentSlabService {
     private final BookingRepository bookingRepository;
     private final BookingPaymentSlabRepository bookingPaymentSlabRepository;
     private final BookingSlabPaymentRepository bookingSlabPaymentRepository;
+    private final ReceiptRepository receiptRepository;
     private final PaymentSlabTemplateService paymentSlabTemplateService;
 
     @Transactional(readOnly = true)
@@ -64,28 +69,50 @@ public class BookingPaymentSlabService {
         return bookingPaymentSlabRepository.findByBooking_IdOrderBySortOrderAscIdAsc(bookingId);
     }
 
-    /** Paid / balance per slab from payment rows entered on this schedule. */
     @Transactional(readOnly = true)
-    public List<SlabScheduleLineView> listLineViews(UUID bookingId) {
+    public List<BookingSlabPayment> listPaymentsForBooking(UUID bookingId) {
         getBookingForSchedule(bookingId);
-        List<BookingPaymentSlab> slabs = listLines(bookingId);
-        Map<UUID, List<BookingSlabPayment>> paymentsBySlab = groupPaymentsBySlab(bookingId);
+        return bookingSlabPaymentRepository.findByBookingIdWithReceipt(bookingId);
+    }
+
+    /** Milestone rows + agreed amounts for schedule; receipt slices are not persisted. */
+    @Transactional
+    public void prepareSlabMilestones(UUID bookingId) {
+        getBookingForSchedule(bookingId);
+        materializeIfEmpty(bookingId);
+        ensureAllActiveMilestoneRows(bookingId);
+        syncAgreedAmountsFromPercent(bookingId);
+        deduplicateSlabRows(bookingId);
+        consolidateOneSlabPerMilestoneLabel(bookingId);
+        removeSlabsNotMatchingActiveTemplates(bookingId);
+    }
+
+    /** Paid / balance per slab computed from buyer receipts (waterfall, in memory). */
+    @Transactional
+    public List<SlabScheduleLineView> listLineViews(UUID bookingId) {
+        prepareSlabMilestones(bookingId);
+        List<BookingPaymentSlab> slabs = listUniqueSlabsForSchedule(bookingId);
+        UUID builderId = TenantContext.requireBuilderId();
+        var receipts =
+                receiptRepository.findActiveByBooking_IdOrderByReceiptDateAsc(bookingId, builderId);
+        Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab =
+                SlabReceiptWaterfall.allocate(slabs, receipts);
 
         List<SlabScheduleLineView> views = new ArrayList<>();
         for (BookingPaymentSlab slab : slabs) {
             BigDecimal due = slabDueAmount(slab);
-            List<BookingSlabPayment> slabPayments =
-                    paymentsBySlab.getOrDefault(slab.getId(), List.of());
+            List<ReceiptSlabAllocationSlice> slabPayments =
+                    bySlab.getOrDefault(slab.getId(), List.of());
             List<SlabPaymentSlice> slices = new ArrayList<>();
             BigDecimal paid = ZERO;
-            for (BookingSlabPayment p : slabPayments) {
-                paid = paid.add(p.getAmount());
+            for (ReceiptSlabAllocationSlice p : slabPayments) {
+                paid = paid.add(p.amount());
                 slices.add(
                         new SlabPaymentSlice(
-                                p.getId(),
-                                p.getPaymentDate(),
-                                p.getAmount(),
-                                p.getReference()));
+                                null,
+                                p.paymentDate(),
+                                p.amount(),
+                                p.reference()));
             }
             BigDecimal balance = due.subtract(paid).max(ZERO);
             views.add(new SlabScheduleLineView(slab, due, paid, balance, List.copyOf(slices)));
@@ -169,16 +196,21 @@ public class BookingPaymentSlabService {
         }
         UUID buildingId = booking.getFlat().getBuilding().getId();
         List<PaymentSlabTemplate> templates =
-                paymentSlabTemplateService.listActiveForBuilding(buildingId);
+                distinctActiveTemplates(
+                        paymentSlabTemplateService.listActiveForBuilding(buildingId));
         if (templates.isEmpty()) {
             return;
         }
+        linkOrphanSlabsToTemplates(bookingId);
+        deduplicateSlabRows(bookingId);
         List<BookingPaymentSlab> existing = listLines(bookingId);
         Set<UUID> linkedTemplateIds = new HashSet<>();
+        Set<String> existingLabels = new HashSet<>();
         for (BookingPaymentSlab slab : existing) {
             if (slab.getTemplate() != null && slab.getTemplate().getId() != null) {
                 linkedTemplateIds.add(slab.getTemplate().getId());
             }
+            existingLabels.add(normalizeMilestoneLabel(slab.getMilestoneLabel()));
         }
         BigDecimal base = baseConsideration(booking);
         Instant now = Instant.now();
@@ -187,6 +219,9 @@ public class BookingPaymentSlabService {
         boolean added = false;
         for (PaymentSlabTemplate template : templates) {
             if (linkedTemplateIds.contains(template.getId())) {
+                continue;
+            }
+            if (existingLabels.contains(normalizeMilestoneLabel(template.getMilestoneLabel()))) {
                 continue;
             }
             BookingPaymentSlab row = new BookingPaymentSlab();
@@ -206,6 +241,242 @@ public class BookingPaymentSlabService {
         if (added) {
             syncAgreedAmountsFromPercent(bookingId);
         }
+        linkOrphanSlabsToTemplates(bookingId);
+        deduplicateSlabRows(bookingId);
+    }
+
+    /**
+     * One row per active admin milestone for this building (order from templates). Legacy duplicate
+     * booking rows with the same milestone are not returned.
+     */
+    @Transactional
+    public List<BookingPaymentSlab> listUniqueSlabsForSchedule(UUID bookingId) {
+        prepareSlabMilestones(bookingId);
+        Booking booking = getBookingForSchedule(bookingId);
+        if (booking.getFlat() == null || booking.getFlat().getBuilding() == null) {
+            return listLines(bookingId);
+        }
+        UUID buildingId = booking.getFlat().getBuilding().getId();
+        List<PaymentSlabTemplate> templates =
+                distinctActiveTemplates(
+                        paymentSlabTemplateService.listActiveForBuilding(buildingId));
+        if (templates.isEmpty()) {
+            return listLines(bookingId);
+        }
+
+        List<BookingPaymentSlab> allSlabs = listLines(bookingId);
+        Map<String, BookingPaymentSlab> byLabel = new LinkedHashMap<>();
+        for (BookingPaymentSlab slab : allSlabs) {
+            byLabel.merge(normalizeMilestoneLabel(slab.getMilestoneLabel()), slab, this::pickPreferredSlab);
+        }
+
+        List<BookingPaymentSlab> ordered = new ArrayList<>();
+        Set<String> seenLabels = new HashSet<>();
+        for (PaymentSlabTemplate template : templates) {
+            String labelKey = normalizeMilestoneLabel(template.getMilestoneLabel());
+            if (!seenLabels.add(labelKey)) {
+                continue;
+            }
+            BookingPaymentSlab slab = byLabel.get(labelKey);
+            if (slab != null) {
+                ordered.add(slab);
+            }
+        }
+        return ordered;
+    }
+
+    /** Multiple active DB templates can share the same label (e.g. after migrations); keep one per label. */
+    private static List<PaymentSlabTemplate> distinctActiveTemplates(List<PaymentSlabTemplate> templates) {
+        Map<String, PaymentSlabTemplate> byLabel = new LinkedHashMap<>();
+        for (PaymentSlabTemplate template : templates) {
+            String key = normalizeMilestoneLabel(template.getMilestoneLabel());
+            byLabel.merge(
+                    key,
+                    template,
+                    (a, b) -> {
+                        int orderA = a.getSortOrder() != null ? a.getSortOrder() : 0;
+                        int orderB = b.getSortOrder() != null ? b.getSortOrder() : 0;
+                        return orderA <= orderB ? a : b;
+                    });
+        }
+        return new ArrayList<>(byLabel.values());
+    }
+
+    /** Ensures at most one booking_payment_slabs row per milestone label. */
+    @Transactional
+    public void consolidateOneSlabPerMilestoneLabel(UUID bookingId) {
+        Map<String, BookingPaymentSlab> keepers = new LinkedHashMap<>();
+        for (BookingPaymentSlab slab : listLines(bookingId)) {
+            keepers.merge(normalizeMilestoneLabel(slab.getMilestoneLabel()), slab, this::pickPreferredSlab);
+        }
+        for (BookingPaymentSlab slab : new ArrayList<>(listLines(bookingId))) {
+            String key = normalizeMilestoneLabel(slab.getMilestoneLabel());
+            BookingPaymentSlab keeper = keepers.get(key);
+            if (keeper != null && !keeper.getId().equals(slab.getId())) {
+                bookingSlabPaymentRepository.deleteByPaymentSlab_Id(slab.getId());
+                bookingPaymentSlabRepository.delete(slab);
+            }
+        }
+    }
+
+    /** Drops booking slab rows that do not match any active platform milestone for the building. */
+    @Transactional
+    public void removeSlabsNotMatchingActiveTemplates(UUID bookingId) {
+        Booking booking = getBookingForSchedule(bookingId);
+        if (booking.getFlat() == null || booking.getFlat().getBuilding() == null) {
+            return;
+        }
+        UUID buildingId = booking.getFlat().getBuilding().getId();
+        List<PaymentSlabTemplate> templates =
+                distinctActiveTemplates(
+                        paymentSlabTemplateService.listActiveForBuilding(buildingId));
+        Set<UUID> activeTemplateIds = new HashSet<>();
+        Set<String> activeLabels = new HashSet<>();
+        for (PaymentSlabTemplate template : templates) {
+            activeTemplateIds.add(template.getId());
+            activeLabels.add(normalizeMilestoneLabel(template.getMilestoneLabel()));
+        }
+        for (BookingPaymentSlab slab : new ArrayList<>(listLines(bookingId))) {
+            if (slab.getTemplate() != null
+                    && slab.getTemplate().getId() != null
+                    && activeTemplateIds.contains(slab.getTemplate().getId())) {
+                continue;
+            }
+            if (activeLabels.contains(normalizeMilestoneLabel(slab.getMilestoneLabel()))) {
+                continue;
+            }
+            bookingSlabPaymentRepository.deleteByPaymentSlab_Id(slab.getId());
+            bookingPaymentSlabRepository.delete(slab);
+        }
+    }
+
+    private BookingPaymentSlab pickPreferredSlab(BookingPaymentSlab a, BookingPaymentSlab b) {
+        return chooseKeeperSlab(List.of(a, b));
+    }
+
+    /**
+     * Links legacy slab rows (no template) to platform milestones when the label matches, so a second
+     * row is not created for the same milestone.
+     */
+    @Transactional
+    public void linkOrphanSlabsToTemplates(UUID bookingId) {
+        Booking booking = getBookingForSchedule(bookingId);
+        if (booking.getFlat() == null || booking.getFlat().getBuilding() == null) {
+            return;
+        }
+        UUID buildingId = booking.getFlat().getBuilding().getId();
+        List<PaymentSlabTemplate> templates =
+                distinctActiveTemplates(
+                        paymentSlabTemplateService.listActiveForBuilding(buildingId));
+        if (templates.isEmpty()) {
+            return;
+        }
+        List<BookingPaymentSlab> slabs = listLines(bookingId);
+        Instant now = Instant.now();
+        boolean changed = false;
+        for (PaymentSlabTemplate template : templates) {
+            boolean templateUsed =
+                    slabs.stream()
+                            .anyMatch(
+                                    s ->
+                                            s.getTemplate() != null
+                                                    && template.getId().equals(s.getTemplate().getId()));
+            if (templateUsed) {
+                continue;
+            }
+            String templateLabel = normalizeMilestoneLabel(template.getMilestoneLabel());
+            for (BookingPaymentSlab slab : slabs) {
+                if (slab.getTemplate() != null) {
+                    continue;
+                }
+                if (!templateLabel.equals(normalizeMilestoneLabel(slab.getMilestoneLabel()))) {
+                    continue;
+                }
+                slab.setTemplate(template);
+                if (slab.getPercent() == null) {
+                    slab.setPercent(template.getSuggestedPercent());
+                }
+                slab.setUpdatedAt(now);
+                bookingPaymentSlabRepository.save(slab);
+                changed = true;
+                break;
+            }
+        }
+        if (changed) {
+            syncAgreedAmountsFromPercent(bookingId);
+        }
+    }
+
+    /**
+     * Merges duplicate slab rows (same template or same milestone label). Receipt slices on removed
+     * slabs are moved to the kept row.
+     */
+    @Transactional
+    public void deduplicateSlabRows(UUID bookingId) {
+        List<BookingPaymentSlab> slabs = new ArrayList<>(listLines(bookingId));
+        if (slabs.size() <= 1) {
+            return;
+        }
+        Map<String, List<BookingPaymentSlab>> groups = new LinkedHashMap<>();
+        for (BookingPaymentSlab slab : slabs) {
+            groups.computeIfAbsent(dedupeGroupKey(slab), k -> new ArrayList<>()).add(slab);
+        }
+        for (List<BookingPaymentSlab> group : groups.values()) {
+            if (group.size() <= 1) {
+                continue;
+            }
+            BookingPaymentSlab keeper = chooseKeeperSlab(group);
+            for (BookingPaymentSlab duplicate : group) {
+                if (duplicate.getId().equals(keeper.getId())) {
+                    continue;
+                }
+                bookingSlabPaymentRepository.deleteByPaymentSlab_Id(duplicate.getId());
+                bookingPaymentSlabRepository.delete(duplicate);
+            }
+            mergeKeeperMetadata(keeper, group);
+            bookingPaymentSlabRepository.save(keeper);
+        }
+    }
+
+    /** Same milestone label = same slab, even if one row has template_id and another is legacy. */
+    private static String dedupeGroupKey(BookingPaymentSlab slab) {
+        return normalizeMilestoneLabel(slab.getMilestoneLabel());
+    }
+
+    private static BookingPaymentSlab chooseKeeperSlab(List<BookingPaymentSlab> group) {
+        return group.stream()
+                .min(
+                        Comparator.comparing((BookingPaymentSlab s) -> s.getTemplate() == null ? 1 : 0)
+                                .thenComparing(s -> s.getDueDate() == null ? 1 : 0)
+                                .thenComparing(BookingPaymentSlab::getSortOrder)
+                                .thenComparing(BookingPaymentSlab::getId))
+                .orElse(group.getFirst());
+    }
+
+    private static void mergeKeeperMetadata(BookingPaymentSlab keeper, List<BookingPaymentSlab> group) {
+        for (BookingPaymentSlab other : group) {
+            if (other.getId().equals(keeper.getId())) {
+                continue;
+            }
+            if (keeper.getDueDate() == null && other.getDueDate() != null) {
+                keeper.setDueDate(other.getDueDate());
+            }
+            if (keeper.getTemplate() == null && other.getTemplate() != null) {
+                keeper.setTemplate(other.getTemplate());
+            }
+            if (keeper.getPercent() == null && other.getPercent() != null) {
+                keeper.setPercent(other.getPercent());
+            }
+        }
+    }
+
+    static String normalizeMilestoneLabel(String label) {
+        if (label == null) {
+            return "";
+        }
+        String normalized = label.trim().toLowerCase().replaceAll("\\s+", " ");
+        // Legacy rows often differ only by "this" (e.g. "execution of this Agreement").
+        return normalized.replace(" of this agreement", " of agreement");
     }
 
     /**
@@ -220,7 +491,8 @@ public class BookingPaymentSlabService {
             return List.of();
         }
         List<PaymentSlabTemplate> templates =
-                paymentSlabTemplateService.listActiveForBuilding(buildingId);
+                distinctActiveTemplates(
+                        paymentSlabTemplateService.listActiveForBuilding(buildingId));
         if (templates.isEmpty()) {
             return List.of();
         }
@@ -345,7 +617,9 @@ public class BookingPaymentSlabService {
             throw new IllegalArgumentException("Booking has no building; cannot load payment milestones.");
         }
         UUID buildingId = booking.getFlat().getBuilding().getId();
-        List<PaymentSlabTemplate> templates = paymentSlabTemplateService.listActiveForBuilding(buildingId);
+        List<PaymentSlabTemplate> templates =
+                distinctActiveTemplates(
+                        paymentSlabTemplateService.listActiveForBuilding(buildingId));
         if (templates.isEmpty()) {
             throw new IllegalArgumentException(
                     "No active payment milestones for this building. The Floor21 administrator must add milestones under Admin → Payment milestones for this building, then try again.");
