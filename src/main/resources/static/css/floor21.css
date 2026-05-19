@@ -1,5 +1,6 @@
 /* App shell: top bar, then left nav + right content (not stacked) */
 :root {
+  --bs-dropdown-zindex: 2000;
   --f21-topbar-height: 3.5rem;
   --f21-sidebar-width: 15.5rem;
   --f21-topbar-bg: linear-gradient(118deg, #152a52 0%, #1e4d6b 52%, #0d6e62 100%);
@@ -132,6 +133,15 @@
   flex: 1 1 auto;
   min-height: 0;
   align-items: stretch;
+  position: relative;
+  z-index: 1;
+}
+
+/* Top bar stays above shell so profile dropdown is not covered by main content */
+body > header {
+  position: relative;
+  z-index: 1040;
+  flex-shrink: 0;
 }
 
 /* Top menu bar (background textures in floor21-chrome.css) */
@@ -139,13 +149,13 @@
   min-height: var(--f21-topbar-height);
   border-bottom: 1px solid var(--f21-topbar-border);
   box-shadow: 0 4px 18px rgba(8, 20, 40, 0.28);
-  position: relative;
-  isolation: isolate;
+  overflow: visible;
 }
 
 .floor21-topbar .container-fluid {
   position: relative;
-  z-index: 1;
+  z-index: 2;
+  overflow: visible;
 }
 
 .floor21-topbar__brand {
@@ -213,12 +223,55 @@
   max-width: 9rem;
 }
 
-.floor21-profile-menu .dropdown-menu {
+.floor21-profile-menu {
+  position: relative;
+}
+
+.floor21-profile-menu__panel,
+.floor21-profile-menu .dropdown-menu,
+body > .dropdown-menu.floor21-profile-menu__panel {
   min-width: 12rem;
+  z-index: var(--bs-dropdown-zindex, 2000) !important;
+  position: fixed !important;
+  background-color: var(--bs-dropdown-bg, var(--bs-body-bg)) !important;
+  color: var(--bs-dropdown-link-color, var(--bs-body-color));
+  border: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.15));
+  box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.4);
+  padding: 0.35rem 0;
+  max-height: min(80vh, 24rem);
+  overflow-y: auto;
+}
+
+.floor21-profile-menu .dropdown-header {
+  color: var(--bs-dropdown-header-color, var(--bs-secondary-color));
 }
 
 .floor21-profile-menu .dropdown-item {
   font-size: 0.9rem;
+  color: var(--bs-dropdown-link-color, inherit);
+}
+
+.floor21-profile-menu .dropdown-item:hover,
+.floor21-profile-menu .dropdown-item:focus {
+  color: var(--bs-dropdown-link-hover-color, var(--bs-emphasis-color));
+  background-color: var(--bs-dropdown-link-hover-bg, var(--bs-tertiary-bg));
+}
+
+.floor21-profile-menu .dropdown-item.text-danger {
+  color: var(--bs-danger) !important;
+}
+
+.floor21-profile-menu .dropdown-item.text-danger:hover,
+.floor21-profile-menu .dropdown-item.text-danger:focus {
+  color: #fff !important;
+  background-color: var(--bs-danger);
+}
+
+.floor21-profile-menu form .dropdown-item[type="submit"] {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
 }
 
 .floor21-impersonation-banner {

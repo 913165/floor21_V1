@@ -20,7 +20,8 @@
           <span class="floor21-profile-menu__label d-none d-md-inline"
                 th:text="${navAccountLabel != null ? navAccountLabel : 'Account'}">Account</span>
         </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="profileMenu">
+        <ul class="dropdown-menu dropdown-menu-end shadow floor21-profile-menu__panel"
+            aria-labelledby="profileMenu">
           <li class="dropdown-header small text-truncate" style="max-width: 14rem;"
               th:text="${navAccountEmail != null ? navAccountEmail : ''}">user@example.com</li>
           <li><hr class="dropdown-divider"/></li>
