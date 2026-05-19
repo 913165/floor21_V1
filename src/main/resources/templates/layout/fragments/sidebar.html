@@ -20,10 +20,6 @@
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/clients}"
        th:classappend="${#strings.startsWith(path, '/clients')} ? ' is-active' : ''">Clients</a>
-    <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/payment-milestones}"
-       th:classappend="${#strings.startsWith(path, '/payment-milestones')} ? ' is-active' : ''">Payment milestones</a>
-
     <p class="floor21-nav__section" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Sales</p>
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bookings}"
@@ -34,7 +30,7 @@
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bookings/payment-schedule}"
        th:classappend="${#strings.startsWith(path, '/bookings/payment-schedule')} ? ' is-active' : ''"
-       title="View your payment milestones and set slab dates, %, and amounts for each booking">Slabs (payment schedule)</a>
+       title="View platform payment milestones and set slab dates, %, and amounts for each booking">Slabs (payment schedule)</a>
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/brokers}"
        th:classappend="${#strings.startsWith(path, '/brokers')} ? ' is-active' : ''">Brokers</a>
@@ -63,6 +59,9 @@
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/builder-pricing-slabs}"
        th:classappend="${#strings.startsWith(path, '/admin/builder-pricing-slabs')} ? ' is-active' : ''">Rate slabs</a>
+    <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/admin/payment-milestones}"
+       th:classappend="${#strings.startsWith(path, '/admin/payment-milestones')} ? ' is-active' : ''">Payment milestones</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/activity}"
        th:classappend="${path == '/admin/activity'} ? ' is-active' : ''">Activity</a>

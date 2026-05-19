@@ -11,6 +11,8 @@ public interface BuilderRepository extends JpaRepository<Builder, UUID> {
 
     Optional<Builder> findByEmailIgnoreCase(String email);
 
+    Optional<Builder> findFirstByPlatformAdminTrue();
+
     List<Builder> findAllByOrderByCompanyNameAsc();
 
     @Query("select b from Builder b where b.platformAdmin = false order by lower(b.companyName)")

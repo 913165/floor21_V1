@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Payment milestones</h1>
+    <a class="btn btn-primary"
+       th:if="${selectedBuildingId != null}"
+       th:href="@{/admin/payment-milestones/new(buildingId=${selectedBuildingId})}">New milestone</a>
+    <span class="btn btn-primary disabled" th:unless="${selectedBuildingId != null}"
+          title="Choose a building first">New milestone</span>
+  </div>
+  <p class="text-muted small">
+    Floor21 defines payment milestones <strong>per building</strong>. Active milestones are copied when a builder uses
+    <strong>Slabs (payment schedule)</strong> → “Create rows from platform milestones” for bookings in that building.
+  </p>
+
+  <form class="card card-body shadow-sm mb-3" method="get" th:action="@{/admin/payment-milestones}">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-8">
+        <label class="form-label" for="buildingId">Building</label>
+        <select class="form-select" id="buildingId" name="buildingId" required
+                onchange="this.form.submit()">
+          <option value="" th:selected="${selectedBuildingId == null}">Choose building…</option>
+          <option th:each="b : ${buildings}"
+                  th:value="${b.id}"
+                  th:selected="${selectedBuildingId != null && selectedBuildingId == b.id}"
+                  th:text="${(b.builder != null ? b.builder.companyName + ' — ' : '') + b.buildingName}">Building</option>
+        </select>
+      </div>
+    </div>
+  </form>
+
+  <div th:if="${selectedBuilding != null}" class="small text-muted mb-2">
+  <span th:if="${selectedBuilding.builder != null}" th:text="${selectedBuilding.builder.companyName}">Builder</span>
+    <span th:if="${selectedBuilding.builder != null}"> · </span>
+    <span class="fw-semibold" th:text="${selectedBuilding.buildingName}">Building</span>
+  </div>
+
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+  <div th:if="${selectedBuildingId == null}" class="alert alert-info">
+    Select a building to view or edit its payment milestones.
+  </div>
+
+  <div th:if="${selectedBuildingId != null}" class="card card-body shadow-sm mb-3">
+    <h2 class="h6 fw-semibold mb-2">Import from Excel</h2>
+    <p class="text-muted small mb-2">
+      Upload a sheet with <strong>Slab</strong> and <strong>Percent</strong> columns (same layout as your milestone template).
+      Date and amount columns are ignored. Rows labelled “Balance” are skipped.
+    </p>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <a class="btn btn-outline-secondary btn-sm"
+         th:href="@{/admin/payment-milestones/import-template}">Download Excel template</a>
+    </div>
+    <form th:action="@{/admin/payment-milestones/import}" method="post" enctype="multipart/form-data"
+          class="row g-2 align-items-end">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <input type="hidden" name="buildingId" th:value="${selectedBuildingId}"/>
+      <div class="col-md-6">
+        <label class="form-label" for="milestoneFile">Excel file (.xlsx / .xls)</label>
+        <input class="form-control" type="file" id="milestoneFile" name="file" accept=".xlsx,.xls" required/>
+      </div>
+      <div class="col-md-4">
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" name="replace" id="replaceMilestones" value="true" checked/>
+          <label class="form-check-label" for="replaceMilestones">Replace existing milestones for this building</label>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-success w-100" type="submit">Import</button>
+      </div>
+    </form>
+  </div>
+
+  <div th:if="${selectedBuildingId != null}" class="table-responsive card shadow-sm">
+    <table class="table mb-0">
+      <thead>
+      <tr>
+        <th>Order</th>
+        <th>Milestone</th>
+        <th class="text-end">Percentage</th>
+        <th>Active</th>
+        <th></th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="t : ${templates}">
+        <td th:text="${t.sortOrder}"></td>
+        <td th:text="${t.milestoneLabel}"></td>
+        <td class="text-end"
+            th:text="${T(com.floor21.util.PercentageFormatter).formatDisplay(t.suggestedPercent)}">—</td>
+        <td>
+          <span th:if="${t.active != null && t.active}" class="badge text-bg-success rounded-pill">Yes</span>
+          <span th:unless="${t.active != null && t.active}" class="badge text-bg-secondary rounded-pill">No</span>
+        </td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-secondary"
+             th:href="@{/admin/payment-milestones/{id}/edit(id=${t.id}, buildingId=${selectedBuildingId})}">Edit</a>
+        </td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(templates)}">
+        <td colspan="5" class="text-muted text-center py-4">No milestones for this building yet.</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

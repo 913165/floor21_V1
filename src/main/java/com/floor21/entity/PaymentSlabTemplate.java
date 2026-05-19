@@ -29,6 +29,10 @@ public class PaymentSlabTemplate {
     @JoinColumn(name = "builder_id", nullable = false)
     private Builder builder;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "building_id", nullable = false)
+    private Building building;
+
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
 

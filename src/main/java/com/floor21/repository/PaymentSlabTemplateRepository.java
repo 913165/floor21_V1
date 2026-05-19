@@ -8,9 +8,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PaymentSlabTemplateRepository extends JpaRepository<PaymentSlabTemplate, UUID> {
 
-    List<PaymentSlabTemplate> findByBuilder_IdAndActiveTrueOrderBySortOrderAscIdAsc(UUID builderId);
+    List<PaymentSlabTemplate> findByBuilding_IdAndActiveTrueOrderBySortOrderAscIdAsc(UUID buildingId);
 
-    List<PaymentSlabTemplate> findByBuilder_IdOrderBySortOrderAscIdAsc(UUID builderId);
+    List<PaymentSlabTemplate> findByBuilding_IdOrderBySortOrderAscIdAsc(UUID buildingId);
 
-    Optional<PaymentSlabTemplate> findByIdAndBuilder_Id(UUID id, UUID builderId);
+    Optional<PaymentSlabTemplate> findByIdAndBuilding_Id(UUID id, UUID buildingId);
+
+    void deleteByBuilding_Id(UUID buildingId);
 }

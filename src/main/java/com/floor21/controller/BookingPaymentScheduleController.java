@@ -14,6 +14,7 @@ import com.floor21.service.PaymentSlabTemplateService;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
@@ -79,7 +80,11 @@ public class BookingPaymentScheduleController {
             @RequestParam(required = false) UUID bookingId,
             Model model) {
         model.addAttribute("pageTitle", "Slabs — payment schedule");
-        model.addAttribute("platformMilestones", paymentSlabTemplateService.listForBuilderReference());
+        if (buildingId != null) {
+            model.addAttribute("platformMilestones", paymentSlabTemplateService.listForBuilding(buildingId));
+        } else {
+            model.addAttribute("platformMilestones", Collections.emptyList());
+        }
         model.addAttribute("buildings", buildingService.listForTenant());
         model.addAttribute("selectedBuildingId", buildingId);
         model.addAttribute("bookings", bookingPaymentSlabService.listBookingsForSchedule(buildingId));

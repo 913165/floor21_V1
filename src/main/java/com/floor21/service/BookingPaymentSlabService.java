@@ -14,7 +14,6 @@ import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BookingPaymentSlabRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BookingSlabPaymentRepository;
-import com.floor21.repository.PaymentSlabTemplateRepository;
 import com.floor21.security.TenantContext;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -37,7 +36,7 @@ public class BookingPaymentSlabService {
     private final BookingRepository bookingRepository;
     private final BookingPaymentSlabRepository bookingPaymentSlabRepository;
     private final BookingSlabPaymentRepository bookingSlabPaymentRepository;
-    private final PaymentSlabTemplateRepository paymentSlabTemplateRepository;
+    private final PaymentSlabTemplateService paymentSlabTemplateService;
 
     @Transactional(readOnly = true)
     public List<Booking> listBookingsForSchedule(UUID buildingId) {
@@ -169,12 +168,14 @@ public class BookingPaymentSlabService {
         if (replace && existing > 0) {
             bookingPaymentSlabRepository.deleteByBooking_Id(bookingId);
         }
-        UUID builderId = booking.getBuilder().getId();
-        List<PaymentSlabTemplate> templates =
-                paymentSlabTemplateRepository.findByBuilder_IdAndActiveTrueOrderBySortOrderAscIdAsc(builderId);
+        if (booking.getFlat() == null || booking.getFlat().getBuilding() == null) {
+            throw new IllegalArgumentException("Booking has no building; cannot load payment milestones.");
+        }
+        UUID buildingId = booking.getFlat().getBuilding().getId();
+        List<PaymentSlabTemplate> templates = paymentSlabTemplateService.listActiveForBuilding(buildingId);
         if (templates.isEmpty()) {
             throw new IllegalArgumentException(
-                    "No active payment milestones are defined. Add milestones under Payment milestones, then try again.");
+                    "No active payment milestones for this building. The Floor21 administrator must add milestones under Admin → Payment milestones for this building, then try again.");
         }
         Instant now = Instant.now();
         BigDecimal base = baseConsideration(booking);

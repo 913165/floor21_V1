@@ -7,12 +7,11 @@
     <h1 class="h3 mb-0" th:text="${pageTitle}">Payment schedule</h1>
     <a class="btn btn-outline-secondary" th:href="@{/bookings}">Bookings</a>
   </div>
-  <p class="text-muted small">Your company’s default milestones are listed below (from <strong>Payment milestones</strong> in the sidebar). Edit them there. Here, pick a booking to set slab dates, %, and amounts per buyer.</p>
+  <p class="text-muted small">Choose a building to see its payment milestones (read-only), then pick a booking to set slab dates, %, and amounts.</p>
 
-  <div class="card shadow-sm mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <span>Your payment milestones <span class="text-muted small fw-normal">(read-only here)</span></span>
-      <a class="btn btn-sm btn-outline-primary" th:href="@{/payment-milestones}">Edit milestones</a>
+  <div class="card shadow-sm mb-3 d-none" aria-hidden="true">
+    <div class="card-header">
+      <span>Platform payment milestones <span class="text-muted small fw-normal">(read-only)</span></span>
     </div>
     <div class="card-body p-0" th:if="${!#lists.isEmpty(platformMilestones)}">
       <div class="table-responsive">
@@ -21,7 +20,7 @@
           <tr>
             <th style="width:4rem;">Order</th>
             <th>Slab (description)</th>
-            <th style="width:6rem;">Suggested %</th>
+            <th style="width:7rem;" class="text-end">Percentage</th>
             <th style="width:6rem;">Active</th>
           </tr>
           </thead>
@@ -29,7 +28,8 @@
           <tr th:each="m : ${platformMilestones}">
             <td th:text="${m.sortOrder}">0</td>
             <td class="small" th:text="${m.milestoneLabel}">—</td>
-            <td th:text="${m.suggestedPercent != null ? m.suggestedPercent : '—'}">—</td>
+            <td class="text-end"
+                th:text="${T(com.floor21.util.PercentageFormatter).formatDisplay(m.suggestedPercent)}">—</td>
             <td>
               <span th:if="${m.active != null && m.active}" class="badge text-bg-success rounded-pill">Yes</span>
               <span th:unless="${m.active != null && m.active}" class="badge text-bg-secondary rounded-pill">No</span>
@@ -41,7 +41,7 @@
       <p class="small text-muted mb-0 px-3 py-2 border-top">Only rows marked <strong>Active = Yes</strong> are copied when you use “Create rows from platform milestones”.</p>
     </div>
     <div class="card-body" th:if="${#lists.isEmpty(platformMilestones)}">
-      <p class="text-muted mb-0">No payment milestones yet. Add them under <strong>Payment milestones</strong> in the sidebar (or click Edit milestones above).</p>
+      <p class="text-muted mb-0">No payment milestones are configured yet. The Floor21 administrator must define them under <strong>Admin → Payment milestones</strong>.</p>
     </div>
   </div>
 
@@ -86,6 +86,45 @@
       });
     })();
   </script>
+
+  <div class="card shadow-sm mb-3" th:if="${selectedBuildingId != null}">
+    <div class="card-header">
+      <span>Payment milestones for this building <span class="text-muted small fw-normal">(read-only)</span></span>
+    </div>
+    <div class="card-body p-0" th:if="${!#lists.isEmpty(platformMilestones)}">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+          <tr>
+            <th style="width:4rem;">Order</th>
+            <th>Slab (description)</th>
+            <th style="width:7rem;" class="text-end">Percentage</th>
+            <th style="width:6rem;">Active</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="m : ${platformMilestones}">
+            <td th:text="${m.sortOrder}">0</td>
+            <td class="small" th:text="${m.milestoneLabel}">—</td>
+            <td class="text-end"
+                th:text="${T(com.floor21.util.PercentageFormatter).formatDisplay(m.suggestedPercent)}">—</td>
+            <td>
+              <span th:if="${m.active != null && m.active}" class="badge text-bg-success rounded-pill">Yes</span>
+              <span th:unless="${m.active != null && m.active}" class="badge text-bg-secondary rounded-pill">No</span>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small text-muted mb-0 px-3 py-2 border-top">Only rows marked <strong>Active = Yes</strong> are copied when you use “Create rows from platform milestones”.</p>
+    </div>
+    <div class="card-body" th:if="${#lists.isEmpty(platformMilestones)}">
+      <p class="text-muted mb-0">No payment milestones for this building yet. The Floor21 administrator must add them under <strong>Admin → Payment milestones</strong> for this building.</p>
+    </div>
+  </div>
+  <div class="alert alert-info mb-3" th:if="${selectedBuildingId == null}">
+    Select a building above to view its payment milestones.
+  </div>
 
   <th:block th:if="${selectedBooking != null}"
             th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}">
