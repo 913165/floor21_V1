@@ -601,5 +601,9 @@
     recalcAllSlabs();
   }
 
-  window.Floor21SlabPayments = { init: init, handlePlusClick: handlePlusClick };
+  window.Floor21SlabPayments = {
+    init: init,
+    handlePlusClick: handlePlusClick,
+    recalcAll: recalcAllSlabs,
+  };
 })();

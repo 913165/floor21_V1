@@ -30,7 +30,7 @@
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bookings/payment-schedule}"
        th:classappend="${#strings.startsWith(path, '/bookings/payment-schedule')} ? ' is-active' : ''"
-       title="View platform payment milestones and set slab dates, %, and amounts for each booking">Slabs (payment schedule)</a>
+       title="View read-only payment slab schedule for each booking">Slabs (payment schedule)</a>
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/brokers}"
        th:classappend="${#strings.startsWith(path, '/brokers')} ? ' is-active' : ''">Brokers</a>

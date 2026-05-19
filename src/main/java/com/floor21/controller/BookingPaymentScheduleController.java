@@ -101,31 +101,15 @@ public class BookingPaymentScheduleController {
             model.addAttribute("selectedBooking", booking);
             var base = bookingPaymentSlabService.baseConsideration(booking);
             model.addAttribute("baseAmount", base);
+            if (bookingPaymentSlabService.materializeIfEmpty(bookingId)) {
+                model.addAttribute(
+                        "successMessage",
+                        "Payment schedule created from platform milestones for this building.");
+            }
+            bookingPaymentSlabService.syncAgreedAmountsFromPercent(bookingId);
             var lineViews = bookingPaymentSlabService.listLineViews(bookingId);
             model.addAttribute("lineViews", lineViews);
             model.addAttribute("scheduleSummary", bookingPaymentSlabService.summarizeLines(bookingId));
-            BookingPaymentSlabBatchForm saveForm = new BookingPaymentSlabBatchForm();
-            saveForm.setBookingId(bookingId);
-            for (var view : lineViews) {
-                BookingPaymentSlab r = view.slab();
-                BookingPaymentSlabBatchForm.Line formLine = new BookingPaymentSlabBatchForm.Line();
-                formLine.setId(r.getId());
-                formLine.setDueDate(r.getDueDate());
-                formLine.setMilestoneLabel(r.getMilestoneLabel());
-                formLine.setPercent(r.getPercent());
-                formLine.setAgreedAmount(r.getAgreedAmount());
-                formLine.setExtraAmount(r.getExtraAmount());
-                for (SlabPaymentSlice p : view.payments()) {
-                    BookingPaymentSlabBatchForm.PaymentLine pay = new BookingPaymentSlabBatchForm.PaymentLine();
-                    pay.setId(p.id());
-                    pay.setPaymentDate(p.paymentDate());
-                    pay.setAmount(p.amount());
-                    pay.setReference(p.reference());
-                    formLine.getPayments().add(pay);
-                }
-                saveForm.getLines().add(formLine);
-            }
-            model.addAttribute("saveForm", saveForm);
         }
         return "bookings/payment-schedule";
     }

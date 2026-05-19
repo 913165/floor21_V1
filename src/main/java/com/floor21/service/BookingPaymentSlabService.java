@@ -151,10 +151,43 @@ public class BookingPaymentSlabService {
     }
 
     public BigDecimal computeAgreedPortion(BigDecimal base, BigDecimal percent) {
-        if (base == null || percent == null) {
+        if (base == null || percent == null || base.compareTo(ZERO) <= 0) {
             return null;
         }
         return base.multiply(percent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    }
+
+    /** Creates slab rows from building milestones when the booking has none yet. */
+    @Transactional
+    public boolean materializeIfEmpty(UUID bookingId) {
+        if (bookingPaymentSlabRepository.countByBooking_Id(bookingId) > 0) {
+            return false;
+        }
+        materializeFromTemplates(bookingId, false);
+        return true;
+    }
+
+    /** Recomputes agreed amounts from consideration × percent for all slabs on a booking. */
+    @Transactional
+    public void syncAgreedAmountsFromPercent(UUID bookingId) {
+        Booking booking = getBookingForSchedule(bookingId);
+        BigDecimal base = baseConsideration(booking);
+        if (base.compareTo(ZERO) <= 0) {
+            return;
+        }
+        Instant now = Instant.now();
+        for (BookingPaymentSlab slab : listLines(bookingId)) {
+            if (slab.getPercent() == null) {
+                continue;
+            }
+            BigDecimal agreed = computeAgreedPortion(base, slab.getPercent());
+            if (agreed == null) {
+                continue;
+            }
+            slab.setAgreedAmount(agreed);
+            slab.setUpdatedAt(now);
+            bookingPaymentSlabRepository.save(slab);
+        }
     }
 
     @Transactional
@@ -229,7 +262,9 @@ public class BookingPaymentSlabService {
             entity.setMilestoneLabel(label.trim());
             entity.setPercent(line.getPercent());
             entity.setExtraAmount(line.getExtraAmount() != null ? line.getExtraAmount() : BigDecimal.ZERO);
-            entity.setAgreedAmount(line.getAgreedAmount());
+            BigDecimal base = baseConsideration(booking);
+            BigDecimal agreed = computeAgreedPortion(base, line.getPercent());
+            entity.setAgreedAmount(agreed != null ? agreed : line.getAgreedAmount());
             entity.setUpdatedAt(now);
             bookingPaymentSlabRepository.save(entity);
             savePaymentsForSlab(entity, line.getPayments(), now);

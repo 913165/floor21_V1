@@ -7,43 +7,7 @@
     <h1 class="h3 mb-0" th:text="${pageTitle}">Payment schedule</h1>
     <a class="btn btn-outline-secondary" th:href="@{/bookings}">Bookings</a>
   </div>
-  <p class="text-muted small">Choose a building to see its payment milestones (read-only), then pick a booking to set slab dates, %, and amounts.</p>
-
-  <div class="card shadow-sm mb-3 d-none" aria-hidden="true">
-    <div class="card-header">
-      <span>Platform payment milestones <span class="text-muted small fw-normal">(read-only)</span></span>
-    </div>
-    <div class="card-body p-0" th:if="${!#lists.isEmpty(platformMilestones)}">
-      <div class="table-responsive">
-        <table class="table table-sm mb-0">
-          <thead class="table-light">
-          <tr>
-            <th style="width:4rem;">Order</th>
-            <th>Slab (description)</th>
-            <th style="width:7rem;" class="text-end">Percentage</th>
-            <th style="width:6rem;">Active</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr th:each="m : ${platformMilestones}">
-            <td th:text="${m.sortOrder}">0</td>
-            <td class="small" th:text="${m.milestoneLabel}">—</td>
-            <td class="text-end"
-                th:text="${T(com.floor21.util.PercentageFormatter).formatDisplay(m.suggestedPercent)}">—</td>
-            <td>
-              <span th:if="${m.active != null && m.active}" class="badge text-bg-success rounded-pill">Yes</span>
-              <span th:unless="${m.active != null && m.active}" class="badge text-bg-secondary rounded-pill">No</span>
-            </td>
-          </tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="small text-muted mb-0 px-3 py-2 border-top">Only rows marked <strong>Active = Yes</strong> are copied when you use “Create rows from platform milestones”.</p>
-    </div>
-    <div class="card-body" th:if="${#lists.isEmpty(platformMilestones)}">
-      <p class="text-muted mb-0">No payment milestones are configured yet. The Floor21 administrator must define them under <strong>Admin → Payment milestones</strong>.</p>
-    </div>
-  </div>
+  <p class="text-muted small">Choose a building and booking to view the payment schedule (read-only). Slabs and percentages come from platform milestones; agreed amounts are calculated from the booking base.</p>
 
   <form id="schedulePickerForm" class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/bookings/payment-schedule}">
     <div class="row g-2 align-items-end">
@@ -116,10 +80,9 @@
           </tbody>
         </table>
       </div>
-      <p class="small text-muted mb-0 px-3 py-2 border-top">Only rows marked <strong>Active = Yes</strong> are copied when you use “Create rows from platform milestones”.</p>
     </div>
     <div class="card-body" th:if="${#lists.isEmpty(platformMilestones)}">
-      <p class="text-muted mb-0">No payment milestones for this building yet. The Floor21 administrator must add them under <strong>Admin → Payment milestones</strong> for this building.</p>
+      <p class="text-muted mb-0">No payment milestones for this building yet. The Floor21 administrator must add them under <strong>Admin → Payment milestones</strong>.</p>
     </div>
   </div>
   <div class="alert alert-info mb-3" th:if="${selectedBuildingId == null}">
@@ -127,7 +90,10 @@
   </div>
 
   <th:block th:if="${selectedBooking != null}"
-            th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}">
+            th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}, pct=${T(com.floor21.util.PercentageFormatter)}">
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
     <div class="card shadow-sm mb-3 slab-schedule-card">
       <div class="card-header py-2 fw-semibold">Booking summary</div>
       <div class="card-body row g-2 small">
@@ -142,297 +108,91 @@
     </div>
 
     <div th:if="${#lists.isEmpty(lineViews)}" class="alert alert-info">
-      <p class="mb-2">No payment rows yet. Create them from the shared platform milestones.</p>
-      <form th:action="@{/bookings/payment-schedule/materialize}" method="post" class="d-inline">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-        <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
-        <input type="hidden" name="buildingId" th:value="${selectedBuildingId}"/>
-        <button class="btn btn-primary" type="submit">Create rows from platform milestones</button>
-      </form>
+      <p class="mb-0">No payment schedule is available for this booking. The Floor21 administrator must configure payment milestones for this building.</p>
     </div>
 
     <div th:if="${!#lists.isEmpty(lineViews)}" class="card shadow-sm slab-schedule-card">
       <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
           <span class="fw-semibold">Slab schedule</span>
-          <span class="text-muted small d-block">Amounts use Indian comma format (e.g. 12,00,000)</span>
+          <span class="text-muted small d-block">Read-only view — amounts use Indian comma format (e.g. 12,00,000)</span>
           <span class="text-muted small d-block mt-1">
-            Enter <strong>due</strong> on each row; use <strong>+</strong> to expand (and open a first payment line when none exist). Use <strong>+ Add payment</strong> inside the panel for more lines. Paid and balance update from saved payments.
-          </span>
-          <span class="small d-block mt-1">
-            <span class="slab-amt--agreed">Agreed</span>
-            <span class="text-muted"> · </span>
-            <span class="slab-amt--extra">Extra</span>
+            From platform milestones for this building. <strong>Agree slab amount</strong> = consideration × percent ÷ 100.
           </span>
         </div>
-        <div class="d-flex flex-wrap gap-2 align-items-center">
-          <a class="btn btn-primary btn-sm"
-             th:href="@{/bookings/payment-schedule/demand-draft(bookingId=${selectedBooking.id})}"
-             th:if="${scheduleSummary != null}"
-             title="Download Word document with amount due and schedule details">
-            Download demand draft (Word)
-          </a>
-          <form th:action="@{/bookings/payment-schedule/materialize}" method="post" class="m-0"
-                onsubmit="return confirm('Replace all existing rows with a fresh copy from platform milestones?');">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-            <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
-            <input type="hidden" name="buildingId" th:value="${selectedBuildingId}"/>
-            <input type="hidden" name="replace" value="true"/>
-            <button class="btn btn-outline-danger btn-sm" type="submit">Rebuild from milestones</button>
-          </form>
+        <a class="btn btn-primary btn-sm"
+           th:href="@{/bookings/payment-schedule/demand-draft(bookingId=${selectedBooking.id})}"
+           th:if="${scheduleSummary != null}"
+           title="Download Word document with amount due and schedule details">
+          Download demand draft (Word)
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0 slab-schedule-table f21-table-totals">
+            <colgroup>
+              <col class="f21-col-sno"/>
+              <col class="f21-col-date"/>
+              <col class="f21-col-label"/>
+              <col class="f21-col-pct"/>
+              <col class="f21-col-amount"/>
+              <col class="f21-col-amount"/>
+              <col class="f21-col-amount"/>
+              <col class="f21-col-amount"/>
+            </colgroup>
+            <thead class="table-light">
+            <tr>
+              <th class="align-middle text-nowrap">Sno</th>
+              <th class="align-middle text-nowrap">Slab date</th>
+              <th class="align-middle">Slab</th>
+              <th class="align-middle text-end">Percent</th>
+              <th class="align-middle text-nowrap slab-schedule-th--agreed">Agree slab amount</th>
+              <th class="align-middle text-nowrap slab-schedule-th--extra">Extra slab amount</th>
+              <th class="align-middle text-nowrap slab-schedule-th--paid">Paid</th>
+              <th class="align-middle text-nowrap">Balance</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="line, iterStat : ${lineViews}" th:with="row=${line.slab()}">
+              <td class="text-nowrap" th:text="${iterStat.count}">1</td>
+              <td th:text="${row.dueDate != null ? row.dueDate : '—'}">—</td>
+              <td th:text="${row.milestoneLabel}">—</td>
+              <td class="text-end" th:text="${pct.formatDisplay(row.percent)}">—</td>
+              <td class="text-end slab-amt--agreed" th:text="${amt.formatAmountDisplay(row.agreedAmount)}">0</td>
+              <td class="text-end slab-amt--extra" th:text="${amt.formatAmountDisplay(row.extraAmount)}">0</td>
+              <td class="text-end slab-amt--paid" th:text="${amt.formatAmountDisplay(line.paidAmount())}">0</td>
+              <td class="text-end"
+                  th:classappend="${line.balanceAmount() != null and line.balanceAmount().signum() > 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
+                  th:text="${amt.formatAmountDisplay(line.balanceAmount())}">0</td>
+            </tr>
+            </tbody>
+            <tfoot class="table-light" th:if="${scheduleSummary != null}">
+            <tr class="fw-semibold">
+              <td colspan="3" class="text-end">Total</td>
+              <td class="text-end"
+                  th:text="${scheduleSummary.totalPercent != null ? pct.formatDisplay(scheduleSummary.totalPercent) : '—'}">0</td>
+              <td class="text-end slab-amt--agreed" th:text="${amt.formatAmountDisplay(scheduleSummary.totalAgreedAmount)}">0</td>
+              <td class="text-end slab-amt--extra" th:text="${amt.formatAmountDisplay(scheduleSummary.totalExtraAmount)}">0</td>
+              <td class="text-end slab-amt--paid" th:text="${amt.formatAmountDisplay(scheduleSummary.totalPaidAmount)}">0</td>
+              <td class="text-end slab-amt--balance" th:text="${amt.formatAmountDisplay(scheduleSummary.totalBalanceAmount)}">0</td>
+            </tr>
+            <tr class="fw-semibold">
+              <td colspan="3" class="text-end">Combined slab total</td>
+              <td class="text-end text-muted">—</td>
+              <td colspan="2" class="text-end slab-amt--total" th:text="${amt.formatAmountDisplay(scheduleSummary.totalAmount)}">0</td>
+              <td colspan="2" class="text-end text-muted">—</td>
+            </tr>
+            <tr class="fw-semibold" th:if="${scheduleSummary.remainingAgreedAmount != null}">
+              <td colspan="3" class="text-end">Remaining (vs consideration)</td>
+              <td class="text-end text-muted">—</td>
+              <td class="text-end slab-amt--base" th:text="${amt.formatAmountDisplay(scheduleSummary.remainingAgreedAmount)}">0</td>
+              <td colspan="3" class="text-end text-muted">—</td>
+            </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
-    <form th:action="@{/bookings/payment-schedule/save}"
-          th:object="${saveForm}"
-          method="post"
-          id="scheduleSaveForm"
-          th:attr="data-consideration-base=${baseAmount != null ? baseAmount : 0}, data-booking-id=${saveForm.bookingId}">
-      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-      <input type="hidden" name="buildingId" th:value="${selectedBuildingId}"/>
-      <input type="hidden" th:field="*{bookingId}"/>
-      <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0 slab-schedule-table f21-table-totals">
-          <colgroup>
-            <col class="f21-col-sno"/>
-            <col class="f21-col-date"/>
-            <col class="f21-col-label"/>
-            <col class="f21-col-pct"/>
-            <col class="f21-col-amount"/>
-            <col class="f21-col-amount"/>
-            <col class="f21-col-amount"/>
-            <col class="f21-col-amount"/>
-          </colgroup>
-          <thead class="table-light">
-          <tr>
-            <th class="align-middle text-nowrap" style="min-width: 5rem;">
-              Sno<br/><span class="small text-muted fw-normal">(Serial Number)</span>
-            </th>
-            <th class="align-middle text-nowrap" style="min-width: 11rem;">Slab date</th>
-            <th class="align-middle" style="min-width: 12rem;">
-              Slab<br/><span class="small text-muted fw-normal">(e.g. Initial booking amount)</span>
-            </th>
-            <th class="align-middle">Percent</th>
-            <th class="align-middle text-nowrap slab-schedule-th--agreed">Agree Slab Amount</th>
-            <th class="align-middle text-nowrap slab-schedule-th--extra">Extra Slab Amount</th>
-            <th class="align-middle text-nowrap slab-schedule-th--paid">Paid</th>
-            <th class="align-middle text-nowrap">Balance</th>
-          </tr>
-          </thead>
-          <tbody>
-          <th:block th:each="line, iterStat : ${lineViews}"
-                    th:with="row=${line.slab()}, formLine=${saveForm.lines[iterStat.index]}">
-          <tr class="slab-schedule-data-row">
-            <td class="col-sno text-nowrap">
-              <button type="button"
-                      class="btn btn-link btn-sm p-0 me-1 slab-tree-toggle slab-tree-toggle--plus"
-                      th:data-slab-index="${iterStat.index}"
-                      th:data-tree-id="|slabPayTree${iterStat.index}|"
-                      aria-expanded="false"
-                      title="Expand payments (adds first row only when none exist)">
-                <span class="slab-tree-chevron" aria-hidden="true">+</span>
-              </button>
-              <span th:text="${iterStat.count}">1</span>
-            </td>
-            <td class="p-1">
-              <input type="hidden" th:field="*{lines[__${iterStat.index}__].id}"/>
-              <input class="form-control form-control-sm" type="date"
-                     th:field="*{lines[__${iterStat.index}__].dueDate}"/>
-            </td>
-            <td class="p-1" style="min-width: 10rem;">
-              <input class="form-control form-control-sm" type="text" maxlength="800"
-                     th:field="*{lines[__${iterStat.index}__].milestoneLabel}"/>
-            </td>
-            <td style="width: 5.5rem;">
-              <input class="form-control form-control-sm" type="number" step="0.01" min="0" max="100"
-                     th:field="*{lines[__${iterStat.index}__].percent}"/>
-            </td>
-            <td class="p-1" style="width: 9rem;">
-              <input type="hidden" th:field="*{lines[__${iterStat.index}__].agreedAmount}"
-                     th:id="|slabAgreedHidden_${iterStat.index}|"/>
-              <input class="form-control form-control-sm text-end js-amount-input slab-amt-input--agreed" type="text"
-                     inputmode="decimal" autocomplete="off"
-                     th:id="|slabAgreedDisplay_${iterStat.index}|"
-                     th:attr="data-amount-hidden=|slabAgreedHidden_${iterStat.index}|"
-                     th:value="${row.agreedAmount != null ? amt.formatComma(row.agreedAmount) : ''}"
-                     placeholder="0"/>
-            </td>
-            <td class="p-1" style="width: 9rem;">
-              <input type="hidden" th:field="*{lines[__${iterStat.index}__].extraAmount}"
-                     th:id="|slabExtraHidden_${iterStat.index}|"/>
-              <input class="form-control form-control-sm text-end js-amount-input slab-amt-input--extra" type="text"
-                     inputmode="decimal" autocomplete="off"
-                     th:id="|slabExtraDisplay_${iterStat.index}|"
-                     th:attr="data-amount-hidden=|slabExtraHidden_${iterStat.index}|"
-                     th:value="${row.extraAmount != null ? amt.formatComma(row.extraAmount) : ''}"
-                     placeholder="0"/>
-            </td>
-            <td class="text-end text-nowrap slab-amt--paid" style="width: 8rem;">
-              <span th:id="|slabPaidDisplay_${iterStat.index}|" th:text="${amt.formatAmountDisplay(line.paidAmount())}">0</span>
-            </td>
-            <td class="text-end text-nowrap" style="width: 8rem;">
-              <span th:id="|slabBalanceDisplay_${iterStat.index}|"
-                    th:classappend="${line.balanceAmount() != null and line.balanceAmount().signum() > 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
-                    th:text="${amt.formatAmountDisplay(line.balanceAmount())}">0</span>
-            </td>
-          </tr>
-          <tr class="slab-payment-tree-row">
-            <td colspan="8" class="p-0 border-0 bg-body-tertiary">
-              <div class="collapse slab-payment-collapse"
-                   th:id="|slabPayTree${iterStat.index}|"
-                   th:classappend="${!#lists.isEmpty(formLine.payments)} ? ' show' : ''">
-              <div class="slab-payment-tree-panel"
-                   th:attr="data-slab-index=${iterStat.index}, data-slab-id=${row.id}">
-                <div class="slab-payment-tree-summary small mb-2">
-                  <span class="text-muted">Due</span>
-                  <span class="fw-semibold ms-1 slab-tree-summary-due" th:text="${amt.formatAmountDisplay(line.dueAmount())}">0</span>
-                  <span class="text-muted ms-2">· Paid</span>
-                  <span class="fw-semibold ms-1 slab-amt--paid slab-tree-summary-paid" th:text="${amt.formatAmountDisplay(line.paidAmount())}">0</span>
-                  <span class="text-muted ms-2">· Balance</span>
-                  <span class="fw-semibold ms-1 slab-tree-summary-balance"
-                        th:classappend="${line.balanceAmount() != null and line.balanceAmount().signum() > 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
-                        th:text="${amt.formatAmountDisplay(line.balanceAmount())}">0</span>
-                </div>
-                <table class="table table-sm table-borderless mb-2 slab-payment-entry-table">
-                  <thead>
-                  <tr class="small text-muted">
-                    <th style="width: 11rem;">Payment date</th>
-                    <th style="width: 9rem;" class="text-end">Amount</th>
-                    <th>Reference</th>
-                    <th style="width: 4.5rem;" class="text-end">Save</th>
-                  </tr>
-                  </thead>
-                  <tbody class="slab-payment-rows">
-                  <tr th:each="p, payStat : ${formLine.payments}"
-                      class="slab-payment-entry-row"
-                      th:attr="data-pay-index=${payStat.index}">
-                    <td class="slab-payment-entry-date p-1">
-                      <input type="hidden"
-                             class="js-slab-pay-id"
-                             th:if="${p.id != null}"
-                             th:field="*{lines[__${iterStat.index}__].payments[__${payStat.index}__].id}"/>
-                      <input class="form-control form-control-sm" type="date"
-                             th:field="*{lines[__${iterStat.index}__].payments[__${payStat.index}__].paymentDate}"/>
-                    </td>
-                    <td class="slab-payment-entry-amt p-1">
-                      <input type="hidden"
-                             class="js-slab-pay-amount-hidden"
-                             th:field="*{lines[__${iterStat.index}__].payments[__${payStat.index}__].amount}"
-                             th:id="|slabPayAmountHidden_${iterStat.index}_${payStat.index}|"/>
-                      <input class="form-control form-control-sm text-end js-amount-input js-slab-pay-amount-display slab-amt-input--paid"
-                             type="text" inputmode="decimal" autocomplete="off" placeholder="0"
-                             th:id="|slabPayAmountDisplay_${iterStat.index}_${payStat.index}|"
-                             th:attr="data-amount-hidden=|slabPayAmountHidden_${iterStat.index}_${payStat.index}|"
-                             th:value="${p.amount != null ? amt.formatComma(p.amount) : ''}"/>
-                    </td>
-                    <td class="slab-payment-entry-ref p-1">
-                      <input class="form-control form-control-sm" type="text" maxlength="200"
-                             placeholder="Cheque / NEFT / note"
-                             th:field="*{lines[__${iterStat.index}__].payments[__${payStat.index}__].reference}"/>
-                    </td>
-                    <td class="slab-payment-entry-actions p-1 text-end text-nowrap">
-                      <button type="button" class="btn btn-sm btn-outline-success slab-save-payment-btn" title="Save this payment">✓</button>
-                      <button type="button" class="btn btn-sm btn-outline-danger slab-remove-payment-btn" title="Remove">×</button>
-                    </td>
-                  </tr>
-                  </tbody>
-                </table>
-                <button type="button" class="btn btn-sm btn-outline-primary slab-add-payment-btn">+ Add payment</button>
-              </div>
-              </div>
-            </td>
-          </tr>
-          </th:block>
-          </tbody>
-          <tfoot class="table-light" th:if="${scheduleSummary != null}" id="scheduleTotalsFoot">
-          <tr class="fw-semibold">
-            <td colspan="3" class="text-end">Total</td>
-            <td class="text-end" id="scheduleTotalPercent"
-                th:text="${scheduleSummary.totalPercent != null ? amt.formatComma(scheduleSummary.totalPercent) : '—'}">0</td>
-            <td class="text-end slab-amt--agreed" id="scheduleTotalAgreed"
-                th:text="${amt.formatAmountDisplay(scheduleSummary.totalAgreedAmount)}">0</td>
-            <td class="text-end slab-amt--extra" id="scheduleTotalExtra"
-                th:text="${amt.formatAmountDisplay(scheduleSummary.totalExtraAmount)}">0</td>
-            <td class="text-end slab-amt--paid" id="scheduleTotalPaid"
-                th:text="${amt.formatAmountDisplay(scheduleSummary.totalPaidAmount)}">0</td>
-            <td class="text-end slab-amt--balance" id="scheduleTotalBalance"
-                th:text="${amt.formatAmountDisplay(scheduleSummary.totalBalanceAmount)}">0</td>
-          </tr>
-          <tr class="fw-semibold">
-            <td colspan="3" class="text-end">Combined slab total</td>
-            <td class="text-end text-muted">—</td>
-            <td colspan="2" class="text-end slab-amt--total" id="scheduleTotalCombined"
-                th:text="${amt.formatAmountDisplay(scheduleSummary.totalAmount)}">0</td>
-            <td colspan="2" class="text-end text-muted">—</td>
-          </tr>
-          <tr class="fw-semibold"
-              th:if="${scheduleSummary.remainingAgreedAmount != null}">
-            <td colspan="3" class="text-end">Remaining (vs consideration)</td>
-            <td class="text-end text-muted">—</td>
-            <td class="text-end slab-amt--base" id="scheduleRemainingAgreed"
-                th:text="${amt.formatAmountDisplay(scheduleSummary.remainingAgreedAmount)}">0</td>
-            <td colspan="3" class="text-end text-muted">—</td>
-          </tr>
-          </tfoot>
-        </table>
-      </div>
-      <div class="card-body border-top bg-body-tertiary">
-        <button class="btn btn-primary" type="submit">Save schedule</button>
-        <span class="text-muted small ms-2">Slab date can be left empty until fixed. Use <strong>+</strong> on each row to record payments, then save.</span>
-      </div>
-    </form>
     </div>
-    <script th:src="@{/js/amount-format.js}"></script>
-    <script th:src="@{/js/slab-schedule-payments.js(v=4)}"></script>
-    <script>
-      (function () {
-        const form = document.getElementById('scheduleSaveForm');
-        if (!form) return;
-        if (window.Floor21Amount) {
-          Floor21Amount.bindAmountForm(form);
-        }
-        const elAgreed = document.getElementById('scheduleTotalAgreed');
-        const elExtra = document.getElementById('scheduleTotalExtra');
-        const elPct = document.getElementById('scheduleTotalPercent');
-        const elCombined = document.getElementById('scheduleTotalCombined');
-        const elRemaining = document.getElementById('scheduleRemainingAgreed');
-        const considerationBase = parseFloat(form.getAttribute('data-consideration-base') || '0');
-        function recalcTotals() {
-          let sumAgreed = 0, sumExtra = 0, sumPct = 0, hasAgreed = false, hasExtra = false, hasPct = false;
-          form.querySelectorAll('[id^="slabAgreedDisplay_"]').forEach(function (el) {
-            const n = Floor21Amount.parseAmount(el.value);
-            if (n != null) { sumAgreed += n; hasAgreed = true; }
-          });
-          form.querySelectorAll('[id^="slabExtraDisplay_"]').forEach(function (el) {
-            const n = Floor21Amount.parseAmount(el.value);
-            if (n != null) { sumExtra += n; hasExtra = true; }
-          });
-          form.querySelectorAll('input[name*="percent"]').forEach(function (el) {
-            const v = parseFloat(el.value);
-            if (Number.isFinite(v)) { sumPct += v; hasPct = true; }
-          });
-          if (elAgreed) elAgreed.textContent = hasAgreed ? Floor21Amount.formatAmount(sumAgreed) : '—';
-          if (elExtra) elExtra.textContent = hasExtra ? Floor21Amount.formatAmount(sumExtra) : '—';
-          if (elPct) elPct.textContent = hasPct ? Floor21Amount.formatAmount(sumPct) : '—';
-          if (elCombined) {
-            const combined = (hasAgreed ? sumAgreed : 0) + (hasExtra ? sumExtra : 0);
-            elCombined.textContent = (hasAgreed || hasExtra) ? Floor21Amount.formatAmount(combined) : '—';
-          }
-          if (elRemaining && considerationBase > 0) {
-            const rem = considerationBase - (hasAgreed ? sumAgreed : 0);
-            elRemaining.textContent = Floor21Amount.formatAmount(rem);
-          }
-        }
-        form.addEventListener('input', recalcTotals);
-        recalcTotals();
-      })();
-    </script>
-    <script>
-      window.addEventListener('load', function () {
-        if (window.Floor21SlabPayments) {
-          Floor21SlabPayments.init();
-        }
-      });
-    </script>
   </th:block>
 </div>
 </body>
