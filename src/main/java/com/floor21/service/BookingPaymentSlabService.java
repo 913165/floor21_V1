@@ -4,6 +4,7 @@ import com.floor21.dto.BookingPaymentSlabBatchForm;
 import com.floor21.dto.SlabPaymentSaveRequest;
 import com.floor21.dto.SlabPaymentSaveResponse;
 import com.floor21.dto.SlabPaymentSlice;
+import com.floor21.dto.SlabScheduleDisplayLine;
 import com.floor21.dto.SlabScheduleLineView;
 import com.floor21.dto.SlabScheduleSummary;
 import com.floor21.entity.Booking;
@@ -19,9 +20,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -155,6 +158,143 @@ public class BookingPaymentSlabService {
             return null;
         }
         return base.multiply(percent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    }
+
+    /** Ensures every active platform milestone for the booking's building has a slab row. */
+    @Transactional
+    public void ensureAllActiveMilestoneRows(UUID bookingId) {
+        Booking booking = getBookingForSchedule(bookingId);
+        if (booking.getFlat() == null || booking.getFlat().getBuilding() == null) {
+            return;
+        }
+        UUID buildingId = booking.getFlat().getBuilding().getId();
+        List<PaymentSlabTemplate> templates =
+                paymentSlabTemplateService.listActiveForBuilding(buildingId);
+        if (templates.isEmpty()) {
+            return;
+        }
+        List<BookingPaymentSlab> existing = listLines(bookingId);
+        Set<UUID> linkedTemplateIds = new HashSet<>();
+        for (BookingPaymentSlab slab : existing) {
+            if (slab.getTemplate() != null && slab.getTemplate().getId() != null) {
+                linkedTemplateIds.add(slab.getTemplate().getId());
+            }
+        }
+        BigDecimal base = baseConsideration(booking);
+        Instant now = Instant.now();
+        int order =
+                existing.stream().mapToInt(BookingPaymentSlab::getSortOrder).max().orElse(-1) + 1;
+        boolean added = false;
+        for (PaymentSlabTemplate template : templates) {
+            if (linkedTemplateIds.contains(template.getId())) {
+                continue;
+            }
+            BookingPaymentSlab row = new BookingPaymentSlab();
+            row.setBooking(booking);
+            row.setTemplate(template);
+            row.setSortOrder(order++);
+            row.setMilestoneLabel(template.getMilestoneLabel());
+            row.setPercent(template.getSuggestedPercent());
+            row.setExtraAmount(ZERO);
+            row.setDueDate(null);
+            row.setAgreedAmount(computeAgreedPortion(base, row.getPercent()));
+            row.setCreatedAt(now);
+            row.setUpdatedAt(now);
+            bookingPaymentSlabRepository.save(row);
+            added = true;
+        }
+        if (added) {
+            syncAgreedAmountsFromPercent(bookingId);
+        }
+    }
+
+    /**
+     * Read-only schedule rows: one line per active platform milestone, merged with booking data.
+     * Missing dates and amounts show as null for the UI to render as an em dash.
+     */
+    @Transactional(readOnly = true)
+    public List<SlabScheduleDisplayLine> buildScheduleDisplay(UUID bookingId) {
+        Booking booking = getBookingForSchedule(bookingId);
+        UUID buildingId = buildingIdFromBooking(booking);
+        if (buildingId == null) {
+            return List.of();
+        }
+        List<PaymentSlabTemplate> templates =
+                paymentSlabTemplateService.listActiveForBuilding(buildingId);
+        if (templates.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, SlabScheduleLineView> byTemplateId = new LinkedHashMap<>();
+        List<SlabScheduleLineView> allViews = listLineViews(bookingId);
+        for (SlabScheduleLineView view : allViews) {
+            if (view.slab().getTemplate() != null && view.slab().getTemplate().getId() != null) {
+                byTemplateId.put(view.slab().getTemplate().getId(), view);
+            }
+        }
+        BigDecimal base = baseConsideration(booking);
+        List<SlabScheduleDisplayLine> rows = new ArrayList<>();
+        int serial = 1;
+        Set<UUID> coveredSlabIds = new HashSet<>();
+        for (PaymentSlabTemplate template : templates) {
+            SlabScheduleLineView view = byTemplateId.get(template.getId());
+            if (view != null) {
+                BookingPaymentSlab slab = view.slab();
+                coveredSlabIds.add(slab.getId());
+                BigDecimal percent =
+                        slab.getPercent() != null ? slab.getPercent() : template.getSuggestedPercent();
+                rows.add(
+                        new SlabScheduleDisplayLine(
+                                serial++,
+                                slab.getMilestoneLabel(),
+                                percent,
+                                slab.getDueDate(),
+                                slab.getAgreedAmount(),
+                                slab.getExtraAmount(),
+                                view.paidAmount(),
+                                view.balanceAmount()));
+            } else {
+                BigDecimal percent = template.getSuggestedPercent();
+                BigDecimal agreed = computeAgreedPortion(base, percent);
+                BigDecimal extra = ZERO;
+                BigDecimal balance =
+                        agreed != null ? agreed.add(extra) : null;
+                rows.add(
+                        new SlabScheduleDisplayLine(
+                                serial++,
+                                template.getMilestoneLabel(),
+                                percent,
+                                null,
+                                agreed,
+                                extra,
+                                ZERO,
+                                balance));
+            }
+        }
+        for (SlabScheduleLineView view : allViews) {
+            if (coveredSlabIds.contains(view.slab().getId())) {
+                continue;
+            }
+            BookingPaymentSlab slab = view.slab();
+            coveredSlabIds.add(slab.getId());
+            rows.add(
+                    new SlabScheduleDisplayLine(
+                            serial++,
+                            slab.getMilestoneLabel(),
+                            slab.getPercent(),
+                            slab.getDueDate(),
+                            slab.getAgreedAmount(),
+                            slab.getExtraAmount(),
+                            view.paidAmount(),
+                            view.balanceAmount()));
+        }
+        return rows;
+    }
+
+    private static UUID buildingIdFromBooking(Booking booking) {
+        if (booking.getFlat() == null || booking.getFlat().getBuilding() == null) {
+            return null;
+        }
+        return booking.getFlat().getBuilding().getId();
     }
 
     /** Creates slab rows from building milestones when the booking has none yet. */

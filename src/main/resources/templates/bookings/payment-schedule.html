@@ -86,7 +86,7 @@
     </div>
   </div>
   <div class="alert alert-info mb-3" th:if="${selectedBuildingId == null}">
-    Select a building above to view its payment milestones.
+    Select a building above to view its payment milestones, or load a booking to see milestones for that flat's building.
   </div>
 
   <th:block th:if="${selectedBooking != null}"
@@ -107,11 +107,11 @@
       </div>
     </div>
 
-    <div th:if="${#lists.isEmpty(lineViews)}" class="alert alert-info">
+    <div th:if="${#lists.isEmpty(scheduleRows)}" class="alert alert-info">
       <p class="mb-0">No payment schedule is available for this booking. The Floor21 administrator must configure payment milestones for this building.</p>
     </div>
 
-    <div th:if="${!#lists.isEmpty(lineViews)}" class="card shadow-sm slab-schedule-card">
+    <div th:if="${!#lists.isEmpty(scheduleRows)}" class="card shadow-sm slab-schedule-card">
       <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
           <span class="fw-semibold">Slab schedule</span>
@@ -153,17 +153,17 @@
             </tr>
             </thead>
             <tbody>
-            <tr th:each="line, iterStat : ${lineViews}" th:with="row=${line.slab()}">
-              <td class="text-nowrap" th:text="${iterStat.count}">1</td>
-              <td th:text="${row.dueDate != null ? row.dueDate : '—'}">—</td>
-              <td th:text="${row.milestoneLabel}">—</td>
-              <td class="text-end" th:text="${pct.formatDisplay(row.percent)}">—</td>
-              <td class="text-end slab-amt--agreed" th:text="${amt.formatAmountDisplay(row.agreedAmount)}">0</td>
-              <td class="text-end slab-amt--extra" th:text="${amt.formatAmountDisplay(row.extraAmount)}">0</td>
-              <td class="text-end slab-amt--paid" th:text="${amt.formatAmountDisplay(line.paidAmount())}">0</td>
+            <tr th:each="row : ${scheduleRows}">
+              <td class="text-nowrap" th:text="${row.serialNo()}">1</td>
+              <td th:text="${row.dueDate() != null ? row.dueDate() : '—'}">—</td>
+              <td th:text="${row.milestoneLabel()}">—</td>
+              <td class="text-end" th:text="${pct.formatDisplay(row.percent())}">—</td>
+              <td class="text-end slab-amt--agreed" th:text="${amt.formatAmountDisplay(row.agreedAmount())}">0</td>
+              <td class="text-end slab-amt--extra" th:text="${amt.formatAmountDisplay(row.extraAmount())}">0</td>
+              <td class="text-end slab-amt--paid" th:text="${amt.formatAmountDisplay(row.paidAmount())}">0</td>
               <td class="text-end"
-                  th:classappend="${line.balanceAmount() != null and line.balanceAmount().signum() > 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
-                  th:text="${amt.formatAmountDisplay(line.balanceAmount())}">0</td>
+                  th:classappend="${row.balanceAmount() != null and row.balanceAmount().signum() > 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
+                  th:text="${amt.formatAmountDisplay(row.balanceAmount())}">0</td>
             </tr>
             </tbody>
             <tfoot class="table-light" th:if="${scheduleSummary != null}">

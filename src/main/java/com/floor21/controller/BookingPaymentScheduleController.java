@@ -91,6 +91,18 @@ public class BookingPaymentScheduleController {
         model.addAttribute("selectedBookingId", bookingId);
         if (bookingId != null) {
             Booking booking = bookingPaymentSlabService.getBookingForSchedule(bookingId);
+            UUID effectiveBuildingId = buildingId;
+            if (effectiveBuildingId == null
+                    && booking.getFlat() != null
+                    && booking.getFlat().getBuilding() != null) {
+                effectiveBuildingId = booking.getFlat().getBuilding().getId();
+            }
+            if (effectiveBuildingId != null) {
+                model.addAttribute("selectedBuildingId", effectiveBuildingId);
+                model.addAttribute(
+                        "platformMilestones",
+                        paymentSlabTemplateService.listForBuilding(effectiveBuildingId));
+            }
             if (!bookingMatchesBuilding(booking, buildingId)) {
                 model.addAttribute(
                         "errorMessage",
@@ -106,9 +118,9 @@ public class BookingPaymentScheduleController {
                         "successMessage",
                         "Payment schedule created from platform milestones for this building.");
             }
+            bookingPaymentSlabService.ensureAllActiveMilestoneRows(bookingId);
             bookingPaymentSlabService.syncAgreedAmountsFromPercent(bookingId);
-            var lineViews = bookingPaymentSlabService.listLineViews(bookingId);
-            model.addAttribute("lineViews", lineViews);
+            model.addAttribute("scheduleRows", bookingPaymentSlabService.buildScheduleDisplay(bookingId));
             model.addAttribute("scheduleSummary", bookingPaymentSlabService.summarizeLines(bookingId));
         }
         return "bookings/payment-schedule";
