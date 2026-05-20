@@ -206,11 +206,7 @@
   }
 
   function syncBuyerTooltip(el, flat) {
-    var bookable =
-        flat && flat.bookableByCurrentUser !== undefined
-            ? flat.bookableByCurrentUser !== false
-            : isFlatBookable(el);
-    if (!bookable) {
+    if (!isFlatBookableFromData(flat, el)) {
       stripNonBookableHover(el);
       return;
     }
@@ -235,12 +231,23 @@
     var on = inner.querySelector(".flat-owner-name");
     var od = inner.querySelector(".flat-owner-detail");
     var owner = inner.querySelector(".flat-card-owner");
-    var odisp = flat.ownerDisplay == null ? "" : String(flat.ownerDisplay).trim();
-    var odet = flat.ownerDetail == null ? "" : String(flat.ownerDetail).trim();
-    if (on) on.textContent = odisp;
-    if (od) od.textContent = odet;
+    var lines = ownerLinesForCard(flat, el);
+    var bookable = isFlatBookableFromData(flat, el);
+    if (on) on.textContent = lines.display;
+    if (od) {
+      od.textContent = lines.detail;
+      od.classList.toggle("d-none", !bookable || !lines.detail);
+    }
     if (owner) {
-      owner.classList.toggle("is-blank", !odisp && !odet);
+      owner.classList.toggle("is-blank", !lines.display && !lines.detail);
+    }
+    if (!bookable) {
+      delete el.dataset.clientId;
+      delete el.dataset.ownerDisplay;
+      delete el.dataset.ownerDetail;
+      delete el.dataset.bookingCode;
+      delete el.dataset.buyerPhone;
+      delete el.dataset.buyerEmail;
     }
   }
 
@@ -335,6 +342,26 @@
 
   function isFlatBookable(cardEl) {
     return !!(cardEl && cardEl.dataset.bookable === "true");
+  }
+
+  function isFlatBookableFromData(flat, cardEl) {
+    if (flat && flat.bookableByCurrentUser !== undefined && flat.bookableByCurrentUser !== null) {
+      return flat.bookableByCurrentUser !== false;
+    }
+    return isFlatBookable(cardEl);
+  }
+
+  function ownerLinesForCard(flat, cardEl) {
+    if (!isFlatBookableFromData(flat, cardEl)) {
+      return {
+        display: flat && flat.status === "BOOKED" ? "Booked" : "",
+        detail: "",
+      };
+    }
+    return {
+      display: flat.ownerDisplay == null ? "" : String(flat.ownerDisplay).trim(),
+      detail: flat.ownerDetail == null ? "" : String(flat.ownerDetail).trim(),
+    };
   }
 
   function syncFloorPlanLink(cardEl) {
