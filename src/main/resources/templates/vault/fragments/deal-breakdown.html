@@ -75,33 +75,24 @@
         </div>
       </div>
 
-      <div class="row g-2 vault-deal-actions">
-        <div class="col-md-6">
-          <button class="btn btn-outline-secondary w-100" type="submit">
-            <span aria-hidden="true">&#128190;</span> Save deal amounts
-          </button>
-        </div>
-        <div class="col-md-6">
-          <a class="btn btn-outline-secondary w-100"
-             th:href="@{/bookings/payment-schedule(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId})}">
-            How to add to slab schedule &#8599;
-          </a>
-        </div>
+      <div class="vault-deal-actions">
+        <button class="btn btn-outline-secondary" type="submit">
+          <span aria-hidden="true">&#128190;</span> Save deal amounts
+        </button>
       </div>
     </form>
 
-    <details class="mt-3 small" th:if="${amountSummary != null}">
-      <summary class="text-muted" style="cursor:pointer">Slab reference &amp; vault received</summary>
-      <div class="table-responsive mt-2">
-        <table class="table table-sm mb-0">
-          <tbody>
-          <tr><td>Sum of agreed (slabs)</td><td class="text-end" th:text="${amt.formatAmountDisplay(amountSummary.totalFlatAmount)}">0</td></tr>
-          <tr><td>Sum of extra (slabs)</td><td class="text-end" th:text="${amt.formatAmountDisplay(amountSummary.totalExtraAmount)}">0</td></tr>
-          <tr class="fw-semibold"><td>Vault received (by date)</td><td class="text-end" th:text="${amt.formatAmountDisplay(amountSummary.vaultReceivedTotal)}">0</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </details>
+    <p class="mt-3 mb-0 small text-muted" th:if="${amountSummary != null}">
+      Income:
+      <strong th:text="${amt.formatAmountDisplay(amountSummary.vaultReceivedTotal)}">0</strong>
+      · Expenses:
+      <strong th:text="${amt.formatAmountDisplay(amountSummary.vaultExpenseTotal)}">0</strong>
+      · Net:
+      <strong th:text="${amt.formatAmountDisplay(amountSummary.netVaultBalance)}">0</strong>
+      <span th:if="${amountSummary.remainingAmount != null}">
+        (<span th:text="${amt.formatAmountDisplay(amountSummary.remainingAmount)}">0</span> remaining of deal total)
+      </span>
+    </p>
   </div>
   <script th:src="@{/js/amount-format.js}"></script>
   <script>

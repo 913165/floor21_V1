@@ -32,7 +32,7 @@ public class VaultAccessService {
         }
         UUID staffUserId = principal.getStaffUserId();
         if (staffUserId == null) {
-            return vaultAccessRepository.existsByBuilding_Builder_IdAndEnabledTrue(builderId);
+            return false;
         }
         return vaultAccessRepository.existsByUser_IdAndEnabledTrue(staffUserId);
     }
@@ -55,7 +55,7 @@ public class VaultAccessService {
         }
         UUID staffUserId = principal.getStaffUserId();
         if (staffUserId == null) {
-            return vaultAccessRepository.existsByBuilding_IdAndEnabledTrue(building.getId());
+            return false;
         }
         return vaultAccessRepository.existsByUser_IdAndBuilding_IdAndEnabledTrue(
                 staffUserId, building.getId());

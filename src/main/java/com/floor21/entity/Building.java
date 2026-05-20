@@ -58,9 +58,9 @@ public class Building {
     @Column(name = "is_active")
     private Boolean active = true;
 
-    /** When false, this property is hidden from Vault (builder and user must also have Vault on). */
+    /** Legacy column; access is controlled in Vault config (user + building). */
     @Column(name = "vault_enabled", nullable = false)
-    private Boolean vaultEnabled = true;
+    private Boolean vaultEnabled = false;
 
     /** Web path under context, e.g. {@code media/buildings/{id}/1BHK.png}; null if not uploaded. */
     @Column(name = "floor_plan_1bhk", length = 500)

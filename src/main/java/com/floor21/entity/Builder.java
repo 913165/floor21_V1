@@ -56,9 +56,9 @@ public class Builder {
     @Column(name = "is_platform_admin", nullable = false)
     private boolean platformAdmin;
 
-    /** When false, no staff user sees the Vault menu for this builder. */
+    /** Legacy column; access is controlled in Vault config (user + building). */
     @Column(name = "vault_enabled", nullable = false)
-    private Boolean vaultEnabled = true;
+    private Boolean vaultEnabled = false;
 
     @Column(name = "created_at")
     private Instant createdAt;

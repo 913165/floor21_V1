@@ -69,11 +69,7 @@ public class AdminController {
             entity = new Builder();
             entity.setCreatedAt(Instant.now());
             entity.setPlatformAdmin(false);
-            entity.setVaultEnabled(
-                    "true"
-                            .equalsIgnoreCase(
-                                    platformSettingsService.get(
-                                            PlatformSettingsService.KEY_VAULT_DEFAULT, "true")));
+            entity.setVaultEnabled(false);
         } else {
             entity = builderRepository.findById(form.getId()).orElseThrow();
         }

@@ -8,8 +8,8 @@
 
   <h1 class="h3 mb-2" th:text="${pageTitle}">Vault config</h1>
   <p class="text-muted small mb-4">
-    Vault access is one <strong>user</strong> + one <strong>building</strong>. All login users from the Users menu
-    appear here (partners and builder admins). Pick both, add to the list, then save.
+    Vault is <strong>off by default</strong> for everyone. Access is only what you add here: one
+    <strong>user</strong> + one <strong>building</strong>, then <strong>Save</strong>.
   </p>
 
   <form th:action="@{/admin/vault-config}" method="post" id="vault-config-form">

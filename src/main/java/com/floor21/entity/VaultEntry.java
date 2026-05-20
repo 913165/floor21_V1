@@ -47,6 +47,10 @@ public class VaultEntry {
     @Column(name = "payment_mode", length = 30)
     private String paymentMode;
 
+    /** {@link VaultEntryType#INCOME} or {@link VaultEntryType#EXPENSE}. */
+    @Column(name = "entry_type", nullable = false, length = 20)
+    private String entryType = VaultEntryType.INCOME;
+
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
