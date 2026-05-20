@@ -83,6 +83,14 @@ public class FlatService {
                                         Booking b = bookingByFlatId.get(f.getId());
                                         Client bookedClient =
                                                 b != null && "BOOKED".equals(f.getStatus()) ? b.getClient() : null;
+                                        UUID assignedPartnerId = partnerIds.get(f.getId());
+                                        boolean bookable =
+                                                partnerFlatAllocationService.isBookableByCurrentUser(
+                                                        buildingId, assignedPartnerId);
+                                        String cardClass = resolveCardClass(f, b);
+                                        if (!bookable && !Boolean.TRUE.equals(f.getParking())) {
+                                            cardClass = cardClass + " flat-card--other-partner";
+                                        }
                                         return new FlatGridFlatDto(
                                                 f.getId(),
                                                 f.getFlatNumber(),
@@ -99,9 +107,10 @@ public class FlatService {
                                                 bookingCodeForTooltip(b),
                                                 bookedClient != null ? pickPhone(bookedClient) : null,
                                                 bookedClient != null ? pickEmail(bookedClient) : null,
-                                                resolveCardClass(f, b),
-                                                partnerIds.get(f.getId()),
-                                                partnerLabels.get(f.getId()));
+                                                cardClass,
+                                                assignedPartnerId,
+                                                partnerLabels.get(f.getId()),
+                                                bookable);
                                     })
                             .toList();
             rows.add(new FlatGridFloorDto("Floor " + floor, cells));
@@ -353,6 +362,7 @@ public class FlatService {
                         .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
         if (flat.getBuilding() != null) {
             TenantContext.requireBuildingAccess(flat.getBuilding().getId());
+            partnerFlatAllocationService.assertCanManageFlat(flat.getBuilding().getId(), flatId);
         }
         if (Boolean.TRUE.equals(flat.getParking())) {
             throw new IllegalArgumentException("Parking slots cannot change status");
@@ -477,7 +487,8 @@ public class FlatService {
                 bookedClient != null ? pickEmail(bookedClient) : null,
                 resolveCardClass(f, booking),
                 null,
-                null);
+                null,
+                true);
     }
 
     private Flat requireResidentialFlatForAdmin(UUID flatId) {

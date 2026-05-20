@@ -34,6 +34,7 @@ public class BookingService {
     private final BrokerRepository brokerRepository;
     private final UserRepository userRepository;
     private final BuilderRepository builderRepository;
+    private final PartnerFlatAllocationService partnerFlatAllocationService;
 
     @Transactional(readOnly = true)
     public List<Booking> list() {
@@ -77,6 +78,9 @@ public class BookingService {
         if (flat.getBuilding() != null
                 && !TenantContext.canAccessBuilding(flat.getBuilding().getId())) {
             throw new ResourceNotFoundException("Flat not found");
+        }
+        if (flat.getBuilding() != null) {
+            partnerFlatAllocationService.assertCanManageFlat(flat.getBuilding().getId(), flat.getId());
         }
         Client client =
                 clientRepository

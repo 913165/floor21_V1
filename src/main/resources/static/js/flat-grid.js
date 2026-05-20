@@ -239,6 +239,7 @@
         el.dataset.price = flat.basePrice;
         el.dataset.area = flat.areaSqft;
         el.dataset.parking = flat.parking;
+        el.dataset.bookable = flat.bookableByCurrentUser === false ? "false" : "true";
         if (flat.assignedPartnerId) {
           el.dataset.partnerId = flat.assignedPartnerId;
         } else {
@@ -254,14 +255,27 @@
         syncCardOwner(el, flat);
         var typeSpan = el.querySelector(".flat-type");
         if (typeSpan && flat.bhkType) typeSpan.textContent = flat.bhkType;
-        el.classList.remove("flat-available", "flat-booked", "flat-hold", "flat-parking");
+        el.classList.remove(
+          "flat-available",
+          "flat-booked",
+          "flat-hold",
+          "flat-parking",
+          "flat-card--other-partner"
+        );
         if (flat.parking) el.classList.add("flat-parking");
         else if (flat.status === "AVAILABLE") el.classList.add("flat-available");
         else if (flat.status === "BOOKED") el.classList.add("flat-booked");
         else el.classList.add("flat-hold");
+        if (flat.bookableByCurrentUser === false && !flat.parking) {
+          el.classList.add("flat-card--other-partner");
+        }
       });
     });
     applyBookingSelectionHighlight();
+    if (selectedFlatId) {
+      var selected = document.getElementById("flat-" + selectedFlatId);
+      if (selected) syncActionButtons(selected);
+    }
   }
 
   async function postStatus(flatId, status) {
@@ -287,6 +301,27 @@
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
+  function syncActionButtons(cardEl) {
+    var bookable = cardEl.dataset.bookable !== "false";
+    var hold = document.getElementById("hold-btn");
+    var book = document.getElementById("book-btn");
+    if (hold) {
+      hold.disabled = !bookable;
+      hold.classList.toggle("disabled", !bookable);
+      hold.title = bookable ? "" : "Assigned to another partner";
+    }
+    if (book) {
+      var statusOk =
+          cardEl.dataset.status === "AVAILABLE" || cardEl.dataset.status === "HOLD";
+      book.classList.toggle("disabled", !bookable || !statusOk);
+      if (!bookable) {
+        book.title = "Assigned to another partner";
+      } else {
+        book.removeAttribute("title");
+      }
+    }
+  }
+
   window.floor21SelectFlat = function (el) {
     if (el.dataset.parking === "true") return;
     selectedFlatId = el.dataset.flatId;
@@ -300,7 +335,14 @@
     var book = document.getElementById("book-btn");
     if (book) {
       book.href = appRoot() + "/bookings/new?flatId=" + encodeURIComponent(selectedFlatId);
-      book.classList.toggle("disabled", el.dataset.status !== "AVAILABLE" && el.dataset.status !== "HOLD");
+      var statusOk = el.dataset.status === "AVAILABLE" || el.dataset.status === "HOLD";
+      var bookable = el.dataset.bookable !== "false";
+      book.classList.toggle("disabled", !bookable || !statusOk);
+      if (!bookable) {
+        book.title = "Assigned to another partner";
+      } else {
+        book.removeAttribute("title");
+      }
     }
     var clientInfo = document.getElementById("client-info-btn");
     if (clientInfo) {
@@ -327,6 +369,7 @@
       }
     }
     applyBookingSelectionHighlight();
+    syncActionButtons(el);
     syncAdminPanel(el);
   };
 
@@ -381,9 +424,28 @@
         if (!selectedFlatId) return;
         var el = document.getElementById("flat-" + selectedFlatId);
         if (!el || el.dataset.parking === "true") return;
+        if (el.dataset.bookable === "false") {
+          window.alert("This flat is assigned to another partner.");
+          return;
+        }
         var next = el.dataset.status === "HOLD" ? "AVAILABLE" : "HOLD";
         await postStatus(selectedFlatId, next);
         await refreshGrid();
+      });
+    }
+
+    var bookBtn = document.getElementById("book-btn");
+    if (bookBtn) {
+      bookBtn.addEventListener("click", function (e) {
+        if (bookBtn.classList.contains("disabled")) {
+          e.preventDefault();
+          if (selectedFlatId) {
+            var card = document.getElementById("flat-" + selectedFlatId);
+            if (card && card.dataset.bookable === "false") {
+              window.alert("This flat is assigned to another partner.");
+            }
+          }
+        }
       });
     }
 

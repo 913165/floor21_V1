@@ -216,6 +216,63 @@ public class PartnerFlatAllocationService {
         }
     }
 
+    /**
+     * When partner flat allocation exists for the building, executives may only book or hold flats assigned to
+     * them (or unassigned). Builder admins and platform admin are unrestricted.
+     */
+    @Transactional(readOnly = true)
+    public boolean isBookableByCurrentUser(UUID buildingId, UUID assignedPartnerId) {
+        if (!isAllocationActive(buildingId) || canBypassPartnerFlatRestriction()) {
+            return true;
+        }
+        UUID staffUserId = currentStaffUserId();
+        if (staffUserId == null) {
+            return true;
+        }
+        if (assignedPartnerId == null) {
+            return true;
+        }
+        return assignedPartnerId.equals(staffUserId);
+    }
+
+    @Transactional(readOnly = true)
+    public void assertCanManageFlat(UUID buildingId, UUID flatId) {
+        if (canBypassPartnerFlatRestriction()) {
+            return;
+        }
+        UUID assignedPartnerId =
+                assignmentRepository
+                        .findByFlat_Id(flatId)
+                        .map(a -> a.getUser().getId())
+                        .orElse(null);
+        if (!isBookableByCurrentUser(buildingId, assignedPartnerId)) {
+            throw new IllegalArgumentException("This flat is assigned to another partner.");
+        }
+    }
+
+    private static boolean canBypassPartnerFlatRestriction() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof Floor21UserPrincipal principal)) {
+            return true;
+        }
+        if (principal.isSuperAdmin()) {
+            return true;
+        }
+        if (principal.getStaffUserId() == null) {
+            return true;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_BUILDER_ADMIN".equals(a.getAuthority()));
+    }
+
+    private static UUID currentStaffUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof Floor21UserPrincipal principal)) {
+            return null;
+        }
+        return principal.getStaffUserId();
+    }
+
     private static void requirePlatformAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null

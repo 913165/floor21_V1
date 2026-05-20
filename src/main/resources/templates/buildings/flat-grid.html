@@ -89,7 +89,7 @@
   </div>
 
   <div class="alert alert-info py-2" sec:authorize="hasRole('EXECUTIVE')">
-    Full flat layout for this building. You can book, change status, and enter receipts only for buildings assigned to you.
+    Full flat layout for this building. Flats assigned to another partner appear greyed out and cannot be booked or held by you.
   </div>
 
   <div class="card shadow-sm mb-3" sec:authorize="hasRole('SUPER_ADMIN')">
@@ -175,7 +175,8 @@
                       data-booking-code=${flat.bookingCode()},
                       data-buyer-phone=${flat.buyerPhone()},
                       data-buyer-email=${flat.buyerEmail()},
-                      data-floor-plan-slot=${fpSlot != null ? fpSlot : ''}">
+                      data-floor-plan-slot=${fpSlot != null ? fpSlot : ''},
+                      data-bookable=${flat.bookableByCurrentUser()}">
           <div class="flat-card-buyertip" th:if="${flat.status() == 'BOOKED' and !#strings.isEmpty(flat.ownerDisplay())}">
             <div class="flat-card-buyertip__title">Buyer</div>
             <div class="flat-card-buyertip__name" th:text="${flat.ownerDisplay()}">-</div>
