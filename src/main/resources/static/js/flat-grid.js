@@ -15,6 +15,16 @@
 
   var selectedFlatId = null;
 
+  /** Bootstrap backdrop is on body; modals must be too or backdrop blocks clicks. */
+  function mountModalsOnBody() {
+    ["flat-details-modal", "floor-plan-modal"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && el.parentElement !== document.body) {
+        document.body.appendChild(el);
+      }
+    });
+  }
+
   function isPlatformAdminEdit() {
     var grid = document.getElementById("flat-grid");
     return grid && grid.getAttribute("data-platform-admin-edit") === "true";
@@ -393,12 +403,21 @@
     syncFloorPlanLink(cardEl);
   }
 
-  window.floor21SelectFlat = function (el) {
+  function openFlatDetailsModal() {
+    var modalEl = document.getElementById("flat-details-modal");
+    if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) return;
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+
+  window.floor21SelectFlat = function (el, showModal) {
     if (el.dataset.parking === "true") return;
     selectedFlatId = el.dataset.flatId;
-    var panel = document.getElementById("booking-panel");
-    if (!panel) return;
-    panel.classList.remove("d-none");
+    var titleEl = document.getElementById("panel-title");
+    var flatNumEl = el.querySelector(".flat-number");
+    var flatLabel = flatNumEl ? flatNumEl.textContent.trim() : "";
+    if (titleEl) {
+      titleEl.textContent = flatLabel ? "Flat " + flatLabel : "Flat details";
+    }
     document.getElementById("panel-type").textContent = el.dataset.type || "";
     document.getElementById("panel-floor").textContent = el.dataset.floor || "";
     document.getElementById("panel-area").textContent = el.dataset.area || "";
@@ -453,6 +472,9 @@
     applyBookingSelectionHighlight();
     syncActionButtons(el);
     syncAdminPanel(el);
+    if (showModal !== false) {
+      openFlatDetailsModal();
+    }
   };
 
   async function loadSalesPartnersIntoSelect() {
@@ -482,6 +504,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    mountModalsOnBody();
     initAllFlatCards();
     loadSalesPartnersIntoSelect();
     var modalEl = document.getElementById("floor-plan-modal");
@@ -523,6 +546,8 @@
         var next = el.dataset.status === "HOLD" ? "AVAILABLE" : "HOLD";
         await postStatus(selectedFlatId, next);
         await refreshGrid();
+        var updated = document.getElementById("flat-" + selectedFlatId);
+        if (updated) window.floor21SelectFlat(updated, false);
       });
     }
 
@@ -661,7 +686,12 @@
           }
           var quick = e.target.closest(".flat-quick-link");
           if (quick) {
+            e.preventDefault();
             e.stopPropagation();
+            var cardFromQuick = quick.closest(".flat-card");
+            if (cardFromQuick && cardFromQuick.dataset.parking !== "true") {
+              window.floor21SelectFlat(cardFromQuick);
+            }
             return;
           }
           var cardForFp = e.target.closest(".flat-card");
@@ -682,8 +712,7 @@
           if (!card || !grid.contains(card)) return;
           if (card.dataset.parking === "true") return;
           window.floor21SelectFlat(card);
-        },
-        true
+        }
       );
       setInterval(refreshGrid, 20000);
       var focusId = grid.getAttribute("data-focus-flat-id");

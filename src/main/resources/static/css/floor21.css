@@ -685,11 +685,15 @@ button.flat-floor-plan-link {
 .flat-quick-link {
   display: inline-block;
   margin-top: 0.2rem;
+  padding: 0;
+  border: none;
+  background: transparent;
   font-size: 0.69rem;
   font-weight: 600;
   line-height: 1.2;
   color: var(--bs-link-color);
   text-decoration: underline;
+  cursor: pointer;
 }
 
 .flat-card-row .flat-quick-link {
@@ -700,12 +704,18 @@ button.flat-floor-plan-link {
   color: var(--bs-link-hover-color);
 }
 
-.flat-quick-link.disabled,
-.flat-quick-link[aria-disabled="true"] {
-  color: var(--bs-secondary-color);
-  cursor: not-allowed;
-  text-decoration: none;
-  pointer-events: none;
+.flat-details-modal-dialog {
+  max-width: min(92vw, 520px);
+}
+
+/* Modals teleported to body in flat-grid.js; keep above shell (z-index 1) and backdrop */
+#flat-details-modal.modal,
+#floor-plan-modal.modal {
+  z-index: 1060;
+}
+
+body.modal-open .modal-backdrop {
+  z-index: 1055;
 }
 
 .floor-plan-modal-dialog {
@@ -1063,10 +1073,6 @@ button.flat-floor-plan-link {
 .floor-label {
   width: 6.75rem;
   flex-shrink: 0;
-}
-
-#booking-panel.d-none {
-  display: none !important;
 }
 
 /* Theme switch: sun (light) / moon (dark), one control */
