@@ -89,8 +89,8 @@
   </div>
 
   <div class="alert alert-info py-2" sec:authorize="hasRole('EXECUTIVE')">
-    Full flat layout for this building. Only flats <strong>assigned to you</strong> stay active (green / blue / yellow).
-    All other flats — including unassigned and other partners — appear greyed out and cannot be booked or held.
+    Full flat layout for this building. Only flats <strong>assigned to you</strong> are active — use <em>Flat details</em> to book or hold.
+    Unassigned flats and other partners’ flats are greyed out (no details popup, no booking).
   </div>
 
   <div class="card shadow-sm mb-3" sec:authorize="hasRole('SUPER_ADMIN')">
@@ -210,7 +210,7 @@
               <span class="flat-owner-name" th:text="${flat.ownerDisplay()}"></span>
               <span class="flat-owner-detail" th:text="${flat.ownerDetail()}"></span>
             </div>
-            <button th:if="${!flat.parking()}"
+            <button th:if="${!flat.parking() and flat.bookableByCurrentUser()}"
                     type="button"
                     class="flat-quick-link"
                     th:attr="data-flat-id=${flat.id()}">

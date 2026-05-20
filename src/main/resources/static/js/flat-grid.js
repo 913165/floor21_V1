@@ -411,6 +411,7 @@
 
   window.floor21SelectFlat = function (el, showModal) {
     if (el.dataset.parking === "true") return;
+    if (!isFlatBookable(el)) return;
     selectedFlatId = el.dataset.flatId;
     var titleEl = document.getElementById("panel-title");
     var flatNumEl = el.querySelector(".flat-number");
@@ -711,6 +712,7 @@
           var card = e.target.closest(".flat-card");
           if (!card || !grid.contains(card)) return;
           if (card.dataset.parking === "true") return;
+          if (!isFlatBookable(card)) return;
           window.floor21SelectFlat(card);
         }
       );
