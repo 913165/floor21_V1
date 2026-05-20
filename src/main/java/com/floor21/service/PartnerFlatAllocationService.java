@@ -72,6 +72,11 @@ public class PartnerFlatAllocationService {
     }
 
     @Transactional(readOnly = true)
+    public UUID getAssignedPartnerIdForFlat(UUID flatId) {
+        return assignmentRepository.findByFlat_Id(flatId).map(a -> a.getUser().getId()).orElse(null);
+    }
+
+    @Transactional(readOnly = true)
     public Map<UUID, UUID> getFlatOwnerByPartnerId(UUID buildingId) {
         Map<UUID, UUID> map = new HashMap<>();
         for (PartnerFlatAssignment row : assignmentRepository.findByBuilding_Id(buildingId)) {
@@ -217,8 +222,9 @@ public class PartnerFlatAllocationService {
     }
 
     /**
-     * When partner flat allocation exists for the building, executives may only book or hold flats assigned to
-     * them (or unassigned). Builder admins and platform admin are unrestricted.
+     * When partner flat allocation exists for the building, sales partners (executives) may only book or hold flats
+     * explicitly assigned to them. Unassigned flats and flats assigned to others stay visible on the grid but are
+     * not bookable. Builder admins and platform admin are unrestricted.
      */
     @Transactional(readOnly = true)
     public boolean isBookableByCurrentUser(UUID buildingId, UUID assignedPartnerId) {
@@ -229,10 +235,7 @@ public class PartnerFlatAllocationService {
         if (staffUserId == null) {
             return true;
         }
-        if (assignedPartnerId == null) {
-            return true;
-        }
-        return assignedPartnerId.equals(staffUserId);
+        return assignedPartnerId != null && assignedPartnerId.equals(staffUserId);
     }
 
     @Transactional(readOnly = true)

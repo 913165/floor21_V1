@@ -101,7 +101,17 @@ public class BuildingController {
      * always resolve paths correctly with {@code server.servlet.context-path}.
      */
     @GetMapping("/{id}/floor-plan/{slot}")
-    public ResponseEntity<Resource> floorPlanImage(@PathVariable UUID id, @PathVariable String slot) {
+    public ResponseEntity<Resource> floorPlanImage(
+            @PathVariable UUID id,
+            @PathVariable String slot,
+            @RequestParam(required = false) UUID flatId) {
+        if (flatId != null) {
+            UUID assignedPartnerId =
+                    partnerFlatAllocationService.getAssignedPartnerIdForFlat(flatId);
+            if (!partnerFlatAllocationService.isBookableByCurrentUser(id, assignedPartnerId)) {
+                return ResponseEntity.status(403).build();
+            }
+        }
         Building b = buildingService.resolveForAccess(id);
         String key = slot.toLowerCase(Locale.ROOT);
         String webPath =

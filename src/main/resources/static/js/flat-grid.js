@@ -268,7 +268,10 @@
         else el.classList.add("flat-hold");
         if (flat.bookableByCurrentUser === false && !flat.parking) {
           el.classList.add("flat-card--other-partner");
+          delete el.dataset.floorPlanSlot;
         }
+        stripFloorPlanTriggers(el);
+        syncFloorPlanLink(el);
       });
     });
     applyBookingSelectionHighlight();
@@ -290,7 +293,10 @@
     }
   }
 
-  function openFloorPlanModal(url, title) {
+  function openFloorPlanModal(url, title, cardEl) {
+    if (cardEl && !isFlatBookable(cardEl)) {
+      return;
+    }
     var img = document.getElementById("floor-plan-modal-img");
     var modalEl = document.getElementById("floor-plan-modal");
     var titleEl = document.getElementById("floor-plan-modal-title");
@@ -301,25 +307,90 @@
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
+  function isFlatBookable(cardEl) {
+    return !!(cardEl && cardEl.dataset.bookable === "true");
+  }
+
+  function syncFloorPlanLink(cardEl) {
+    if (!cardEl) return;
+    var bookable = isFlatBookable(cardEl);
+    var fp = cardEl.querySelector(".flat-floor-plan-trigger");
+    if (!fp) return;
+    fp.disabled = !bookable;
+    if (!bookable) {
+      fp.classList.remove("flat-floor-plan-trigger");
+      fp.classList.add("flat-floor-plan-link--disabled");
+      fp.removeAttribute("data-floor-plan-url");
+      fp.setAttribute("title", "Floor plan not available — flat not assigned to you");
+    }
+  }
+
+  function stripFloorPlanTriggers(cardEl) {
+    if (!cardEl || isFlatBookable(cardEl)) return;
+    cardEl.querySelectorAll(".flat-floor-plan-trigger").forEach(function (btn) {
+      var label = document.createElement("span");
+      label.className = "flat-floor-plan-muted";
+      label.setAttribute("aria-hidden", "true");
+      label.textContent = "Floor plan";
+      btn.replaceWith(label);
+    });
+    delete cardEl.dataset.floorPlanSlot;
+  }
+
+  function initAllFlatCards() {
+    document.querySelectorAll("#flat-grid .flat-card").forEach(function (card) {
+      if (card.dataset.bookable !== "true" && card.dataset.bookable !== "false") {
+        card.dataset.bookable = card.classList.contains("flat-card--other-partner") ? "false" : "true";
+      }
+      stripFloorPlanTriggers(card);
+      syncFloorPlanLink(card);
+    });
+  }
+
+  function floorPlanUrlForCard(cardEl) {
+    if (!cardEl || !isFlatBookable(cardEl)) return null;
+    var grid = document.getElementById("flat-grid");
+    var bid = grid ? grid.getAttribute("data-building-id") : null;
+    var slot = cardEl.dataset.floorPlanSlot;
+    var flatId = cardEl.dataset.flatId || cardEl.getAttribute("data-flat-id");
+    if (!bid || !slot || !flatId) return null;
+    return (
+      appRoot() +
+      "/buildings/" +
+      bid +
+      "/floor-plan/" +
+      encodeURIComponent(slot) +
+      "?flatId=" +
+      encodeURIComponent(flatId)
+    );
+  }
+
   function syncActionButtons(cardEl) {
-    var bookable = cardEl.dataset.bookable !== "false";
+    var bookable = isFlatBookable(cardEl);
     var hold = document.getElementById("hold-btn");
     var book = document.getElementById("book-btn");
+    var panelFp = document.getElementById("panel-floor-plan-btn");
     if (hold) {
       hold.disabled = !bookable;
       hold.classList.toggle("disabled", !bookable);
-      hold.title = bookable ? "" : "Assigned to another partner";
+      hold.title = bookable ? "" : "Not assigned to you";
     }
     if (book) {
       var statusOk =
           cardEl.dataset.status === "AVAILABLE" || cardEl.dataset.status === "HOLD";
       book.classList.toggle("disabled", !bookable || !statusOk);
       if (!bookable) {
-        book.title = "Assigned to another partner";
+        book.title = "Not assigned to you";
       } else {
         book.removeAttribute("title");
       }
     }
+    if (panelFp) {
+      panelFp.disabled = !bookable;
+      panelFp.classList.toggle("disabled", !bookable);
+      panelFp.title = bookable ? "" : "Floor plan not available — flat not assigned to you";
+    }
+    syncFloorPlanLink(cardEl);
   }
 
   window.floor21SelectFlat = function (el) {
@@ -336,10 +407,10 @@
     if (book) {
       book.href = appRoot() + "/bookings/new?flatId=" + encodeURIComponent(selectedFlatId);
       var statusOk = el.dataset.status === "AVAILABLE" || el.dataset.status === "HOLD";
-      var bookable = el.dataset.bookable !== "false";
+      var bookable = isFlatBookable(el);
       book.classList.toggle("disabled", !bookable || !statusOk);
       if (!bookable) {
-        book.title = "Assigned to another partner";
+        book.title = "Not assigned to you";
       } else {
         book.removeAttribute("title");
       }
@@ -360,12 +431,23 @@
       var gridEl = document.getElementById("flat-grid");
       var bid = gridEl ? gridEl.getAttribute("data-building-id") : null;
       var slot = el.dataset.floorPlanSlot;
-      if (slot && bid) {
-        fpBtn.setAttribute("data-floor-plan-url", appRoot() + "/buildings/" + bid + "/floor-plan/" + encodeURIComponent(slot));
+      var bookable = isFlatBookable(el);
+      if (slot && bid && bookable) {
+        fpBtn.setAttribute("data-floor-plan-url", floorPlanUrlForCard(el));
         fpBtn.classList.remove("d-none");
+        fpBtn.disabled = false;
+        fpBtn.classList.remove("disabled");
+        fpBtn.removeAttribute("title");
+      } else if (slot && bid) {
+        fpBtn.classList.remove("d-none");
+        fpBtn.removeAttribute("data-floor-plan-url");
+        fpBtn.disabled = true;
+        fpBtn.classList.add("disabled");
+        fpBtn.title = "Floor plan not available — flat not assigned to you";
       } else {
         fpBtn.classList.add("d-none");
         fpBtn.removeAttribute("data-floor-plan-url");
+        fpBtn.disabled = true;
       }
     }
     applyBookingSelectionHighlight();
@@ -400,6 +482,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    initAllFlatCards();
     loadSalesPartnersIntoSelect();
     var modalEl = document.getElementById("floor-plan-modal");
     if (modalEl) {
@@ -411,11 +494,20 @@
     var panelFp = document.getElementById("panel-floor-plan-btn");
     if (panelFp) {
       panelFp.addEventListener("click", function () {
+        if (panelFp.disabled) return;
         var url = panelFp.getAttribute("data-floor-plan-url");
         if (!url) return;
+        if (selectedFlatId) {
+          var sel = document.getElementById("flat-" + selectedFlatId);
+          if (sel && !isFlatBookable(sel)) {
+            window.alert("Floor plan is not available for flats not assigned to you.");
+            return;
+          }
+        }
         var typeEl = document.getElementById("panel-type");
         var sub = typeEl && typeEl.textContent ? typeEl.textContent.trim() + " — Floor plan" : "Floor plan";
-        openFloorPlanModal(url, sub);
+        var sel = selectedFlatId ? document.getElementById("flat-" + selectedFlatId) : null;
+        openFloorPlanModal(url, sub, sel);
       });
     }
     var hold = document.getElementById("hold-btn");
@@ -424,8 +516,8 @@
         if (!selectedFlatId) return;
         var el = document.getElementById("flat-" + selectedFlatId);
         if (!el || el.dataset.parking === "true") return;
-        if (el.dataset.bookable === "false") {
-          window.alert("This flat is assigned to another partner.");
+        if (!isFlatBookable(el)) {
+          window.alert("This flat is not assigned to you.");
           return;
         }
         var next = el.dataset.status === "HOLD" ? "AVAILABLE" : "HOLD";
@@ -441,8 +533,8 @@
           e.preventDefault();
           if (selectedFlatId) {
             var card = document.getElementById("flat-" + selectedFlatId);
-            if (card && card.dataset.bookable === "false") {
-              window.alert("This flat is assigned to another partner.");
+            if (card && !isFlatBookable(card)) {
+              window.alert("This flat is not assigned to you.");
             }
           }
         }
@@ -559,29 +651,40 @@
 
     var grid = document.getElementById("flat-grid");
     if (grid) {
-      grid.addEventListener("click", function (e) {
-        var quick = e.target.closest(".flat-quick-link");
-        if (quick) {
-          e.stopPropagation();
-          return;
-        }
-        var fp = e.target.closest(".flat-floor-plan-trigger");
-        if (fp) {
-          e.preventDefault();
-          e.stopPropagation();
-          var url = fp.getAttribute("data-floor-plan-url");
-          if (url) {
-            var c = fp.closest(".flat-card");
-            var typ = c && c.dataset.type ? c.dataset.type + " — Floor plan" : "Floor plan";
-            openFloorPlanModal(url, typ);
+      grid.addEventListener(
+        "click",
+        function (e) {
+          if (e.target.closest(".flat-floor-plan-muted")) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
           }
-          return;
-        }
-        var card = e.target.closest(".flat-card");
-        if (!card || !grid.contains(card)) return;
-        if (card.dataset.parking === "true") return;
-        window.floor21SelectFlat(card);
-      });
+          var quick = e.target.closest(".flat-quick-link");
+          if (quick) {
+            e.stopPropagation();
+            return;
+          }
+          var cardForFp = e.target.closest(".flat-card");
+          var fp = e.target.closest(".flat-floor-plan-trigger");
+          if (fp) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!cardForFp || cardForFp.dataset.parking === "true") return;
+            if (!isFlatBookable(cardForFp)) return;
+            var url = fp.getAttribute("data-floor-plan-url") || floorPlanUrlForCard(cardForFp);
+            if (url) {
+              var typ = cardForFp.dataset.type ? cardForFp.dataset.type + " — Floor plan" : "Floor plan";
+              openFloorPlanModal(url, typ, cardForFp);
+            }
+            return;
+          }
+          var card = e.target.closest(".flat-card");
+          if (!card || !grid.contains(card)) return;
+          if (card.dataset.parking === "true") return;
+          window.floor21SelectFlat(card);
+        },
+        true
+      );
       setInterval(refreshGrid, 20000);
       var focusId = grid.getAttribute("data-focus-flat-id");
       if (focusId) {

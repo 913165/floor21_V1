@@ -89,7 +89,8 @@
   </div>
 
   <div class="alert alert-info py-2" sec:authorize="hasRole('EXECUTIVE')">
-    Full flat layout for this building. Flats assigned to another partner appear greyed out and cannot be booked or held by you.
+    Full flat layout for this building. Only flats <strong>assigned to you</strong> stay active (green / blue / yellow).
+    All other flats — including unassigned and other partners — appear greyed out and cannot be booked or held.
   </div>
 
   <div class="card shadow-sm mb-3" sec:authorize="hasRole('SUPER_ADMIN')">
@@ -175,8 +176,8 @@
                       data-booking-code=${flat.bookingCode()},
                       data-buyer-phone=${flat.buyerPhone()},
                       data-buyer-email=${flat.buyerEmail()},
-                      data-floor-plan-slot=${fpSlot != null ? fpSlot : ''},
-                      data-bookable=${flat.bookableByCurrentUser()}">
+                      data-floor-plan-slot=${flat.bookableByCurrentUser() and fpSlot != null ? fpSlot : ''},
+                      data-bookable=${flat.bookableByCurrentUser() ? 'true' : 'false'}">
           <div class="flat-card-buyertip" th:if="${flat.status() == 'BOOKED' and !#strings.isEmpty(flat.ownerDisplay())}">
             <div class="flat-card-buyertip__title">Buyer</div>
             <div class="flat-card-buyertip__name" th:text="${flat.ownerDisplay()}">-</div>
@@ -198,9 +199,12 @@
                     th:text="${flat.assignedPartnerName()}">Partner</span>
               <span class="flat-type" th:text="${flat.bhkType()}">2BHK</span>
               <button type="button"
-                      th:if="${fpSlot != null}"
+                      th:if="${fpSlot != null and flat.bookableByCurrentUser()}"
                       class="flat-floor-plan-link flat-floor-plan-trigger"
-                      th:attr="data-floor-plan-url=@{/buildings/{bid}/floor-plan/{slot}(bid=${building.id}, slot=${fpSlot})}">Floor plan</button>
+                      th:attr="data-floor-plan-url=@{/buildings/{bid}/floor-plan/{slot}(bid=${building.id}, slot=${fpSlot}, flatId=${flat.id()})}">Floor plan</button>
+              <span th:if="${fpSlot != null and !flat.bookableByCurrentUser()}"
+                    class="flat-floor-plan-muted"
+                    aria-hidden="true">Floor plan</span>
             </div>
             <div class="flat-card-owner" th:classappend="${#strings.isEmpty(flat.ownerDisplay()) && #strings.isEmpty(flat.ownerDetail())} ? ' is-blank'">
               <span class="flat-owner-name" th:text="${flat.ownerDisplay()}"></span>
