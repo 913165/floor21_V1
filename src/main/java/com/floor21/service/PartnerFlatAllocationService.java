@@ -216,46 +216,6 @@ public class PartnerFlatAllocationService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public List<Flat> filterFlatsForCurrentUser(UUID buildingId, List<Flat> flats) {
-        if (!isAllocationActive(buildingId)) {
-            return flats;
-        }
-        if (canSeeAllFlatsInBuilding()) {
-            return flats;
-        }
-        UUID staffUserId = currentStaffUserId();
-        if (staffUserId == null) {
-            return flats;
-        }
-        Set<UUID> allowed =
-                new HashSet<>(assignmentRepository.findFlatIdsByUser_IdAndBuilding_Id(staffUserId, buildingId));
-        return flats.stream().filter(f -> allowed.contains(f.getId())).toList();
-    }
-
-    private static boolean canSeeAllFlatsInBuilding() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof Floor21UserPrincipal principal)) {
-            return true;
-        }
-        if (principal.isSuperAdmin()) {
-            return true;
-        }
-        if (principal.getStaffUserId() == null) {
-            return true;
-        }
-        return auth.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_BUILDER_ADMIN".equals(a.getAuthority()));
-    }
-
-    private static UUID currentStaffUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof Floor21UserPrincipal principal)) {
-            return null;
-        }
-        return principal.getStaffUserId();
-    }
-
     private static void requirePlatformAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null

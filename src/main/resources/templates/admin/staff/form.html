@@ -61,15 +61,19 @@
         No buildings yet.
         <a th:href="@{/admin/builders/{id}/buildings/new(id=${builder.id})}">Add a building</a> first.
       </div>
-      <div class="row g-2" th:unless="${#lists.isEmpty(buildings)}">
-        <div class="col-md-6" th:each="b : ${buildings}">
-          <div class="form-check">
-            <input class="form-check-input building-access-cb" type="checkbox"
-                   name="buildingIds" th:value="${b.id}"
-                   th:id="${'bld-' + b.id}"
-                   th:checked="${assignedBuildingIds != null and assignedBuildingIds.contains(b.id)}"/>
-            <label class="form-check-label" th:for="${'bld-' + b.id}" th:text="${b.buildingName}">Building</label>
-          </div>
+      <div th:unless="${#lists.isEmpty(buildings)}">
+        <label class="form-label" for="building-access-filter">Buildings</label>
+        <input type="search" class="form-control form-control-sm mb-2" id="building-access-filter"
+               placeholder="Type to filter buildings…" autocomplete="off"/>
+        <select class="form-select building-access-select" id="building-ids-select"
+                name="buildingIds" multiple size="12">
+          <option th:each="b : ${buildings}"
+                  th:value="${b.id}"
+                  th:text="${b.buildingName}"
+                  th:selected="${assignedBuildingIds != null and assignedBuildingIds.contains(b.id)}">Building</option>
+        </select>
+        <div class="form-text" id="building-access-hint">
+          Hold Ctrl (Windows) or Cmd (Mac) to select more than one. Use the filter when you have many buildings.
         </div>
       </div>
     </div>
@@ -93,13 +97,30 @@
     function sync() {
       var admin = role.value === "BUILDER_ADMIN";
       section.classList.toggle("opacity-50", admin);
-      section.querySelectorAll(".building-access-cb").forEach(function (cb) {
-        cb.disabled = admin;
-        if (admin) cb.checked = false;
-      });
+      var select = document.getElementById("building-ids-select");
+      var filter = document.getElementById("building-access-filter");
+      if (select) {
+        select.disabled = admin;
+        if (admin) {
+          Array.from(select.options).forEach(function (opt) {
+            opt.selected = false;
+          });
+        }
+      }
+      if (filter) filter.disabled = admin;
     }
     role.addEventListener("change", sync);
     sync();
+    var filterInput = document.getElementById("building-access-filter");
+    var buildingSelect = document.getElementById("building-ids-select");
+    if (filterInput && buildingSelect) {
+      filterInput.addEventListener("input", function () {
+        var q = filterInput.value.trim().toLowerCase();
+        Array.from(buildingSelect.options).forEach(function (opt) {
+          opt.hidden = q.length > 0 && opt.textContent.toLowerCase().indexOf(q) < 0;
+        });
+      });
+    }
   })();
 </script>
 </body>

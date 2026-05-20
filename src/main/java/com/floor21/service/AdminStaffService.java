@@ -97,6 +97,7 @@ public class AdminStaffService {
             entity.setBuilder(builder);
             entity.setCreatedAt(Instant.now());
             entity.setPasswordHash(passwordEncoder.encode(rawPassword));
+            entity.setAdminVisiblePassword(rawPassword);
         } else {
             entity = getStaff(builderId, form.getId());
             if (userRepository.existsByBuilder_IdAndEmailIgnoreCaseAndIdNot(
@@ -104,7 +105,11 @@ public class AdminStaffService {
                 throw new IllegalArgumentException("Email is already used for this builder.");
             }
             if (rawPassword != null && !rawPassword.isBlank()) {
-                entity.setPasswordHash(passwordEncoder.encode(rawPassword));
+                String trimmed = rawPassword.trim();
+                if (!trimmed.equals(entity.getAdminVisiblePassword())) {
+                    entity.setPasswordHash(passwordEncoder.encode(trimmed));
+                }
+                entity.setAdminVisiblePassword(trimmed);
             }
         }
         entity.setRole(normalizedRole);

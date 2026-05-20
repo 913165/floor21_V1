@@ -37,6 +37,10 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    /** Plaintext copy of last admin-set login password (platform Users screen only). */
+    @Column(name = "admin_visible_password", length = 255)
+    private String adminVisiblePassword;
+
     @Column(nullable = false, length = 50)
     private String role;
 

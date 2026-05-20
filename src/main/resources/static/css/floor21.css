@@ -1591,3 +1591,17 @@ button.flat-floor-plan-link {
   background-color: #1a2332 !important;
   color: var(--bs-body-color) !important;
 }
+
+.floor21-password-wrap .floor21-password-toggle {
+  padding: 0.25rem 0.625rem;
+  line-height: 1;
+  z-index: 3;
+  text-decoration: none;
+  color: var(--bs-secondary-color);
+}
+
+.floor21-password-wrap .floor21-password-toggle:hover,
+.floor21-password-wrap .floor21-password-toggle:focus {
+  color: var(--bs-body-color);
+  box-shadow: none;
+}

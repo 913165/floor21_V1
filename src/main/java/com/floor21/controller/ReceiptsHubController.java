@@ -144,10 +144,26 @@ public class ReceiptsHubController {
         model.addAttribute("buildings", buildingService.listForTenant());
         model.addAttribute("selectedBuildingId", buildingId);
         UUID builderId = TenantContext.requireBuilderId();
-        List<Booking> bookings =
-                buildingId == null
-                        ? bookingRepository.findActiveForPaymentSchedule(builderId)
-                        : bookingRepository.findActiveForPaymentScheduleByBuilding(builderId, buildingId);
+        List<Booking> bookings;
+        if (buildingId == null) {
+            bookings = bookingRepository.findActiveForPaymentSchedule(builderId);
+            if (!TenantContext.hasUnrestrictedBuildingAccess()) {
+                bookings =
+                        bookings.stream()
+                                .filter(
+                                        b ->
+                                                b.getFlat() != null
+                                                        && b.getFlat().getBuilding() != null
+                                                        && TenantContext.canAccessBuilding(
+                                                                b.getFlat().getBuilding().getId()))
+                                .toList();
+            }
+        } else if (!TenantContext.canAccessBuilding(buildingId)) {
+            bookings = List.of();
+        } else {
+            bookings =
+                    bookingRepository.findActiveForPaymentScheduleByBuilding(builderId, buildingId);
+        }
         model.addAttribute("bookings", bookings);
         model.addAttribute("selectedBookingId", bookingId);
     }
@@ -158,6 +174,11 @@ public class ReceiptsHubController {
                 bookingRepository
                         .findByIdAndBuilder_IdForSchedule(bookingId, builderId)
                         .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        if (booking.getFlat() != null
+                && booking.getFlat().getBuilding() != null
+                && !TenantContext.canAccessBuilding(booking.getFlat().getBuilding().getId())) {
+            throw new ResourceNotFoundException("Booking not found");
+        }
         model.addAttribute("selectedBooking", booking);
         model.addAttribute("receiptForm", receiptForm);
         model.addAttribute("summary", receiptService.summarizeBooking(bookingId));

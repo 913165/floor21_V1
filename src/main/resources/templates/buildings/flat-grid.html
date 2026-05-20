@@ -88,9 +88,8 @@
     </div>
   </div>
 
-  <div class="alert alert-info py-2" sec:authorize="hasRole('EXECUTIVE')"
-       th:if="${partnerAllocationActive}">
-    You are viewing flats assigned to you for this building. Contact Floor21 admin if allocation looks wrong.
+  <div class="alert alert-info py-2" sec:authorize="hasRole('EXECUTIVE')">
+    Full flat layout for this building. You can book, change status, and enter receipts only for buildings assigned to you.
   </div>
 
   <div class="card shadow-sm mb-3" sec:authorize="hasRole('SUPER_ADMIN')">

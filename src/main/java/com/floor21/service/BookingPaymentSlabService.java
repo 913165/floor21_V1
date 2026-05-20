@@ -50,17 +50,38 @@ public class BookingPaymentSlabService {
     public List<Booking> listBookingsForSchedule(UUID buildingId) {
         UUID builderId = TenantContext.requireBuilderId();
         if (buildingId != null) {
+            if (!TenantContext.canAccessBuilding(buildingId)) {
+                return List.of();
+            }
             return bookingRepository.findActiveForPaymentScheduleByBuilding(builderId, buildingId);
         }
-        return bookingRepository.findActiveForPaymentSchedule(builderId);
+        List<Booking> all = bookingRepository.findActiveForPaymentSchedule(builderId);
+        if (TenantContext.hasUnrestrictedBuildingAccess()) {
+            return all;
+        }
+        return all.stream()
+                .filter(
+                        b ->
+                                b.getFlat() != null
+                                        && b.getFlat().getBuilding() != null
+                                        && TenantContext.canAccessBuilding(
+                                                b.getFlat().getBuilding().getId()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public Booking getBookingForSchedule(UUID bookingId) {
         UUID builderId = TenantContext.requireBuilderId();
-        return bookingRepository
-                .findByIdAndBuilder_IdForSchedule(bookingId, builderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        Booking booking =
+                bookingRepository
+                        .findByIdAndBuilder_IdForSchedule(bookingId, builderId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        if (booking.getFlat() != null
+                && booking.getFlat().getBuilding() != null
+                && !TenantContext.canAccessBuilding(booking.getFlat().getBuilding().getId())) {
+            throw new ResourceNotFoundException("Booking not found");
+        }
+        return booking;
     }
 
     @Transactional(readOnly = true)

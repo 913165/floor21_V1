@@ -1,5 +1,6 @@
 package com.floor21.security;
 
+import com.floor21.exception.ResourceNotFoundException;
 import java.util.Set;
 import java.util.UUID;
 
@@ -45,6 +46,12 @@ public final class TenantContext {
             return true;
         }
         return buildingId != null && allowed.contains(buildingId);
+    }
+
+    public static void requireBuildingAccess(UUID buildingId) {
+        if (!canAccessBuilding(buildingId)) {
+            throw new ResourceNotFoundException("Building not found");
+        }
     }
 
     public static Set<UUID> getAllowedBuildingIdsOrNull() {

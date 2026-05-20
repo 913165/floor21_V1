@@ -73,7 +73,8 @@ public class StaffBuildingAccessService {
             return;
         }
         if (buildingIds == null || buildingIds.isEmpty()) {
-            throw new IllegalArgumentException("Select at least one building for sales staff / partner access.");
+            // No rows = access to all buildings for this builder (see listStaffForBuilding).
+            return;
         }
         Set<UUID> unique = new HashSet<>(buildingIds);
         for (UUID buildingId : unique) {

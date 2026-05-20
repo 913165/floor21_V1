@@ -66,7 +66,6 @@ public class FlatService {
         List<Flat> flats =
                 flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
                         buildingId, builderId);
-        flats = partnerFlatAllocationService.filterFlatsForCurrentUser(buildingId, flats);
         Map<UUID, UUID> partnerIds = partnerFlatAllocationService.getFlatOwnerByPartnerId(buildingId);
         Map<UUID, String> partnerLabels = partnerFlatAllocationService.getFlatPartnerLabels(buildingId);
         Map<UUID, Booking> bookingByFlatId = activeBookingsByFlatId(builderId, flats);
@@ -352,6 +351,9 @@ public class FlatService {
                 flatRepository
                         .findByIdAndBuilder_Id(flatId, builderId)
                         .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
+        if (flat.getBuilding() != null) {
+            TenantContext.requireBuildingAccess(flat.getBuilding().getId());
+        }
         if (Boolean.TRUE.equals(flat.getParking())) {
             throw new IllegalArgumentException("Parking slots cannot change status");
         }

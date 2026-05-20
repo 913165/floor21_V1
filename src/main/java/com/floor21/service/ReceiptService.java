@@ -37,27 +37,40 @@ public class ReceiptService {
 
     @Transactional(readOnly = true)
     public BigDecimal totalForBooking(UUID bookingId) {
-        return receiptRepository.sumAmountForBooking(bookingId, TenantContext.requireBuilderId());
+        UUID builderId = TenantContext.requireBuilderId();
+        requireAccessibleBooking(bookingId, builderId);
+        return receiptRepository.sumAmountForBooking(bookingId, builderId);
     }
 
     @Transactional(readOnly = true)
     public List<Receipt> listHistoryForBooking(UUID bookingId) {
+        UUID builderId = TenantContext.requireBuilderId();
+        requireAccessibleBooking(bookingId, builderId);
         return receiptRepository.findByBooking_IdAndBuilder_IdOrderByReceiptSerialAscCreatedAtAsc(
-                bookingId, TenantContext.requireBuilderId());
+                bookingId, builderId);
     }
 
     @Transactional(readOnly = true)
     public List<Receipt> listForTenant() {
-        return receiptRepository.findForTenantList(TenantContext.requireBuilderId());
+        List<Receipt> all = receiptRepository.findForTenantList(TenantContext.requireBuilderId());
+        if (TenantContext.hasUnrestrictedBuildingAccess()) {
+            return all;
+        }
+        return all.stream()
+                .filter(
+                        r ->
+                                r.getBooking() != null
+                                        && r.getBooking().getFlat() != null
+                                        && r.getBooking().getFlat().getBuilding() != null
+                                        && TenantContext.canAccessBuilding(
+                                                r.getBooking().getFlat().getBuilding().getId()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public BookingReceiptSummary summarizeBooking(UUID bookingId) {
         UUID builderId = TenantContext.requireBuilderId();
-        Booking booking =
-                bookingRepository
-                        .findByIdAndBuilder_IdForSchedule(bookingId, builderId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        Booking booking = requireAccessibleBooking(bookingId, builderId);
         BigDecimal agreementTotal = agreementBase(booking);
         BigDecimal agreementReceived = receiptRepository.sumAgreementCredits(bookingId, builderId);
         BigDecimal agreementBalance = agreementTotal.subtract(agreementReceived);
@@ -81,9 +94,10 @@ public class ReceiptService {
 
     @Transactional(readOnly = true)
     public Optional<String> latestReceiptNumberHint(UUID bookingId) {
+        UUID builderId = TenantContext.requireBuilderId();
+        requireAccessibleBooking(bookingId, builderId);
         return receiptRepository
-                .findFirstByBooking_IdAndBuilder_IdOrderByReceiptSerialDesc(
-                        bookingId, TenantContext.requireBuilderId())
+                .findFirstByBooking_IdAndBuilder_IdOrderByReceiptSerialDesc(bookingId, builderId)
                 .map(Receipt::getReceiptNumber)
                 .filter(s -> s != null && !s.isBlank());
     }
@@ -91,6 +105,7 @@ public class ReceiptService {
     @Transactional(readOnly = true)
     public String previewNextReceiptNumber(UUID bookingId) {
         UUID builderId = TenantContext.requireBuilderId();
+        requireAccessibleBooking(bookingId, builderId);
         int next = receiptRepository.findMaxReceiptSerialByBookingId(bookingId, builderId) + 1;
         return formatIncrementalReceiptNumber(next);
     }
@@ -98,6 +113,7 @@ public class ReceiptService {
     @Transactional(readOnly = true)
     public Receipt getForBooking(UUID receiptId, UUID bookingId) {
         UUID builderId = TenantContext.requireBuilderId();
+        requireAccessibleBooking(bookingId, builderId);
         return receiptRepository
                 .findByIdAndBooking_IdAndBuilder_Id(receiptId, bookingId, builderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Receipt not found"));
@@ -106,6 +122,7 @@ public class ReceiptService {
     @Transactional(readOnly = true)
     public Receipt getForPrint(UUID receiptId, UUID bookingId) {
         UUID builderId = TenantContext.requireBuilderId();
+        requireAccessibleBooking(bookingId, builderId);
         return receiptRepository
                 .findByIdForPrintView(receiptId, bookingId, builderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Receipt not found"));
@@ -123,6 +140,7 @@ public class ReceiptService {
                         : bookingRepository
                                 .findByIdAndBuilder_IdForUpdate(bookingId, builderId)
                                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        assertBookingBuildingAccess(booking);
         var builder = builderRepository.findById(builderId).orElseThrow();
 
         Receipt entity;
@@ -251,5 +269,22 @@ public class ReceiptService {
             return booking.getFlat().getBasePrice();
         }
         return ZERO;
+    }
+
+    private Booking requireAccessibleBooking(UUID bookingId, UUID builderId) {
+        Booking booking =
+                bookingRepository
+                        .findByIdAndBuilder_IdForSchedule(bookingId, builderId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        assertBookingBuildingAccess(booking);
+        return booking;
+    }
+
+    private void assertBookingBuildingAccess(Booking booking) {
+        if (booking.getFlat() != null
+                && booking.getFlat().getBuilding() != null
+                && !TenantContext.canAccessBuilding(booking.getFlat().getBuilding().getId())) {
+            throw new ResourceNotFoundException("Booking not found");
+        }
     }
 }

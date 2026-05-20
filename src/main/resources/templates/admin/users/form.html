@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+  <h1 class="h3 mb-2" th:text="${pageTitle}">User</h1>
+  <p class="text-muted small mb-3" th:unless="${noBuilders}">
+    Create a login account (email and password). Assign buildings to partners from each building’s partner list or flat grid.
+  </p>
+
+  <div class="alert alert-warning" th:if="${noBuilders}">
+    Add a <a th:href="@{/admin/builders/new}">builder</a> before creating users.
+  </div>
+
+  <form class="card card-body shadow-sm col-lg-8"
+        th:unless="${noBuilders}"
+        th:action="@{/admin/users/save}"
+        th:object="${staff}" method="post">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <input type="hidden" th:field="*{id}"/>
+    <input type="hidden" name="builderId" th:value="${builder.id}" th:if="${staff.id != null}"/>
+
+    <div class="row g-3">
+      <div class="col-md-6" th:if="${staff.id == null}">
+        <label class="form-label" for="builder-select">Builder</label>
+        <select class="form-select" id="builder-select" name="builderId" required>
+          <option th:each="b : ${builders}"
+                  th:value="${b.id}"
+                  th:text="${b.companyName}"
+                  th:selected="${b.id == selectedBuilderId}">Builder</option>
+        </select>
+      </div>
+      <div class="col-md-6" th:if="${staff.id != null}">
+        <label class="form-label">Builder</label>
+        <p class="form-control-plaintext mb-0" th:text="${builder.companyName}">—</p>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Full name</label>
+        <input class="form-control" th:field="*{fullName}" required/>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Email (login)</label>
+        <input class="form-control" type="email" th:field="*{email}" required autocomplete="username"/>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" th:text="${staff.id != null} ? 'Password (login)' : 'Password'">Password</label>
+        <input class="form-control"
+               name="rawPassword"
+               autocomplete="new-password"
+               data-password-toggle
+               th:attr="type=${staff.id != null} ? 'text' : 'password',
+                        required=${staff.id == null} ? 'required' : null"
+               th:value="${staff.id != null and staff.adminVisiblePassword != null} ? ${staff.adminVisiblePassword} : ''"
+               th:placeholder="${staff.id != null and staff.adminVisiblePassword == null}
+                 ? 'Not recorded yet — enter password and save'
+                 : (${staff.id == null} ? 'Required' : '')"/>
+        <div class="form-text" th:if="${staff.id != null}">
+          Shown for platform admin reference. Edit and save to change the user’s login password.
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Role</label>
+        <select class="form-select" name="role" required>
+          <option value="EXECUTIVE"
+                  th:selected="${staff.role == 'EXECUTIVE' or (staff.id == null and staff.role == null)}">
+            Partner
+          </option>
+          <option value="BUILDER_ADMIN" th:selected="${staff.role == 'BUILDER_ADMIN'}">
+            Builder admin
+          </option>
+        </select>
+      </div>
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" th:field="*{active}"/>
+          <label class="form-check-label">Active (can sign in)</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 d-flex flex-wrap gap-2">
+      <button class="btn btn-primary" type="submit">Save user</button>
+      <a class="btn btn-link" th:href="@{/admin/users}">Cancel</a>
+    </div>
+  </form>
+</div>
+</body>
+</html>

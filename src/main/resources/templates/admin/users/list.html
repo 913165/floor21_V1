@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="alert alert-success" th:if="${successMessage}" th:text="${successMessage}"></div>
+  <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 mb-0" th:text="${pageTitle}">Users</h1>
+      <p class="text-muted small mb-0">Login accounts for builder teams (email and password).</p>
+    </div>
+    <a class="btn btn-primary btn-sm" th:href="@{/admin/users/new}">New user</a>
+  </div>
+
+  <div class="table-responsive card shadow-sm">
+    <table class="table mb-0">
+      <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Builder</th>
+        <th>Role</th>
+        <th>Building access</th>
+        <th>Active</th>
+        <th>Last login</th>
+        <th></th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="u : ${users}">
+        <td th:text="${u.fullName()}"></td>
+        <td th:text="${u.email()}"></td>
+        <td th:text="${u.builderCompanyName()}"></td>
+        <td>
+          <span class="badge text-bg-secondary" th:if="${u.role() == 'EXECUTIVE'}">Partner</span>
+          <span class="badge text-bg-primary" th:if="${u.role() == 'BUILDER_ADMIN'}">Builder admin</span>
+          <span th:if="${u.role() != 'EXECUTIVE' and u.role() != 'BUILDER_ADMIN'}" th:text="${u.role()}"></span>
+        </td>
+        <td class="small" th:text="${#strings.listJoin(u.buildingAccess(), ', ')}">—</td>
+        <td>
+          <span class="badge" th:classappend="${u.active() != false} ? 'text-bg-success' : 'text-bg-secondary'"
+                th:text="${u.active() != false} ? 'Yes' : 'No'">—</span>
+        </td>
+        <td class="text-nowrap small"
+            th:text="${u.lastLoginAt() != null ? #temporals.format(u.lastLoginAt(), 'dd MMM yyyy HH:mm') : '—'}">—</td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-secondary"
+             th:href="@{/admin/users/{uid}/edit(uid=${u.id()})}">Edit</a>
+        </td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(users)}">
+        <td colspan="8" class="text-muted">No users yet. Create a builder first, then add users who can sign in.</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>
