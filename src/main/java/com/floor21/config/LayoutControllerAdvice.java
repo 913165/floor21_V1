@@ -3,6 +3,7 @@ package com.floor21.config;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.ImpersonationSession;
 import com.floor21.service.AccountService;
+import com.floor21.service.VaultAccessService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 public class LayoutControllerAdvice {
 
     private final AccountService accountService;
+    private final VaultAccessService vaultAccessService;
 
     @ModelAttribute("navServletPath")
     public String navServletPath(HttpServletRequest request) {
@@ -36,6 +38,11 @@ public class LayoutControllerAdvice {
     @ModelAttribute("navAreaLabel")
     public String navAreaLabel(HttpServletRequest request) {
         return resolveNavAreaLabel(resolveNavArea(navServletPath(request)));
+    }
+
+    @ModelAttribute("vaultMenuVisible")
+    public boolean vaultMenuVisible() {
+        return vaultAccessService.canCurrentUserAccessVault();
     }
 
     static String resolveNavArea(String path) {

@@ -6,6 +6,7 @@ import com.floor21.repository.BuilderRepository;
 import com.floor21.service.BuildingService;
 import com.floor21.service.PlatformAdminService;
 import com.floor21.service.PlatformAuditService;
+import com.floor21.service.PlatformSettingsService;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class AdminController {
     private final PasswordEncoder passwordEncoder;
     private final PlatformAdminService platformAdminService;
     private final PlatformAuditService auditService;
+    private final PlatformSettingsService platformSettingsService;
 
     @GetMapping
     public String list(Model model) {
@@ -67,6 +69,11 @@ public class AdminController {
             entity = new Builder();
             entity.setCreatedAt(Instant.now());
             entity.setPlatformAdmin(false);
+            entity.setVaultEnabled(
+                    "true"
+                            .equalsIgnoreCase(
+                                    platformSettingsService.get(
+                                            PlatformSettingsService.KEY_VAULT_DEFAULT, "true")));
         } else {
             entity = builderRepository.findById(form.getId()).orElseThrow();
         }

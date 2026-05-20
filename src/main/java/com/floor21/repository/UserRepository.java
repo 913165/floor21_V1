@@ -16,4 +16,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByBuilder_IdAndEmailIgnoreCaseAndIdNot(UUID builderId, String email, UUID id);
 
     boolean existsByBuilder_IdAndEmailIgnoreCase(UUID builderId, String email);
+
+    @org.springframework.data.jpa.repository.Query(
+            """
+            select u from User u
+            join fetch u.builder b
+            where b.platformAdmin = false
+            order by lower(b.companyName), lower(u.fullName)
+            """)
+    java.util.List<User> findAllTenantUsersForPlatformAdmin();
 }

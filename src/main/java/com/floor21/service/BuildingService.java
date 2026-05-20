@@ -19,12 +19,18 @@ public class BuildingService {
 
     private final BuildingRepository buildingRepository;
     private final BuilderRepository builderRepository;
+    private final VaultAccessService vaultAccessService;
 
     @Transactional(readOnly = true)
     public List<Building> listForTenant() {
         List<Building> all =
                 buildingRepository.findByBuilder_IdOrderByBuildingNameAsc(TenantContext.requireBuilderId());
         return filterByBuildingAccess(all);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Building> listForVault() {
+        return listForTenant().stream().filter(vaultAccessService::canUseBuildingInVault).toList();
     }
 
     @Transactional(readOnly = true)
@@ -144,6 +150,9 @@ public class BuildingService {
         entity.setAddress(form.getAddress());
         entity.setCity(form.getCity());
         entity.setActive(form.getActive() != null ? form.getActive() : true);
+        if (entity.getVaultEnabled() == null) {
+            entity.setVaultEnabled(false);
+        }
         if (preserveFp1 != null || preserveFp2 != null || preserveFp3 != null) {
             entity.setFloorPlan1Bhk(preserveFp1);
             entity.setFloorPlan2Bhk(preserveFp2);

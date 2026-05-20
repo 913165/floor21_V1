@@ -28,6 +28,7 @@ public class AccountService {
     private final PasswordEncoder passwordEncoder;
     private final UserDetailsService userDetailsService;
     private final VaultPinService vaultPinService;
+    private final VaultAccessService vaultAccessService;
 
     @Transactional(readOnly = true)
     public String currentDisplayName() {
@@ -67,6 +68,7 @@ public class AccountService {
                     false,
                     true,
                     false,
+                    false,
                     false);
         }
 
@@ -74,23 +76,28 @@ public class AccountService {
         if (staff.isPresent()) {
             User user = staff.get();
             Builder builder = user.getBuilder();
+            boolean vaultAccess = vaultAccessService.canCurrentUserAccessVault();
+            boolean builderAdminRole =
+                    StaffBuildingAccessService.ROLE_BUILDER_ADMIN.equals(user.getRole());
             return new AccountProfileView(
                     user.getFullName(),
                     email,
                     formatRole(user.getRole()),
                     builder.getCompanyName(),
+                    builderAdminRole,
                     false,
+                    vaultAccess && vaultPinService.hasPinConfigured(),
                     false,
-                    false,
-                    false);
+                    vaultAccess);
         }
 
         Builder builder =
                 builderRepository
                         .findByEmailIgnoreCase(email)
                         .orElseThrow(() -> new IllegalStateException("Account not found"));
+        boolean vaultAccess = vaultAccessService.canCurrentUserAccessVault();
         boolean vaultConfigured =
-                principal.getBuilderId() != null && vaultPinService.hasPinConfigured();
+                vaultAccess && principal.getBuilderId() != null && vaultPinService.hasPinConfigured();
         return new AccountProfileView(
                 builder.getCompanyName(),
                 email,
@@ -99,7 +106,8 @@ public class AccountService {
                 true,
                 false,
                 vaultConfigured,
-                false);
+                false,
+                vaultAccess);
     }
 
     @Transactional

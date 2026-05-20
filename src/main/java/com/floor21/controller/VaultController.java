@@ -292,7 +292,7 @@ public class VaultController {
     }
 
     private void addPicker(Model model, UUID buildingId, UUID bookingId) {
-        model.addAttribute("buildings", buildingService.listForTenant());
+        model.addAttribute("buildings", buildingService.listForVault());
         model.addAttribute("selectedBuildingId", buildingId);
         UUID builderId = TenantContext.requireBuilderId();
         List<Booking> bookings =

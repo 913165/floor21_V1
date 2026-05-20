@@ -9,4 +9,5 @@ public record AccountProfileView(
         boolean builderAdmin,
         boolean platformAdmin,
         boolean vaultPinConfigured,
-        boolean expensesPinConfigured) {}
+        boolean expensesPinConfigured,
+        boolean vaultAccess) {}

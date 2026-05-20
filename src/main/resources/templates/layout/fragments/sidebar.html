@@ -39,7 +39,8 @@
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bank-accounts}"
        th:classappend="${#strings.startsWith(path, '/bank-accounts')} ? ' is-active' : ''">Bank accounts</a>
-    <a class="floor21-nav__link floor21-nav__link--vault" sec:authorize="hasRole('BUILDER_ADMIN')"
+    <a class="floor21-nav__link floor21-nav__link--vault"
+       th:if="${vaultMenuVisible}"
        th:href="@{/vault}"
        th:classappend="${#strings.startsWith(path, '/vault')} ? ' is-active' : ''">Vault</a>
     <a class="floor21-nav__link floor21-nav__link--expenses" sec:authorize="hasRole('BUILDER_ADMIN')"
@@ -53,6 +54,9 @@
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/users}"
        th:classappend="${#strings.startsWith(path, '/admin/users')} ? ' is-active' : ''">Users</a>
+    <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/admin/vault-config}"
+       th:classappend="${#strings.startsWith(path, '/admin/vault-config')} ? ' is-active' : ''">Vault config</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/buildings}"
        th:classappend="${path == '/admin/buildings'} ? ' is-active' : ''">All buildings</a>

@@ -47,6 +47,10 @@ public class User {
     @Column(name = "is_active")
     private Boolean active = true;
 
+    /** Builder admins only: Floor21 admin can enable Vault menu and pages per user. */
+    @Column(name = "vault_access_enabled", nullable = false)
+    private Boolean vaultAccessEnabled = false;
+
     @Column(name = "created_at")
     private Instant createdAt;
 

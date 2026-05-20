@@ -61,7 +61,6 @@ public class AdminPlatformController {
     @PostMapping("/settings")
     public String saveSettings(@RequestParam Map<String, String> params, RedirectAttributes ra) {
         Map<String, String> values = new LinkedHashMap<>();
-        values.put(PlatformSettingsService.KEY_VAULT_DEFAULT, params.getOrDefault("default_vault_enabled", "false"));
         values.put(PlatformSettingsService.KEY_EXPENSES_DEFAULT, params.getOrDefault("default_expenses_enabled", "false"));
         values.put(PlatformSettingsService.KEY_RECEIPT_PREFIX, params.getOrDefault("default_receipt_prefix", "RCP"));
         values.put(PlatformSettingsService.KEY_SUPPORT_EMAIL, params.getOrDefault("support_email", ""));

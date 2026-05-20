@@ -1,5 +1,6 @@
 package com.floor21.interceptor;
 
+import com.floor21.service.VaultAccessService;
 import com.floor21.security.TenantContext;
 import com.floor21.security.VaultSession;
 import jakarta.servlet.http.HttpServletRequest;
@@ -7,12 +8,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.time.Duration;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
+@RequiredArgsConstructor
 public class VaultAccessInterceptor implements HandlerInterceptor {
+
+    private final VaultAccessService vaultAccessService;
 
     @Value("${floor21.vault.unlock-timeout-minutes:15}")
     private int unlockTimeoutMinutes;
@@ -28,6 +33,11 @@ public class VaultAccessInterceptor implements HandlerInterceptor {
         if (!path.startsWith("/vault")) {
             return true;
         }
+        if (!vaultAccessService.canCurrentUserAccessVault()) {
+            response.sendRedirect(request.getContextPath() + "/dashboard");
+            return false;
+        }
+
         if (path.equals("/vault/unlock")
                 || path.startsWith("/vault/unlock/")
                 || path.equals("/vault/reset-pin")
