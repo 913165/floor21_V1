@@ -82,6 +82,36 @@
     return "Request failed (" + res.status + ")";
   }
 
+  function syncPartnerTag(cardEl, partnerId, partnerName) {
+    if (!cardEl) return;
+    if (partnerId) {
+      cardEl.dataset.partnerId = partnerId;
+    } else {
+      delete cardEl.dataset.partnerId;
+    }
+    if (partnerName) {
+      cardEl.dataset.partnerName = partnerName;
+    } else {
+      delete cardEl.dataset.partnerName;
+    }
+    var head = cardEl.querySelector(".flat-card-head");
+    if (!head) return;
+    var tag = cardEl.querySelector(".flat-partner-tag");
+    var label = partnerName ? String(partnerName).trim() : "";
+    if (!label) {
+      if (tag) tag.remove();
+      return;
+    }
+    if (!tag) {
+      tag = document.createElement("span");
+      tag.className = "flat-partner-tag small";
+      var typeSpan = head.querySelector(".flat-type");
+      if (typeSpan) head.insertBefore(tag, typeSpan);
+      else head.appendChild(tag);
+    }
+    tag.textContent = label;
+  }
+
   function syncAdminPanel(cardEl) {
     var panel = document.getElementById("flat-admin-panel");
     if (!panel || !isPlatformAdminEdit()) return;
@@ -90,9 +120,11 @@
     var bhk = document.getElementById("admin-bhk");
     var area = document.getElementById("admin-area");
     var price = document.getElementById("admin-price");
+    var partner = document.getElementById("admin-partner");
     if (bhk) bhk.value = cardEl.dataset.type || "2BHK";
     if (area) area.value = cardEl.dataset.area || "";
     if (price) price.value = cardEl.dataset.price || "";
+    if (partner) partner.value = cardEl.dataset.partnerId || "";
     if (selectedFlatId) loadMergeCandidates(selectedFlatId);
   }
 
@@ -207,6 +239,12 @@
         el.dataset.price = flat.basePrice;
         el.dataset.area = flat.areaSqft;
         el.dataset.parking = flat.parking;
+        if (flat.assignedPartnerId) {
+          el.dataset.partnerId = flat.assignedPartnerId;
+        } else {
+          delete el.dataset.partnerId;
+        }
+        syncPartnerTag(el, flat.assignedPartnerId, flat.assignedPartnerName);
         if (flat.clientId) {
           el.dataset.clientId = flat.clientId;
         } else {
@@ -292,7 +330,34 @@
     syncAdminPanel(el);
   };
 
+  async function loadSalesPartnersIntoSelect() {
+    var select = document.getElementById("admin-partner");
+    var grid = document.getElementById("flat-grid");
+    if (!select || !grid || !isPlatformAdminEdit()) return;
+    var buildingId = grid.getAttribute("data-building-id");
+    if (!buildingId) return;
+    var res = await fetch(appRoot() + "/buildings/" + buildingId + "/sales-partners", {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return;
+    var partners = await res.json();
+    var current = select.value;
+    select.innerHTML = '<option value="">— Unassigned —</option>';
+    partners.forEach(function (p) {
+      var opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.fullName || p.id;
+      select.appendChild(opt);
+    });
+    if (current) select.value = current;
+    if (selectedFlatId) {
+      var card = document.getElementById("flat-" + selectedFlatId);
+      if (card) syncAdminPanel(card);
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    loadSalesPartnersIntoSelect();
     var modalEl = document.getElementById("floor-plan-modal");
     if (modalEl) {
       modalEl.addEventListener("hidden.bs.modal", function () {
@@ -366,6 +431,32 @@
           return;
         }
         window.location.reload();
+      });
+    }
+
+    var adminPartnerSave = document.getElementById("admin-partner-save");
+    if (adminPartnerSave) {
+      adminPartnerSave.addEventListener("click", async function () {
+        if (!selectedFlatId) return;
+        var partnerSel = document.getElementById("admin-partner");
+        var partnerUserId = partnerSel && partnerSel.value ? partnerSel.value : null;
+        showAdminError("");
+        var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+        var res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/partner", {
+          method: "POST",
+          headers: headers,
+          body: JSON.stringify({ partnerUserId: partnerUserId }),
+        });
+        if (!res.ok) {
+          showAdminError(await parseErrorResponse(res));
+          return;
+        }
+        var data = await res.json();
+        var card = document.getElementById("flat-" + selectedFlatId);
+        var pid = data.partnerUserId ? String(data.partnerUserId) : "";
+        var pname = data.partnerName ? String(data.partnerName) : "";
+        syncPartnerTag(card, pid || null, pname || null);
+        if (partnerSel) partnerSel.value = pid;
       });
     }
 

@@ -534,6 +534,19 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   gap: 0.5rem;
 }
 
+.flat-partner-tag {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: #6366f1;
+  line-height: 1.2;
+  margin-top: 0.1rem;
+}
+
+[data-bs-theme="dark"] .flat-partner-tag {
+  color: #a5b4fc;
+}
+
 .flat-card-head {
   flex: 0 0 auto;
   display: flex;

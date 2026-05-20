@@ -24,4 +24,8 @@ public record FlatGridFlatDto(
         String buyerPhone,
         String buyerEmail,
         /** Space-separated CSS classes for the card (includes {@code flat-card}). */
-        String cardClass) {}
+        String cardClass,
+        /** Assigned sales partner user id; null if none. */
+        UUID assignedPartnerId,
+        /** Sales partner display name on the card; null if none. */
+        String assignedPartnerName) {}

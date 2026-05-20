@@ -2,8 +2,10 @@ package com.floor21.controller;
 
 import com.floor21.dto.FlatAdminUpdateDto;
 import com.floor21.dto.FlatMergeDto;
+import com.floor21.dto.FlatPartnerAssignDto;
 import com.floor21.entity.Flat;
 import com.floor21.service.FlatService;
+import com.floor21.service.PartnerFlatAllocationService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class FlatController {
 
     private final FlatService flatService;
+    private final PartnerFlatAllocationService partnerFlatAllocationService;
 
     public record StatusBody(String status) {}
 
@@ -33,6 +36,25 @@ public class FlatController {
     public Map<String, String> updateStatus(@PathVariable UUID id, @RequestBody StatusBody body) {
         flatService.updateStatus(id, body.status());
         return Map.of("ok", "true");
+    }
+
+    @PostMapping(value = "/flats/{id}/partner", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> assignPartner(@PathVariable UUID id, @RequestBody FlatPartnerAssignDto body) {
+        try {
+            String name = partnerFlatAllocationService.assignPartnerToFlat(id, body.partnerUserId());
+            return ResponseEntity.ok(
+                    Map.of(
+                            "ok",
+                            true,
+                            "partnerUserId",
+                            body.partnerUserId() != null ? body.partnerUserId() : "",
+                            "partnerName",
+                            name != null ? name : ""));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
     }
 
     @PostMapping(value = "/flats/{id}/details", consumes = MediaType.APPLICATION_JSON_VALUE)

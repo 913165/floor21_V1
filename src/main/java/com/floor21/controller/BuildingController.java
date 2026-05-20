@@ -6,6 +6,9 @@ import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.service.BuildingFloorPlanService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.FlatService;
+import com.floor21.service.PartnerFlatAllocationService;
+import java.util.List;
+import java.util.Map;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,6 +42,7 @@ public class BuildingController {
     private final BuildingService buildingService;
     private final BuildingFloorPlanService buildingFloorPlanService;
     private final FlatService flatService;
+    private final PartnerFlatAllocationService partnerFlatAllocationService;
 
     @GetMapping
     public String list(Model model) {
@@ -86,6 +90,10 @@ public class BuildingController {
         return auth != null
                 && auth.getPrincipal() instanceof Floor21UserPrincipal p
                 && p.isSuperAdmin();
+    }
+
+    private static boolean canManagePartnerAllocation() {
+        return isPlatformAdmin();
     }
 
     /**
@@ -142,7 +150,33 @@ public class BuildingController {
         model.addAttribute("flatCount", flatCount);
         model.addAttribute("activeBookingCount", activeBookings);
         model.addAttribute("platformAdminView", isPlatformAdmin());
+        model.addAttribute("partnerAllocationActive", partnerFlatAllocationService.isAllocationActive(id));
+        model.addAttribute(
+                "partnerAllocationPartners",
+                canManagePartnerAllocation() ? partnerFlatAllocationService.listPartnersForBuilding(id) : List.of());
         return "buildings/flat-grid";
+    }
+
+    @GetMapping("/{id}/sales-partners")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public List<Map<String, Object>> salesPartners(@PathVariable UUID id) {
+        return partnerFlatAllocationService.listPartnersForBuilding(id).stream()
+                .map(u -> Map.<String, Object>of("id", u.getId(), "fullName", u.getFullName()))
+                .toList();
+    }
+
+    @PostMapping("/{id}/partner-flats")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public String savePartnerFlats(
+            @PathVariable UUID id, @RequestParam Map<String, String> params, RedirectAttributes ra) {
+        try {
+            partnerFlatAllocationService.saveAllocations(id, params);
+            ra.addFlashAttribute("successMessage", "Partner flat allocation saved.");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/buildings/" + id + "/flats";
     }
 
     @GetMapping("/{id}/flats/data")

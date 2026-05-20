@@ -45,6 +45,7 @@ public class FlatService {
     private final BuildingService buildingService;
     private final BuilderRepository builderRepository;
     private final BookingRepository bookingRepository;
+    private final PartnerFlatAllocationService partnerFlatAllocationService;
 
     @Transactional(readOnly = true)
     public long countFlatsForBuilding(UUID buildingId) {
@@ -65,6 +66,9 @@ public class FlatService {
         List<Flat> flats =
                 flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
                         buildingId, builderId);
+        flats = partnerFlatAllocationService.filterFlatsForCurrentUser(buildingId, flats);
+        Map<UUID, UUID> partnerIds = partnerFlatAllocationService.getFlatOwnerByPartnerId(buildingId);
+        Map<UUID, String> partnerLabels = partnerFlatAllocationService.getFlatPartnerLabels(buildingId);
         Map<UUID, Booking> bookingByFlatId = activeBookingsByFlatId(builderId, flats);
         Map<Integer, List<Flat>> byFloor =
                 flats.stream().collect(Collectors.groupingBy(Flat::getFloorNumber, TreeMap::new, Collectors.toList()));
@@ -96,7 +100,9 @@ public class FlatService {
                                                 bookingCodeForTooltip(b),
                                                 bookedClient != null ? pickPhone(bookedClient) : null,
                                                 bookedClient != null ? pickEmail(bookedClient) : null,
-                                                resolveCardClass(f, b));
+                                                resolveCardClass(f, b),
+                                                partnerIds.get(f.getId()),
+                                                partnerLabels.get(f.getId()));
                                     })
                             .toList();
             rows.add(new FlatGridFloorDto("Floor " + floor, cells));
@@ -467,7 +473,9 @@ public class FlatService {
                 bookingCodeForTooltip(booking),
                 bookedClient != null ? pickPhone(bookedClient) : null,
                 bookedClient != null ? pickEmail(bookedClient) : null,
-                resolveCardClass(f, booking));
+                resolveCardClass(f, booking),
+                null,
+                null);
     }
 
     private Flat requireResidentialFlatForAdmin(UUID flatId) {
