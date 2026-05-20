@@ -560,6 +560,11 @@
     var grid = document.getElementById("flat-grid");
     if (grid) {
       grid.addEventListener("click", function (e) {
+        var quick = e.target.closest(".flat-quick-link");
+        if (quick) {
+          e.stopPropagation();
+          return;
+        }
         var fp = e.target.closest(".flat-floor-plan-trigger");
         if (fp) {
           e.preventDefault();

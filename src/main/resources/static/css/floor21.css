@@ -650,6 +650,32 @@ button.flat-floor-plan-link {
   margin-top: 0.12rem;
 }
 
+.flat-quick-link {
+  display: inline-block;
+  margin-top: 0.2rem;
+  font-size: 0.69rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--bs-link-color);
+  text-decoration: underline;
+}
+
+.flat-card-row .flat-quick-link {
+  font-size: 0.64rem;
+}
+
+.flat-quick-link:hover {
+  color: var(--bs-link-hover-color);
+}
+
+.flat-quick-link.disabled,
+.flat-quick-link[aria-disabled="true"] {
+  color: var(--bs-secondary-color);
+  cursor: not-allowed;
+  text-decoration: none;
+  pointer-events: none;
+}
+
 .floor-plan-modal-dialog {
   max-width: min(92vw, 560px);
 }

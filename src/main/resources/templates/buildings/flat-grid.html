@@ -206,6 +206,13 @@
               <span class="flat-owner-name" th:text="${flat.ownerDisplay()}"></span>
               <span class="flat-owner-detail" th:text="${flat.ownerDetail()}"></span>
             </div>
+            <a th:if="${!flat.parking()}"
+               class="flat-quick-link"
+               th:classappend="${!flat.bookableByCurrentUser() or !(flat.status() == 'AVAILABLE' or flat.status() == 'HOLD')} ? ' disabled' : ''"
+               th:href="${flat.bookableByCurrentUser() and (flat.status() == 'AVAILABLE' or flat.status() == 'HOLD')} ? @{/bookings/new(flatId=${flat.id()})} : '#'"
+               th:attr="aria-disabled=${!flat.bookableByCurrentUser() or !(flat.status() == 'AVAILABLE' or flat.status() == 'HOLD')}">
+              Flat details
+            </a>
           </div>
         </div>
       </div>
