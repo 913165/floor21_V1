@@ -198,7 +198,22 @@
     return tip;
   }
 
+  function stripNonBookableHover(cardEl) {
+    if (!cardEl || cardEl.dataset.parking === "true" || isFlatBookable(cardEl)) return;
+    cardEl.classList.remove("flat-card--has-buyer");
+    var tip = cardEl.querySelector(".flat-card-buyertip");
+    if (tip) tip.remove();
+  }
+
   function syncBuyerTooltip(el, flat) {
+    var bookable =
+        flat && flat.bookableByCurrentUser !== undefined
+            ? flat.bookableByCurrentUser !== false
+            : isFlatBookable(el);
+    if (!bookable) {
+      stripNonBookableHover(el);
+      return;
+    }
     var name = flat.ownerDisplay == null ? "" : String(flat.ownerDisplay).trim();
     var hasBuyer = flat.status === "BOOKED" && name;
     el.classList.toggle("flat-card--has-buyer", !!hasBuyer);
@@ -281,6 +296,7 @@
           delete el.dataset.floorPlanSlot;
         }
         stripFloorPlanTriggers(el);
+        stripNonBookableHover(el);
         syncFloorPlanLink(el);
       });
     });
@@ -352,6 +368,7 @@
       if (card.dataset.bookable !== "true" && card.dataset.bookable !== "false") {
         card.dataset.bookable = card.classList.contains("flat-card--other-partner") ? "false" : "true";
       }
+      stripNonBookableHover(card);
       stripFloorPlanTriggers(card);
       syncFloorPlanLink(card);
     });

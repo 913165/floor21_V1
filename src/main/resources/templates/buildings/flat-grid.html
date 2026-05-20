@@ -178,7 +178,7 @@
                       data-buyer-email=${flat.buyerEmail()},
                       data-floor-plan-slot=${flat.bookableByCurrentUser() and fpSlot != null ? fpSlot : ''},
                       data-bookable=${flat.bookableByCurrentUser() ? 'true' : 'false'}">
-          <div class="flat-card-buyertip" th:if="${flat.status() == 'BOOKED' and !#strings.isEmpty(flat.ownerDisplay())}">
+          <div class="flat-card-buyertip" th:if="${flat.bookableByCurrentUser() and flat.status() == 'BOOKED' and !#strings.isEmpty(flat.ownerDisplay())}">
             <div class="flat-card-buyertip__title">Buyer</div>
             <div class="flat-card-buyertip__name" th:text="${flat.ownerDisplay()}">-</div>
             <div class="flat-card-buyertip__row" th:if="${flat.bookingCode() != null}">
@@ -207,8 +207,9 @@
                     aria-hidden="true">Floor plan</span>
             </div>
             <div class="flat-card-owner" th:classappend="${#strings.isEmpty(flat.ownerDisplay()) && #strings.isEmpty(flat.ownerDetail())} ? ' is-blank'">
-              <span class="flat-owner-name" th:text="${flat.ownerDisplay()}"></span>
-              <span class="flat-owner-detail" th:text="${flat.ownerDetail()}"></span>
+              <span class="flat-owner-name"
+                    th:text="${flat.bookableByCurrentUser() ? flat.ownerDisplay() : (flat.status() == 'BOOKED' ? 'Booked' : '')}"></span>
+              <span class="flat-owner-detail" th:if="${flat.bookableByCurrentUser()}" th:text="${flat.ownerDetail()}"></span>
             </div>
             <button th:if="${!flat.parking() and flat.bookableByCurrentUser()}"
                     type="button"

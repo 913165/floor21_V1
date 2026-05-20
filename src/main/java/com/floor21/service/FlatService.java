@@ -87,10 +87,15 @@ public class FlatService {
                                         boolean bookable =
                                                 partnerFlatAllocationService.isBookableByCurrentUser(
                                                         buildingId, assignedPartnerId);
-                                        String cardClass = resolveCardClass(f, b);
+                                        String cardClass = resolveCardClass(f, b, bookable);
                                         if (!bookable && !Boolean.TRUE.equals(f.getParking())) {
                                             cardClass = cardClass + " flat-card--other-partner";
                                         }
+                                        String ownerTitle =
+                                                bookable
+                                                        ? ownerCardTitle(f, b)
+                                                        : ("BOOKED".equals(f.getStatus()) ? "Booked" : "");
+                                        String ownerDetail = bookable ? ownerCardSubtitle(f, b) : "";
                                         return new FlatGridFlatDto(
                                                 f.getId(),
                                                 f.getFlatNumber(),
@@ -100,13 +105,13 @@ public class FlatService {
                                                 f.getAreaSqft(),
                                                 f.getStatus(),
                                                 Boolean.TRUE.equals(f.getParking()),
-                                                buildBuyerTooltip(f, b),
-                                                resolveBookedClientId(f, b),
-                                                ownerCardTitle(f, b),
-                                                ownerCardSubtitle(f, b),
-                                                bookingCodeForTooltip(b),
-                                                bookedClient != null ? pickPhone(bookedClient) : null,
-                                                bookedClient != null ? pickEmail(bookedClient) : null,
+                                                bookable ? buildBuyerTooltip(f, b) : "",
+                                                bookable ? resolveBookedClientId(f, b) : null,
+                                                ownerTitle,
+                                                ownerDetail,
+                                                bookable ? bookingCodeForTooltip(b) : null,
+                                                bookable && bookedClient != null ? pickPhone(bookedClient) : null,
+                                                bookable && bookedClient != null ? pickEmail(bookedClient) : null,
                                                 cardClass,
                                                 assignedPartnerId,
                                                 partnerLabels.get(f.getId()),
@@ -130,7 +135,7 @@ public class FlatService {
         return map;
     }
 
-    private static String resolveCardClass(Flat flat, Booking booking) {
+    private static String resolveCardClass(Flat flat, Booking booking, boolean bookableByCurrentUser) {
         String tone;
         if (Boolean.TRUE.equals(flat.getParking())) {
             tone = "flat-parking";
@@ -142,7 +147,11 @@ public class FlatService {
             tone = "flat-hold";
         }
         String owner = ownerCardTitle(flat, booking);
-        boolean hasBuyer = "BOOKED".equals(flat.getStatus()) && owner != null && !owner.isBlank();
+        boolean hasBuyer =
+                bookableByCurrentUser
+                        && "BOOKED".equals(flat.getStatus())
+                        && owner != null
+                        && !owner.isBlank();
         return hasBuyer ? "flat-card " + tone + " flat-card--has-buyer" : "flat-card " + tone;
     }
 
@@ -485,7 +494,7 @@ public class FlatService {
                 bookingCodeForTooltip(booking),
                 bookedClient != null ? pickPhone(bookedClient) : null,
                 bookedClient != null ? pickEmail(bookedClient) : null,
-                resolveCardClass(f, booking),
+                resolveCardClass(f, booking, true),
                 null,
                 null,
                 true);

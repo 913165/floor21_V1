@@ -856,9 +856,21 @@ body.modal-open .modal-backdrop {
   transform: translate(-50%, 0);
 }
 
+.flat-card--other-partner.flat-card--has-buyer:hover .flat-card-buyertip,
+.flat-card[data-bookable="false"]:not(.flat-parking).flat-card--has-buyer:hover .flat-card-buyertip {
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 8px);
+}
+
 .flat-card:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.flat-card--other-partner:not(.flat-parking),
+.flat-card[data-bookable="false"]:not(.flat-parking) {
+  pointer-events: none;
 }
 
 .flat-card--focused {
