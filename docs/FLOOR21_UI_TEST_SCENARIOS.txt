@@ -1,0 +1,285 @@
+================================================================================
+FLOOR21 — UI TEST SCENARIOS (MANUAL)
+================================================================================
+Version: May 2026 (Vault, partner grid, platform admin)
+Environment: Staging / local after latest deploy + DB migrations through V41
+
+Before testing:
+  - Run app with Flyway migrations applied (V35–V41 if fresh DB).
+  - Hard-refresh browser (Ctrl+F5) after deploy.
+  - Use test data: at least 1 builder, 2 buildings, several flats, 2+ bookings.
+  - Prepare 3 login types (see section 0).
+
+Pass = expected behaviour observed
+Fail = note screen, user role, steps, screenshot
+
+================================================================================
+0. TEST ACCOUNTS (SET UP BEFORE SCENARIOS)
+================================================================================
+
+A) Platform admin (SUPER_ADMIN)
+   - Login: Floor21 platform admin account
+   - Menu: Platform section visible (Builders, Users, Vault config, etc.)
+
+B) Builder admin (BUILDER_ADMIN staff user)
+   - Created under Platform → Users (or builder staff)
+   - Role: Builder admin
+   - Can see all buildings for that builder (unless restricted elsewhere)
+
+C) Sales partner (EXECUTIVE staff user)
+   - Created under Platform → Users
+   - Role: Partner
+   - Assign building access to 1+ buildings (Users edit or staff form)
+
+D) Builder company login (optional)
+   - Login using builder table email/password (not Users row)
+   - Used only where noted; Vault for staff users is grant-based
+
+================================================================================
+1. PLATFORM — VAULT CONFIG (USER + BUILDING)
+================================================================================
+Path: Platform → Vault config  (/admin/vault-config)
+
+Precondition: Vault is OFF by default until grants are added.
+
+1.1 Page load
+  - Open Vault config as platform admin.
+  - Expect: User dropdown lists active users (Partner and Builder admin) with role in label.
+  - Expect: Building dropdown lists all tenant buildings.
+  - Expect: Empty grant list message if nothing saved yet.
+
+1.2 Add grant (user + building)
+  - Select a Builder admin user + a building (same builder company).
+  - Click "Add to list" → row appears in table.
+  - Click "Save Vault config".
+  - Expect: Success message; row still listed after reload.
+
+1.3 Same-builder rule
+  - Pick a user from Builder A and a building from Builder B.
+  - Click "Add to list".
+  - Expect: Alert that user and building must belong to the same builder (row NOT added).
+
+1.4 Remove grant
+  - Remove a row from list (Remove button) → Save.
+  - Expect: Grant gone after reload; that user no longer has Vault for that building.
+
+1.5 Partner user grant
+  - Add grant for a Partner (EXECUTIVE) user + building → Save.
+  - Log in as that partner (with building access).
+  - Expect: Vault menu appears (if at least one grant exists for that user).
+
+1.6 No grant = no Vault
+  - Remove all grants for a test user → Save.
+  - Log in as that user.
+  - Expect: Vault menu NOT in sidebar; direct URL /vault blocked or redirected.
+
+================================================================================
+2. VAULT — ACCESS, PIN, LOCK
+================================================================================
+
+2.1 Vault menu visibility
+  - User WITH vault grant: sidebar shows "Vault".
+  - User WITHOUT grant: no Vault link.
+  - Platform admin: no Vault (platform uses Vault config only).
+
+2.2 First-time PIN
+  - Open /vault as granted user (first time).
+  - Expect: Unlock screen; create PIN (4–8 digits).
+  - After unlock: Vault page loads.
+
+2.3 Wrong PIN
+  - Lock vault → unlock with wrong PIN.
+  - Expect: Error; stays on unlock screen.
+
+2.4 Lock vault
+  - Click "Lock vault" on Vault page.
+  - Expect: Must enter PIN again to access Vault.
+
+2.5 Change / reset PIN
+  - Change PIN from Vault or profile link.
+  - Reset PIN with login password if "Forgot PIN" flow exists.
+  - Expect: New PIN works on next unlock.
+
+================================================================================
+3. VAULT — PER BOOKING (INCOME + EXPENSES)
+================================================================================
+Path: Vault → pick building (optional) → pick a real booking → Load
+
+Precondition: User has vault grant for that building.
+
+3.1 Booking workspace load
+  - Select a booking → Load.
+  - Expect: Booking summary (flat, client, deal total).
+  - Expect: Deal amount breakdown (register + extra, save deal amounts).
+  - Expect: "Income only" section (table).
+  - Expect: "Expenses only" section (table).
+  - Expect: NO slab schedule table (removed intentionally).
+
+3.2 Add income
+  - Click "Add income" → fill amount, date, mode → Save.
+  - Expect: Row in Income only; total updates.
+  - Expect: Does NOT change Bookings, Receipts, Slabs, or dashboard totals.
+
+3.3 Edit / delete income
+  - Edit income row → change amount → Save.
+  - Delete income row → confirm.
+  - Expect: Table and totals correct.
+
+3.4 Add booking expense
+  - Click "Add expense" → category, amount, date → Save.
+  - Expect: Row in Expenses only section; expense total updates.
+
+3.5 Edit / delete booking expense
+  - Edit and delete expense rows.
+  - Expect: Net line on deal breakdown reflects income − expenses (if shown).
+
+3.6 Building filter
+  - Filter building dropdown → only bookings for that building in list.
+  - Load booking → income/expense scoped to that booking only.
+
+3.7 No grant for building
+  - User has grant for Building A only.
+  - Try to use Vault for booking on Building B (if reachable).
+  - Expect: Building B not in vault building list OR cannot access.
+
+================================================================================
+4. VAULT — GENERAL INCOME & EXPENSES (NO BOOKING)
+================================================================================
+Path: Vault → Booking / scope → "General income & expenses (vault only, no booking)" → Load
+
+4.1 General workspace
+  - Expect: Info banner (vault only, not linked to booking).
+  - Expect: "Add income" and "Add expense" buttons (top).
+  - Expect: "Income only" table (general).
+  - Expect: "General expenses only" table.
+  - Expect: NO booking summary, NO deal breakdown.
+  - Expect: Footer "Net (income − expenses)".
+
+4.2 Add general income
+  - Add income: description/source required, amount, date → Save.
+  - Expect: Row in Income only; total income updates.
+
+4.3 Add general expense
+  - Add expense: description/payee required, category, amount → Save.
+  - Expect: Row in General expenses only; total updates; net recalculates.
+
+4.4 Edit / delete general rows
+  - Edit and delete general income and expense entries.
+  - Expect: Changes persist after reload.
+
+4.5 Isolation from bookings
+  - Note booking client names on a real booking vault page.
+  - General entries use free-text description (not tied to flat/client).
+  - Expect: General entries do NOT appear on any booking's income/expense tables.
+
+4.6 Legacy URL (optional)
+  - Open /vault?bookingId=general-expenses (old link).
+  - Expect: Same general workspace as general-vault option.
+
+================================================================================
+5. PARTNER FLAT GRID & ALLOCATION (PLATFORM ADMIN)
+================================================================================
+Path: Building flat grid (partner sees assigned buildings only)
+
+Precondition: Platform admin assigns partners to flats (building settings / partner flats UI).
+
+5.1 Full grid for partner
+  - Partner with building access sees ALL flats on grid for that building (not only assigned).
+
+5.2 Partner name on card
+  - Assigned flat shows partner name on card.
+  - Unassigned flat: no other partner's name wrongly shown.
+
+5.3 Bookable vs not bookable (partner)
+  - Partner logged in:
+    - Flat ASSIGNED to this partner: can open details / hold / book (normal colours, clickable).
+    - Flat ASSIGNED to another partner: greyed out, not clickable, no buyer details on hover.
+    - Flat UNASSIGNED: greyed out, not bookable (not clickable).
+  - Label on restricted cards: "Booked" only if actually booked (no buyer name/phone on non-bookable cards).
+
+5.4 Builder admin on grid
+  - Builder admin: all flats bookable (no partner restriction).
+
+5.5 Grid refresh (20s)
+  - Wait for auto-refresh on flat grid.
+  - Expect: Non-bookable cards stay masked (buyer name does not reappear after refresh).
+
+5.6 Flat details modal
+  - On bookable flat: "Flat details" opens modal (not blocked by backdrop).
+  - Hold / Release / Book work from modal.
+  - Close modal and X button clickable.
+
+================================================================================
+6. BOOKINGS & RECEIPTS (REGRESSION — PARTNER BUILDING ACCESS)
+================================================================================
+
+6.1 Partner building access
+  - Partner with access to Building A only:
+    - Can open flat grid / bookings / receipts for A.
+    - Cannot access Building B data (or gets error).
+
+6.2 Partner books only assigned flat
+  - Try to book/hold flat assigned to another partner via API/UI.
+  - Expect: Blocked with message about another partner.
+
+6.3 Builder admin
+  - Can book any flat regardless of partner assignment.
+
+================================================================================
+7. USERS & STAFF (REGRESSION)
+================================================================================
+
+7.1 Create partner user
+  - Platform → Users → New user, role Partner, active.
+  - Expect: Appears in Vault config user dropdown.
+
+7.2 Create builder admin
+  - Role Builder admin.
+  - Expect: Appears in Vault config dropdown.
+
+7.3 Inactive user
+  - Set user inactive.
+  - Expect: NOT in Vault config user dropdown.
+
+7.4 Vault config link on user form
+  - User edit form mentions Vault configured under Platform → Vault config (no per-user vault checkbox on form).
+
+================================================================================
+8. EXPENSES HUB (SEPARATE FROM VAULT)
+================================================================================
+Path: Sidebar "Expenses" (builder admin only)
+
+8.1 Not the same as Vault
+  - Builder admin: Expenses hub still separate (PIN if configured).
+  - Vault general expenses do NOT show in Expenses hub.
+
+8.2 Partner
+  - Partner should NOT see Expenses hub (builder admin only).
+
+================================================================================
+9. QUICK SMOKE CHECKLIST (30 MIN)
+================================================================================
+[ ] Platform admin: add vault grant user+building → save
+[ ] Partner with grant: Vault visible → unlock → PIN works
+[ ] Partner without grant: no Vault menu
+[ ] Vault + booking: add income + expense → totals OK
+[ ] Vault general: add income + expense → net OK → not on booking
+[ ] Partner grid: other partner + unassigned flats greyed / not bookable
+[ ] Flat details modal opens and closes
+[ ] Slab schedule NOT shown on Vault page
+
+================================================================================
+10. REPORTING BUGS
+================================================================================
+For each fail, record:
+  - Date / tester name
+  - Role (platform admin / builder admin / partner)
+  - URL path
+  - Steps 1–2–3
+  - Expected vs actual
+  - Screenshot or screen recording
+  - Browser (Chrome/Edge) and OS
+
+================================================================================
+END OF DOCUMENT
+================================================================================
