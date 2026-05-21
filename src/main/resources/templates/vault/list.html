@@ -15,8 +15,8 @@
     </div>
   </div>
   <p class="text-muted small mb-3">
-    <strong>Vault only.</strong> Record <strong>income</strong> and <strong>expenses</strong> per booking here.
-    They do not update slabs, receipts, bookings, or the dashboard.
+    <strong>Vault only.</strong> Record <strong>income</strong> and <strong>expenses</strong> per booking, or
+    <strong>general expenses</strong> (not tied to any booking). Nothing here updates slabs, receipts, bookings, or the dashboard.
   </p>
 
   <form id="vaultPickerForm" class="card card-body shadow-sm mb-3" method="get" th:action="@{/vault}">
@@ -32,9 +32,13 @@
         </select>
       </div>
       <div class="col-md-5">
-        <label class="form-label">Booking (buyer) <span class="text-danger">*</span></label>
+        <label class="form-label">Booking / scope <span class="text-danger">*</span></label>
         <select class="form-select" name="bookingId" id="vaultBooking">
-          <option value="" th:selected="${selectedBookingId == null}">Choose booking?</option>
+          <option value="" th:selected="${bookingPicker == null or bookingPicker == ''}">— Choose —</option>
+          <option th:value="${T(com.floor21.vault.VaultPickerScope).GENERAL_VAULT}"
+                  th:selected="${generalVault}">
+            General income &amp; expenses (vault only, no booking)
+          </option>
           <option th:each="bk : ${bookings}"
                   th:value="${bk.id}"
                   th:selected="${selectedBookingId != null && selectedBookingId == bk.id}"
@@ -71,7 +75,7 @@
              th:href="@{/vault(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, addPayment=true)}">
             Add income
           </a>
-          <a class="btn btn-outline-danger btn-sm"
+          <a class="btn btn-primary btn-sm"
              th:href="@{/vault(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, addExpense=true)}">
             Add expense
           </a>
@@ -247,6 +251,7 @@
               <option value="Registration">Registration</option>
               <option value="Marketing">Marketing</option>
               <option value="Refund">Refund</option>
+              <option value="General">General</option>
               <option value="Other">Other</option>
             </select>
           </div>
@@ -263,7 +268,7 @@
             <input class="form-control" th:field="*{notes}" maxlength="500" placeholder="Optional"/>
           </div>
           <div class="col-12">
-            <button class="btn btn-danger" type="submit" th:text="${editingExpense ? 'Update expense' : 'Save expense'}">Save</button>
+            <button class="btn btn-primary" type="submit" th:text="${editingExpense ? 'Update expense' : 'Save expense'}">Save</button>
             <a class="btn btn-link"
                th:href="@{/vault(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId})}">Cancel</a>
           </div>
@@ -275,9 +280,9 @@
       <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
           <span class="fw-semibold">Expenses only</span>
-          <span class="text-muted small fw-normal d-block">Other costs by date (not linked to slab schedule)</span>
+          <span class="text-muted small fw-normal d-block">Booking costs by date (vault only)</span>
         </div>
-        <a class="btn btn-sm btn-outline-danger"
+        <a class="btn btn-sm btn-primary"
            th:if="${!showExpenseForm}"
            th:href="@{/vault(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, addExpense=true)}">
           Add expense
@@ -343,6 +348,236 @@
         </div>
       </div>
     </div>
+  </th:block>
+
+  <th:block th:if="${generalVault}" th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)},
+            generalPicker=${T(com.floor21.vault.VaultPickerScope).GENERAL_VAULT}">
+    <div class="alert alert-info py-2 small mb-3">
+      <strong>General income and expenses</strong> are vault-only. They are not linked to any booking and do not
+      change bookings, slabs, receipts, or reports.
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <a class="btn btn-primary btn-sm"
+         th:if="${!showIncomeForm}"
+         th:href="@{/vault(bookingId=${generalPicker}, addPayment=true)}">Add income</a>
+      <a class="btn btn-primary btn-sm"
+         th:if="${!showExpenseForm}"
+         th:href="@{/vault(bookingId=${generalPicker}, addExpense=true)}">Add expense</a>
+    </div>
+
+    <div th:if="${showIncomeForm}" class="card shadow-sm mb-3 border-primary border-opacity-50">
+      <div class="card-header"
+           th:text="${editingIncome ? 'Edit general income' : 'New general income'}">New general income</div>
+      <div class="card-body">
+        <form th:action="@{/vault/general-income/save}" th:object="${incomeEntryForm}" method="post" class="row g-3">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <input type="hidden" th:if="${incomeEntryForm.id != null}" th:field="*{id}"/>
+          <div class="col-md-6">
+            <label class="form-label">Description / source <span class="text-danger">*</span></label>
+            <input class="form-control" th:field="*{clientName}" required maxlength="200"
+                   placeholder="e.g. Misc cash received"/>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Mode</label>
+            <select class="form-select" th:field="*{paymentMode}">
+              <option value="Cash">Cash</option>
+              <option value="Cheque">Cheque</option>
+              <option value="NEFT">NEFT</option>
+              <option value="RTGS">RTGS</option>
+              <option value="UPI">UPI</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Amount <span class="text-danger">*</span></label>
+            <input class="form-control" type="number" step="0.01" min="0.01" th:field="*{amount}" required/>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Date <span class="text-danger">*</span></label>
+            <input class="form-control" type="date" th:field="*{entryDate}" required/>
+          </div>
+          <div class="col-md-9">
+            <label class="form-label">Notes</label>
+            <input class="form-control" th:field="*{notes}" maxlength="500" placeholder="Optional"/>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-primary" type="submit"
+                    th:text="${editingIncome ? 'Update' : 'Save'}">Save</button>
+            <a class="btn btn-link" th:href="@{/vault(bookingId=${generalPicker})}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <span class="fw-semibold">Income only</span>
+          <span class="text-muted small fw-normal d-block">General vault income (no booking)</span>
+        </div>
+        <a class="btn btn-sm btn-primary"
+           th:if="${!showIncomeForm}"
+           th:href="@{/vault(bookingId=${generalPicker}, addPayment=true)}">Add income</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0 align-middle f21-table-totals">
+            <thead class="table-light">
+            <tr>
+              <th>Sno</th>
+              <th>Description</th>
+              <th>Mode</th>
+              <th class="text-end">Amount</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="e, iterStat : ${incomeEntries}">
+              <td th:text="${iterStat.count}">1</td>
+              <td th:text="${e.clientName}">—</td>
+              <td th:text="${(e.paymentMode != null && !#strings.isEmpty(e.paymentMode)) ? e.paymentMode : '—'}">—</td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(e.amount)}"></td>
+              <td th:text="${e.entryDate}"></td>
+              <td class="text-end text-nowrap">
+                <a class="btn btn-sm btn-outline-primary"
+                   th:href="@{/vault(bookingId=${generalPicker}, editPaymentId=${e.id})}">Edit</a>
+                <form class="d-inline" th:action="@{/vault/general-income/{id}/delete(id=${e.id})}" method="post"
+                      onsubmit="return confirm('Remove this income entry?');">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(incomeEntries)}">
+              <td colspan="6" class="text-muted text-center py-4">No general income yet. Use <strong>Add income</strong>.</td>
+            </tr>
+            </tbody>
+            <tfoot class="table-light">
+            <tr class="fw-semibold">
+              <td colspan="2"></td>
+              <td class="text-end">Total income</td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(generalIncomeTotal)}">0</td>
+              <td></td>
+              <td></td>
+            </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div th:if="${showExpenseForm}" class="card shadow-sm mb-3 border-primary border-opacity-50">
+      <div class="card-header"
+           th:text="${editingExpense ? 'Edit general expense' : 'New general expense'}">New general expense</div>
+      <div class="card-body">
+        <form th:action="@{/vault/general-expense/save}" th:object="${expenseEntryForm}" method="post" class="row g-3">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <input type="hidden" th:if="${expenseEntryForm.id != null}" th:field="*{id}"/>
+          <div class="col-md-6">
+            <label class="form-label">Description / payee <span class="text-danger">*</span></label>
+            <input class="form-control" th:field="*{clientName}" required maxlength="200"
+                   placeholder="e.g. Office rent, broker fee"/>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Category</label>
+            <select class="form-select" th:field="*{paymentMode}">
+              <option value="General">General</option>
+              <option value="Brokerage">Brokerage</option>
+              <option value="Legal">Legal</option>
+              <option value="Registration">Registration</option>
+              <option value="Marketing">Marketing</option>
+              <option value="Office">Office</option>
+              <option value="Salary">Salary</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Amount <span class="text-danger">*</span></label>
+            <input class="form-control" type="number" step="0.01" min="0.01" th:field="*{amount}" required/>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Date <span class="text-danger">*</span></label>
+            <input class="form-control" type="date" th:field="*{entryDate}" required/>
+          </div>
+          <div class="col-md-9">
+            <label class="form-label">Notes</label>
+            <input class="form-control" th:field="*{notes}" maxlength="500" placeholder="Optional"/>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-primary" type="submit"
+                    th:text="${editingExpense ? 'Update' : 'Save'}">Save</button>
+            <a class="btn btn-link" th:href="@{/vault(bookingId=${T(com.floor21.vault.VaultPickerScope).GENERAL_EXPENSES})}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <span class="fw-semibold">General expenses only</span>
+          <span class="text-muted small fw-normal d-block">Company-wide vault costs (no booking)</span>
+        </div>
+        <a class="btn btn-sm btn-primary"
+           th:if="${!showExpenseForm}"
+           th:href="@{/vault(bookingId=${generalPicker}, addExpense=true)}">
+          Add expense
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0 align-middle f21-table-totals">
+            <thead class="table-light">
+            <tr>
+              <th>Sno</th>
+              <th>Description</th>
+              <th>Category</th>
+              <th class="text-end">Amount</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="e, iterStat : ${expenseEntries}">
+              <td th:text="${iterStat.count}">1</td>
+              <td th:text="${e.clientName}">—</td>
+              <td th:text="${(e.paymentMode != null && !#strings.isEmpty(e.paymentMode)) ? e.paymentMode : '—'}">—</td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(e.amount)}"></td>
+              <td th:text="${e.entryDate}"></td>
+              <td class="text-end text-nowrap">
+                <a class="btn btn-sm btn-outline-primary"
+                   th:href="@{/vault(bookingId=${generalPicker}, editExpenseId=${e.id})}">Edit</a>
+                <form class="d-inline" th:action="@{/vault/general-expense/{id}/delete(id=${e.id})}" method="post"
+                      onsubmit="return confirm('Remove this general expense?');">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(expenseEntries)}">
+              <td colspan="6" class="text-muted text-center py-4">No general expenses yet. Use <strong>Add expense</strong>.</td>
+            </tr>
+            </tbody>
+            <tfoot class="table-light">
+            <tr class="fw-semibold">
+              <td colspan="2"></td>
+              <td class="text-end">Total</td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(generalExpenseTotal)}">0</td>
+              <td></td>
+              <td></td>
+            </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-muted small mb-0" th:if="${generalNetTotal != null}">
+      Net (income − expenses):
+      <strong th:text="${amt.formatAmountDisplay(generalNetTotal)}">0</strong>
+    </p>
   </th:block>
 </div>
 </body>

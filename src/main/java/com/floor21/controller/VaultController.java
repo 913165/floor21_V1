@@ -11,6 +11,7 @@ import com.floor21.service.BuildingService;
 import com.floor21.service.VaultBookingProfileService;
 import com.floor21.service.VaultEntryService;
 import com.floor21.service.VaultPinService;
+import com.floor21.vault.VaultPickerScope;
 import jakarta.servlet.http.HttpSession;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
@@ -135,7 +136,7 @@ public class VaultController {
     @GetMapping
     public String list(
             @RequestParam(required = false) UUID buildingId,
-            @RequestParam(required = false) UUID bookingId,
+            @RequestParam(name = "bookingId", required = false) String bookingPicker,
             @RequestParam(required = false) boolean addExtra,
             @RequestParam(required = false) boolean addPayment,
             @RequestParam(required = false) boolean addExpense,
@@ -150,7 +151,20 @@ public class VaultController {
                 "vaultUnlocked",
                 VaultSession.isUnlocked(
                         session, TenantContext.requireBuilderId(), Duration.ofMinutes(unlockTimeoutMinutes)));
-        addPicker(model, buildingId, bookingId);
+        addPicker(model, buildingId, bookingPicker);
+        if (VaultPickerScope.isGeneralVault(bookingPicker)) {
+            boolean openIncomeForm = addExtra || addPayment;
+            UUID editIncomeId = editPaymentId != null ? editPaymentId : editExtraId;
+            addGeneralWorkspace(model, openIncomeForm, addExpense, editIncomeId, editExpenseId);
+            return "vault/list";
+        }
+        UUID bookingId;
+        try {
+            bookingId = parseBookingId(bookingPicker);
+        } catch (IllegalArgumentException ex) {
+            model.addAttribute("errorMessage", "Invalid booking selection.");
+            return "vault/list";
+        }
         if (bookingId == null) {
             return "vault/list";
         }
@@ -163,7 +177,7 @@ public class VaultController {
                 model.addAttribute(
                         "errorMessage",
                         "That booking is not in the selected building. Choose a booking from the list.");
-                model.addAttribute("selectedBookingId", null);
+                model.addAttribute("bookingPicker", null);
                 return "vault/list";
             }
             boolean openIncomeForm = addExtra || addPayment;
@@ -235,7 +249,7 @@ public class VaultController {
             @ModelAttribute("expenseEntryForm") VaultEntry expenseEntryForm,
             Model model,
             RedirectAttributes ra) {
-        addPicker(model, buildingId, bookingId);
+        addPicker(model, buildingId, bookingId.toString());
         try {
             boolean updating = expenseEntryForm.getId() != null;
             vaultEntryService.saveExpense(bookingId, expenseEntryForm);
@@ -248,6 +262,60 @@ public class VaultController {
             model.addAttribute("expenseEntryForm", expenseEntryForm);
             return "vault/list";
         }
+    }
+
+    @PostMapping("/general-income/save")
+    public String saveGeneralIncome(
+            @ModelAttribute("incomeEntryForm") VaultEntry incomeEntryForm,
+            Model model,
+            RedirectAttributes ra) {
+        addPicker(model, null, VaultPickerScope.GENERAL_VAULT);
+        try {
+            boolean updating = incomeEntryForm.getId() != null;
+            vaultEntryService.saveGeneralIncome(incomeEntryForm);
+            ra.addFlashAttribute(
+                    "successMessage", updating ? "General income updated." : "General income saved.");
+            return redirectToGeneralVault();
+        } catch (IllegalArgumentException | ResourceNotFoundException ex) {
+            model.addAttribute("errorMessage", ex.getMessage());
+            addGeneralWorkspace(model, true, false, incomeEntryForm.getId(), null);
+            model.addAttribute("incomeEntryForm", incomeEntryForm);
+            return "vault/list";
+        }
+    }
+
+    @PostMapping("/general-income/{id}/delete")
+    public String deleteGeneralIncome(@PathVariable UUID id, RedirectAttributes ra) {
+        vaultEntryService.deleteGeneralIncome(id);
+        ra.addFlashAttribute("successMessage", "General income removed.");
+        return redirectToGeneralVault();
+    }
+
+    @PostMapping("/general-expense/save")
+    public String saveGeneralExpense(
+            @ModelAttribute("expenseEntryForm") VaultEntry expenseEntryForm,
+            Model model,
+            RedirectAttributes ra) {
+        addPicker(model, null, VaultPickerScope.GENERAL_VAULT);
+        try {
+            boolean updating = expenseEntryForm.getId() != null;
+            vaultEntryService.saveGeneralExpense(expenseEntryForm);
+            ra.addFlashAttribute(
+                    "successMessage", updating ? "General expense updated." : "General expense saved.");
+            return redirectToGeneralVault();
+        } catch (IllegalArgumentException | ResourceNotFoundException ex) {
+            model.addAttribute("errorMessage", ex.getMessage());
+            addGeneralWorkspace(model, false, true, null, expenseEntryForm.getId());
+            model.addAttribute("expenseEntryForm", expenseEntryForm);
+            return "vault/list";
+        }
+    }
+
+    @PostMapping("/general-expense/{id}/delete")
+    public String deleteGeneralExpense(@PathVariable UUID id, RedirectAttributes ra) {
+        vaultEntryService.deleteGeneralExpense(id);
+        ra.addFlashAttribute("successMessage", "General expense removed.");
+        return redirectToGeneralVault();
     }
 
     @PostMapping("/extra/{id}/delete")
@@ -345,7 +413,7 @@ public class VaultController {
             VaultEntry extraEntryForm,
             Model model,
             RedirectAttributes ra) {
-        addPicker(model, buildingId, bookingId);
+        addPicker(model, buildingId, bookingId.toString());
         try {
             boolean updating = extraEntryForm.getId() != null;
             vaultEntryService.saveIncome(bookingId, extraEntryForm);
@@ -360,7 +428,7 @@ public class VaultController {
         }
     }
 
-    private void addPicker(Model model, UUID buildingId, UUID bookingId) {
+    private void addPicker(Model model, UUID buildingId, String bookingPicker) {
         model.addAttribute("buildings", buildingService.listForVault());
         model.addAttribute("selectedBuildingId", buildingId);
         UUID builderId = TenantContext.requireBuilderId();
@@ -369,7 +437,48 @@ public class VaultController {
                         ? bookingRepository.findActiveForPaymentSchedule(builderId)
                         : bookingRepository.findActiveForPaymentScheduleByBuilding(builderId, buildingId);
         model.addAttribute("bookings", bookings);
-        model.addAttribute("selectedBookingId", bookingId);
+        model.addAttribute("bookingPicker", bookingPicker);
+        model.addAttribute("generalVault", VaultPickerScope.isGeneralVault(bookingPicker));
+        model.addAttribute("generalExpenses", VaultPickerScope.isGeneralVault(bookingPicker));
+        model.addAttribute("selectedBookingId", parseBookingId(bookingPicker));
+    }
+
+    private void addGeneralWorkspace(
+            Model model,
+            boolean showIncomeForm,
+            boolean showExpenseForm,
+            UUID editIncomeId,
+            UUID editExpenseId) {
+        model.addAttribute("generalVault", true);
+        model.addAttribute("generalExpenses", true);
+        java.math.BigDecimal generalIncomeTotal = vaultEntryService.totalGeneralIncome();
+        java.math.BigDecimal generalExpenseTotal = vaultEntryService.totalGeneralExpenses();
+        model.addAttribute("incomeEntries", vaultEntryService.listGeneralIncome());
+        model.addAttribute("generalIncomeTotal", generalIncomeTotal);
+        model.addAttribute("expenseEntries", vaultEntryService.listGeneralExpenses());
+        model.addAttribute("generalExpenseTotal", generalExpenseTotal);
+        model.addAttribute("generalNetTotal", generalIncomeTotal.subtract(generalExpenseTotal));
+        model.addAttribute("showPaymentForm", showIncomeForm);
+        model.addAttribute("showIncomeForm", showIncomeForm);
+        model.addAttribute("showExpenseForm", showExpenseForm);
+        if (showIncomeForm) {
+            VaultEntry incomeForm =
+                    editIncomeId != null
+                            ? vaultEntryService.getGeneralIncome(editIncomeId)
+                            : vaultEntryService.newGeneralIncomeDraft();
+            model.addAttribute("incomeEntryForm", incomeForm);
+            model.addAttribute("extraEntryForm", incomeForm);
+            model.addAttribute("editingPayment", editIncomeId != null);
+            model.addAttribute("editingIncome", editIncomeId != null);
+        }
+        if (showExpenseForm) {
+            VaultEntry expenseForm =
+                    editExpenseId != null
+                            ? vaultEntryService.getGeneralExpense(editExpenseId)
+                            : vaultEntryService.newGeneralExpenseDraft();
+            model.addAttribute("expenseEntryForm", expenseForm);
+            model.addAttribute("editingExpense", editExpenseId != null);
+        }
     }
 
     private void addWorkspace(
@@ -421,6 +530,17 @@ public class VaultController {
             sb.append("&buildingId=").append(buildingId);
         }
         return sb.toString();
+    }
+
+    private static String redirectToGeneralVault() {
+        return "redirect:/vault?bookingId=" + VaultPickerScope.GENERAL_VAULT;
+    }
+
+    private static UUID parseBookingId(String bookingPicker) {
+        if (bookingPicker == null || bookingPicker.isBlank() || VaultPickerScope.isGeneralVault(bookingPicker)) {
+            return null;
+        }
+        return UUID.fromString(bookingPicker);
     }
 
     private static String sanitizeRedirect(String redirect) {

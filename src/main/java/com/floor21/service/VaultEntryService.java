@@ -161,6 +161,136 @@ public class VaultEntryService {
         deleteEntry(id, bookingId, VaultEntryType.EXPENSE);
     }
 
+    @Transactional(readOnly = true)
+    public List<VaultEntry> listGeneralExpenses() {
+        UUID builderId = TenantContext.requireBuilderId();
+        return vaultEntryRepository.findByBuilder_IdAndBookingIsNullAndEntryTypeOrderByEntryDateDescCreatedAtDesc(
+                builderId, VaultEntryType.EXPENSE);
+    }
+
+    @Transactional(readOnly = true)
+    public BigDecimal totalGeneralExpenses() {
+        UUID builderId = TenantContext.requireBuilderId();
+        return zeroIfNull(
+                vaultEntryRepository.sumAmountByBuilderIdAndBookingIsNullAndEntryType(
+                        builderId, VaultEntryType.EXPENSE));
+    }
+
+    @Transactional(readOnly = true)
+    public VaultEntry getGeneralExpense(UUID id) {
+        return getGeneralExpenseInternal(id);
+    }
+
+    public VaultEntry newGeneralExpenseDraft() {
+        VaultEntry entry = new VaultEntry();
+        entry.setEntryType(VaultEntryType.EXPENSE);
+        entry.setEntryDate(LocalDate.now());
+        entry.setClientName("");
+        entry.setFlatNumber("—");
+        entry.setPaymentMode("General");
+        return entry;
+    }
+
+    @Transactional
+    public VaultEntry saveGeneralExpense(VaultEntry form) {
+        return saveGeneralEntry(form, VaultEntryType.EXPENSE, "Description / payee");
+    }
+
+    @Transactional
+    public void deleteGeneralExpense(UUID id) {
+        vaultEntryRepository.delete(getGeneralExpenseInternal(id));
+    }
+
+    private VaultEntry getGeneralExpenseInternal(UUID id) {
+        return getGeneralEntryInternal(id, VaultEntryType.EXPENSE);
+    }
+
+    @Transactional(readOnly = true)
+    public List<VaultEntry> listGeneralIncome() {
+        UUID builderId = TenantContext.requireBuilderId();
+        return vaultEntryRepository.findByBuilder_IdAndBookingIsNullAndEntryTypeOrderByEntryDateDescCreatedAtDesc(
+                builderId, VaultEntryType.INCOME);
+    }
+
+    @Transactional(readOnly = true)
+    public BigDecimal totalGeneralIncome() {
+        UUID builderId = TenantContext.requireBuilderId();
+        return zeroIfNull(
+                vaultEntryRepository.sumAmountByBuilderIdAndBookingIsNullAndEntryType(
+                        builderId, VaultEntryType.INCOME));
+    }
+
+    @Transactional(readOnly = true)
+    public VaultEntry getGeneralIncome(UUID id) {
+        return getGeneralEntryInternal(id, VaultEntryType.INCOME);
+    }
+
+    public VaultEntry newGeneralIncomeDraft() {
+        VaultEntry entry = new VaultEntry();
+        entry.setEntryType(VaultEntryType.INCOME);
+        entry.setEntryDate(LocalDate.now());
+        entry.setClientName("");
+        entry.setFlatNumber("—");
+        entry.setPaymentMode("Cash");
+        return entry;
+    }
+
+    @Transactional
+    public VaultEntry saveGeneralIncome(VaultEntry form) {
+        return saveGeneralEntry(form, VaultEntryType.INCOME, "Description / source");
+    }
+
+    @Transactional
+    public void deleteGeneralIncome(UUID id) {
+        vaultEntryRepository.delete(getGeneralEntryInternal(id, VaultEntryType.INCOME));
+    }
+
+    private VaultEntry saveGeneralEntry(VaultEntry form, String entryType, String descriptionLabel) {
+        UUID builderId = TenantContext.requireBuilderId();
+        Builder builder = builderRepository.findById(builderId).orElseThrow();
+        Instant now = Instant.now();
+
+        if (form.getAmount() == null || form.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero.");
+        }
+        if (form.getEntryDate() == null) {
+            throw new IllegalArgumentException("Date is required.");
+        }
+        String description = trimToNull(form.getClientName());
+        if (description == null) {
+            throw new IllegalArgumentException(descriptionLabel + " is required.");
+        }
+
+        VaultEntry entity;
+        if (form.getId() == null) {
+            entity = new VaultEntry();
+            entity.setCreatedAt(now);
+            entity.setEntryType(entryType);
+        } else {
+            entity = getGeneralEntryInternal(form.getId(), entryType);
+        }
+
+        entity.setBuilder(builder);
+        entity.setBooking(null);
+        entity.setPaymentSlab(null);
+        entity.setEntryType(entryType);
+        entity.setClientName(description);
+        entity.setFlatNumber("—");
+        entity.setPaymentMode(trimToNull(form.getPaymentMode()));
+        entity.setAmount(form.getAmount());
+        entity.setEntryDate(form.getEntryDate());
+        entity.setNotes(trimToNull(form.getNotes()));
+        entity.setUpdatedAt(now);
+        return vaultEntryRepository.save(entity);
+    }
+
+    private VaultEntry getGeneralEntryInternal(UUID id, String entryType) {
+        UUID builderId = TenantContext.requireBuilderId();
+        return vaultEntryRepository
+                .findByIdAndBuilder_IdAndBookingIsNullAndEntryType(id, builderId, entryType)
+                .orElseThrow(() -> new ResourceNotFoundException("Vault entry not found"));
+    }
+
     private void deleteEntry(UUID id, UUID bookingId, String entryType) {
         VaultEntry entity = getForBookingInternal(id, bookingId, entryType);
         vaultEntryRepository.delete(entity);
