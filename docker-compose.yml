@@ -1,3 +1,6 @@
+# Default stack: Postgres + monitoring. Run Spring Boot locally (mvnw spring-boot:run).
+# Optional containerized app: docker compose -f docker-compose.yml -f docker-compose.app.yml up --build
+
 services:
   postgres:
     image: postgres:16
@@ -15,23 +18,35 @@ services:
       interval: 10s
       retries: 5
 
-  floor21-app:
-    build: .
-    container_name: floor21_app
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: floor21_prometheus
     ports:
-      - "8080:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/floor21_db
-      SPRING_DATASOURCE_USERNAME: floor21_user
-      SPRING_DATASOURCE_PASSWORD: floor21_pass
-      SPRING_THYMELEAF_CACHE: "true"
-      FLOOR21_UPLOAD_ROOT: /var/floor21/uploads
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
-      - floor21_uploads:/var/floor21/uploads
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: floor21_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: floor21
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      - prometheus
 
 volumes:
   floor21_pgdata:
-  floor21_uploads:

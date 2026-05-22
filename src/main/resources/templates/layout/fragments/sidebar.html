@@ -53,7 +53,7 @@
        th:classappend="${#strings.startsWith(path, '/admin/builders') and !#strings.contains(path, '/staff')} ? ' is-active' : ''">Builders</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/users}"
-       th:classappend="${#strings.startsWith(path, '/admin/users')} ? ' is-active' : ''">Users</a>
+       th:classappend="${#strings.startsWith(path, '/admin/users')} ? ' is-active' : ''">User Management</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/vault-config}"
        th:classappend="${#strings.startsWith(path, '/admin/vault-config')} ? ' is-active' : ''">Vault config</a>

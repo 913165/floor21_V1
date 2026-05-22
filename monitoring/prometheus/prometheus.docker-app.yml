@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: floor21
+    metrics_path: /floor21/actuator/prometheus
+    scrape_interval: 15s
+    static_configs:
+      # Spring Boot in Docker — use with docker-compose.app.yml
+      - targets: ["floor21-app:8080"]
+        labels:
+          application: floor21

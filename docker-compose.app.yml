@@ -1,0 +1,29 @@
+# Optional: run Floor21 in Docker instead of mvnw spring-boot:run.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.app.yml up --build
+
+services:
+  floor21-app:
+    build: .
+    container_name: floor21_app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/floor21_db
+      SPRING_DATASOURCE_USERNAME: floor21_user
+      SPRING_DATASOURCE_PASSWORD: floor21_pass
+      SPRING_THYMELEAF_CACHE: "true"
+      FLOOR21_UPLOAD_ROOT: /var/floor21/uploads
+    volumes:
+      - floor21_uploads:/var/floor21/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  prometheus:
+    volumes:
+      - ./monitoring/prometheus/prometheus.docker-app.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - floor21-app
+
+volumes:
+  floor21_uploads:

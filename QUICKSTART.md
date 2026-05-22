@@ -32,12 +32,28 @@ docker compose up postgres -d
 
 Wait until Postgres is healthy (a few seconds). The app runs on your machine and talks to `localhost:5432`.
 
-### Option B — Docker (app + database)
+### Option B — Docker (database + monitoring; app via CLI)
 
-Requires a built JAR first (`.\mvnw.cmd package -DskipTests`), then:
+Default compose — Postgres, Prometheus, Grafana (app **not** in Docker):
 
 ```bash
-docker compose up --build
+docker compose up -d
+.\mvnw.cmd spring-boot:run
+```
+
+| Service | URL |
+|---------|-----|
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:3000 (`admin` / `floor21`) |
+
+Metrics: http://localhost:8080/floor21/actuator/prometheus — [docs/MONITORING.md](docs/MONITORING.md).
+
+### Option B2 — Docker (app in container, optional)
+
+Requires a built JAR first (`.\mvnw.cmd package -DskipTests`):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.app.yml up --build
 ```
 
 The app listens on port **8080** inside the container.

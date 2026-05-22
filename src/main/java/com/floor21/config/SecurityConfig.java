@@ -25,7 +25,13 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(
                         auth ->
-                                auth.requestMatchers("/css/**", "/js/**", "/login", "/error")
+                                auth.requestMatchers(
+                                                "/actuator/health",
+                                                "/actuator/health/**",
+                                                "/actuator/prometheus",
+                                                "/actuator/info")
+                                        .permitAll()
+                                        .requestMatchers("/css/**", "/js/**", "/login", "/error")
                                         .permitAll()
                                         .requestMatchers("/admin/**")
                                         .hasRole("SUPER_ADMIN")
