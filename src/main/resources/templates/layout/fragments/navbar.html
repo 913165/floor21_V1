@@ -3,10 +3,9 @@
 <body>
 <nav th:fragment="navbar"
      id="floor21-topbar"
-     data-turbo-permanent
      class="navbar navbar-dark floor21-topbar navbar-expand-lg flex-shrink-0">
   <div class="container-fluid px-3">
-    <a class="navbar-brand floor21-topbar__brand" th:href="@{/dashboard}" title="Home — Dashboard">
+    <a class="navbar-brand floor21-topbar__brand" th:href="@{/dashboard}" data-turbo-frame="floor21-main" title="Home — Dashboard">
       <span class="floor21-topbar__mark" aria-hidden="true">F21</span>
       <span class="floor21-topbar__brand-name">Floor21</span>
     </a>
@@ -28,15 +27,15 @@
           <li class="dropdown-header small text-truncate" style="max-width: 14rem;"
               th:text="${navAccountEmail != null ? navAccountEmail : ''}">user@example.com</li>
           <li><hr class="dropdown-divider"/></li>
-          <li><a class="dropdown-item" th:href="@{/profile}">My profile</a></li>
-          <li><a class="dropdown-item" th:href="@{/profile/change-password}">Change password</a></li>
+          <li><a class="dropdown-item" th:href="@{/profile}" data-turbo-frame="floor21-main">My profile</a></li>
+          <li><a class="dropdown-item" th:href="@{/profile/change-password}" data-turbo-frame="floor21-main">Change password</a></li>
           <li th:if="${vaultMenuVisible}"><hr class="dropdown-divider"/></li>
           <li th:if="${vaultMenuVisible}">
-            <a class="dropdown-item" th:href="@{/vault/change-pin}">Vault PIN</a>
+            <a class="dropdown-item" th:href="@{/vault/change-pin}" data-turbo-frame="floor21-main">Vault PIN</a>
           </li>
           <li><hr class="dropdown-divider"/></li>
           <li>
-            <form class="m-0 px-2 pb-1" th:action="@{/logout}" method="post">
+            <form class="m-0 px-2 pb-1" th:action="@{/logout}" method="post" data-turbo="false">
               <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
               <button class="dropdown-item text-danger rounded" type="submit">Log out</button>
             </form>

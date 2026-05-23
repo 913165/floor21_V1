@@ -6,3 +6,5 @@ use dos to unix command
 
 
 importing backup
+
+docker exec -i floor21_postgres psql -U floor21_user -d floor21_db < /home/tinumistry/backup.sql

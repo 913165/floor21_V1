@@ -31,7 +31,7 @@ public class SecurityConfig {
                                                 "/actuator/prometheus",
                                                 "/actuator/info")
                                         .permitAll()
-                                        .requestMatchers("/css/**", "/js/**", "/login", "/error")
+                                        .requestMatchers("/css/**", "/js/**", "/vendor/**", "/login", "/error")
                                         .permitAll()
                                         .requestMatchers("/admin/**")
                                         .hasRole("SUPER_ADMIN")

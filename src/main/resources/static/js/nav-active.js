@@ -50,6 +50,11 @@
       fn();
     }
     document.addEventListener("turbo:load", fn);
+    document.addEventListener("turbo:frame-render", function (event) {
+      if (event.target && event.target.id === "floor21-main") {
+        fn();
+      }
+    });
   }
 
   onPageReady(syncSidebarActive);

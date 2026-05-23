@@ -1,0 +1,31 @@
+/* Hide Turbo's top progress bar (often reads as a flash on each click). */
+.turbo-progress-bar {
+  visibility: hidden !important;
+  height: 0 !important;
+}
+
+/* Main panel: only this region updates on in-app navigation. */
+turbo-frame#floor21-main {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+}
+
+turbo-frame#floor21-main[busy] {
+  /* Keep previous paint visible; avoid empty white frame while fetching. */
+  opacity: 1;
+  pointer-events: none;
+}
+
+turbo-frame#floor21-main[aria-busy="true"] .floor21-panel__inner {
+  opacity: 0.92;
+  transition: opacity 0.12s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  turbo-frame#floor21-main[aria-busy="true"] .floor21-panel__inner {
+    transition: none;
+  }
+}
