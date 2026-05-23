@@ -199,6 +199,5 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y docker.io docker-compose
 git clone https://github.com/913165/floor21_V1.git && cd floor21_V1
 docker compose up -d postgres
-nohup ./mvnw spring-boot:run > app.log 2>&1 &
-tail -f app.log
+nohup ./mvnw spring-boot:run > app.log 2>&1 & tail -f app.log
 ```

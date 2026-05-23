@@ -13,7 +13,6 @@ services:
       - "5432:5432"
     volumes:
       - floor21_pgdata:/var/lib/postgresql/data
-      - ./backup.sql:/docker-entrypoint-initdb.d/backup.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U floor21_user -d floor21_db"]
       interval: 10s

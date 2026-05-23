@@ -1,0 +1,8 @@
+taking backup
+
+docker exec floor21_postgres pg_dump -U floor21_user -d floor21_db -F p --encoding=UTF8 > backup.sql
+
+use dos to unix command 
+
+
+importing backup
