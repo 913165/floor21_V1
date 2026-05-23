@@ -40,9 +40,14 @@
     toggle.addEventListener('shown.bs.dropdown', raiseMenu);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initProfileDropdown);
-  } else {
-    initProfileDropdown();
+  function onPageReady(fn) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fn);
+    } else {
+      fn();
+    }
+    document.addEventListener('turbo:load', fn);
   }
+
+  onPageReady(initProfileDropdown);
 })();

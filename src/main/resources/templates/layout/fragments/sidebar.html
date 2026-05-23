@@ -2,81 +2,111 @@
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 <aside th:fragment="sidebar"
+       id="floor21-sidebar"
+       data-turbo-permanent
        class="floor21-sidebar d-none d-md-flex flex-column flex-shrink-0"
        th:with="path=${navServletPath}">
   <nav class="floor21-nav flex-grow-1" aria-label="Main">
     <p class="floor21-nav__section">Overview</p>
     <a class="floor21-nav__link"
        th:href="@{/dashboard}"
+       data-nav-prefix="/dashboard"
        th:classappend="${#strings.startsWith(path, '/dashboard')} ? ' is-active' : ''">Dashboard</a>
 
     <p class="floor21-nav__section" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Property</p>
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/buildings}"
+       data-nav-prefix="/buildings"
        th:classappend="${#strings.startsWith(path, '/buildings')} ? ' is-active' : ''">Buildings</a>
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/clients}"
+       data-nav-prefix="/clients"
        th:classappend="${#strings.startsWith(path, '/clients')} ? ' is-active' : ''">Clients</a>
     <p class="floor21-nav__section" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Sales</p>
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bookings}"
+       data-nav-prefix="/bookings"
+       data-nav-exclude="/bookings/payment-schedule"
        th:classappend="${#strings.startsWith(path, '/bookings') and !#strings.startsWith(path, '/bookings/payment-schedule')} ? ' is-active' : ''">Bookings</a>
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/receipts}"
+       data-nav-prefix="/receipts"
        th:classappend="${#strings.startsWith(path, '/receipts')} ? ' is-active' : ''">Receipts entry</a>
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bookings/payment-schedule}"
+       data-nav-prefix="/bookings/payment-schedule"
        th:classappend="${#strings.startsWith(path, '/bookings/payment-schedule')} ? ' is-active' : ''"
        title="View read-only payment slab schedule for each booking">Slabs (payment schedule)</a>
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/brokers}"
+       data-nav-prefix="/brokers"
        th:classappend="${#strings.startsWith(path, '/brokers')} ? ' is-active' : ''">Brokers</a>
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/cancellations}"
+       data-nav-prefix="/cancellations"
        th:classappend="${#strings.startsWith(path, '/cancellations')} ? ' is-active' : ''">Cancellations</a>
 
     <p class="floor21-nav__section" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Finance</p>
     <a class="floor21-nav__link" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bank-accounts}"
+       data-nav-prefix="/bank-accounts"
        th:classappend="${#strings.startsWith(path, '/bank-accounts')} ? ' is-active' : ''">Bank accounts</a>
     <a class="floor21-nav__link floor21-nav__link--vault"
        th:if="${vaultMenuVisible}"
        th:href="@{/vault}"
+       data-nav-prefix="/vault"
        th:classappend="${#strings.startsWith(path, '/vault')} ? ' is-active' : ''">Vault</a>
     <a class="floor21-nav__link floor21-nav__link--expenses" sec:authorize="hasRole('BUILDER_ADMIN')"
        th:href="@{/expenses}"
+       data-nav-prefix="/expenses"
        th:classappend="${#strings.startsWith(path, '/expenses')} ? ' is-active' : ''">Expenses</a>
 
     <p class="floor21-nav__section" sec:authorize="hasRole('SUPER_ADMIN')">Platform</p>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/builders}"
+       data-nav-prefix="/admin/builders"
+       data-nav-exclude-contains="/staff"
        th:classappend="${#strings.startsWith(path, '/admin/builders') and !#strings.contains(path, '/staff')} ? ' is-active' : ''">Builders</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/users}"
+       data-nav-prefix="/admin/users"
        th:classappend="${#strings.startsWith(path, '/admin/users')} ? ' is-active' : ''">User Management</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/vault-config}"
+       data-nav-prefix="/admin/vault-config"
        th:classappend="${#strings.startsWith(path, '/admin/vault-config')} ? ' is-active' : ''">Vault config</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/buildings}"
+       data-nav-prefix="/admin/buildings"
+       data-nav-exact="true"
        th:classappend="${path == '/admin/buildings'} ? ' is-active' : ''">All buildings</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/builder-pricing-slabs}"
+       data-nav-prefix="/admin/builder-pricing-slabs"
        th:classappend="${#strings.startsWith(path, '/admin/builder-pricing-slabs')} ? ' is-active' : ''">Rate slabs</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/payment-milestones}"
+       data-nav-prefix="/admin/payment-milestones"
        th:classappend="${#strings.startsWith(path, '/admin/payment-milestones')} ? ' is-active' : ''">Payment milestones</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/activity}"
+       data-nav-prefix="/admin/activity"
+       data-nav-exact="true"
        th:classappend="${path == '/admin/activity'} ? ' is-active' : ''">Activity</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/reports}"
+       data-nav-prefix="/admin/reports"
+       data-nav-exact="true"
        th:classappend="${path == '/admin/reports'} ? ' is-active' : ''">Reports</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/audit-log}"
+       data-nav-prefix="/admin/audit-log"
+       data-nav-exact="true"
        th:classappend="${path == '/admin/audit-log'} ? ' is-active' : ''">Audit log</a>
     <a class="floor21-nav__link" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/settings}"
+       data-nav-prefix="/admin/settings"
+       data-nav-exact="true"
        th:classappend="${path == '/admin/settings'} ? ' is-active' : ''">Settings</a>
   </nav>
 </aside>

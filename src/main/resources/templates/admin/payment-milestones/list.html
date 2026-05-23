@@ -55,6 +55,7 @@
          th:href="@{/admin/payment-milestones/import-template}">Download Excel template</a>
     </div>
     <form th:action="@{/admin/payment-milestones/import}" method="post" enctype="multipart/form-data"
+          data-turbo="false"
           class="row g-2 align-items-end">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
       <input type="hidden" name="buildingId" th:value="${selectedBuildingId}"/>

@@ -1,11 +1,35 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
-<!-- Apply stored theme before paint (avoid flash). Default: light. -->
+<!-- Apply stored theme + page background before first paint (reduces white blink on navigation). -->
 <th:block th:fragment="themeScript">
 <script>
-(function(){try{var k='floor21-theme',t=localStorage.getItem(k);if(t!=='dark'&&t!=='light')t='light';document.documentElement.setAttribute('data-bs-theme',t);}catch(e){document.documentElement.setAttribute('data-bs-theme','light');}})();
+(function () {
+  try {
+    var k = "floor21-theme";
+    var t = localStorage.getItem(k);
+    if (t !== "dark" && t !== "light") {
+      t = "light";
+    }
+    var root = document.documentElement;
+    root.setAttribute("data-bs-theme", t);
+    root.style.colorScheme = t;
+  } catch (e) {
+    document.documentElement.setAttribute("data-bs-theme", "light");
+    document.documentElement.style.colorScheme = "light";
+  }
+})();
 </script>
+<style id="floor21-critical-theme">
+  html[data-bs-theme="light"],
+  html[data-bs-theme="light"] body {
+    background-color: #fff;
+  }
+  html[data-bs-theme="dark"],
+  html[data-bs-theme="dark"] body {
+    background-color: #212529;
+  }
+</style>
 </th:block>
 </body>
 </html>

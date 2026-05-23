@@ -57,7 +57,7 @@
     wrap.appendChild(btn);
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  function initPasswordToggles() {
     document
       .querySelectorAll('input[type="password"], input[data-password-toggle]')
       .forEach(function (input) {
@@ -71,5 +71,16 @@
           }
         }
       });
-  });
+  }
+
+  function onPageReady(fn) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", fn);
+    } else {
+      fn();
+    }
+    document.addEventListener("turbo:load", fn);
+  }
+
+  onPageReady(initPasswordToggles);
 })();

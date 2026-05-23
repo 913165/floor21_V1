@@ -23,6 +23,7 @@
       theme = "light";
     }
     document.documentElement.setAttribute("data-bs-theme", theme);
+    document.documentElement.style.colorScheme = theme;
     try {
       localStorage.setItem(KEY, theme);
     } catch (e) {
@@ -33,14 +34,31 @@
 
   window.floor21ApplyTheme = apply;
 
-  document.addEventListener("DOMContentLoaded", function () {
+  function bindThemeToggles() {
     var current = document.documentElement.getAttribute("data-bs-theme") || "light";
     apply(current);
     document.querySelectorAll(".floor21-theme-toggle").forEach(function (btn) {
+      if (btn.dataset.f21ThemeBound === "true") {
+        return;
+      }
+      btn.dataset.f21ThemeBound = "true";
       btn.addEventListener("click", function () {
         var cur = document.documentElement.getAttribute("data-bs-theme") || "light";
         apply(cur === "dark" ? "light" : "dark");
+        document.documentElement.style.colorScheme =
+          document.documentElement.getAttribute("data-bs-theme") || "light";
       });
     });
-  });
+  }
+
+  function onPageReady(fn) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", fn);
+    } else {
+      fn();
+    }
+    document.addEventListener("turbo:load", fn);
+  }
+
+  onPageReady(bindThemeToggles);
 })();

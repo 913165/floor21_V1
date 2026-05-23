@@ -548,7 +548,21 @@
     }
   }
 
-  document.addEventListener("DOMContentLoaded", function () {
+  function onPageReady(fn) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", fn);
+    } else {
+      fn();
+    }
+    document.addEventListener("turbo:load", fn);
+  }
+
+  onPageReady(function () {
+    var grid = document.getElementById("flat-grid");
+    if (!grid || grid.dataset.f21Init === "true") {
+      return;
+    }
+    grid.dataset.f21Init = "true";
     mountModalsOnBody();
     initAllFlatCards();
     loadSalesPartnersIntoSelect();
@@ -719,7 +733,6 @@
       });
     }
 
-    var grid = document.getElementById("flat-grid");
     if (grid) {
       grid.addEventListener(
         "click",
