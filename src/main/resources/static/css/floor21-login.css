@@ -1,17 +1,27 @@
 /* Login page — building-themed backdrop and split layout */
 
 .floor21-login {
-  --f21-login-grad: linear-gradient(145deg, #0f1f38 0%, #1a3d5c 42%, #0d4a44 100%);
-  --f21-login-grad-soft: radial-gradient(ellipse 80% 60% at 20% 80%, rgba(45, 212, 191, 0.12), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 90% 20%, rgba(94, 184, 232, 0.1), transparent 50%);
-  --f21-login-skyline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 90' preserveAspectRatio='xMidYMax meet'%3E%3Cg fill='%23ffffff' fill-opacity='.14'%3E%3Crect x='0' y='42' width='34' height='48'/%3E%3Crect x='38' y='24' width='28' height='66'/%3E%3Crect x='70' y='52' width='24' height='38'/%3E%3Crect x='98' y='12' width='38' height='78'/%3E%3Crect x='140' y='36' width='30' height='54'/%3E%3Crect x='174' y='58' width='26' height='32'/%3E%3Crect x='204' y='28' width='34' height='62'/%3E%3Crect x='242' y='46' width='28' height='44'/%3E%3Crect x='274' y='18' width='40' height='72'/%3E%3Crect x='318' y='44' width='32' height='46'/%3E%3Crect x='354' y='26' width='26' height='64'/%3E%3Crect x='384' y='54' width='34' height='36'/%3E%3Crect x='422' y='32' width='36' height='58'/%3E%3Crect x='462' y='48' width='18' height='42'/%3E%3C/g%3E%3C/svg%3E");
-  --f21-login-windows: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%237eeadb' stroke-opacity='.12' stroke-width='.8'%3E%3Crect x='4' y='4' width='16' height='16'/%3E%3Crect x='28' y='4' width='16' height='16'/%3E%3Crect x='4' y='28' width='16' height='16'/%3E%3Crect x='28' y='28' width='16' height='16'/%3E%3C/g%3E%3C/svg%3E");
-  --f21-login-brick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='36' viewBox='0 0 72 36'%3E%3Cg fill='%23c4784a' fill-opacity='.08'%3E%3Crect x='2' y='2' width='32' height='14' rx='1'/%3E%3Crect x='38' y='2' width='32' height='14' rx='1'/%3E%3Crect x='20' y='20' width='32' height='14' rx='1'/%3E%3C/g%3E%3C/svg%3E");
   min-height: 100vh;
   min-height: 100dvh;
   margin: 0;
   position: relative;
   overflow-x: hidden;
+}
+
+/* Dark theme on login only — navy / teal blue (rest of app uses standard dark) */
+html[data-bs-theme="dark"] body.floor21-login {
+  background-color: #0f1a28;
+}
+
+html[data-bs-theme="dark"] .floor21-login {
+  --f21-login-grad: linear-gradient(145deg, #0a1220 0%, #152a52 38%, #1e4d6b 68%, #0d3d5c 100%);
+  --f21-login-grad-soft: radial-gradient(ellipse 80% 60% at 20% 80%, rgba(45, 212, 191, 0.14), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 20%, rgba(94, 184, 232, 0.12), transparent 50%);
+  --f21-login-skyline: url("../images/login-skyline.svg");
+  --f21-login-windows: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%237eeadb' stroke-opacity='.12' stroke-width='.8'%3E%3Crect x='4' y='4' width='16' height='16'/%3E%3Crect x='28' y='4' width='16' height='16'/%3E%3Crect x='4' y='28' width='16' height='16'/%3E%3Crect x='28' y='28' width='16' height='16'/%3E%3C/g%3E%3C/svg%3E");
+  --f21-login-brick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='36' viewBox='0 0 72 36'%3E%3Cg fill='%23c4784a' fill-opacity='.08'%3E%3Crect x='2' y='2' width='32' height='14' rx='1'/%3E%3Crect x='38' y='2' width='32' height='14' rx='1'/%3E%3Crect x='20' y='20' width='32' height='14' rx='1'/%3E%3C/g%3E%3C/svg%3E");
+  --f21-login-accent: #2dd4bf;
+  --f21-login-accent-glow: rgba(45, 212, 191, 0.55);
   background: var(--f21-login-grad);
   color: #e8eef5;
 }
@@ -76,18 +86,83 @@
   mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, transparent 70%);
 }
 
-.floor21-login__backdrop::after {
-  content: "";
+.floor21-login__skyline {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: min(28vh, 220px);
+  height: min(34vh, 280px);
+  overflow: hidden;
+  pointer-events: none;
   background-image: var(--f21-login-skyline);
   background-repeat: repeat-x;
   background-size: auto 100%;
   background-position: center bottom;
-  opacity: 0.85;
+  opacity: 0.95;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 35%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 35%);
+}
+
+.floor21-login__skyline-lights {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  animation: floor21-skyline-twinkle 4s ease-in-out infinite alternate;
+}
+
+html[data-bs-theme="dark"] .floor21-login__skyline-lights {
+  background-image:
+    radial-gradient(circle at 12% 72%, rgba(45, 212, 191, 0.85) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 24% 58%, rgba(94, 184, 232, 0.8) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 31% 82%, rgba(184, 255, 244, 0.75) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 38% 48%, rgba(94, 184, 232, 0.7) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 46% 68%, rgba(45, 212, 191, 0.8) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 52% 38%, rgba(240, 198, 116, 0.65) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 58% 78%, rgba(94, 184, 232, 0.8) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 64% 55%, rgba(45, 212, 191, 0.75) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 71% 42%, rgba(184, 255, 244, 0.8) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 76% 70%, rgba(94, 184, 232, 0.75) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 82% 58%, rgba(45, 212, 191, 0.85) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 88% 75%, rgba(240, 198, 116, 0.6) 0 1.5px, transparent 2px);
+}
+
+html[data-bs-theme="light"] .floor21-login__skyline {
+  opacity: 1;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 18%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 18%);
+}
+
+html[data-bs-theme="light"] .floor21-login__skyline-lights {
+  opacity: 0.65;
+  background-image:
+    radial-gradient(circle at 12% 72%, rgba(13, 110, 98, 0.75) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 24% 58%, rgba(26, 90, 138, 0.7) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 31% 82%, rgba(201, 162, 39, 0.7) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 38% 48%, rgba(26, 90, 138, 0.65) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 46% 68%, rgba(13, 110, 98, 0.75) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 52% 38%, rgba(201, 162, 39, 0.6) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 58% 78%, rgba(26, 90, 138, 0.7) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 71% 42%, rgba(13, 110, 98, 0.75) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 76% 70%, rgba(201, 162, 39, 0.65) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 82% 58%, rgba(26, 90, 138, 0.7) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 88% 75%, rgba(13, 110, 98, 0.65) 0 1.5px, transparent 2px);
+}
+
+@keyframes floor21-skyline-twinkle {
+  0% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0.75;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floor21-login__skyline-lights {
+    animation: none;
+    opacity: 0.45;
+  }
 }
 
 .floor21-login__shell {
@@ -154,9 +229,20 @@
   font-weight: 800;
   font-size: 0.8rem;
   letter-spacing: 0.04em;
-  background: linear-gradient(135deg, rgba(45, 212, 191, 0.35), rgba(94, 184, 232, 0.25));
+}
+
+html[data-bs-theme="dark"] .floor21-login__mark {
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.35), rgba(94, 184, 232, 0.28));
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: #b8fff4;
+}
+
+html[data-bs-theme="dark"] .floor21-login__title {
+  color: #fff;
+}
+
+html[data-bs-theme="dark"] .floor21-login__tagline {
+  color: rgba(232, 238, 245, 0.78);
 }
 
 .floor21-login__title {
@@ -164,14 +250,12 @@
   font-weight: 700;
   line-height: 1.2;
   margin: 0;
-  color: #fff;
   white-space: nowrap;
 }
 
 .floor21-login__tagline {
   font-size: 1.05rem;
   line-height: 1.55;
-  color: rgba(232, 238, 245, 0.78);
   margin: 0 0 2rem;
 }
 
@@ -190,14 +274,28 @@
   justify-content: center;
   gap: 0.65rem;
   font-size: 0.95rem;
-  color: rgba(232, 238, 245, 0.72);
   text-align: left;
   max-width: 22rem;
   margin-left: auto;
   margin-right: auto;
 }
 
-.floor21-login__features li::before {
+html[data-bs-theme="dark"] .floor21-login__features li {
+  color: rgba(232, 238, 245, 0.72);
+}
+
+html[data-bs-theme="dark"] .floor21-login__features li::before {
+  content: "";
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: 0.45rem;
+  border-radius: 50%;
+  background: #2dd4bf;
+  box-shadow: 0 0 10px var(--f21-login-accent-glow);
+}
+
+html[data-bs-theme="light"] .floor21-login__features li::before {
   content: "";
   flex-shrink: 0;
   width: 0.45rem;
@@ -219,14 +317,14 @@
 }
 
 @media (min-width: 992px) {
-  .floor21-login__main {
+  html[data-bs-theme="dark"] .floor21-login__main {
     flex: 0 0 48%;
     max-width: 520px;
     padding: 2.5rem 2.5rem 3rem;
-    background: rgba(8, 14, 26, 0.42);
+    background: rgba(8, 14, 26, 0.45);
     backdrop-filter: blur(12px);
     border-left: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: -12px 0 48px rgba(0, 0, 0, 0.2);
+    box-shadow: -12px 0 48px rgba(0, 0, 0, 0.22);
   }
 }
 
@@ -247,63 +345,59 @@
   text-align: center;
 }
 
-/* Dark theme — card and inputs match login backdrop */
-[data-bs-theme="dark"] .floor21-login__card {
-  --bs-card-bg: rgba(14, 24, 42, 0.82);
+/* Dark theme on login — blue card and form */
+html[data-bs-theme="dark"] .floor21-login__card {
+  --bs-card-bg: rgba(14, 24, 42, 0.88);
   --bs-card-border-color: rgba(255, 255, 255, 0.1);
   --bs-card-color: #e8eef5;
-  background: rgba(14, 24, 42, 0.82);
+  background: rgba(14, 24, 42, 0.88);
   backdrop-filter: blur(10px);
   border-color: rgba(255, 255, 255, 0.1);
   color: #e8eef5;
 }
 
-[data-bs-theme="dark"] .floor21-login__card .floor21-login__card-title {
+html[data-bs-theme="dark"] .floor21-login__card .floor21-login__card-title {
   color: #fff;
 }
 
-[data-bs-theme="dark"] .floor21-login__card .form-label {
+html[data-bs-theme="dark"] .floor21-login__card .form-label {
   color: rgba(232, 238, 245, 0.9);
 }
 
-[data-bs-theme="dark"] .floor21-login__card .form-control {
+html[data-bs-theme="dark"] .floor21-login__card .form-control {
   background-color: rgba(8, 14, 26, 0.75);
   border-color: rgba(255, 255, 255, 0.14);
   color: #e8eef5;
 }
 
-[data-bs-theme="dark"] .floor21-login__card .form-control::placeholder {
+html[data-bs-theme="dark"] .floor21-login__card .form-control::placeholder {
   color: rgba(232, 238, 245, 0.4);
 }
 
-[data-bs-theme="dark"] .floor21-login__card .form-control:focus {
+html[data-bs-theme="dark"] .floor21-login__card .form-control:focus {
   background-color: rgba(8, 14, 26, 0.92);
   border-color: rgba(45, 212, 191, 0.5);
   color: #fff;
   box-shadow: 0 0 0 0.2rem rgba(45, 212, 191, 0.18);
 }
 
-[data-bs-theme="dark"] .floor21-login__card .text-muted {
+html[data-bs-theme="dark"] .floor21-login__card .text-muted {
   color: rgba(232, 238, 245, 0.55) !important;
 }
 
-[data-bs-theme="dark"] .floor21-login__card .btn-primary {
+html[data-bs-theme="dark"] .floor21-login__card .btn-primary {
   background: linear-gradient(118deg, #1a4d6b 0%, #0d6e62 100%);
   border-color: rgba(45, 212, 191, 0.35);
 }
 
-[data-bs-theme="dark"] .floor21-login__card .btn-primary:hover {
+html[data-bs-theme="dark"] .floor21-login__card .btn-primary:hover {
   background: linear-gradient(118deg, #1e5a7a 0%, #0f8578 100%);
   border-color: rgba(45, 212, 191, 0.55);
 }
 
 @media (min-width: 992px) {
-  [data-bs-theme="dark"] .floor21-login__main {
-    background: rgba(10, 18, 32, 0.55);
-  }
-
-  [data-bs-theme="dark"] .floor21-login__card {
-    background: rgba(12, 20, 36, 0.45);
+  html[data-bs-theme="dark"] .floor21-login__card {
+    background: rgba(12, 20, 36, 0.5);
     border-color: rgba(255, 255, 255, 0.08);
     box-shadow: none;
   }
@@ -326,7 +420,7 @@
   opacity: 0.35;
 }
 
-.floor21-login__accent--teal {
+html[data-bs-theme="dark"] .floor21-login__accent--teal {
   width: 220px;
   height: 220px;
   background: #2dd4bf;
@@ -334,7 +428,23 @@
   right: -40px;
 }
 
-.floor21-login__accent--blue {
+html[data-bs-theme="dark"] .floor21-login__accent--blue {
+  width: 180px;
+  height: 180px;
+  background: #5eb8e8;
+  bottom: 15%;
+  left: -50px;
+}
+
+html[data-bs-theme="light"] .floor21-login__accent--teal {
+  width: 220px;
+  height: 220px;
+  background: #2dd4bf;
+  top: -60px;
+  right: -40px;
+}
+
+html[data-bs-theme="light"] .floor21-login__accent--blue {
   width: 180px;
   height: 180px;
   background: #5eb8e8;
@@ -349,12 +459,13 @@
 }
 
 /* Light theme */
-[data-bs-theme="light"] .floor21-login {
+html[data-bs-theme="light"] .floor21-login {
+  --f21-login-skyline: url("../images/login-skyline-light.svg");
   --f21-login-grad: linear-gradient(145deg, #e8eef5 0%, #d4e4f0 40%, #c5e8e2 100%);
   --f21-login-grad-soft: radial-gradient(ellipse 80% 60% at 15% 85%, rgba(13, 110, 98, 0.08), transparent 55%),
     radial-gradient(ellipse 70% 50% at 85% 15%, rgba(30, 77, 107, 0.07), transparent 50%);
-  --f21-login-skyline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 90' preserveAspectRatio='xMidYMax meet'%3E%3Cg fill='%23152a52' fill-opacity='.12'%3E%3Crect x='0' y='42' width='34' height='48'/%3E%3Crect x='38' y='24' width='28' height='66'/%3E%3Crect x='70' y='52' width='24' height='38'/%3E%3Crect x='98' y='12' width='38' height='78'/%3E%3Crect x='140' y='36' width='30' height='54'/%3E%3Crect x='174' y='58' width='26' height='32'/%3E%3Crect x='204' y='28' width='34' height='62'/%3E%3Crect x='242' y='46' width='28' height='44'/%3E%3Crect x='274' y='18' width='40' height='72'/%3E%3Crect x='318' y='44' width='32' height='46'/%3E%3Crect x='354' y='26' width='26' height='64'/%3E%3Crect x='384' y='54' width='34' height='36'/%3E%3Crect x='422' y='32' width='36' height='58'/%3E%3Crect x='462' y='48' width='18' height='42'/%3E%3C/g%3E%3C/svg%3E");
   --f21-login-windows: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%231e4d6b' stroke-opacity='.1' stroke-width='.8'%3E%3Crect x='4' y='4' width='16' height='16'/%3E%3Crect x='28' y='4' width='16' height='16'/%3E%3Crect x='4' y='28' width='16' height='16'/%3E%3Crect x='28' y='28' width='16' height='16'/%3E%3C/g%3E%3C/svg%3E");
+  background: var(--f21-login-grad);
   color: #1a2a3a;
 }
 
