@@ -3,38 +3,68 @@
 <head>
   <meta charset="UTF-8"/>
   <th:block th:replace="~{layout/fragments/theme-head :: themeScript}"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Login | Floor21</title>
   <link rel="stylesheet" th:href="@{/vendor/bootstrap.min.css}"/>
   <link rel="stylesheet" th:href="@{/css/floor21.css(v=password-toggle)}"/>
+  <link rel="stylesheet" th:href="@{/css/floor21-login.css(v=6)}"/>
 </head>
-<body class="bg-body d-flex flex-column" style="min-height:100vh">
-<div class="container py-3" style="max-width:420px">
-  <div class="d-flex justify-content-end align-items-center mb-3">
-    <th:block th:replace="~{layout/fragments/theme-toggle :: themeToggle(false)}"/>
-  </div>
-  <h1 class="h3 mb-4 text-center">Floor21</h1>
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <div class="alert alert-danger" th:if="${param.error}">Invalid email or password.</div>
-      <div class="alert alert-info" th:if="${param.logout}">You have been logged out.</div>
-      <form th:action="@{/login}" method="post">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-        <div class="mb-3">
-          <label class="form-label">Email</label>
-          <input class="form-control" type="email" name="username" required autocomplete="username"/>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Password</label>
-          <input class="form-control" type="password" name="password" required autocomplete="current-password"/>
-        </div>
-        <button class="btn btn-primary w-100" type="submit">Sign in</button>
-      </form>
-      <p class="text-muted small mt-3 mb-0">Demo: super@floor21.com / super123 · admin@skylinehomes.com / admin123</p>
-    </div>
-  </div>
+<body class="floor21-login">
+<div class="floor21-login__backdrop" aria-hidden="true"></div>
+<span class="floor21-login__accent floor21-login__accent--teal" aria-hidden="true"></span>
+<span class="floor21-login__accent floor21-login__accent--blue" aria-hidden="true"></span>
+
+<div class="floor21-login__brand-corner">
+  <span class="floor21-login__mark" aria-hidden="true">F21</span>
+  <h1 class="floor21-login__title">Floor21</h1>
 </div>
+
+<div class="floor21-login__theme-corner">
+  <th:block th:replace="~{layout/fragments/theme-toggle :: themeToggle(true)}"/>
+</div>
+
+<div class="floor21-login__shell">
+  <section class="floor21-login__hero" aria-hidden="true">
+    <div class="floor21-login__hero-inner">
+      <p class="floor21-login__tagline">
+        Property sales, bookings, receipts, and finance — built for real-estate builders and their teams.
+      </p>
+      <ul class="floor21-login__features">
+        <li>Buildings, flats, and floor plans in one place</li>
+        <li>Bookings, payment schedules, and receipts</li>
+        <li>Banking, vault, and expense tracking</li>
+      </ul>
+    </div>
+  </section>
+
+  <main class="floor21-login__main">
+    <div class="floor21-login__card-wrap">
+      <div class="card floor21-login__card shadow-sm">
+        <div class="card-body">
+          <h2 class="floor21-login__card-title">Sign in</h2>
+          <div class="alert alert-danger" th:if="${param.error}">Invalid email or password.</div>
+          <div class="alert alert-info" th:if="${param.logout}">You have been logged out.</div>
+          <form th:action="@{/login}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <div class="mb-3">
+              <label class="form-label" for="login-email">Email</label>
+              <input class="form-control" id="login-email" type="email" name="username" required autocomplete="username"/>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="login-password">Password</label>
+              <input class="form-control" id="login-password" type="password" name="password" required autocomplete="current-password"/>
+            </div>
+            <button class="btn btn-primary w-100" type="submit">Sign in</button>
+          </form>
+          <p class="text-muted small mt-3 mb-0">Demo: super@floor21.com / super123 · admin@skylinehomes.com / admin123</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
 <script th:src="@{/vendor/bootstrap.bundle.min.js}"></script>
-<script defer th:src="@{/js/theme.js}"></script>
+<script defer th:src="@{/js/theme.js(v=turbo-frame)}"></script>
 <script defer th:src="@{/js/password-toggle.js(v=password-toggle)}"></script>
 </body>
 </html>

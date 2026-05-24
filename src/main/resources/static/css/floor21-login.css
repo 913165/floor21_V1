@@ -1,0 +1,392 @@
+/* Login page — building-themed backdrop and split layout */
+
+.floor21-login {
+  --f21-login-grad: linear-gradient(145deg, #0f1f38 0%, #1a3d5c 42%, #0d4a44 100%);
+  --f21-login-grad-soft: radial-gradient(ellipse 80% 60% at 20% 80%, rgba(45, 212, 191, 0.12), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 20%, rgba(94, 184, 232, 0.1), transparent 50%);
+  --f21-login-skyline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 90' preserveAspectRatio='xMidYMax meet'%3E%3Cg fill='%23ffffff' fill-opacity='.14'%3E%3Crect x='0' y='42' width='34' height='48'/%3E%3Crect x='38' y='24' width='28' height='66'/%3E%3Crect x='70' y='52' width='24' height='38'/%3E%3Crect x='98' y='12' width='38' height='78'/%3E%3Crect x='140' y='36' width='30' height='54'/%3E%3Crect x='174' y='58' width='26' height='32'/%3E%3Crect x='204' y='28' width='34' height='62'/%3E%3Crect x='242' y='46' width='28' height='44'/%3E%3Crect x='274' y='18' width='40' height='72'/%3E%3Crect x='318' y='44' width='32' height='46'/%3E%3Crect x='354' y='26' width='26' height='64'/%3E%3Crect x='384' y='54' width='34' height='36'/%3E%3Crect x='422' y='32' width='36' height='58'/%3E%3Crect x='462' y='48' width='18' height='42'/%3E%3C/g%3E%3C/svg%3E");
+  --f21-login-windows: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%237eeadb' stroke-opacity='.12' stroke-width='.8'%3E%3Crect x='4' y='4' width='16' height='16'/%3E%3Crect x='28' y='4' width='16' height='16'/%3E%3Crect x='4' y='28' width='16' height='16'/%3E%3Crect x='28' y='28' width='16' height='16'/%3E%3C/g%3E%3C/svg%3E");
+  --f21-login-brick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='36' viewBox='0 0 72 36'%3E%3Cg fill='%23c4784a' fill-opacity='.08'%3E%3Crect x='2' y='2' width='32' height='14' rx='1'/%3E%3Crect x='38' y='2' width='32' height='14' rx='1'/%3E%3Crect x='20' y='20' width='32' height='14' rx='1'/%3E%3C/g%3E%3C/svg%3E");
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  position: relative;
+  overflow-x: hidden;
+  background: var(--f21-login-grad);
+  color: #e8eef5;
+}
+
+.floor21-login__brand-corner {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  max-width: calc(100% - 5.5rem);
+}
+
+.floor21-login__theme-corner {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+}
+
+@media (min-width: 576px) {
+  .floor21-login__brand-corner {
+    top: 1.25rem;
+    left: 1.5rem;
+    gap: 0.75rem;
+  }
+
+  .floor21-login__theme-corner {
+    top: 1.25rem;
+    right: 1.5rem;
+  }
+}
+
+[data-bs-theme="light"] .floor21-login__theme-corner .floor21-theme-toggle.btn-outline-light {
+  color: #152a52;
+  border-color: rgba(21, 42, 82, 0.35);
+}
+
+[data-bs-theme="light"] .floor21-login__theme-corner .floor21-theme-toggle.btn-outline-light:hover {
+  background: rgba(21, 42, 82, 0.08);
+  color: #152a52;
+  border-color: rgba(21, 42, 82, 0.5);
+}
+
+.floor21-login__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--f21-login-grad-soft);
+}
+
+.floor21-login__backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--f21-login-windows);
+  background-size: 48px 48px;
+  opacity: 0.55;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, transparent 70%);
+}
+
+.floor21-login__backdrop::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: min(28vh, 220px);
+  background-image: var(--f21-login-skyline);
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  background-position: center bottom;
+  opacity: 0.85;
+}
+
+.floor21-login__shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+@media (min-width: 992px) {
+  .floor21-login__shell {
+    flex-direction: row;
+  }
+}
+
+/* —— Hero / decorative column —— */
+.floor21-login__hero {
+  display: none;
+  flex: 1 1 52%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2.5rem 4rem;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+
+@media (min-width: 992px) {
+  .floor21-login__hero {
+    display: flex;
+  }
+}
+
+.floor21-login__hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--f21-login-brick);
+  background-size: 72px 36px;
+  opacity: 0.7;
+  mask-image: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, transparent 65%);
+}
+
+.floor21-login__hero-inner {
+  position: relative;
+  width: 100%;
+  max-width: 26rem;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.floor21-login__mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.55rem;
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.35), rgba(94, 184, 232, 0.25));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #b8fff4;
+}
+
+.floor21-login__title {
+  font-size: clamp(1.15rem, 2.5vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.floor21-login__tagline {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: rgba(232, 238, 245, 0.78);
+  margin: 0 0 2rem;
+}
+
+.floor21-login__features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.floor21-login__features li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.65rem;
+  font-size: 0.95rem;
+  color: rgba(232, 238, 245, 0.72);
+  text-align: left;
+  max-width: 22rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.floor21-login__features li::before {
+  content: "";
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: 0.45rem;
+  border-radius: 50%;
+  background: #2dd4bf;
+  box-shadow: 0 0 10px rgba(45, 212, 191, 0.55);
+}
+
+/* —— Form column —— */
+.floor21-login__main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4.5rem 1.25rem 2.5rem;
+}
+
+@media (min-width: 992px) {
+  .floor21-login__main {
+    flex: 0 0 48%;
+    max-width: 520px;
+    padding: 2.5rem 2.5rem 3rem;
+    background: rgba(8, 14, 26, 0.42);
+    backdrop-filter: blur(12px);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: -12px 0 48px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.floor21-login__card-wrap {
+  width: 100%;
+  max-width: 420px;
+}
+
+.floor21-login__card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+}
+
+.floor21-login__card-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0 0 1.25rem;
+  text-align: center;
+}
+
+/* Dark theme — card and inputs match login backdrop */
+[data-bs-theme="dark"] .floor21-login__card {
+  --bs-card-bg: rgba(14, 24, 42, 0.82);
+  --bs-card-border-color: rgba(255, 255, 255, 0.1);
+  --bs-card-color: #e8eef5;
+  background: rgba(14, 24, 42, 0.82);
+  backdrop-filter: blur(10px);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e8eef5;
+}
+
+[data-bs-theme="dark"] .floor21-login__card .floor21-login__card-title {
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .floor21-login__card .form-label {
+  color: rgba(232, 238, 245, 0.9);
+}
+
+[data-bs-theme="dark"] .floor21-login__card .form-control {
+  background-color: rgba(8, 14, 26, 0.75);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #e8eef5;
+}
+
+[data-bs-theme="dark"] .floor21-login__card .form-control::placeholder {
+  color: rgba(232, 238, 245, 0.4);
+}
+
+[data-bs-theme="dark"] .floor21-login__card .form-control:focus {
+  background-color: rgba(8, 14, 26, 0.92);
+  border-color: rgba(45, 212, 191, 0.5);
+  color: #fff;
+  box-shadow: 0 0 0 0.2rem rgba(45, 212, 191, 0.18);
+}
+
+[data-bs-theme="dark"] .floor21-login__card .text-muted {
+  color: rgba(232, 238, 245, 0.55) !important;
+}
+
+[data-bs-theme="dark"] .floor21-login__card .btn-primary {
+  background: linear-gradient(118deg, #1a4d6b 0%, #0d6e62 100%);
+  border-color: rgba(45, 212, 191, 0.35);
+}
+
+[data-bs-theme="dark"] .floor21-login__card .btn-primary:hover {
+  background: linear-gradient(118deg, #1e5a7a 0%, #0f8578 100%);
+  border-color: rgba(45, 212, 191, 0.55);
+}
+
+@media (min-width: 992px) {
+  [data-bs-theme="dark"] .floor21-login__main {
+    background: rgba(10, 18, 32, 0.55);
+  }
+
+  [data-bs-theme="dark"] .floor21-login__card {
+    background: rgba(12, 20, 36, 0.45);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+  }
+}
+
+@media (min-width: 992px) {
+  .floor21-login__card-title {
+    display: none;
+  }
+}
+
+/* Decorative accents on mobile (visible when hero hidden) */
+.floor21-login__accent {
+  display: block;
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.35;
+}
+
+.floor21-login__accent--teal {
+  width: 220px;
+  height: 220px;
+  background: #2dd4bf;
+  top: -60px;
+  right: -40px;
+}
+
+.floor21-login__accent--blue {
+  width: 180px;
+  height: 180px;
+  background: #5eb8e8;
+  bottom: 15%;
+  left: -50px;
+}
+
+@media (min-width: 992px) {
+  .floor21-login__accent {
+    display: none;
+  }
+}
+
+/* Light theme */
+[data-bs-theme="light"] .floor21-login {
+  --f21-login-grad: linear-gradient(145deg, #e8eef5 0%, #d4e4f0 40%, #c5e8e2 100%);
+  --f21-login-grad-soft: radial-gradient(ellipse 80% 60% at 15% 85%, rgba(13, 110, 98, 0.08), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 85% 15%, rgba(30, 77, 107, 0.07), transparent 50%);
+  --f21-login-skyline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 90' preserveAspectRatio='xMidYMax meet'%3E%3Cg fill='%23152a52' fill-opacity='.12'%3E%3Crect x='0' y='42' width='34' height='48'/%3E%3Crect x='38' y='24' width='28' height='66'/%3E%3Crect x='70' y='52' width='24' height='38'/%3E%3Crect x='98' y='12' width='38' height='78'/%3E%3Crect x='140' y='36' width='30' height='54'/%3E%3Crect x='174' y='58' width='26' height='32'/%3E%3Crect x='204' y='28' width='34' height='62'/%3E%3Crect x='242' y='46' width='28' height='44'/%3E%3Crect x='274' y='18' width='40' height='72'/%3E%3Crect x='318' y='44' width='32' height='46'/%3E%3Crect x='354' y='26' width='26' height='64'/%3E%3Crect x='384' y='54' width='34' height='36'/%3E%3Crect x='422' y='32' width='36' height='58'/%3E%3Crect x='462' y='48' width='18' height='42'/%3E%3C/g%3E%3C/svg%3E");
+  --f21-login-windows: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cg fill='none' stroke='%231e4d6b' stroke-opacity='.1' stroke-width='.8'%3E%3Crect x='4' y='4' width='16' height='16'/%3E%3Crect x='28' y='4' width='16' height='16'/%3E%3Crect x='4' y='28' width='16' height='16'/%3E%3Crect x='28' y='28' width='16' height='16'/%3E%3C/g%3E%3C/svg%3E");
+  color: #1a2a3a;
+}
+
+[data-bs-theme="light"] .floor21-login__title {
+  color: #152a52;
+}
+
+[data-bs-theme="light"] .floor21-login__tagline,
+[data-bs-theme="light"] .floor21-login__features li {
+  color: rgba(26, 42, 58, 0.75);
+}
+
+[data-bs-theme="light"] .floor21-login__mark {
+  color: #0d6e62;
+  background: linear-gradient(135deg, rgba(45, 212, 191, 0.25), rgba(30, 77, 107, 0.12));
+  border-color: rgba(21, 42, 82, 0.15);
+}
+
+[data-bs-theme="light"] .floor21-login__main {
+  background: rgba(255, 255, 255, 0.55);
+  border-left-color: rgba(21, 42, 82, 0.08);
+}
+
+[data-bs-theme="light"] .floor21-login__card {
+  border-color: rgba(21, 42, 82, 0.1);
+  box-shadow: 0 12px 40px rgba(21, 42, 82, 0.1);
+}
+
+[data-bs-theme="light"] .floor21-login__accent--teal {
+  opacity: 0.2;
+}
+
+[data-bs-theme="light"] .floor21-login__accent--blue {
+  opacity: 0.18;
+}
