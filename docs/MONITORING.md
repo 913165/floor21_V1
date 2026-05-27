@@ -27,7 +27,7 @@ docker compose stop postgres
 
 ## 2. Prometheus
 
-Start **after** Postgres if the app will use the DB. Prometheus scrapes the app on your machine (`host.docker.internal:8080`).
+Start **after** Postgres if the app will use the DB. Prometheus scrapes the app on your machine (`host.docker.internal:80`).
 
 ```powershell
 docker compose up prometheus -d
@@ -37,7 +37,7 @@ docker compose up prometheus -d
 |---|---|
 | Container | `floor21_prometheus` |
 | UI | http://localhost:9090 |
-| Scrape target | `host.docker.internal:8080` → `/floor21/actuator/prometheus` |
+| Scrape target | `host.docker.internal:80` → `/floor21/actuator/prometheus` |
 
 Stop:
 
@@ -78,9 +78,9 @@ docker compose stop grafana
 
 | | |
 |---|---|
-| App | http://localhost:8080/floor21 |
-| Metrics | http://localhost:8080/floor21/actuator/prometheus |
-| Health | http://localhost:8080/floor21/actuator/health |
+| App | http://localhost/floor21 |
+| Metrics | http://localhost/floor21/actuator/prometheus |
+| Health | http://localhost/floor21/actuator/health |
 
 Start the app **before** checking Prometheus targets or Grafana charts.
 
@@ -107,7 +107,7 @@ docker compose stop grafana prometheus postgres
 
 ## Optional — app in Docker instead of CLI
 
-Uses `docker-compose.app.yml` and scrapes `floor21-app:8080`:
+Uses `docker-compose.app.yml` and scrapes `floor21-app:80`:
 
 ```powershell
 docker compose up postgres -d
@@ -120,9 +120,9 @@ docker compose -f docker-compose.yml -f docker-compose.app.yml up --build floor2
 
 | What | URL |
 |------|-----|
-| App | http://localhost:8080/floor21 |
+| App | http://localhost/floor21 |
 | Prometheus | http://localhost:9090 |
 | Grafana | http://localhost:3000 |
-| Metrics | http://localhost:8080/floor21/actuator/prometheus |
+| Metrics | http://localhost/floor21/actuator/prometheus |
 
 Change Grafana password in production: `GF_SECURITY_ADMIN_PASSWORD` in `docker-compose.yml`.

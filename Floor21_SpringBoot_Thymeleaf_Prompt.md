@@ -686,7 +686,7 @@ spring:
       order: 10
 
 server:
-  port: 8080
+  port: 80
   servlet:
     context-path: /floor21
 
@@ -832,7 +832,7 @@ services:
     build: .
     container_name: floor21_app
     ports:
-      - "8080:8080"
+      - "80:80"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/floor21_db
       SPRING_DATASOURCE_USERNAME: floor21_user

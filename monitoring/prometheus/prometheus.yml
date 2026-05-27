@@ -8,6 +8,6 @@ scrape_configs:
     scrape_interval: 15s
     static_configs:
       # Spring Boot on host (mvnw spring-boot:run) — default docker-compose.yml
-      - targets: ["host.docker.internal:8080"]
+      - targets: ["host.docker.internal:80"]
         labels:
           application: floor21

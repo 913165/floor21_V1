@@ -39,7 +39,7 @@ spring:
       order: 10
 
 server:
-  port: 8080
+  port: 80
   servlet:
     context-path: /floor21
     session:

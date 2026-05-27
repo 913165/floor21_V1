@@ -117,7 +117,7 @@ Configure these for your environment (cloud provider console or `ufw` on the VM)
 **Suggested:**
 
 - Allow **22** (SSH) only from trusted IPs.
-- Allow **8080** only if the app must be reached from outside (otherwise restrict to VPN / internal network).
+- Allow **80** (HTTP) only if the app must be reached from outside (otherwise restrict to VPN / internal network).
 - **5432** — do not expose PostgreSQL to the public internet; keep it on the Docker bridge or localhost only.
 - Optional monitoring (if you start Prometheus/Grafana): **9090**, **3000** — internal/VPN only in production.
 
@@ -125,7 +125,7 @@ Example (`ufw`):
 
 ```bash
 sudo ufw allow OpenSSH
-sudo ufw allow 8080/tcp comment 'Floor21 app'
+sudo ufw allow 80/tcp comment 'Floor21 app HTTP'
 sudo ufw enable
 sudo ufw status
 ```
@@ -136,12 +136,17 @@ Use cloud **security groups / network tags** the same way: least privilege, no o
 
 ## 7. Run Spring Boot in the background
 
+Port **80** is a privileged port on Linux. Allow the JDK to bind to it once (adjust the `java` path if yours differs):
+
+```bash
+sudo setcap 'cap_net_bind_service=+ep' "$(readlink -f "$(which java)")"
+```
+
 From the project root, with Postgres already up:
 
 ```bash
 chmod +x mvnw
-nohup ./mvnw spring-boot:run > app.log 2>&1 &
-tail -f app.log
+nohup ./mvnw spring-boot:run > app.log 2>&1 & tail -f app.log
 ```
 
 Stop following the log with `Ctrl+C` (the app keeps running in the background).
@@ -150,12 +155,12 @@ Stop following the log with `Ctrl+C` (the app keeps running in the background).
 
 | What  | URL |
 |-------|-----|
-| Login | http://\<server-ip\>:8080/floor21/login |
-| Health | http://localhost:8080/floor21/actuator/health |
+| Login | http://\<server-ip\>/floor21/login |
+| Health | http://localhost/floor21/actuator/health |
 
 ---
 
-## 8. Stop the app (free port 8080)
+## 8. Stop the app (free port 80)
 
 Install `lsof` if missing:
 
@@ -163,10 +168,10 @@ Install `lsof` if missing:
 sudo apt install -y lsof
 ```
 
-Kill whatever is listening on **8080**:
+Kill whatever is listening on **80**:
 
 ```bash
-kill -9 $(lsof -t -i:8080)
+sudo kill -9 $(sudo lsof -t -i:80)
 ```
 
 Or find the `nohup` / Java PID:
@@ -187,7 +192,7 @@ docker compose up prometheus -d
 docker compose up grafana -d
 ```
 
-Run the app on the host (section 7) so Prometheus can scrape `host.docker.internal:8080`.
+Run the app on the host (section 7) so Prometheus can scrape `host.docker.internal:80`.
 
 ---
 
