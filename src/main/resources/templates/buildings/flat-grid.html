@@ -11,7 +11,30 @@
       <h1 class="h3 mb-0" th:text="${pageTitle}">Flats</h1>
       <div class="text-muted small" th:text="${building.buildingName}"></div>
     </div>
-    <a class="btn btn-outline-secondary" th:href="@{/buildings}">Back</a>
+    <div class="d-flex flex-wrap gap-2 justify-content-end">
+      <a class="btn btn-outline-success btn-sm"
+         th:if="${flatCount != null && flatCount > 0}"
+         th:href="@{/buildings/{id}/flats/export/excel(id=${building.id})}"
+         data-turbo="false"
+         title="Download flat grid as Excel">
+        Excel
+      </a>
+      <a class="btn btn-outline-secondary btn-sm"
+         th:if="${flatCount != null && flatCount > 0}"
+         th:href="@{/buildings/{id}/flats/export/pdf(id=${building.id})}"
+         data-turbo="false"
+         title="Download flat list as PDF (table)">
+        PDF list
+      </a>
+      <a class="btn btn-outline-danger btn-sm"
+         th:if="${flatCount != null && flatCount > 0}"
+         th:href="@{/buildings/{id}/flats/export/pdf-grid(id=${building.id})}"
+         data-turbo="false"
+         title="Download colored flat grid layout as PDF">
+        PDF grid
+      </a>
+      <a class="btn btn-outline-secondary" th:href="@{/buildings}">Back</a>
+    </div>
   </div>
 
   <div class="alert alert-warning" th:if="${activeBookingCount != null && activeBookingCount > 0 && flatCount != null && flatCount == 0}">

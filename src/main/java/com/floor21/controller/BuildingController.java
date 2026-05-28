@@ -5,6 +5,7 @@ import com.floor21.entity.Building;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.service.BuildingFloorPlanService;
 import com.floor21.service.BuildingService;
+import com.floor21.service.FlatGridExportService;
 import com.floor21.service.FlatService;
 import com.floor21.service.PartnerFlatAllocationService;
 import java.util.List;
@@ -18,6 +19,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
@@ -42,6 +45,7 @@ public class BuildingController {
     private final BuildingService buildingService;
     private final BuildingFloorPlanService buildingFloorPlanService;
     private final FlatService flatService;
+    private final FlatGridExportService flatGridExportService;
     private final PartnerFlatAllocationService partnerFlatAllocationService;
 
     @GetMapping
@@ -165,6 +169,44 @@ public class BuildingController {
                 "partnerAllocationPartners",
                 canManagePartnerAllocation() ? partnerFlatAllocationService.listPartnersForBuilding(id) : List.of());
         return "buildings/flat-grid";
+    }
+
+    @GetMapping("/{id}/flats/export/excel")
+    public ResponseEntity<byte[]> exportFlatGridExcel(@PathVariable UUID id) {
+        byte[] body = flatGridExportService.exportExcel(id);
+        String filename = flatGridExportService.suggestedExcelFilename(id);
+        ContentDisposition disposition =
+                ContentDisposition.attachment().filename(filename).build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(
+                        MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(body);
+    }
+
+    @GetMapping("/{id}/flats/export/pdf")
+    public ResponseEntity<byte[]> exportFlatGridPdf(@PathVariable UUID id) {
+        byte[] body = flatGridExportService.exportPdf(id);
+        String filename = flatGridExportService.suggestedPdfFilename(id);
+        ContentDisposition disposition =
+                ContentDisposition.attachment().filename(filename).build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(body);
+    }
+
+    @GetMapping("/{id}/flats/export/pdf-grid")
+    public ResponseEntity<byte[]> exportFlatGridVisualPdf(@PathVariable UUID id) {
+        byte[] body = flatGridExportService.exportVisualGridPdf(id);
+        String filename = flatGridExportService.suggestedVisualGridPdfFilename(id);
+        ContentDisposition disposition =
+                ContentDisposition.attachment().filename(filename).build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(body);
     }
 
     @GetMapping("/{id}/sales-partners")
