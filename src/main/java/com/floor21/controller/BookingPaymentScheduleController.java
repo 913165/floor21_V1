@@ -10,6 +10,7 @@ import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.service.BookingPaymentSlabService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.DemandDraftService;
+import com.floor21.service.SlabScheduleExportService;
 import com.floor21.service.SlabScheduleLedgerService;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
@@ -72,6 +73,7 @@ public class BookingPaymentScheduleController {
     private final BookingPaymentSlabService bookingPaymentSlabService;
     private final SlabScheduleLedgerService slabScheduleLedgerService;
     private final DemandDraftService demandDraftService;
+    private final SlabScheduleExportService slabScheduleExportService;
 
     @GetMapping
     public String page(
@@ -144,6 +146,32 @@ public class BookingPaymentScheduleController {
                 .contentType(
                         MediaType.parseMediaType(
                                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+                .body(body);
+    }
+
+    @GetMapping("/export/excel")
+    public ResponseEntity<byte[]> exportExcel(@RequestParam UUID bookingId) {
+        byte[] body = slabScheduleExportService.exportExcel(bookingId);
+        String filename = slabScheduleExportService.suggestedExcelFilename(bookingId);
+        ContentDisposition disposition =
+                ContentDisposition.attachment().filename(filename).build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(
+                        MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(body);
+    }
+
+    @GetMapping("/export/pdf")
+    public ResponseEntity<byte[]> exportPdf(@RequestParam UUID bookingId) {
+        byte[] body = slabScheduleExportService.exportPdf(bookingId);
+        String filename = slabScheduleExportService.suggestedPdfFilename(bookingId);
+        ContentDisposition disposition =
+                ContentDisposition.attachment().filename(filename).build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(MediaType.APPLICATION_PDF)
                 .body(body);
     }
 

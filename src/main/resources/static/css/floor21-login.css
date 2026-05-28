@@ -218,27 +218,16 @@ html[data-bs-theme="light"] .floor21-login__skyline-lights {
   text-align: center;
 }
 
-.floor21-login__mark {
-  display: inline-flex;
+.floor21-login__logo {
+  display: block;
   flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.55rem;
-  font-weight: 800;
-  font-size: 0.8rem;
-  letter-spacing: 0.04em;
-}
-
-html[data-bs-theme="dark"] .floor21-login__mark {
-  background: linear-gradient(135deg, rgba(45, 212, 191, 0.35), rgba(94, 184, 232, 0.28));
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #b8fff4;
-}
-
-html[data-bs-theme="dark"] .floor21-login__title {
-  color: #fff;
+  height: 2.65rem;
+  width: auto;
+  max-width: min(11rem, 55vw);
+  border-radius: 0.5rem;
+  background: #fff;
+  padding: 0.2rem 0.55rem;
+  box-shadow: 0 4px 16px rgba(8, 20, 40, 0.22);
 }
 
 html[data-bs-theme="dark"] .floor21-login__tagline {
@@ -500,12 +489,6 @@ html[data-bs-theme="light"] .floor21-login {
 [data-bs-theme="light"] .floor21-login__tagline,
 [data-bs-theme="light"] .floor21-login__features li {
   color: rgba(26, 42, 58, 0.75);
-}
-
-[data-bs-theme="light"] .floor21-login__mark {
-  color: #0d6e62;
-  background: linear-gradient(135deg, rgba(45, 212, 191, 0.25), rgba(30, 77, 107, 0.12));
-  border-color: rgba(21, 42, 82, 0.15);
 }
 
 [data-bs-theme="light"] .floor21-login__card {

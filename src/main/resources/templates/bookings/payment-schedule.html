@@ -84,11 +84,26 @@
           <span class="fw-semibold">Slab payment schedule</span>
           <span class="text-muted small d-block">Each slab shows its title and amount. Receipt lines and Today/interest appear only after receipts are recorded for that slab.</span>
         </div>
-        <a class="btn btn-primary btn-sm"
-           th:href="@{/bookings/payment-schedule/demand-draft(bookingId=${selectedBooking.id})}"
-           title="Download Word document with amount due and schedule details">
-          Download demand draft (Word)
-        </a>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-primary btn-sm"
+             th:href="@{/bookings/payment-schedule/demand-draft(bookingId=${selectedBooking.id})}"
+             data-turbo="false"
+             title="Download Word document with amount due and schedule details">
+            Demand draft (Word)
+          </a>
+          <a class="btn btn-outline-success btn-sm"
+             th:href="@{/bookings/payment-schedule/export/excel(bookingId=${selectedBooking.id})}"
+             data-turbo="false"
+             title="Download slab ledger as Excel">
+            Export Excel
+          </a>
+          <a class="btn btn-outline-danger btn-sm"
+             th:href="@{/bookings/payment-schedule/export/pdf(bookingId=${selectedBooking.id})}"
+             data-turbo="false"
+             title="Download slab ledger as PDF">
+            Export PDF
+          </a>
+        </div>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">

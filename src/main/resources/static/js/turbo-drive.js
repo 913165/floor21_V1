@@ -8,11 +8,47 @@
     Turbo.config.drive.progressBarDelay = 1e9;
   }
 
+  function isFileDownloadLink(link) {
+    if (!link) {
+      return false;
+    }
+    if (link.getAttribute("data-turbo") === "false") {
+      return true;
+    }
+    if (link.hasAttribute("download")) {
+      return true;
+    }
+    var href = link.getAttribute("href");
+    if (!href) {
+      return false;
+    }
+    return (
+      /\/(export\/|demand-draft|download)(\/|\?|$)/i.test(href) ||
+      /\.(csv|xlsx|xls|pdf|docx)(\?|$)/i.test(href)
+    );
+  }
+
+  function wireDownloadLinks(root) {
+    if (!root) {
+      return;
+    }
+    root.querySelectorAll("a[href]").forEach(function (link) {
+      if (!isFileDownloadLink(link)) {
+        return;
+      }
+      link.setAttribute("data-turbo", "false");
+      link.removeAttribute("data-turbo-frame");
+    });
+  }
+
   function wireFrameLinks(root) {
     if (!root) {
       return;
     }
     root.querySelectorAll('a[href]:not([data-turbo="false"])').forEach(function (link) {
+      if (isFileDownloadLink(link)) {
+        return;
+      }
       var href = link.getAttribute("href");
       if (!href || href.charAt(0) !== "/" || href.indexOf("/logout") !== -1) {
         return;
@@ -41,6 +77,7 @@
   function onReady() {
     wireFrameLinks(document.getElementById("floor21-sidebar"));
     wireFrameLinks(document.getElementById("floor21-topbar"));
+    wireDownloadLinks(document.getElementById(FRAME_ID));
     syncBodyChrome();
   }
 
@@ -63,6 +100,9 @@
   document.addEventListener("turbo:click", function (event) {
     var link = event.target.closest("a[href]");
     if (!link || link.getAttribute("data-turbo") === "false") {
+      return;
+    }
+    if (isFileDownloadLink(link)) {
       return;
     }
     if (!link.getAttribute("data-turbo-frame")) {

@@ -6,8 +6,12 @@
      class="navbar navbar-dark floor21-topbar navbar-expand-lg flex-shrink-0">
   <div class="container-fluid px-3">
     <a class="navbar-brand floor21-topbar__brand" th:href="@{/dashboard}" data-turbo-frame="floor21-main" title="Home — Dashboard">
-      <span class="floor21-topbar__mark" aria-hidden="true">F21</span>
-      <span class="floor21-topbar__brand-name">Floor21</span>
+      <img class="floor21-topbar__logo"
+           th:src="@{/images/floor21-logo.png(v=logo1)}"
+           src="/images/floor21-logo.png"
+           alt="Floor21"
+           width="132"
+           height="34"/>
     </a>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <th:block th:replace="~{layout/fragments/theme-controls :: themeControls}"/>

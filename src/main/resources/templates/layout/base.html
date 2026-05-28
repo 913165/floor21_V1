@@ -5,6 +5,7 @@
       th:fragment="layout (content)">
 <head>
   <meta charset="UTF-8"/>
+  <th:block th:replace="~{layout/fragments/theme-head :: branding}"/>
   <th:block th:replace="~{layout/fragments/theme-head :: themeScript}"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}"/>
@@ -39,7 +40,7 @@
   </turbo-frame>
 </div>
 <script th:src="@{/vendor/bootstrap.bundle.min.js}"></script>
-<script defer th:src="@{/js/turbo-drive.js(v=turbo-frame)}"></script>
+  <script defer th:src="@{/js/turbo-drive.js(v=download-links)}"></script>
 <script defer th:src="@{/js/nav-active.js(v=turbo-frame)}"></script>
 <script defer th:src="@{/js/layout.js(v=turbo-frame)}"></script>
 <script defer th:src="@{/js/password-toggle.js(v=turbo-frame)}"></script>

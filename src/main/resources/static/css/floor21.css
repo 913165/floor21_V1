@@ -166,19 +166,15 @@ body > header {
   letter-spacing: 0.02em;
 }
 
-.floor21-topbar__mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.45rem;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: #0f2744;
-  background: linear-gradient(145deg, #7eeadb, #c4f0ff);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset;
+.floor21-topbar__logo {
+  display: block;
+  height: 2.125rem;
+  width: auto;
+  max-width: min(9.5rem, 42vw);
+  border-radius: 0.4rem;
+  background: #fff;
+  padding: 0.12rem 0.45rem;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 2px 8px rgba(8, 20, 40, 0.2);
 }
 
 .floor21-topbar .text-white-50 {

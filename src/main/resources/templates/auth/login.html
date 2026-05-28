@@ -2,12 +2,13 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
   <meta charset="UTF-8"/>
+  <th:block th:replace="~{layout/fragments/theme-head :: branding}"/>
   <th:block th:replace="~{layout/fragments/theme-head :: themeScript}"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Login | Floor21</title>
   <link rel="stylesheet" th:href="@{/vendor/bootstrap.min.css}"/>
   <link rel="stylesheet" th:href="@{/css/floor21.css(v=password-toggle)}"/>
-  <link rel="stylesheet" th:href="@{/css/floor21-login.css(v=15)}"/>
+  <link rel="stylesheet" th:href="@{/css/floor21-login.css(v=logo1)}"/>
 </head>
 <body class="floor21-login">
 <div class="floor21-login__backdrop" aria-hidden="true">
@@ -19,8 +20,12 @@
 <span class="floor21-login__accent floor21-login__accent--blue" aria-hidden="true"></span>
 
 <div class="floor21-login__brand-corner">
-  <span class="floor21-login__mark" aria-hidden="true">F21</span>
-  <h1 class="floor21-login__title">Floor21</h1>
+  <img class="floor21-login__logo"
+       th:src="@{/images/floor21-logo.png(v=logo1)}"
+       src="/images/floor21-logo.png"
+       alt="Floor21"
+       width="160"
+       height="42"/>
 </div>
 
 <div class="floor21-login__theme-corner">

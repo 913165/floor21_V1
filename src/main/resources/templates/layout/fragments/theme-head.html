@@ -2,6 +2,11 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <!-- Apply stored theme + page background before first paint (reduces white blink on navigation). -->
+<th:block th:fragment="branding">
+  <link rel="icon" type="image/png" th:href="@{/images/floor21-logo.png(v=logo1)}"/>
+  <link rel="apple-touch-icon" th:href="@{/images/floor21-logo.png(v=logo1)}"/>
+</th:block>
+
 <th:block th:fragment="themeScript">
 <script>
 (function () {
