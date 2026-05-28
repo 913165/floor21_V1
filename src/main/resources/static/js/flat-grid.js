@@ -122,6 +122,26 @@
     tag.textContent = label;
   }
 
+  function syncDeactivatedTag(cardEl) {
+    if (!cardEl) return;
+    var head = cardEl.querySelector(".flat-card-head");
+    if (!head) return;
+    var tag = cardEl.querySelector(".flat-status-tag");
+    var isDeactivated = cardEl.dataset.status === "CANCELLED";
+    if (!isDeactivated) {
+      if (tag) tag.remove();
+      return;
+    }
+    if (!tag) {
+      tag = document.createElement("span");
+      tag.className = "flat-status-tag small";
+      tag.textContent = "Deactivated";
+      var typeSpan = head.querySelector(".flat-type");
+      if (typeSpan) head.insertBefore(tag, typeSpan);
+      else head.appendChild(tag);
+    }
+  }
+
   function syncAdminPanel(cardEl) {
     var panel = document.getElementById("flat-admin-panel");
     if (!panel || !isPlatformAdminEdit()) return;
@@ -135,6 +155,13 @@
     if (area) area.value = cardEl.dataset.area || "";
     if (price) price.value = cardEl.dataset.price || "";
     if (partner) partner.value = cardEl.dataset.partnerId || "";
+    var adminDelete = document.getElementById("admin-delete-btn");
+    if (adminDelete) {
+      var isInactive = cardEl.dataset.status === "CANCELLED";
+      adminDelete.textContent = isInactive ? "Activate this flat" : "Deactivate this flat";
+      adminDelete.classList.toggle("btn-outline-danger", !isInactive);
+      adminDelete.classList.toggle("btn-outline-success", isInactive);
+    }
     if (selectedFlatId) loadMergeCandidates(selectedFlatId);
   }
 
@@ -278,6 +305,7 @@
           delete el.dataset.partnerId;
         }
         syncPartnerTag(el, flat.assignedPartnerId, flat.assignedPartnerName);
+        syncDeactivatedTag(el);
         if (flat.clientId) {
           el.dataset.clientId = flat.clientId;
         } else {
@@ -291,12 +319,14 @@
           "flat-available",
           "flat-booked",
           "flat-hold",
+          "flat-deactivated",
           "flat-parking",
           "flat-card--other-partner"
         );
         if (flat.parking) el.classList.add("flat-parking");
         else if (flat.status === "AVAILABLE") el.classList.add("flat-available");
         else if (flat.status === "BOOKED") el.classList.add("flat-booked");
+        else if (flat.status === "CANCELLED") el.classList.add("flat-deactivated");
         else el.classList.add("flat-hold");
         if (flat.bookableByCurrentUser === false && !flat.parking) {
           el.classList.add("flat-card--other-partner");
@@ -352,6 +382,12 @@
   }
 
   function ownerLinesForCard(flat, cardEl) {
+    if (flat && flat.status === "CANCELLED") {
+      return {
+        display: "Deactivated",
+        detail: "",
+      };
+    }
     if (!isFlatBookableFromData(flat, cardEl)) {
       return {
         display: flat && flat.status === "BOOKED" ? "Booked" : "",
@@ -657,18 +693,26 @@
         if (!selectedFlatId) return;
         var card = document.getElementById("flat-" + selectedFlatId);
         var label = card && card.querySelector(".flat-number") ? card.querySelector(".flat-number").textContent : selectedFlatId;
-        if (!window.confirm("Remove flat " + label + "? This cannot be undone.")) return;
+        var isInactive = card && card.dataset.status === "CANCELLED";
+        var confirmMsg = isInactive
+          ? "Activate flat " + label + " and make it available again?"
+          : "Deactivate flat " + label + "? You can activate it later.";
+        if (!window.confirm(confirmMsg)) return;
         showAdminError("");
         var headers = Object.assign({}, csrfHeaders());
-        var res = await fetch(appRoot() + "/flats/" + selectedFlatId, {
-          method: "DELETE",
+        var res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/activation", {
+          method: "POST",
           headers: headers,
         });
         if (!res.ok) {
           showAdminError(await parseErrorResponse(res));
           return;
         }
-        window.location.reload();
+        await refreshGrid();
+        var updated = document.getElementById("flat-" + selectedFlatId);
+        if (updated) {
+          window.floor21SelectFlat(updated, false);
+        }
       });
     }
 

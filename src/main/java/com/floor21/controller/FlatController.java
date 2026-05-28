@@ -15,7 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -69,13 +68,17 @@ public class FlatController {
         }
     }
 
-    @DeleteMapping("/flats/{id}")
+    @PostMapping("/flats/{id}/activation")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     @ResponseBody
-    public ResponseEntity<?> deleteFlat(@PathVariable UUID id) {
+    public ResponseEntity<?> toggleActivation(@PathVariable UUID id) {
         try {
-            flatService.deleteFlatAsPlatformAdmin(id);
-            return ResponseEntity.ok(Map.of("ok", "true"));
+            Flat flat = flatService.toggleFlatActivationAsPlatformAdmin(id);
+            return ResponseEntity.ok(
+                    Map.of(
+                            "ok", true,
+                            "status", flat.getStatus(),
+                            "active", !"CANCELLED".equals(flat.getStatus())));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }

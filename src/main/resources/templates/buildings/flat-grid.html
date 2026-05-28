@@ -150,6 +150,24 @@
 
   <div id="flat-grid" class="mb-3"
        th:attr="data-building-id=${building.id},data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''},data-platform-admin-edit=${platformAdminView}">
+    <div class="flat-grid-legend mb-2" th:if="${!#lists.isEmpty(floors)}">
+      <span class="flat-grid-legend__item">
+        <span class="flat-grid-legend__dot flat-grid-legend__dot--available"></span>
+        Available
+      </span>
+      <span class="flat-grid-legend__item">
+        <span class="flat-grid-legend__dot flat-grid-legend__dot--hold"></span>
+        Hold
+      </span>
+      <span class="flat-grid-legend__item">
+        <span class="flat-grid-legend__dot flat-grid-legend__dot--booked"></span>
+        Booked
+      </span>
+      <span class="flat-grid-legend__item">
+        <span class="flat-grid-legend__dot flat-grid-legend__dot--deactivated"></span>
+        Deactivated
+      </span>
+    </div>
     <p class="text-muted py-4 text-center border rounded bg-body-secondary"
        th:if="${#lists.isEmpty(floors)}">
       <span sec:authorize="hasRole('SUPER_ADMIN')">No flat rows to display. Use Generate flats above.</span>
@@ -198,6 +216,8 @@
               <span class="flat-partner-tag small"
                     th:if="${flat.assignedPartnerName() != null}"
                     th:text="${flat.assignedPartnerName()}">Partner</span>
+              <span class="flat-status-tag small"
+                    th:if="${flat.status() == 'CANCELLED'}">Deactivated</span>
               <span class="flat-type" th:text="${flat.bhkType()}">2BHK</span>
               <button type="button"
                       th:if="${fpSlot != null and flat.bookableByCurrentUser()}"
@@ -209,7 +229,9 @@
             </div>
             <div class="flat-card-owner" th:classappend="${#strings.isEmpty(flat.ownerDisplay()) && #strings.isEmpty(flat.ownerDetail())} ? ' is-blank'">
               <span class="flat-owner-name"
-                    th:text="${flat.bookableByCurrentUser() ? flat.ownerDisplay() : (flat.status() == 'BOOKED' ? 'Booked' : '')}"></span>
+                    th:text="${flat.bookableByCurrentUser()
+                      ? (flat.status() == 'CANCELLED' ? 'Deactivated' : flat.ownerDisplay())
+                      : (flat.status() == 'BOOKED' ? 'Booked' : (flat.status() == 'CANCELLED' ? 'Deactivated' : ''))}"></span>
               <span class="flat-owner-detail" th:if="${flat.bookableByCurrentUser()}" th:text="${flat.ownerDetail()}"></span>
             </div>
             <button th:if="${!flat.parking() and flat.bookableByCurrentUser()}"
@@ -305,7 +327,7 @@
                 <button type="button" class="btn btn-sm btn-outline-primary w-100" id="admin-merge-btn">Merge into kept flat</button>
               </div>
               <div class="col-md-3 d-flex align-items-end">
-                <button type="button" class="btn btn-sm btn-outline-danger w-100" id="admin-delete-btn">Remove this flat</button>
+                <button type="button" class="btn btn-sm btn-outline-danger w-100" id="admin-delete-btn">Deactivate this flat</button>
               </div>
             </div>
             <p class="text-danger small mb-0 d-none" id="admin-error"></p>

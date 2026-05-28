@@ -143,6 +143,8 @@ public class FlatService {
             tone = "flat-available";
         } else if ("BOOKED".equals(flat.getStatus())) {
             tone = "flat-booked";
+        } else if ("CANCELLED".equals(flat.getStatus())) {
+            tone = "flat-deactivated";
         } else {
             tone = "flat-hold";
         }
@@ -412,6 +414,21 @@ public class FlatService {
             throw new IllegalArgumentException("Cannot remove a booked flat. Cancel the booking first.");
         }
         flatRepository.delete(flat);
+    }
+
+    @Transactional
+    public Flat toggleFlatActivationAsPlatformAdmin(UUID flatId) {
+        Flat flat = requireResidentialFlatForAdmin(flatId);
+        if ("CANCELLED".equals(flat.getStatus())) {
+            flat.setStatus("AVAILABLE");
+            return flatRepository.save(flat);
+        }
+        assertNoActiveBooking(flatId, "Cannot deactivate a flat that has an active booking.");
+        if ("BOOKED".equals(flat.getStatus())) {
+            throw new IllegalArgumentException("Cannot deactivate a booked flat. Cancel the booking first.");
+        }
+        flat.setStatus("CANCELLED");
+        return flatRepository.save(flat);
     }
 
     @Transactional

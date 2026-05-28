@@ -447,6 +447,70 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   overflow: visible;
 }
 
+.flat-grid-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 1.1rem;
+  align-items: center;
+  padding: 0.35rem 0.1rem 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+}
+
+.flat-grid-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.flat-grid-legend__dot {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.flat-grid-legend__dot--available {
+  background: #d1e7dd;
+  border-color: #198754;
+}
+
+.flat-grid-legend__dot--hold {
+  background: #fff3cd;
+  border-color: #ffc107;
+}
+
+.flat-grid-legend__dot--booked {
+  background: #cfe2ff;
+  border-color: #0d6efd;
+}
+
+.flat-grid-legend__dot--deactivated {
+  background: #f8d7da;
+  border-color: #dc3545;
+}
+
+[data-bs-theme="dark"] .flat-grid-legend__dot {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+[data-bs-theme="dark"] .flat-grid-legend__dot--available {
+  background: rgba(25, 135, 84, 0.25);
+}
+
+[data-bs-theme="dark"] .flat-grid-legend__dot--hold {
+  background: rgba(255, 193, 7, 0.2);
+}
+
+[data-bs-theme="dark"] .flat-grid-legend__dot--booked {
+  background: rgba(13, 110, 253, 0.28);
+}
+
+[data-bs-theme="dark"] .flat-grid-legend__dot--deactivated {
+  background: rgba(220, 53, 69, 0.28);
+}
+
 .flat-card {
   box-sizing: border-box;
   position: relative;
@@ -543,8 +607,23 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   margin-top: 0.1rem;
 }
 
+.flat-status-tag {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #b45309;
+  line-height: 1.2;
+  margin-top: 0.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 [data-bs-theme="dark"] .flat-partner-tag {
   color: #a5b4fc;
+}
+
+[data-bs-theme="dark"] .flat-status-tag {
+  color: #fbbf24;
 }
 
 .flat-card-head {
@@ -922,6 +1001,24 @@ body.modal-open .modal-backdrop {
 .flat-hold {
   background: #fff3cd;
   border-color: #ffc107;
+}
+
+.flat-deactivated {
+  background: #f8d7da;
+  border-color: #dc3545;
+}
+
+.flat-deactivated .flat-owner-name {
+  color: #842029;
+}
+
+[data-bs-theme="dark"] .flat-deactivated {
+  background: rgba(220, 53, 69, 0.28);
+  border-color: #f199a0;
+}
+
+[data-bs-theme="dark"] .flat-deactivated .flat-owner-name {
+  color: #ffd5d9;
 }
 
 .flat-parking {

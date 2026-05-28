@@ -6,6 +6,7 @@ import com.floor21.entity.Building;
 import com.floor21.entity.Flat;
 import com.floor21.entity.PartnerFlatAssignment;
 import com.floor21.entity.User;
+import com.floor21.repository.BookingRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.repository.PartnerFlatAssignmentRepository;
 import com.floor21.exception.ResourceNotFoundException;
@@ -14,7 +15,6 @@ import com.floor21.security.TenantContext;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +32,7 @@ public class PartnerFlatAllocationService {
 
     private final PartnerFlatAssignmentRepository assignmentRepository;
     private final FlatRepository flatRepository;
+    private final BookingRepository bookingRepository;
     private final StaffBuildingAccessService staffBuildingAccessService;
     private final BuildingService buildingService;
 
@@ -135,7 +136,21 @@ public class PartnerFlatAllocationService {
         if (Boolean.TRUE.equals(flat.getParking())) {
             throw new IllegalArgumentException("Parking units cannot be assigned to a partner.");
         }
-        assignmentRepository.findByFlat_Id(flatId).ifPresent(assignmentRepository::delete);
+        if (bookingRepository.countActiveByFlatId(flatId) > 0) {
+            throw new IllegalArgumentException(
+                    "Cannot change partner allocation for a flat with an active booking.");
+        }
+        boolean hadExistingAssignment = assignmentRepository.findByFlat_Id(flatId)
+                .map(
+                        existing -> {
+                            assignmentRepository.delete(existing);
+                            return true;
+                        })
+                .orElse(false);
+        if (hadExistingAssignment) {
+            // Ensure delete executes before insert to avoid flat_id unique conflicts on reassignment.
+            assignmentRepository.flush();
+        }
         if (partnerUserId == null) {
             return null;
         }

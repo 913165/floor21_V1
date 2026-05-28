@@ -53,6 +53,8 @@ public class SecurityConfig {
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.DELETE, "/flats/*")
                                         .hasRole("SUPER_ADMIN")
+                                        .requestMatchers(HttpMethod.POST, "/flats/*/activation")
+                                        .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/buildings/save")
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN")
                                         .requestMatchers(HttpMethod.GET, "/buildings/*/edit")
