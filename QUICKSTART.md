@@ -67,8 +67,8 @@ Create `floor21_db` and user `floor21_user` / `floor21_pass`, or change `spring.
 **Windows (PowerShell)** — set `JAVA_HOME`, then start:
 
 ```powershell
-cd C:\work_floor21\floor21
-$env:JAVA_HOME = "C:\Program Files\Java\jdk-25.0.2"
+cd C:\work_floor21\floor21_V1
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-25"
 .\mvnw.cmd spring-boot:run
 ```
 

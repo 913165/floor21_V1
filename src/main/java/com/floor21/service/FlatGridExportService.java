@@ -4,6 +4,7 @@ import com.floor21.dto.FlatGridFlatDto;
 import com.floor21.dto.FlatGridFloorDto;
 import com.floor21.entity.Building;
 import com.floor21.util.IndianRupeesFormatter;
+import com.floor21.util.PoiSheetSupport;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
@@ -155,9 +156,7 @@ public class FlatGridExportService {
                     writeFlatExcelRow(row, flat, rowStyle);
                 }
             }
-            for (int c = 0; c < HEADERS.length; c++) {
-                sheet.autoSizeColumn(c);
-            }
+            PoiSheetSupport.autoSizeColumns(sheet, HEADERS.length, 12000);
             wb.write(out);
             return out.toByteArray();
         } catch (IOException ex) {
