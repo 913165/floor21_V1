@@ -5,6 +5,7 @@
   <th:block th:replace="~{layout/fragments/theme-head :: branding}"/>
   <th:block th:replace="~{layout/fragments/theme-head :: themeScript}"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="floor21-session-timeout-seconds" th:content="${sessionTimeoutSeconds}"/>
   <title>Login | Floor21</title>
   <link rel="stylesheet" th:href="@{/vendor/bootstrap.min.css}"/>
   <link rel="stylesheet" th:href="@{/css/floor21.css(v=password-toggle)}"/>
@@ -52,6 +53,12 @@
         <div class="card-body">
           <h2 class="floor21-login__card-title">Sign in</h2>
           <div class="alert alert-danger" th:if="${param.error}">Invalid email or password.</div>
+          <div class="alert alert-warning d-none" id="login-session-relogin" role="alert">
+            Your session is no longer valid. Please sign in again.
+          </div>
+          <div class="alert alert-warning d-none" id="login-session-expired" role="alert">
+            Your session expired due to inactivity. Please sign in again.
+          </div>
           <div class="alert alert-info" th:if="${param.logout}">You have been logged out.</div>
           <form th:action="@{/login}" method="post">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -73,6 +80,28 @@
 </div>
 
 <script th:src="@{/vendor/bootstrap.bundle.min.js}"></script>
+<script defer th:src="@{/js/session-auth.js(v=session-relogin2)}"></script>
+<script th:inline="javascript">
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    if (!params.has("relogin") && !params.has("expired")) {
+      return;
+    }
+    var timeoutSec =
+      parseInt(
+        document.querySelector('meta[name="floor21-session-timeout-seconds"]')?.getAttribute("content") || "3600",
+        10
+      ) || 3600;
+    var last = parseInt(localStorage.getItem("floor21_last_activity") || "0", 10);
+    var idle =
+      params.has("expired") ||
+      (last > 0 && Date.now() - last >= timeoutSec * 1000);
+    var el = document.getElementById(idle ? "login-session-expired" : "login-session-relogin");
+    if (el) {
+      el.classList.remove("d-none");
+    }
+  })();
+</script>
 <script defer th:src="@{/js/theme.js(v=turbo-frame)}"></script>
 <script defer th:src="@{/js/password-toggle.js(v=password-toggle)}"></script>
 </body>

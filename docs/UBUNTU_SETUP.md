@@ -171,6 +171,7 @@ sudo apt install -y lsof
 Kill whatever is listening on **80**:
 
 ```bash
+lsof -iTCP:80 -sTCP:LISTEN
 sudo kill -9 $(sudo lsof -t -i:80)
 ```
 

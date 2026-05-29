@@ -1,0 +1,3 @@
+gcloud auth activate-service-account --key-file=YOUR_KEY_FILE.json
+gcloud storage cp ./test1.txt gs://floor21_bkp/
+

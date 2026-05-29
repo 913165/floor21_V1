@@ -7,10 +7,12 @@ import com.floor21.service.VaultAccessService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import java.time.Duration;
 
 /** Exposes request path and signed-in account labels for layout fragments. */
 @ControllerAdvice
@@ -19,6 +21,14 @@ public class LayoutControllerAdvice {
 
     private final AccountService accountService;
     private final VaultAccessService vaultAccessService;
+
+    @Value("${server.servlet.session.timeout:3600s}")
+    private Duration serverSessionTimeout;
+
+    @ModelAttribute("sessionTimeoutSeconds")
+    public long sessionTimeoutSeconds() {
+        return serverSessionTimeout.toSeconds();
+    }
 
     @ModelAttribute("navServletPath")
     public String navServletPath(HttpServletRequest request) {

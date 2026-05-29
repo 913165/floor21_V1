@@ -1,5 +1,6 @@
 package com.floor21.config;
 
+import com.floor21.security.Floor21AuthenticationEntryPoint;
 import com.floor21.security.Floor21LoginSuccessHandler;
 import com.floor21.security.Floor21UserDetailsService;
 import lombok.RequiredArgsConstructor;
@@ -75,6 +76,11 @@ public class SecurityConfig {
                                         .hasRole("BUILDER_ADMIN")
                                         .anyRequest()
                                         .hasAnyRole("BUILDER_ADMIN", "EXECUTIVE"))
+                .exceptionHandling(
+                        ex ->
+                                ex.authenticationEntryPoint(new Floor21AuthenticationEntryPoint()))
+                .sessionManagement(
+                        session -> session.invalidSessionUrl("/login?relogin=true"))
                 .formLogin(
                         form ->
                                 form.loginPage("/login")

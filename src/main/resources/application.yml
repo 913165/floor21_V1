@@ -43,6 +43,7 @@ server:
   servlet:
     context-path: /floor21
     session:
+      # Idle login timeout; expired sessions redirect to /login?expired=true
       timeout: 3600s
 
 management:
