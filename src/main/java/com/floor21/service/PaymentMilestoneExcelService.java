@@ -1,6 +1,7 @@
 package com.floor21.service;
 
 import com.floor21.dto.PaymentMilestoneImportRow;
+import com.floor21.util.PoiSheetSupport;
 import com.floor21.entity.Building;
 import com.floor21.entity.PaymentSlabTemplate;
 import com.floor21.repository.BuildingRepository;
@@ -59,9 +60,7 @@ public class PaymentMilestoneExcelService {
             sample.createCell(0).setCellValue(1);
             sample.createCell(4).setCellValue("On completion of the plinth work of the building");
             sample.createCell(5).setCellValue(10);
-            for (int c = 0; c < headers.length; c++) {
-                sheet.autoSizeColumn(c);
-            }
+            PoiSheetSupport.autoSizeColumns(sheet, headers.length);
             wb.write(out);
             return out.toByteArray();
         }

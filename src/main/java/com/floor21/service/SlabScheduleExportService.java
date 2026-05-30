@@ -8,6 +8,7 @@ import com.floor21.entity.Building;
 import com.floor21.entity.Client;
 import com.floor21.entity.Flat;
 import com.floor21.util.IndianRupeesFormatter;
+import com.floor21.util.PoiSheetSupport;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
@@ -79,9 +80,7 @@ public class SlabScheduleExportService {
                 Row totalRow = sheet.createRow(rowIdx++);
                 writeTotalRow(totalRow, ctx.summary(), boldStyle);
             }
-            for (int c = 0; c < LEDGER_HEADERS.length; c++) {
-                sheet.autoSizeColumn(c);
-            }
+            PoiSheetSupport.autoSizeColumns(sheet, LEDGER_HEADERS.length);
             wb.write(out);
             return out.toByteArray();
         } catch (IOException ex) {
