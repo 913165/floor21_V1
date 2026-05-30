@@ -8,6 +8,7 @@ import com.floor21.service.BuildingService;
 import com.floor21.service.FlatGridExportService;
 import com.floor21.service.FlatService;
 import com.floor21.service.PartnerFlatAllocationService;
+import com.floor21.util.ResidentialBhkTypes;
 import java.util.List;
 import java.util.Map;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -154,6 +155,7 @@ public class BuildingController {
         cfg.setBhk1PerFloor(b.getBhk1PerFloor() != null ? b.getBhk1PerFloor() : 0);
         cfg.setBhk2PerFloor(b.getBhk2PerFloor() != null ? b.getBhk2PerFloor() : 0);
         cfg.setBhk3PerFloor(b.getBhk3PerFloor() != null ? b.getBhk3PerFloor() : 0);
+        cfg.setBhkPerFloor(ResidentialBhkTypes.countsFromBuilding(b));
         long flatCount = flatService.countFlatsForBuilding(id);
         long activeBookings = flatService.countActiveBookingsForBuilding(id);
         model.addAttribute("pageTitle", "Flat Grid — " + b.getBuildingName());
@@ -168,6 +170,10 @@ public class BuildingController {
         model.addAttribute(
                 "partnerAllocationPartners",
                 canManagePartnerAllocation() ? partnerFlatAllocationService.listPartnersForBuilding(id) : List.of());
+        if (flatCount > 0) {
+            model.addAttribute("topFloorNumber", flatService.getTopFloorNumber(id));
+            model.addAttribute("addFloorMix", flatService.bhkMixForTopResidentialFloor(id));
+        }
         return "buildings/flat-grid";
     }
 
@@ -252,6 +258,35 @@ public class BuildingController {
         try {
             flatService.generateFlats(id, config, confirmReplace);
             ra.addFlashAttribute("successMessage", "Flats generated");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/buildings/" + id + "/flats";
+    }
+
+    @PostMapping("/{id}/flats/add-floors")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public String addFloorsOnTop(
+            @PathVariable UUID id,
+            @RequestParam int additionalFloors,
+            @Valid @ModelAttribute("config") BuildingConfigDto config,
+            BindingResult br,
+            RedirectAttributes ra) {
+        if (br.hasErrors()) {
+            ra.addFlashAttribute("errorMessage", "Invalid floor layout settings.");
+            return "redirect:/buildings/" + id + "/flats";
+        }
+        try {
+            int topBefore = flatService.getTopFloorNumber(id);
+            int added = flatService.addFloorsOnTop(id, additionalFloors, config);
+            ra.addFlashAttribute(
+                    "successMessage",
+                    added
+                            + " residential floor(s) added above floor "
+                            + topBefore
+                            + " (now "
+                            + (topBefore + added)
+                            + " total). Existing flats were kept.");
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
         }

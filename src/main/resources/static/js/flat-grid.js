@@ -53,6 +53,62 @@
     };
   }
 
+  function parseBhkSize(type) {
+    if (!type) return 0;
+    var unit = String(type).trim().toUpperCase();
+    if (unit === "STUDIO") return 0.5;
+    if (unit === "PENTHOUSE") return 8;
+    var numeric = unit.replace(/BHK/i, "").trim();
+    var value = parseFloat(numeric);
+    return isNaN(value) ? 0 : value;
+  }
+
+  function resolveFloorPlanSlot(bhkType) {
+    var grid = document.getElementById("flat-grid");
+    if (!grid || !bhkType) return null;
+    var size = parseBhkSize(bhkType);
+    if (size <= 1.5 && grid.getAttribute("data-floor-plan-1bhk") === "true") {
+      return "1bhk";
+    }
+    if (size <= 2.5 && grid.getAttribute("data-floor-plan-2bhk") === "true") {
+      return "2bhk";
+    }
+    if (size <= 3.5 && grid.getAttribute("data-floor-plan-3bhk") === "true") {
+      return "3bhk";
+    }
+    return null;
+  }
+
+  function ensureAdminBhkOption(selectEl, value) {
+    if (!selectEl || !value) return;
+    var exists = false;
+    for (var i = 0; i < selectEl.options.length; i++) {
+      if (selectEl.options[i].value === value) {
+        exists = true;
+        break;
+      }
+    }
+    if (!exists) {
+      var opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = value;
+      selectEl.appendChild(opt);
+    }
+    selectEl.value = value;
+  }
+
+  function setAdminEditModeVisible(show) {
+    ["panel-type", "panel-area", "panel-price"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.toggle("d-none", show);
+    });
+    document.querySelectorAll(".admin-edit-field").forEach(function (el) {
+      el.classList.toggle("d-none", !show);
+    });
+    var saveRow = document.getElementById("admin-save-row");
+    if (saveRow) saveRow.classList.toggle("d-none", !show);
+  }
+
   function applyFlatDataToCard(cardEl, flat) {
     if (!cardEl || !flat) return;
     if (flat.bhkType != null) cardEl.dataset.type = flat.bhkType;
@@ -62,6 +118,13 @@
     if (flat.floorNumber != null) cardEl.dataset.floor = String(flat.floorNumber);
     var typeSpan = cardEl.querySelector(".flat-type");
     if (typeSpan && flat.bhkType) typeSpan.textContent = flat.bhkType;
+    var slot = resolveFloorPlanSlot(flat.bhkType);
+    if (slot) {
+      cardEl.dataset.floorPlanSlot = slot;
+    } else {
+      delete cardEl.dataset.floorPlanSlot;
+    }
+    syncFloorPlanLink(cardEl);
   }
 
   async function loadMergeCandidates(flatId) {
@@ -144,25 +207,32 @@
 
   function syncAdminPanel(cardEl) {
     var panel = document.getElementById("flat-admin-panel");
-    if (!panel || !isPlatformAdminEdit()) return;
-    panel.classList.remove("d-none");
-    showAdminError("");
-    var bhk = document.getElementById("admin-bhk");
-    var area = document.getElementById("admin-area");
-    var price = document.getElementById("admin-price");
-    var partner = document.getElementById("admin-partner");
-    if (bhk) bhk.value = cardEl.dataset.type || "2BHK";
-    if (area) area.value = cardEl.dataset.area || "";
-    if (price) price.value = cardEl.dataset.price || "";
-    if (partner) partner.value = cardEl.dataset.partnerId || "";
-    var adminDelete = document.getElementById("admin-delete-btn");
-    if (adminDelete) {
-      var isInactive = cardEl.dataset.status === "CANCELLED";
-      adminDelete.textContent = isInactive ? "Activate this flat" : "Deactivate this flat";
-      adminDelete.classList.toggle("btn-outline-danger", !isInactive);
-      adminDelete.classList.toggle("btn-outline-success", isInactive);
+    var adminMode = isPlatformAdminEdit() && !!document.getElementById("admin-bhk");
+    if (adminMode) {
+      setAdminEditModeVisible(true);
+      if (panel) panel.classList.remove("d-none");
+      showAdminError("");
+      var bhk = document.getElementById("admin-bhk");
+      var area = document.getElementById("admin-area");
+      var price = document.getElementById("admin-price");
+      var partner = document.getElementById("admin-partner");
+      var currentType = cardEl.dataset.type || "2BHK";
+      if (bhk) ensureAdminBhkOption(bhk, currentType);
+      if (area) area.value = cardEl.dataset.area || "";
+      if (price) price.value = cardEl.dataset.price || "";
+      if (partner) partner.value = cardEl.dataset.partnerId || "";
+      var adminDelete = document.getElementById("admin-delete-btn");
+      if (adminDelete) {
+        var isInactive = cardEl.dataset.status === "CANCELLED";
+        adminDelete.textContent = isInactive ? "Activate this flat" : "Deactivate this flat";
+        adminDelete.classList.toggle("btn-outline-danger", !isInactive);
+        adminDelete.classList.toggle("btn-outline-success", isInactive);
+      }
+      if (selectedFlatId) loadMergeCandidates(selectedFlatId);
+      return;
     }
-    if (selectedFlatId) loadMergeCandidates(selectedFlatId);
+    setAdminEditModeVisible(false);
+    if (panel) panel.classList.add("d-none");
   }
 
   function applyBookingSelectionHighlight() {
@@ -683,7 +753,10 @@
         document.getElementById("panel-type").textContent = flat.bhkType || "";
         document.getElementById("panel-area").textContent = flat.areaSqft != null ? String(flat.areaSqft) : "";
         document.getElementById("panel-price").textContent = flat.basePrice != null ? String(flat.basePrice) : "";
-        if (card) syncAdminPanel(card);
+        if (card) {
+          syncAdminPanel(card);
+          syncActionButtons(card);
+        }
       });
     }
 

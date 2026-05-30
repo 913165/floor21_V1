@@ -42,7 +42,7 @@ public class Flat {
     @Column(name = "unit_number", nullable = false)
     private Integer unitNumber;
 
-    @Column(name = "bhk_type", nullable = false, length = 10)
+    @Column(name = "bhk_type", nullable = false, length = 20)
     private String bhkType;
 
     @Column(name = "area_sqft", precision = 10, scale = 2)

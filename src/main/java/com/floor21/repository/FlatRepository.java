@@ -49,4 +49,15 @@ public interface FlatRepository extends JpaRepository<Flat, UUID> {
     @Query("delete from Flat f where f.building.id = :buildingId and f.builder.id = :builderId")
     void deleteByBuilding_IdAndBuilder_Id(
             @Param("buildingId") UUID buildingId, @Param("builderId") UUID builderId);
+
+    @Query(
+            """
+            select coalesce(max(f.floorNumber), 0) from Flat f
+            where f.building.id = :buildingId and f.builder.id = :builderId
+            """)
+    int findMaxFloorNumberByBuilding_IdAndBuilder_Id(
+            @Param("buildingId") UUID buildingId, @Param("builderId") UUID builderId);
+
+    List<Flat> findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+            UUID buildingId, UUID builderId, int floorNumber);
 }

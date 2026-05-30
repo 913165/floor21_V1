@@ -1,0 +1,2 @@
+ALTER TABLE flats
+    ALTER COLUMN bhk_type TYPE VARCHAR(20);

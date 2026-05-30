@@ -16,6 +16,7 @@ import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.security.TenantContext;
+import com.floor21.util.ResidentialBhkTypes;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Locale;
@@ -36,9 +37,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class FlatService {
-
-    private static final List<String> RESIDENTIAL_BHK_TYPES =
-            List.of("1BHK", "2BHK", "3BHK", "4BHK");
 
     private final FlatRepository flatRepository;
     private final BuildingRepository buildingRepository;
@@ -277,15 +275,19 @@ public class FlatService {
         int total = cfg.getTotalFloors();
         int parking = cfg.getParkingFloors();
         int perFloor = cfg.getFlatsPerFloor();
-        int bhk1 = cfg.getBhk1PerFloor();
-        int bhk2 = cfg.getBhk2PerFloor();
-        int bhk3 = cfg.getBhk3PerFloor();
+        Map<String, Integer> mix = resolveBhkMix(cfg);
         if (parking < 0 || parking > total) {
             throw new IllegalArgumentException("Parking floors must be between 0 and total floors");
         }
         int residential = total - parking;
-        if (residential > 0 && bhk1 + bhk2 + bhk3 != perFloor) {
-            throw new IllegalArgumentException("1BHK + 2BHK + 3BHK must equal flats per floor for residential levels");
+        int mixTotal = ResidentialBhkTypes.sumCounts(mix);
+        if (residential > 0 && mixTotal != perFloor) {
+            throw new IllegalArgumentException(
+                    "BHK counts per floor must add up to flats per floor (currently "
+                            + mixTotal
+                            + ", expected "
+                            + perFloor
+                            + ").");
         }
         flatRepository.deleteByBuilding_IdAndBuilder_Id(buildingId, builderId);
         flatRepository.flush();
@@ -295,9 +297,9 @@ public class FlatService {
         building.setTotalFloors(total);
         building.setParkingFloors(parking);
         building.setFlatsPerFloor(perFloor);
-        building.setBhk1PerFloor(bhk1);
-        building.setBhk2PerFloor(bhk2);
-        building.setBhk3PerFloor(bhk3);
+        building.setBhk1PerFloor(mix.getOrDefault("1BHK", 0));
+        building.setBhk2PerFloor(mix.getOrDefault("2BHK", 0));
+        building.setBhk3PerFloor(mix.getOrDefault("3BHK", 0));
         buildingRepository.save(building);
 
         Instant now = Instant.now();
@@ -310,18 +312,156 @@ public class FlatService {
             }
         }
         for (int floor = parking + 1; floor <= total; floor++) {
-            int unit = 1;
-            for (int i = 0; i < bhk1; i++) {
-                batch.add(residentialFlat(builder, building, floor, unit++, "1BHK", 550, 4_500_000, now));
-            }
-            for (int i = 0; i < bhk2; i++) {
-                batch.add(residentialFlat(builder, building, floor, unit++, "2BHK", 850, 7_200_000, now));
-            }
-            for (int i = 0; i < bhk3; i++) {
-                batch.add(residentialFlat(builder, building, floor, unit++, "3BHK", 1100, 9_800_000, now));
-            }
+            appendResidentialFloorFlats(batch, builder, building, floor, mix, now);
         }
         flatRepository.saveAll(batch);
+    }
+
+    @Transactional(readOnly = true)
+    public int getTopFloorNumber(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        return flatRepository.findMaxFloorNumberByBuilding_IdAndBuilder_Id(
+                buildingId, building.getBuilder().getId());
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Integer> bhkMixForTopResidentialFloor(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        int topFloor = flatRepository.findMaxFloorNumberByBuilding_IdAndBuilder_Id(buildingId, builderId);
+        if (topFloor <= 0) {
+            return ResidentialBhkTypes.countsFromBuilding(building);
+        }
+        Map<String, Integer> mix = ResidentialBhkTypes.emptyCountMap();
+        for (Flat flat :
+                flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                        buildingId, builderId, topFloor)) {
+            if (Boolean.TRUE.equals(flat.getParking()) || flat.getBhkType() == null) {
+                continue;
+            }
+            String type = flat.getBhkType().trim().toUpperCase(Locale.ROOT);
+            mix.merge(type, 1, Integer::sum);
+        }
+        if (ResidentialBhkTypes.sumCounts(mix) == 0) {
+            return ResidentialBhkTypes.countsFromBuilding(building);
+        }
+        return mix;
+    }
+
+    /**
+     * Adds new residential floors above the current top floor without removing existing flats.
+     *
+     * @return number of floors added
+     */
+    @Transactional
+    public int addFloorsOnTop(UUID buildingId, int additionalFloors, BuildingConfigDto cfg) {
+        if (additionalFloors < 1) {
+            throw new IllegalArgumentException("Add at least one floor.");
+        }
+        if (additionalFloors > 50) {
+            throw new IllegalArgumentException("Add at most 50 floors at a time.");
+        }
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        long existingFlats = flatRepository.countByBuilding_IdAndBuilder_Id(buildingId, builderId);
+        if (existingFlats == 0) {
+            throw new IllegalArgumentException(
+                    "No flats on the grid yet. Use Generate flats to create the initial layout first.");
+        }
+        int topFloor = flatRepository.findMaxFloorNumberByBuilding_IdAndBuilder_Id(buildingId, builderId);
+        int perFloor =
+                cfg.getFlatsPerFloor() != null && cfg.getFlatsPerFloor() > 0
+                        ? cfg.getFlatsPerFloor()
+                        : building.getFlatsPerFloor();
+        if (perFloor == null || perFloor < 1) {
+            throw new IllegalArgumentException("Flats per floor must be at least 1.");
+        }
+        Map<String, Integer> mix = resolveBhkMix(cfg);
+        int mixTotal = ResidentialBhkTypes.sumCounts(mix);
+        if (mixTotal != perFloor) {
+            throw new IllegalArgumentException(
+                    "BHK counts per floor must add up to flats per floor (currently "
+                            + mixTotal
+                            + ", expected "
+                            + perFloor
+                            + ").");
+        }
+
+        Builder builder = builderRepository.findById(builderId).orElseThrow();
+        Instant now = Instant.now();
+        List<Flat> batch = new ArrayList<>();
+        int newTop = topFloor + additionalFloors;
+        for (int floor = topFloor + 1; floor <= newTop; floor++) {
+            appendResidentialFloorFlats(batch, builder, building, floor, mix, now);
+        }
+        flatRepository.saveAll(batch);
+
+        building.setTotalFloors(
+                Math.max(building.getTotalFloors() != null ? building.getTotalFloors() : 0, newTop));
+        building.setFlatsPerFloor(perFloor);
+        building.setBhk1PerFloor(mix.getOrDefault("1BHK", 0));
+        building.setBhk2PerFloor(mix.getOrDefault("2BHK", 0));
+        building.setBhk3PerFloor(mix.getOrDefault("3BHK", 0));
+        buildingRepository.save(building);
+        return additionalFloors;
+    }
+
+    private static void appendResidentialFloorFlats(
+            List<Flat> batch,
+            Builder builder,
+            Building building,
+            int floor,
+            Map<String, Integer> mix,
+            Instant now) {
+        int unit = 1;
+        for (String bhkType : ResidentialBhkTypes.all()) {
+            int count = mix.getOrDefault(bhkType, 0);
+            for (int i = 0; i < count; i++) {
+                batch.add(
+                        residentialFlat(
+                                builder,
+                                building,
+                                floor,
+                                unit++,
+                                bhkType,
+                                ResidentialBhkTypes.defaultAreaSqft(bhkType),
+                                ResidentialBhkTypes.defaultBasePrice(bhkType),
+                                now));
+            }
+        }
+        for (Map.Entry<String, Integer> entry : mix.entrySet()) {
+            if (ResidentialBhkTypes.all().contains(entry.getKey())) {
+                continue;
+            }
+            int count = entry.getValue() != null ? entry.getValue() : 0;
+            for (int i = 0; i < count; i++) {
+                batch.add(
+                        residentialFlat(
+                                builder,
+                                building,
+                                floor,
+                                unit++,
+                                entry.getKey(),
+                                ResidentialBhkTypes.defaultAreaSqft(entry.getKey()),
+                                ResidentialBhkTypes.defaultBasePrice(entry.getKey()),
+                                now));
+            }
+        }
+    }
+
+    private static Map<String, Integer> resolveBhkMix(BuildingConfigDto cfg) {
+        Map<String, Integer> mix = ResidentialBhkTypes.emptyCountMap();
+        if (cfg.getBhkPerFloor() != null && !cfg.getBhkPerFloor().isEmpty()) {
+            for (String type : ResidentialBhkTypes.all()) {
+                Integer count = cfg.getBhkPerFloor().get(type);
+                mix.put(type, count != null ? Math.max(0, count) : 0);
+            }
+            return mix;
+        }
+        mix.put("1BHK", cfg.getBhk1PerFloor() != null ? cfg.getBhk1PerFloor() : 0);
+        mix.put("2BHK", cfg.getBhk2PerFloor() != null ? cfg.getBhk2PerFloor() : 0);
+        mix.put("3BHK", cfg.getBhk3PerFloor() != null ? cfg.getBhk3PerFloor() : 0);
+        return mix;
     }
 
     private Flat parkingFlat(Builder builder, Building building, int floor, int unit, Instant now) {
@@ -536,13 +676,6 @@ public class FlatService {
     }
 
     private static String normalizeBhkType(String bhkType) {
-        if (bhkType == null || bhkType.isBlank()) {
-            throw new IllegalArgumentException("BHK type is required.");
-        }
-        String normalized = bhkType.trim().toUpperCase(Locale.ROOT);
-        if (!RESIDENTIAL_BHK_TYPES.contains(normalized)) {
-            throw new IllegalArgumentException("BHK type must be one of: " + String.join(", ", RESIDENTIAL_BHK_TYPES));
-        }
-        return normalized;
+        return ResidentialBhkTypes.normalize(bhkType);
     }
 }

@@ -142,17 +142,11 @@
           <label class="form-label">Flats / floor</label>
           <input class="form-control" type="number" th:field="*{flatsPerFloor}" required min="1"/>
         </div>
-        <div class="col-auto">
-          <label class="form-label">1BHK / floor</label>
-          <input class="form-control" type="number" th:field="*{bhk1PerFloor}" min="0"/>
-        </div>
-        <div class="col-auto">
-          <label class="form-label">2BHK / floor</label>
-          <input class="form-control" type="number" th:field="*{bhk2PerFloor}" min="0"/>
-        </div>
-        <div class="col-auto">
-          <label class="form-label">3BHK / floor</label>
-          <input class="form-control" type="number" th:field="*{bhk3PerFloor}" min="0"/>
+        <div class="col-auto" th:each="bhkType : ${residentialBhkTypes}">
+          <label class="form-label" th:text="${bhkType + ' / floor'}">1BHK / floor</label>
+          <input class="form-control" type="number" min="0"
+                 th:name="|bhkPerFloor['${bhkType}']|"
+                 th:value="${config.bhkPerFloor != null && config.bhkPerFloor.containsKey(bhkType) ? config.bhkPerFloor.get(bhkType) : 0}"/>
         </div>
         <div class="col-12" th:if="${flatCount != null && flatCount > 0 && (activeBookingCount == null || activeBookingCount == 0)}">
           <div class="form-check">
@@ -167,12 +161,52 @@
                   th:disabled="${activeBookingCount != null && activeBookingCount > 0}">Generate</button>
         </div>
       </form>
-      <p class="text-muted small mb-0 mt-2">Residential floors = total minus parking. 1BHK+2BHK+3BHK must equal flats per floor.</p>
+      <p class="text-muted small mb-0 mt-2">Residential floors = total minus parking. BHK counts per floor must add up to flats per floor.</p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3" sec:authorize="hasRole('SUPER_ADMIN')" th:if="${flatCount != null && flatCount > 0}">
+    <div class="card-header">Add floors on top</div>
+    <div class="card-body">
+      <p class="text-muted small mb-2">
+        Extend the building upward without removing existing flats. New rows are added above
+        <strong th:text="'Floor ' + ${topFloorNumber}">Floor 0</strong> using the layout below
+        (defaults match the current top floor).
+      </p>
+      <form class="row g-2 align-items-end"
+            th:action="@{/buildings/{id}/flats/add-floors(id=${building.id})}"
+            method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <div class="col-auto">
+          <label class="form-label">Floors to add</label>
+          <input class="form-control" type="number" name="additionalFloors" required min="1" max="50" value="1"/>
+        </div>
+        <div class="col-auto">
+          <label class="form-label">Flats / floor</label>
+          <input class="form-control" type="number" name="flatsPerFloor"
+                 th:value="${building.flatsPerFloor}" required min="1"/>
+        </div>
+        <div class="col-auto" th:each="bhkType : ${residentialBhkTypes}">
+          <label class="form-label" th:text="${bhkType + ' / floor'}">1BHK / floor</label>
+          <input class="form-control" type="number" min="0"
+                 th:name="|bhkPerFloor['${bhkType}']|"
+                 th:value="${addFloorMix != null && addFloorMix.containsKey(bhkType) ? addFloorMix.get(bhkType) : 0}"/>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-outline-primary" type="submit">Add floors</button>
+        </div>
+      </form>
+      <p class="text-muted small mb-0 mt-2">New floors are residential only (above parking). Active bookings on lower floors are not affected.</p>
     </div>
   </div>
 
   <div id="flat-grid" class="mb-3"
-       th:attr="data-building-id=${building.id},data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''},data-platform-admin-edit=${platformAdminView}">
+       th:attr="data-building-id=${building.id},
+                data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''},
+                data-platform-admin-edit=${platformAdminView},
+                data-floor-plan-1bhk=${building.floorPlan1Bhk != null},
+                data-floor-plan-2bhk=${building.floorPlan2Bhk != null},
+                data-floor-plan-3bhk=${building.floorPlan3Bhk != null}">
     <div class="flat-grid-legend mb-2" th:if="${!#lists.isEmpty(floors)}">
       <span class="flat-grid-legend__item">
         <span class="flat-grid-legend__dot flat-grid-legend__dot--available"></span>
@@ -201,7 +235,7 @@
       <div class="flat-card-row flex-grow-1 min-w-0">
         <div th:each="flat : ${floor.flats()}"
              th:id="'flat-' + ${flat.id()}"
-             th:with="fpSlot=${flat.parking() ? null : (flat.bhkType() == '1BHK' && building.floorPlan1Bhk != null ? '1bhk' : (flat.bhkType() == '2BHK' && building.floorPlan2Bhk != null ? '2bhk' : (flat.bhkType() == '3BHK' && building.floorPlan3Bhk != null ? '3bhk' : null)))}"
+             th:with="fpSlot=${flat.parking() ? null : T(com.floor21.util.ResidentialBhkTypes).resolveFloorPlanSlot(flat.bhkType(), building)}"
              th:class="${flat.cardClass()}"
              th:attr="data-flat-id=${flat.id()},
                       data-type=${flat.bhkType()},
@@ -279,16 +313,31 @@
         <div class="modal-body pt-2 pb-3">
           <div class="row mb-3">
             <div class="col-md-6">
-              <div class="text-muted small">Type</div>
+              <div class="text-muted small">Type (BHK / unit)</div>
               <p id="panel-type" class="mb-2"></p>
+              <th:block sec:authorize="hasRole('SUPER_ADMIN')">
+                <select class="form-select form-select-sm mb-2 d-none admin-edit-field" id="admin-bhk" aria-label="BHK type">
+                  <option th:each="t : ${residentialBhkTypes}" th:value="${t}" th:text="${t}">2BHK</option>
+                </select>
+              </th:block>
               <div class="text-muted small">Floor</div>
               <p id="panel-floor" class="mb-0"></p>
             </div>
             <div class="col-md-6">
               <div class="text-muted small">Area (sqft)</div>
               <p id="panel-area" class="mb-2"></p>
+              <th:block sec:authorize="hasRole('SUPER_ADMIN')">
+                <input class="form-control form-control-sm mb-2 d-none admin-edit-field" type="number" id="admin-area" min="1" step="1" aria-label="Area in sqft"/>
+              </th:block>
               <div class="text-muted small">Price</div>
               <p id="panel-price" class="mb-0"></p>
+              <th:block sec:authorize="hasRole('SUPER_ADMIN')">
+                <input class="form-control form-control-sm d-none admin-edit-field" type="number" id="admin-price" min="0" step="1" aria-label="Base price"/>
+              </th:block>
+            </div>
+            <div class="col-12 d-none admin-edit-field" id="admin-save-row" sec:authorize="hasRole('SUPER_ADMIN')">
+              <button type="button" class="btn btn-sm btn-primary" id="admin-save-btn">Save BHK / area / price</button>
+              <span class="text-muted small ms-2">Platform admin only. Blocked while flat has an active booking.</span>
             </div>
           </div>
           <div class="d-flex flex-wrap gap-2 justify-content-center">
@@ -298,33 +347,11 @@
             <a id="client-info-btn" href="#" class="btn btn-outline-primary d-none">Client info</a>
           </div>
           <div id="flat-admin-panel" class="border-top pt-3 mt-3 d-none" sec:authorize="hasRole('SUPER_ADMIN')">
-            <h6 class="text-primary mb-2">Platform admin — edit flat layout</h6>
+            <h6 class="text-primary mb-2">Platform admin — layout tools</h6>
             <p class="text-muted small mb-2">
-              Change type, area, price, or <strong>partner</strong> for this flat.
+              Change <strong>BHK type</strong>, area, or price above, then click Save.
               To combine two units (e.g. two 2BHK into one 4BHK), pick another unit on this floor to remove, then merge.
             </p>
-            <div class="row g-2 mb-2">
-              <div class="col-md-3">
-                <label class="form-label small mb-0" for="admin-bhk">BHK type</label>
-                <select class="form-select form-select-sm" id="admin-bhk">
-                  <option value="1BHK">1BHK</option>
-                  <option value="2BHK">2BHK</option>
-                  <option value="3BHK">3BHK</option>
-                  <option value="4BHK">4BHK</option>
-                </select>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label small mb-0" for="admin-area">Area (sqft)</label>
-                <input class="form-control form-control-sm" type="number" id="admin-area" min="1" step="1"/>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label small mb-0" for="admin-price">Base price</label>
-                <input class="form-control form-control-sm" type="number" id="admin-price" min="0" step="1"/>
-              </div>
-              <div class="col-md-3 d-flex align-items-end">
-                <button type="button" class="btn btn-sm btn-primary w-100" id="admin-save-btn">Save details</button>
-              </div>
-            </div>
             <div class="row g-2 align-items-end border-top pt-2 mt-2">
               <div class="col-md-6">
                 <label class="form-label small mb-0" for="admin-partner">Partner</label>
@@ -373,7 +400,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=turbo-nav)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=studio-penthouse)}"></script>
 </div>
 </body>
 </html>

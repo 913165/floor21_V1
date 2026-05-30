@@ -4,6 +4,7 @@ import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.ImpersonationSession;
 import com.floor21.service.AccountService;
 import com.floor21.service.VaultAccessService;
+import com.floor21.util.ResidentialBhkTypes;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import java.time.Duration;
+import java.util.List;
 
 /** Exposes request path and signed-in account labels for layout fragments. */
 @ControllerAdvice
@@ -28,6 +30,11 @@ public class LayoutControllerAdvice {
     @ModelAttribute("sessionTimeoutSeconds")
     public long sessionTimeoutSeconds() {
         return serverSessionTimeout.toSeconds();
+    }
+
+    @ModelAttribute("residentialBhkTypes")
+    public List<String> residentialBhkTypes() {
+        return ResidentialBhkTypes.all();
     }
 
     @ModelAttribute("navServletPath")
