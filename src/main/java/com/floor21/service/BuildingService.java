@@ -6,8 +6,10 @@ import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.security.TenantContext;
+import com.floor21.util.ResidentialBhkTypes;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -130,6 +132,23 @@ public class BuildingService {
         if (form.getFlatsPerFloor() == null || form.getFlatsPerFloor() < 1) {
             throw new IllegalArgumentException("Flats per floor must be at least 1.");
         }
+        Map<String, Integer> mix = resolveFormMix(form);
+        int mixTotal = ResidentialBhkTypes.sumCounts(mix);
+        if (mixTotal > 0 && mixTotal != form.getFlatsPerFloor()) {
+            throw new IllegalArgumentException(
+                    "Unit counts per floor must add up to flats per floor (currently "
+                            + mixTotal
+                            + ", expected "
+                            + form.getFlatsPerFloor()
+                            + ").");
+        }
+    }
+
+    private static Map<String, Integer> resolveFormMix(Building form) {
+        if (form.getBhkPerFloor() != null && !form.getBhkPerFloor().isEmpty()) {
+            return ResidentialBhkTypes.normalizeMix(form.getBhkPerFloor());
+        }
+        return ResidentialBhkTypes.countsFromBuilding(form);
     }
 
     private static void applyFormFields(
@@ -144,9 +163,7 @@ public class BuildingService {
         entity.setTotalFloors(form.getTotalFloors());
         entity.setParkingFloors(form.getParkingFloors() != null ? form.getParkingFloors() : 0);
         entity.setFlatsPerFloor(form.getFlatsPerFloor());
-        entity.setBhk1PerFloor(form.getBhk1PerFloor() != null ? form.getBhk1PerFloor() : 0);
-        entity.setBhk2PerFloor(form.getBhk2PerFloor() != null ? form.getBhk2PerFloor() : 0);
-        entity.setBhk3PerFloor(form.getBhk3PerFloor() != null ? form.getBhk3PerFloor() : 0);
+        ResidentialBhkTypes.persistMixOnBuilding(entity, resolveFormMix(form));
         entity.setAddress(form.getAddress());
         entity.setCity(form.getCity());
         entity.setActive(form.getActive() != null ? form.getActive() : true);

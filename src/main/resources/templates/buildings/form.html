@@ -30,17 +30,17 @@
         <label class="form-label">Flats / floor</label>
         <input class="form-control" type="number" th:field="*{flatsPerFloor}" required min="1"/>
       </div>
-      <div class="col-md-3">
-        <label class="form-label">1BHK / floor</label>
-        <input class="form-control" type="number" th:field="*{bhk1PerFloor}" min="0"/>
+      <div class="col-md-3" th:each="bhkType : ${residentialBhkTypes}">
+        <label class="form-label" th:text="${bhkType + ' / floor'}">1BHK / floor</label>
+        <input class="form-control" type="number" min="0"
+               th:name="|bhkPerFloor['${bhkType}']|"
+               th:value="${building.bhkPerFloor != null && building.bhkPerFloor.containsKey(bhkType) ? building.bhkPerFloor.get(bhkType) : 0}"/>
       </div>
-      <div class="col-md-3">
-        <label class="form-label">2BHK / floor</label>
-        <input class="form-control" type="number" th:field="*{bhk2PerFloor}" min="0"/>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">3BHK / floor</label>
-        <input class="form-control" type="number" th:field="*{bhk3PerFloor}" min="0"/>
+      <div class="col-12">
+        <p class="text-muted small mb-0">
+          Unit counts per floor (Studio, 1–7 BHK, Penthouse) must add up to <strong>Flats / floor</strong> when you enter them.
+          Leave all at 0 if you will set the layout later on the flat grid.
+        </p>
       </div>
       <div class="col-12">
         <label class="form-label">Address</label>

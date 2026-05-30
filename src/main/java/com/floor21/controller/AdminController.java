@@ -7,6 +7,7 @@ import com.floor21.service.BuildingService;
 import com.floor21.service.PlatformAdminService;
 import com.floor21.service.PlatformAuditService;
 import com.floor21.service.PlatformSettingsService;
+import com.floor21.util.ResidentialBhkTypes;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -113,8 +114,10 @@ public class AdminController {
     @GetMapping("/{builderId}/buildings/new")
     public String newBuilding(@PathVariable UUID builderId, Model model) {
         Builder builder = builderRepository.findById(builderId).orElseThrow();
+        Building building = new Building();
+        building.setBhkPerFloor(ResidentialBhkTypes.emptyCountMap());
         model.addAttribute("pageTitle", "New building — " + builder.getCompanyName());
-        model.addAttribute("building", new Building());
+        model.addAttribute("building", building);
         model.addAttribute("builderLabel", builder.getCompanyName() + " (" + builder.getEmail() + ")");
         model.addAttribute("formAction", "/admin/builders/" + builderId + "/buildings/save");
         model.addAttribute("cancelHref", "/admin/builders/" + builderId + "/edit");

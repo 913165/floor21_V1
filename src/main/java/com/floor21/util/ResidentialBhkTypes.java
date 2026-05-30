@@ -1,5 +1,8 @@
 package com.floor21.util;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.floor21.entity.Building;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -9,6 +12,8 @@ import java.util.Set;
 
 /** Supported residential unit types for flat grid layout and admin edits. */
 public final class ResidentialBhkTypes {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private static final Set<String> NAMED_TYPES = Set.of("STUDIO", "PENTHOUSE");
 
@@ -45,10 +50,13 @@ public final class ResidentialBhkTypes {
     }
 
     public static Map<String, Integer> countsFromBuilding(Building building) {
-        Map<String, Integer> map = emptyCountMap();
         if (building == null) {
-            return map;
+            return emptyCountMap();
         }
+        if (building.getBhkMixPerFloor() != null && !building.getBhkMixPerFloor().isBlank()) {
+            return mixFromJson(building.getBhkMixPerFloor());
+        }
+        Map<String, Integer> map = emptyCountMap();
         if (building.getBhk1PerFloor() != null) {
             map.put("1BHK", building.getBhk1PerFloor());
         }
@@ -59,6 +67,47 @@ public final class ResidentialBhkTypes {
             map.put("3BHK", building.getBhk3PerFloor());
         }
         return map;
+    }
+
+    public static void persistMixOnBuilding(Building building, Map<String, Integer> mix) {
+        Map<String, Integer> normalized = normalizeMix(mix);
+        building.setBhkMixPerFloor(mixToJson(normalized));
+        building.setBhk1PerFloor(normalized.get("1BHK"));
+        building.setBhk2PerFloor(normalized.get("2BHK"));
+        building.setBhk3PerFloor(normalized.get("3BHK"));
+        building.setBhkPerFloor(normalized);
+    }
+
+    public static Map<String, Integer> normalizeMix(Map<String, Integer> mix) {
+        Map<String, Integer> normalized = emptyCountMap();
+        if (mix == null) {
+            return normalized;
+        }
+        for (String type : ALL) {
+            Integer count = mix.get(type);
+            normalized.put(type, count != null ? Math.max(0, count) : 0);
+        }
+        return normalized;
+    }
+
+    public static String mixToJson(Map<String, Integer> mix) {
+        try {
+            return JSON.writeValueAsString(normalizeMix(mix));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize unit mix", e);
+        }
+    }
+
+    public static Map<String, Integer> mixFromJson(String json) {
+        if (json == null || json.isBlank()) {
+            return emptyCountMap();
+        }
+        try {
+            Map<String, Integer> raw = JSON.readValue(json, new TypeReference<>() {});
+            return normalizeMix(raw);
+        } catch (JsonProcessingException e) {
+            return emptyCountMap();
+        }
     }
 
     public static String normalize(String unitType) {

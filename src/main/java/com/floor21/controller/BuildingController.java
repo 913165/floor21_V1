@@ -65,6 +65,7 @@ public class BuildingController {
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable UUID id, Model model) {
         Building building = buildingService.resolveForAccess(id);
+        building.setBhkPerFloor(ResidentialBhkTypes.countsFromBuilding(building));
         model.addAttribute("pageTitle", "Edit Building");
         model.addAttribute("building", building);
         if (isPlatformAdmin() && building.getBuilder() != null) {

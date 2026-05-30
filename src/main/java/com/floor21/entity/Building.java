@@ -9,7 +9,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -48,6 +51,14 @@ public class Building {
 
     @Column(name = "bhk3_per_floor")
     private Integer bhk3PerFloor = 0;
+
+    /** JSON map of unit-type counts per floor (Studio, 1BHK … 7BHK, Penthouse). */
+    @Column(name = "bhk_mix_per_floor", columnDefinition = "TEXT")
+    private String bhkMixPerFloor;
+
+    /** Bound from add/edit building form; not persisted directly. */
+    @Transient
+    private Map<String, Integer> bhkPerFloor = new LinkedHashMap<>();
 
     @Column(columnDefinition = "TEXT")
     private String address;

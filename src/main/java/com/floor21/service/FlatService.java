@@ -297,9 +297,7 @@ public class FlatService {
         building.setTotalFloors(total);
         building.setParkingFloors(parking);
         building.setFlatsPerFloor(perFloor);
-        building.setBhk1PerFloor(mix.getOrDefault("1BHK", 0));
-        building.setBhk2PerFloor(mix.getOrDefault("2BHK", 0));
-        building.setBhk3PerFloor(mix.getOrDefault("3BHK", 0));
+        ResidentialBhkTypes.persistMixOnBuilding(building, mix);
         buildingRepository.save(building);
 
         Instant now = Instant.now();
@@ -400,9 +398,7 @@ public class FlatService {
         building.setTotalFloors(
                 Math.max(building.getTotalFloors() != null ? building.getTotalFloors() : 0, newTop));
         building.setFlatsPerFloor(perFloor);
-        building.setBhk1PerFloor(mix.getOrDefault("1BHK", 0));
-        building.setBhk2PerFloor(mix.getOrDefault("2BHK", 0));
-        building.setBhk3PerFloor(mix.getOrDefault("3BHK", 0));
+        ResidentialBhkTypes.persistMixOnBuilding(building, mix);
         buildingRepository.save(building);
         return additionalFloors;
     }
