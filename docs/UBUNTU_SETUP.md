@@ -146,8 +146,12 @@ From the project root, with Postgres already up:
 
 ```bash
 chmod +x mvnw
-nohup ./mvnw spring-boot:run > app.log 2>&1 & tail -f app.log
+mkdir -p logs
+nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod -q > /dev/null 2>&1 &
+tail -f logs/floor21.log
 ```
+
+Application logs go to **`logs/floor21.log`** with Log4j2 rolling (10 MB per file, up to 5 archived files). Redirecting Maven output to `app.log` is no longer needed.
 
 Stop following the log with `Ctrl+C` (the app keeps running in the background).
 
@@ -205,5 +209,7 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y docker.io docker-compose
 git clone https://github.com/913165/floor21_V1.git && cd floor21_V1
 docker compose up -d postgres
-nohup ./mvnw spring-boot:run > app.log 2>&1 & tail -f app.log
+mkdir -p logs
+nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod -q > /dev/null 2>&1 &
+tail -f logs/floor21.log
 ```

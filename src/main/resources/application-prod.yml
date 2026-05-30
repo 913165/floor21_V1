@@ -5,6 +5,8 @@ spring:
     cache: true
 
 logging:
+  file:
+    path: logs
   level:
     root: INFO
     com.floor21: INFO
