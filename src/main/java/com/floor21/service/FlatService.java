@@ -369,13 +369,14 @@ public class FlatService {
                     "No flats on the grid yet. Use Generate flats to create the initial layout first.");
         }
         int topFloor = flatRepository.findMaxFloorNumberByBuilding_IdAndBuilder_Id(buildingId, builderId);
-        int perFloor =
+        Integer perFloorSetting =
                 cfg.getFlatsPerFloor() != null && cfg.getFlatsPerFloor() > 0
                         ? cfg.getFlatsPerFloor()
                         : building.getFlatsPerFloor();
-        if (perFloor == null || perFloor < 1) {
+        if (perFloorSetting == null || perFloorSetting < 1) {
             throw new IllegalArgumentException("Flats per floor must be at least 1.");
         }
+        int perFloor = perFloorSetting;
         Map<String, Integer> mix = resolveBhkMix(cfg);
         int mixTotal = ResidentialBhkTypes.sumCounts(mix);
         if (mixTotal != perFloor) {
@@ -464,7 +465,7 @@ public class FlatService {
         return mix;
     }
 
-    private Flat parkingFlat(Builder builder, Building building, int floor, int unit, Instant now) {
+    private static Flat parkingFlat(Builder builder, Building building, int floor, int unit, Instant now) {
         Flat f = new Flat();
         f.setBuilder(builder);
         f.setBuilding(building);
@@ -480,7 +481,7 @@ public class FlatService {
         return f;
     }
 
-    private Flat residentialFlat(
+    private static Flat residentialFlat(
             Builder builder,
             Building building,
             int floor,
