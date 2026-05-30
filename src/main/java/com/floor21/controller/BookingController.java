@@ -4,6 +4,7 @@ import com.floor21.entity.Booking;
 import com.floor21.repository.FlatRepository;
 import com.floor21.repository.UserRepository;
 import com.floor21.security.TenantContext;
+import com.floor21.util.FlatUnitTypes;
 import com.floor21.service.BookingService;
 import com.floor21.service.BrokerService;
 import com.floor21.service.ClientService;
@@ -88,8 +89,8 @@ public class BookingController {
         var builderId = TenantContext.requireBuilderId();
         model.addAttribute(
                 "flats",
-                flatRepository.findByBuilder_IdAndParkingFalseAndStatusInOrderByBuilding_BuildingNameAscFloorNumberAscUnitNumberAsc(
-                        builderId, List.of("AVAILABLE", "HOLD")));
+                flatRepository.findBookableResidentialByBuilder_IdAndStatusIn(
+                        builderId, FlatUnitTypes.amenityCodesUpper(), List.of("AVAILABLE", "HOLD")));
         model.addAttribute("executives", userRepository.findByBuilder_IdAndActiveTrueOrderByFullNameAsc(builderId));
         return "bookings/form";
     }
@@ -113,8 +114,10 @@ public class BookingController {
         var builderId = TenantContext.requireBuilderId();
         model.addAttribute(
                 "flats",
-                flatRepository.findByBuilder_IdAndParkingFalseAndStatusInOrderByBuilding_BuildingNameAscFloorNumberAscUnitNumberAsc(
-                        builderId, List.of("AVAILABLE", "HOLD", "BOOKED")));
+                flatRepository.findBookableResidentialByBuilder_IdAndStatusIn(
+                        builderId,
+                        FlatUnitTypes.amenityCodesUpper(),
+                        List.of("AVAILABLE", "HOLD", "BOOKED")));
         model.addAttribute("executives", userRepository.findByBuilder_IdAndActiveTrueOrderByFullNameAsc(builderId));
         return "bookings/form";
     }

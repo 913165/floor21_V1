@@ -204,6 +204,7 @@
        th:attr="data-building-id=${building.id},
                 data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''},
                 data-platform-admin-edit=${platformAdminView},
+                data-amenity-types=${#strings.listJoin(flatAmenityTypes, ',')},
                 data-floor-plan-1bhk=${building.floorPlan1Bhk != null},
                 data-floor-plan-2bhk=${building.floorPlan2Bhk != null},
                 data-floor-plan-3bhk=${building.floorPlan3Bhk != null}">
@@ -235,7 +236,8 @@
       <div class="flat-card-row flex-grow-1 min-w-0">
         <div th:each="flat : ${floor.flats()}"
              th:id="'flat-' + ${flat.id()}"
-             th:with="fpSlot=${flat.parking() ? null : T(com.floor21.util.ResidentialBhkTypes).resolveFloorPlanSlot(flat.bhkType(), building)}"
+             th:with="fpSlot=${flat.parking() or T(com.floor21.util.FlatUnitTypes).isAmenityCode(flat.bhkType()) ? null : T(com.floor21.util.ResidentialBhkTypes).resolveFloorPlanSlot(flat.bhkType(), building)},
+                      isAmenity=${T(com.floor21.util.FlatUnitTypes).isAmenityCode(flat.bhkType())}"
              th:class="${flat.cardClass()}"
              th:attr="data-flat-id=${flat.id()},
                       data-type=${flat.bhkType()},
@@ -244,6 +246,7 @@
                       data-status=${flat.status()},
                       data-area=${flat.areaSqft()},
                       data-parking=${flat.parking()},
+                      data-amenity=${isAmenity},
                       data-partner-id=${flat.assignedPartnerId()},
                       data-partner-name=${flat.assignedPartnerName()},
                       data-client-id=${flat.clientId()},
@@ -291,7 +294,7 @@
                       : (flat.status() == 'BOOKED' ? 'Booked' : (flat.status() == 'CANCELLED' ? 'Deactivated' : ''))}"></span>
               <span class="flat-owner-detail" th:if="${flat.bookableByCurrentUser()}" th:text="${flat.ownerDetail()}"></span>
             </div>
-            <button th:if="${!flat.parking() and flat.bookableByCurrentUser()}"
+            <button th:if="${flat.bookableByCurrentUser() or platformAdminView}"
                     type="button"
                     class="flat-quick-link"
                     th:attr="data-flat-id=${flat.id()}">
@@ -316,8 +319,14 @@
               <div class="text-muted small">Type (BHK / unit)</div>
               <p id="panel-type" class="mb-2"></p>
               <th:block sec:authorize="hasRole('SUPER_ADMIN')">
-                <select class="form-select form-select-sm mb-2 d-none admin-edit-field" id="admin-bhk" aria-label="BHK type">
-                  <option th:each="t : ${residentialBhkTypes}" th:value="${t}" th:text="${t}">2BHK</option>
+                <select class="form-select form-select-sm mb-2 d-none admin-edit-field" id="admin-bhk" aria-label="Unit type">
+                  <optgroup label="Residential">
+                    <option th:each="t : ${residentialBhkTypes}" th:value="${t}" th:text="${t}">2BHK</option>
+                  </optgroup>
+                  <optgroup label="Parking &amp; amenities">
+                    <option value="PKG">PKG (Parking)</option>
+                    <option th:each="t : ${flatAmenityTypes}" th:value="${t}" th:text="${t}">GYM</option>
+                  </optgroup>
                 </select>
               </th:block>
               <div class="text-muted small">Floor</div>
@@ -336,8 +345,9 @@
               </th:block>
             </div>
             <div class="col-12 d-none admin-edit-field" id="admin-save-row" sec:authorize="hasRole('SUPER_ADMIN')">
-              <button type="button" class="btn btn-sm btn-primary" id="admin-save-btn">Save BHK / area / price</button>
-              <span class="text-muted small ms-2">Platform admin only. Blocked while flat has an active booking.</span>
+              <button type="button" class="btn btn-sm btn-primary" id="admin-save-btn">Save unit type / area / price</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="admin-apply-floor-btn">Apply to whole floor</button>
+              <span class="text-muted small ms-2">Platform admin only. Blocked while any unit on the floor has an active booking.</span>
             </div>
           </div>
           <div class="d-flex flex-wrap gap-2 justify-content-center">
@@ -349,8 +359,9 @@
           <div id="flat-admin-panel" class="border-top pt-3 mt-3 d-none" sec:authorize="hasRole('SUPER_ADMIN')">
             <h6 class="text-primary mb-2">Platform admin — layout tools</h6>
             <p class="text-muted small mb-2">
-              Change <strong>BHK type</strong>, area, or price above, then click Save.
-              To combine two units (e.g. two 2BHK into one 4BHK), pick another unit on this floor to remove, then merge.
+              Set unit type to a BHK, <strong>PKG (parking)</strong>, or an amenity (GYM, CLUB, etc.).
+              Use <strong>Apply to whole floor</strong> to convert every unit on that floor at once
+              (e.g. make floor 11 all parking).
             </p>
             <div class="row g-2 align-items-end border-top pt-2 mt-2">
               <div class="col-md-6">
@@ -400,7 +411,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=studio-penthouse)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=unit-types)}"></script>
 </div>
 </body>
 </html>

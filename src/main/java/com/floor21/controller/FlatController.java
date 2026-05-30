@@ -6,6 +6,7 @@ import com.floor21.dto.FlatPartnerAssignDto;
 import com.floor21.entity.Flat;
 import com.floor21.service.FlatService;
 import com.floor21.service.PartnerFlatAllocationService;
+import com.floor21.util.FlatUnitTypes;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -119,6 +120,8 @@ public class FlatController {
                 "areaSqft", flat.getAreaSqft(),
                 "basePrice", flat.getBasePrice(),
                 "status", flat.getStatus(),
-                "floorNumber", flat.getFloorNumber());
+                "floorNumber", flat.getFloorNumber(),
+                "parking", Boolean.TRUE.equals(flat.getParking()),
+                "amenity", FlatUnitTypes.isAmenityCode(flat.getBhkType()));
     }
 }

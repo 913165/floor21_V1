@@ -4,6 +4,7 @@ import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.ImpersonationSession;
 import com.floor21.service.AccountService;
 import com.floor21.service.VaultAccessService;
+import com.floor21.util.FlatUnitTypes;
 import com.floor21.util.ResidentialBhkTypes;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -35,6 +36,16 @@ public class LayoutControllerAdvice {
     @ModelAttribute("residentialBhkTypes")
     public List<String> residentialBhkTypes() {
         return ResidentialBhkTypes.all();
+    }
+
+    @ModelAttribute("flatAmenityTypes")
+    public List<String> flatAmenityTypes() {
+        return FlatUnitTypes.amenityTypes();
+    }
+
+    @ModelAttribute("flatAdminUnitTypes")
+    public List<String> flatAdminUnitTypes() {
+        return FlatUnitTypes.allForAdminSelect();
     }
 
     @ModelAttribute("navServletPath")

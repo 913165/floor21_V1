@@ -30,6 +30,64 @@
     return grid && grid.getAttribute("data-platform-admin-edit") === "true";
   }
 
+  function amenityTypeCodes() {
+    var grid = document.getElementById("flat-grid");
+    if (!grid) return [];
+    return (grid.getAttribute("data-amenity-types") || "")
+      .split(",")
+      .map(function (s) {
+        return s.trim().toUpperCase();
+      })
+      .filter(Boolean);
+  }
+
+  function isAmenityType(type) {
+    if (!type) return false;
+    return amenityTypeCodes().indexOf(String(type).trim().toUpperCase()) >= 0;
+  }
+
+  function isNonBookableUnit(cardEl) {
+    if (!cardEl) return false;
+    if (cardEl.dataset.parking === "true") return true;
+    if (cardEl.dataset.amenity === "true") return true;
+    return isAmenityType(cardEl.dataset.type);
+  }
+
+  function canOpenFlatPanel(cardEl) {
+    if (!cardEl) return false;
+    if (isPlatformAdminEdit()) return true;
+    return isFlatBookable(cardEl) && !isNonBookableUnit(cardEl);
+  }
+
+  function applyCardTypeClasses(cardEl, opts) {
+    if (!cardEl || !opts) return;
+    var parking = !!opts.parking;
+    var amenity = !!opts.amenity;
+    cardEl.dataset.parking = parking ? "true" : "false";
+    cardEl.dataset.amenity = amenity ? "true" : "false";
+    cardEl.classList.remove(
+      "flat-available",
+      "flat-booked",
+      "flat-hold",
+      "flat-deactivated",
+      "flat-parking",
+      "flat-amenity"
+    );
+    if (parking) {
+      cardEl.classList.add("flat-parking");
+    } else if (amenity) {
+      cardEl.classList.add("flat-amenity");
+    } else if (opts.status === "AVAILABLE") {
+      cardEl.classList.add("flat-available");
+    } else if (opts.status === "BOOKED") {
+      cardEl.classList.add("flat-booked");
+    } else if (opts.status === "CANCELLED") {
+      cardEl.classList.add("flat-deactivated");
+    } else {
+      cardEl.classList.add("flat-hold");
+    }
+  }
+
   function showAdminError(message) {
     var el = document.getElementById("admin-error");
     if (!el) return;
@@ -116,8 +174,20 @@
     if (flat.basePrice != null) cardEl.dataset.price = String(flat.basePrice);
     if (flat.status != null) cardEl.dataset.status = flat.status;
     if (flat.floorNumber != null) cardEl.dataset.floor = String(flat.floorNumber);
+    var parking = flat.parking === true || flat.parking === "true";
+    var amenity = flat.amenity === true || flat.amenity === "true" || isAmenityType(flat.bhkType);
+    applyCardTypeClasses(cardEl, {
+      parking: parking,
+      amenity: amenity,
+      status: flat.status || cardEl.dataset.status,
+    });
     var typeSpan = cardEl.querySelector(".flat-type");
     if (typeSpan && flat.bhkType) typeSpan.textContent = flat.bhkType;
+    if (parking || amenity) {
+      delete cardEl.dataset.floorPlanSlot;
+      stripFloorPlanTriggers(cardEl);
+      return;
+    }
     var slot = resolveFloorPlanSlot(flat.bhkType);
     if (slot) {
       cardEl.dataset.floorPlanSlot = slot;
@@ -221,6 +291,15 @@
       if (area) area.value = cardEl.dataset.area || "";
       if (price) price.value = cardEl.dataset.price || "";
       if (partner) partner.value = cardEl.dataset.partnerId || "";
+      var nonBookable = isNonBookableUnit(cardEl);
+      ["admin-partner", "admin-partner-save", "admin-merge-remove", "admin-merge-btn", "admin-delete-btn"].forEach(
+        function (id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          var row = el.closest(".row");
+          if (row) row.classList.toggle("d-none", nonBookable);
+        }
+      );
       var adminDelete = document.getElementById("admin-delete-btn");
       if (adminDelete) {
         var isInactive = cardEl.dataset.status === "CANCELLED";
@@ -368,6 +447,7 @@
         el.dataset.price = flat.basePrice;
         el.dataset.area = flat.areaSqft;
         el.dataset.parking = flat.parking;
+        el.dataset.amenity = isAmenityType(flat.bhkType);
         el.dataset.bookable = flat.bookableByCurrentUser === false ? "false" : "true";
         if (flat.assignedPartnerId) {
           el.dataset.partnerId = flat.assignedPartnerId;
@@ -385,20 +465,12 @@
         syncCardOwner(el, flat);
         var typeSpan = el.querySelector(".flat-type");
         if (typeSpan && flat.bhkType) typeSpan.textContent = flat.bhkType;
-        el.classList.remove(
-          "flat-available",
-          "flat-booked",
-          "flat-hold",
-          "flat-deactivated",
-          "flat-parking",
-          "flat-card--other-partner"
-        );
-        if (flat.parking) el.classList.add("flat-parking");
-        else if (flat.status === "AVAILABLE") el.classList.add("flat-available");
-        else if (flat.status === "BOOKED") el.classList.add("flat-booked");
-        else if (flat.status === "CANCELLED") el.classList.add("flat-deactivated");
-        else el.classList.add("flat-hold");
-        if (flat.bookableByCurrentUser === false && !flat.parking) {
+        applyCardTypeClasses(el, {
+          parking: flat.parking === true,
+          amenity: isAmenityType(flat.bhkType),
+          status: flat.status,
+        });
+        if (flat.bookableByCurrentUser === false && !flat.parking && !isAmenityType(flat.bhkType)) {
           el.classList.add("flat-card--other-partner");
           delete el.dataset.floorPlanSlot;
         }
@@ -527,28 +599,32 @@
 
   function syncActionButtons(cardEl) {
     var bookable = isFlatBookable(cardEl);
+    var nonBookable = isNonBookableUnit(cardEl);
     var hold = document.getElementById("hold-btn");
     var book = document.getElementById("book-btn");
     var panelFp = document.getElementById("panel-floor-plan-btn");
     if (hold) {
-      hold.disabled = !bookable;
-      hold.classList.toggle("disabled", !bookable);
-      hold.title = bookable ? "" : "Not assigned to you";
+      hold.disabled = !bookable || nonBookable;
+      hold.classList.toggle("disabled", !bookable || nonBookable);
+      hold.title = bookable && !nonBookable ? "" : nonBookable ? "Not a bookable unit" : "Not assigned to you";
     }
     if (book) {
       var statusOk =
           cardEl.dataset.status === "AVAILABLE" || cardEl.dataset.status === "HOLD";
-      book.classList.toggle("disabled", !bookable || !statusOk);
+      book.classList.toggle("disabled", !bookable || !statusOk || nonBookable);
       if (!bookable) {
         book.title = "Not assigned to you";
+      } else if (nonBookable) {
+        book.title = "Not a bookable unit";
       } else {
         book.removeAttribute("title");
       }
     }
     if (panelFp) {
-      panelFp.disabled = !bookable;
-      panelFp.classList.toggle("disabled", !bookable);
-      panelFp.title = bookable ? "" : "Floor plan not available — flat not assigned to you";
+      panelFp.disabled = !bookable || nonBookable;
+      panelFp.classList.toggle("disabled", !bookable || nonBookable);
+      panelFp.title =
+        bookable && !nonBookable ? "" : nonBookable ? "Not a residential unit" : "Floor plan not available — flat not assigned to you";
     }
     syncFloorPlanLink(cardEl);
   }
@@ -560,8 +636,7 @@
   }
 
   window.floor21SelectFlat = function (el, showModal) {
-    if (el.dataset.parking === "true") return;
-    if (!isFlatBookable(el)) return;
+    if (!canOpenFlatPanel(el)) return;
     selectedFlatId = el.dataset.flatId;
     var titleEl = document.getElementById("panel-title");
     var flatNumEl = el.querySelector(".flat-number");
@@ -703,7 +778,7 @@
       hold.addEventListener("click", async function () {
         if (!selectedFlatId) return;
         var el = document.getElementById("flat-" + selectedFlatId);
-        if (!el || el.dataset.parking === "true") return;
+        if (!el || isNonBookableUnit(el)) return;
         if (!isFlatBookable(el)) {
           window.alert("This flat is not assigned to you.");
           return;
@@ -757,6 +832,47 @@
           syncAdminPanel(card);
           syncActionButtons(card);
         }
+      });
+    }
+
+    var adminApplyFloor = document.getElementById("admin-apply-floor-btn");
+    if (adminApplyFloor) {
+      adminApplyFloor.addEventListener("click", async function () {
+        if (!selectedFlatId) return;
+        var card = document.getElementById("flat-" + selectedFlatId);
+        var grid = document.getElementById("flat-grid");
+        var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+        var floorNumber = card ? card.dataset.floor : null;
+        if (!buildingId || !floorNumber) return;
+        var form = readAdminForm();
+        if (
+          !window.confirm(
+            "Apply " +
+              (form.bhkType || "this type") +
+              " to every unit on floor " +
+              floorNumber +
+              "?"
+          )
+        ) {
+          return;
+        }
+        showAdminError("");
+        var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+        var res = await fetch(
+          appRoot() + "/buildings/" + buildingId + "/flats/floor/" + encodeURIComponent(floorNumber) + "/details",
+          {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify(form),
+          }
+        );
+        if (!res.ok) {
+          showAdminError(await parseErrorResponse(res));
+          return;
+        }
+        await refreshGrid();
+        var updated = document.getElementById("flat-" + selectedFlatId);
+        if (updated) window.floor21SelectFlat(updated, false);
       });
     }
 
@@ -864,7 +980,7 @@
             e.preventDefault();
             e.stopPropagation();
             var cardFromQuick = quick.closest(".flat-card");
-            if (cardFromQuick && cardFromQuick.dataset.parking !== "true") {
+            if (cardFromQuick && canOpenFlatPanel(cardFromQuick)) {
               window.floor21SelectFlat(cardFromQuick);
             }
             return;
@@ -874,7 +990,7 @@
           if (fp) {
             e.preventDefault();
             e.stopPropagation();
-            if (!cardForFp || cardForFp.dataset.parking === "true") return;
+            if (!cardForFp || isNonBookableUnit(cardForFp)) return;
             if (!isFlatBookable(cardForFp)) return;
             var url = fp.getAttribute("data-floor-plan-url") || floorPlanUrlForCard(cardForFp);
             if (url) {
@@ -885,8 +1001,7 @@
           }
           var card = e.target.closest(".flat-card");
           if (!card || !grid.contains(card)) return;
-          if (card.dataset.parking === "true") return;
-          if (!isFlatBookable(card)) return;
+          if (!canOpenFlatPanel(card)) return;
           window.floor21SelectFlat(card);
         }
       );

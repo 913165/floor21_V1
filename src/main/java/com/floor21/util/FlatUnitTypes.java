@@ -1,0 +1,132 @@
+package com.floor21.util;
+
+import com.floor21.entity.Flat;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+/** Residential BHK types plus parking and amenity unit labels for flat grid admin edits. */
+public final class FlatUnitTypes {
+
+    private static final Set<String> PARKING_CODES = Set.of("PKG", "PARKING");
+
+    private static final List<String> AMENITY =
+            List.of("GYM", "CLUB", "LOBBY", "TERRACE", "STORAGE", "OFFICE", "MECHANICAL", "REFUGE");
+
+    private FlatUnitTypes() {}
+
+    public static List<String> amenityTypes() {
+        return AMENITY;
+    }
+
+    /** All unit types shown in platform-admin flat edit (residential + parking + amenities). */
+    public static List<String> allForAdminSelect() {
+        List<String> all = new ArrayList<>(ResidentialBhkTypes.all());
+        all.add("PKG");
+        all.addAll(AMENITY);
+        return all;
+    }
+
+    public static Set<String> amenityCodesUpper() {
+        return Set.copyOf(AMENITY);
+    }
+
+    public static boolean isParkingCode(String unitType) {
+        if (unitType == null || unitType.isBlank()) {
+            return false;
+        }
+        return PARKING_CODES.contains(unitType.trim().toUpperCase(Locale.ROOT));
+    }
+
+    public static boolean isAmenityCode(String unitType) {
+        if (unitType == null || unitType.isBlank()) {
+            return false;
+        }
+        return AMENITY.contains(unitType.trim().toUpperCase(Locale.ROOT));
+    }
+
+    public static boolean isNonBookable(Flat flat) {
+        if (flat == null) {
+            return true;
+        }
+        if (Boolean.TRUE.equals(flat.getParking())) {
+            return true;
+        }
+        return isAmenityCode(flat.getBhkType());
+    }
+
+    public static String normalize(String unitType) {
+        if (unitType == null || unitType.isBlank()) {
+            throw new IllegalArgumentException("Unit type is required.");
+        }
+        String trimmed = unitType.trim().toUpperCase(Locale.ROOT).replaceAll("\\s+", "");
+        if (isParkingCode(trimmed)) {
+            return "PKG";
+        }
+        if (isAmenityCode(trimmed)) {
+            return trimmed;
+        }
+        return ResidentialBhkTypes.normalize(trimmed);
+    }
+
+    public static void applyToFlat(Flat flat, String unitType, BigDecimal areaSqft, BigDecimal basePrice) {
+        String normalized = normalize(unitType);
+        flat.setBhkType(normalized);
+        if (isParkingCode(normalized)) {
+            flat.setParking(true);
+            flat.setAreaSqft(areaSqft != null ? areaSqft : BigDecimal.valueOf(150));
+            flat.setBasePrice(basePrice != null ? basePrice : BigDecimal.ZERO);
+            if (!"BOOKED".equals(flat.getStatus())) {
+                flat.setStatus("AVAILABLE");
+            }
+            return;
+        }
+        flat.setParking(false);
+        if (isAmenityCode(normalized)) {
+            flat.setAreaSqft(areaSqft != null ? areaSqft : defaultAmenityArea(normalized));
+            flat.setBasePrice(basePrice != null ? basePrice : BigDecimal.ZERO);
+            if (!"BOOKED".equals(flat.getStatus())) {
+                flat.setStatus("AVAILABLE");
+            }
+            return;
+        }
+        if (areaSqft != null) {
+            if (areaSqft.signum() <= 0) {
+                throw new IllegalArgumentException("Area must be greater than zero.");
+            }
+            flat.setAreaSqft(areaSqft);
+        }
+        if (basePrice != null) {
+            if (basePrice.signum() < 0) {
+                throw new IllegalArgumentException("Price cannot be negative.");
+            }
+            flat.setBasePrice(basePrice);
+        }
+    }
+
+    public static String displayLabel(String unitType) {
+        if (unitType == null || unitType.isBlank()) {
+            return "";
+        }
+        if (isParkingCode(unitType) || "PKG".equalsIgnoreCase(unitType.trim())) {
+            return "PKG";
+        }
+        return unitType.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private static BigDecimal defaultAmenityArea(String amenityCode) {
+        return switch (amenityCode) {
+            case "GYM" -> BigDecimal.valueOf(800);
+            case "CLUB" -> BigDecimal.valueOf(1200);
+            case "LOBBY" -> BigDecimal.valueOf(400);
+            case "TERRACE" -> BigDecimal.valueOf(600);
+            case "STORAGE" -> BigDecimal.valueOf(100);
+            case "OFFICE" -> BigDecimal.valueOf(350);
+            case "MECHANICAL" -> BigDecimal.valueOf(250);
+            case "REFUGE" -> BigDecimal.valueOf(200);
+            default -> BigDecimal.valueOf(300);
+        };
+    }
+}

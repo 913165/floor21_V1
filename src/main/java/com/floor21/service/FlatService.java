@@ -16,6 +16,7 @@ import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.security.TenantContext;
+import com.floor21.util.FlatUnitTypes;
 import com.floor21.util.ResidentialBhkTypes;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -86,7 +87,7 @@ public class FlatService {
                                                 partnerFlatAllocationService.isBookableByCurrentUser(
                                                         buildingId, assignedPartnerId);
                                         String cardClass = resolveCardClass(f, b, bookable);
-                                        if (!bookable && !Boolean.TRUE.equals(f.getParking())) {
+                                        if (!bookable && !FlatUnitTypes.isNonBookable(f)) {
                                             cardClass = cardClass + " flat-card--other-partner";
                                         }
                                         String ownerTitle =
@@ -116,7 +117,7 @@ public class FlatService {
                                                 bookable);
                                     })
                             .toList();
-            rows.add(new FlatGridFloorDto("Floor " + floor, cells));
+            rows.add(new FlatGridFloorDto(floor, "Floor " + floor, cells));
         }
         return rows;
     }
@@ -135,8 +136,10 @@ public class FlatService {
 
     private static String resolveCardClass(Flat flat, Booking booking, boolean bookableByCurrentUser) {
         String tone;
-        if (Boolean.TRUE.equals(flat.getParking())) {
-            tone = "flat-parking";
+        if (FlatUnitTypes.isNonBookable(flat)) {
+            tone = FlatUnitTypes.isParkingCode(flat.getBhkType()) || Boolean.TRUE.equals(flat.getParking())
+                    ? "flat-parking"
+                    : "flat-amenity";
         } else if ("AVAILABLE".equals(flat.getStatus())) {
             tone = "flat-available";
         } else if ("BOOKED".equals(flat.getStatus())) {
@@ -512,8 +515,8 @@ public class FlatService {
             TenantContext.requireBuildingAccess(flat.getBuilding().getId());
             partnerFlatAllocationService.assertCanManageFlat(flat.getBuilding().getId(), flatId);
         }
-        if (Boolean.TRUE.equals(flat.getParking())) {
-            throw new IllegalArgumentException("Parking slots cannot change status");
+        if (FlatUnitTypes.isNonBookable(flat)) {
+            throw new IllegalArgumentException("Parking and amenity units cannot change status");
         }
         if (!List.of("AVAILABLE", "HOLD", "BOOKED", "CANCELLED").contains(status)) {
             throw new IllegalArgumentException("Invalid status");
@@ -524,23 +527,39 @@ public class FlatService {
 
     @Transactional
     public Flat updateFlatAsPlatformAdmin(UUID flatId, FlatAdminUpdateDto dto) {
-        Flat flat = requireResidentialFlatForAdmin(flatId);
+        Flat flat = requireFlatForAdmin(flatId);
         assertNoActiveBooking(flatId, "Cannot edit flat details while an active booking exists.");
-        String bhk = normalizeBhkType(dto.bhkType());
-        flat.setBhkType(bhk);
-        if (dto.areaSqft() != null) {
-            if (dto.areaSqft().signum() <= 0) {
-                throw new IllegalArgumentException("Area must be greater than zero.");
-            }
-            flat.setAreaSqft(dto.areaSqft());
-        }
-        if (dto.basePrice() != null) {
-            if (dto.basePrice().signum() < 0) {
-                throw new IllegalArgumentException("Price cannot be negative.");
-            }
-            flat.setBasePrice(dto.basePrice());
-        }
+        FlatUnitTypes.applyToFlat(flat, dto.bhkType(), dto.areaSqft(), dto.basePrice());
         return flatRepository.save(flat);
+    }
+
+    @Transactional
+    public List<Flat> updateFloorAsPlatformAdmin(UUID buildingId, int floorNumber, FlatAdminUpdateDto dto) {
+        if (floorNumber < 1) {
+            throw new IllegalArgumentException("Invalid floor number.");
+        }
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> flats =
+                flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                        buildingId, builderId, floorNumber);
+        if (flats.isEmpty()) {
+            throw new IllegalArgumentException("No units on floor " + floorNumber + ".");
+        }
+        long blocked =
+                flats.stream().filter(f -> bookingRepository.countActiveByFlatId(f.getId()) > 0).count();
+        if (blocked > 0) {
+            throw new IllegalArgumentException(
+                    "Cannot change floor "
+                            + floorNumber
+                            + " while "
+                            + blocked
+                            + " unit(s) have an active booking.");
+        }
+        for (Flat flat : flats) {
+            FlatUnitTypes.applyToFlat(flat, dto.bhkType(), dto.areaSqft(), dto.basePrice());
+        }
+        return flatRepository.saveAll(flats);
     }
 
     @Transactional
@@ -620,7 +639,7 @@ public class FlatService {
         return flatRepository
                 .findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(buildingId, builderId)
                 .stream()
-                .filter(f -> !Boolean.TRUE.equals(f.getParking()))
+                .filter(f -> !FlatUnitTypes.isNonBookable(f))
                 .filter(f -> Objects.equals(f.getFloorNumber(), keep.getFloorNumber()))
                 .filter(f -> !f.getId().equals(keep.getId()))
                 .filter(f -> List.of("AVAILABLE", "HOLD").contains(f.getStatus()))
@@ -654,14 +673,19 @@ public class FlatService {
                 true);
     }
 
-    private Flat requireResidentialFlatForAdmin(UUID flatId) {
+    private Flat requireFlatForAdmin(UUID flatId) {
         Flat flat =
                 flatRepository
                         .findByIdWithBuilding(flatId)
                         .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
         buildingService.resolveForAccess(flat.getBuilding().getId());
-        if (Boolean.TRUE.equals(flat.getParking())) {
-            throw new IllegalArgumentException("Parking slots cannot be edited.");
+        return flat;
+    }
+
+    private Flat requireResidentialFlatForAdmin(UUID flatId) {
+        Flat flat = requireFlatForAdmin(flatId);
+        if (FlatUnitTypes.isNonBookable(flat)) {
+            throw new IllegalArgumentException("Use unit type edit for parking and amenity slots.");
         }
         return flat;
     }

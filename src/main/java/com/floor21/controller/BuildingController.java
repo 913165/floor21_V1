@@ -1,6 +1,7 @@
 package com.floor21.controller;
 
 import com.floor21.dto.BuildingConfigDto;
+import com.floor21.dto.FlatAdminUpdateDto;
 import com.floor21.entity.Building;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.service.BuildingFloorPlanService;
@@ -32,10 +33,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -242,6 +244,21 @@ public class BuildingController {
     @ResponseBody
     public Object flatData(@PathVariable UUID id) {
         return flatService.getGridData(id);
+    }
+
+    @PostMapping(value = "/{id}/flats/floor/{floorNumber}/details", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> updateFloorDetails(
+            @PathVariable UUID id,
+            @PathVariable int floorNumber,
+            @Valid @RequestBody FlatAdminUpdateDto body) {
+        try {
+            int updated = flatService.updateFloorAsPlatformAdmin(id, floorNumber, body).size();
+            return ResponseEntity.ok(Map.of("ok", true, "floorNumber", floorNumber, "updatedCount", updated));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
     }
 
     @PostMapping("/{id}/flats/generate")

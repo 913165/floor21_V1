@@ -23,6 +23,20 @@ public interface FlatRepository extends JpaRepository<Flat, UUID> {
     java.util.List<Flat> findByBuilder_IdAndParkingFalseAndStatusInOrderByBuilding_BuildingNameAscFloorNumberAscUnitNumberAsc(
             UUID builderId, java.util.Collection<String> statuses);
 
+    @Query(
+            """
+            select f from Flat f
+            where f.builder.id = :builderId
+              and f.parking = false
+              and upper(f.bhkType) not in :amenityTypes
+              and f.status in :statuses
+            order by f.building.buildingName asc, f.floorNumber asc, f.unitNumber asc
+            """)
+    java.util.List<Flat> findBookableResidentialByBuilder_IdAndStatusIn(
+            @Param("builderId") UUID builderId,
+            @Param("amenityTypes") java.util.Collection<String> amenityTypes,
+            @Param("statuses") java.util.Collection<String> statuses);
+
     long countByBuilder_Id(UUID builderId);
 
     long countByBuilder_IdAndStatus(UUID builderId, String status);

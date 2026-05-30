@@ -1023,8 +1023,19 @@ body.modal-open .modal-backdrop {
   cursor: default;
 }
 
+.flat-amenity {
+  background: #dde4ec;
+  border-color: #5c7a99;
+  cursor: default;
+}
+
+[data-bs-theme="dark"] .flat-amenity {
+  background: #2a3540;
+  border-color: #5c7a99;
+}
+
 .flat-card--other-partner,
-.flat-card[data-bookable="false"]:not(.flat-parking) {
+.flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity) {
   background: #eceff1 !important;
   border-color: #b0bec5 !important;
   border-style: dashed;
@@ -1035,7 +1046,7 @@ body.modal-open .modal-backdrop {
 }
 
 .flat-card--other-partner:hover,
-.flat-card[data-bookable="false"]:not(.flat-parking):hover {
+.flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):hover {
   transform: none;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
   filter: grayscale(0.35);

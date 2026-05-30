@@ -10,6 +10,7 @@ import com.floor21.repository.BookingRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.repository.PartnerFlatAssignmentRepository;
 import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.util.FlatUnitTypes;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
 import java.util.ArrayList;
@@ -64,7 +65,7 @@ public class PartnerFlatAllocationService {
                 .findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
                         buildingId, building.getBuilder().getId())
                 .stream()
-                .filter(f -> !Boolean.TRUE.equals(f.getParking()))
+                .filter(f -> !FlatUnitTypes.isNonBookable(f))
                 .map(
                         f ->
                                 new PartnerFlatPickDto(
@@ -133,8 +134,8 @@ public class PartnerFlatAllocationService {
                         .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
         UUID buildingId = flat.getBuilding().getId();
         buildingService.resolveForAccess(buildingId);
-        if (Boolean.TRUE.equals(flat.getParking())) {
-            throw new IllegalArgumentException("Parking units cannot be assigned to a partner.");
+        if (FlatUnitTypes.isNonBookable(flat)) {
+            throw new IllegalArgumentException("Parking and amenity units cannot be assigned to a partner.");
         }
         if (bookingRepository.countActiveByFlatId(flatId) > 0) {
             throw new IllegalArgumentException(
@@ -185,7 +186,7 @@ public class PartnerFlatAllocationService {
                         .findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
                                 buildingId, builderId)
                         .stream()
-                        .filter(f -> !Boolean.TRUE.equals(f.getParking()))
+                        .filter(f -> !FlatUnitTypes.isNonBookable(f))
                         .toList();
         Set<UUID> residentialIds = residential.stream().map(Flat::getId).collect(Collectors.toSet());
 
