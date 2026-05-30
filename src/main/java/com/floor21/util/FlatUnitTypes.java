@@ -47,11 +47,33 @@ public final class FlatUnitTypes {
         return AMENITY.contains(unitType.trim().toUpperCase(Locale.ROOT));
     }
 
+    public static boolean isDuplexSecondary(Flat flat) {
+        return flat != null && flat.getDuplexPrimaryFlatId() != null;
+    }
+
+    public static boolean isDuplexPrimary(Flat flat) {
+        return flat != null && flat.getDuplexSecondaryFlatId() != null;
+    }
+
+    public static boolean isMergeAbsorbed(Flat flat) {
+        return flat != null && flat.getMergedIntoFlatId() != null;
+    }
+
+    public static boolean isMergePrimary(Flat flat) {
+        return flat != null && flat.getMergedAbsorbedFlatId() != null;
+    }
+
     public static boolean isNonBookable(Flat flat) {
         if (flat == null) {
             return true;
         }
         if (Boolean.TRUE.equals(flat.getParking())) {
+            return true;
+        }
+        if (isDuplexSecondary(flat)) {
+            return true;
+        }
+        if (isMergeAbsorbed(flat)) {
             return true;
         }
         return isAmenityCode(flat.getBhkType());

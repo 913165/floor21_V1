@@ -200,7 +200,8 @@
     </div>
   </div>
 
-  <div id="flat-grid" class="mb-3"
+    <div id="flat-grid-toast" class="alert alert-success d-none mb-2" role="status" aria-live="polite"></div>
+    <div id="flat-grid" class="flat-grid-shell mb-3"
        th:attr="data-building-id=${building.id},
                 data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''},
                 data-platform-admin-edit=${platformAdminView},
@@ -208,6 +209,7 @@
                 data-floor-plan-1bhk=${building.floorPlan1Bhk != null},
                 data-floor-plan-2bhk=${building.floorPlan2Bhk != null},
                 data-floor-plan-3bhk=${building.floorPlan3Bhk != null}">
+    <svg id="flat-grid-duplex-links" class="flat-duplex-links-overlay" aria-hidden="true"></svg>
     <div class="flat-grid-legend mb-2" th:if="${!#lists.isEmpty(floors)}">
       <span class="flat-grid-legend__item">
         <span class="flat-grid-legend__dot flat-grid-legend__dot--available"></span>
@@ -225,13 +227,21 @@
         <span class="flat-grid-legend__dot flat-grid-legend__dot--deactivated"></span>
         Deactivated
       </span>
+      <span class="flat-grid-legend__item">
+        <span class="flat-grid-legend__dot flat-grid-legend__dot--duplex"></span>
+        Duplex pair
+      </span>
+      <span class="flat-grid-legend__item">
+        <span class="flat-grid-legend__dot flat-grid-legend__dot--merge"></span>
+        Merged pair
+      </span>
     </div>
     <p class="text-muted py-4 text-center border rounded bg-body-secondary"
        th:if="${#lists.isEmpty(floors)}">
       <span sec:authorize="hasRole('SUPER_ADMIN')">No flat rows to display. Use Generate flats above.</span>
       <span sec:authorize="!hasRole('SUPER_ADMIN')">No flat rows to display yet.</span>
     </p>
-    <div th:each="floor : ${floors}" class="d-flex flex-wrap align-items-stretch gap-3 mb-3">
+    <div th:each="floor : ${floors}" class="d-flex flex-wrap align-items-stretch gap-3 mb-3" th:attr="data-floor-number=${floor.floorNumber()}">
       <span class="floor-label text-muted small text-nowrap align-self-center" th:text="${floor.label()}">Floor</span>
       <div class="flat-card-row flex-grow-1 min-w-0">
         <div th:each="flat : ${floor.flats()}"
@@ -247,6 +257,15 @@
                       data-area=${flat.areaSqft()},
                       data-parking=${flat.parking()},
                       data-amenity=${isAmenity},
+                      data-duplex-primary=${flat.duplexPrimary()},
+                      data-duplex-secondary=${flat.duplexSecondary()},
+                      data-duplex-partner-id=${flat.duplexPartnerFlatId()},
+                      data-merge-primary=${flat.mergePrimary()},
+                      data-merge-secondary=${flat.mergeSecondary()},
+                      data-merge-partner-id=${flat.mergePartnerFlatId()},
+                      data-merge-absorbed-id=${flat.mergeAbsorbedFlatId()},
+                      data-merge-absorbed-number=${flat.mergeAbsorbedFlatNumber()},
+                      data-grid-type=${flat.gridTypeLabel()},
                       data-partner-id=${flat.assignedPartnerId()},
                       data-partner-name=${flat.assignedPartnerName()},
                       data-client-id=${flat.clientId()},
@@ -278,7 +297,7 @@
                     th:text="${flat.assignedPartnerName()}">Partner</span>
               <span class="flat-status-tag small"
                     th:if="${flat.status() == 'CANCELLED'}">Deactivated</span>
-              <span class="flat-type" th:text="${flat.bhkType()}">2BHK</span>
+              <span class="flat-type" th:text="${flat.gridTypeLabel()}">2BHK</span>
               <button type="button"
                       th:if="${fpSlot != null and flat.bookableByCurrentUser()}"
                       class="flat-floor-plan-link flat-floor-plan-trigger"
@@ -360,8 +379,10 @@
             <h6 class="text-primary mb-2">Platform admin — layout tools</h6>
             <p class="text-muted small mb-2">
               Set unit type to a BHK, <strong>PKG (parking)</strong>, or an amenity (GYM, CLUB, etc.).
-              Use <strong>Apply to whole floor</strong> to convert every unit on that floor at once
-              (e.g. make floor 11 all parking).
+              Use <strong>Apply to whole floor</strong> to convert every unit on that floor at once.
+              To create a <strong>vertical duplex</strong> (e.g. 1301 + 1401), pick the adjacent same-stack unit below and merge —
+              the lower floor becomes the bookable primary. To undo, open either half and use <strong>Split duplex</strong>.
+              Same-floor merges hide the absorbed unit but can be restored with <strong>Restore merged flat</strong>.
             </p>
             <div class="row g-2 align-items-end border-top pt-2 mt-2">
               <div class="col-md-6">
@@ -377,18 +398,32 @@
                 <button type="button" class="btn btn-sm btn-outline-primary w-100" id="admin-partner-save">Save partner</button>
               </div>
             </div>
-            <div class="row g-2 align-items-end">
+            <div class="row g-2 align-items-end border-top pt-2 mt-2 d-none" id="admin-split-merge-row">
+              <div class="col-md-8" id="admin-split-merge-col">
+                <div class="text-muted small mb-1" id="admin-split-merge-label">Same-floor merge — restore hidden unit</div>
+                <button type="button" class="btn btn-sm btn-outline-warning w-100" id="admin-split-merge-btn">Restore merged flat</button>
+              </div>
+            </div>
+            <div class="row g-2 align-items-end border-top pt-2 mt-2 d-none" id="admin-split-row">
+              <div class="col-md-6" id="admin-split-col">
+                <div class="text-muted small mb-1">Linked duplex — undo merge</div>
+                <button type="button" class="btn btn-sm btn-outline-warning w-100" id="admin-split-duplex-btn">Split duplex back to two flats</button>
+              </div>
+            </div>
+            <div class="row g-2 align-items-end border-top pt-2 mt-2" id="admin-merge-row">
               <div class="col-md-6">
-                <label class="form-label small mb-0" for="admin-merge-remove">Merge: remove unit on this floor</label>
+                <label class="form-label small mb-0" for="admin-merge-remove">Merge / duplex: link another unit</label>
                 <select class="form-select form-select-sm" id="admin-merge-remove">
-                  <option value="">— Select flat to remove —</option>
+                  <option value="">— Select flat to link —</option>
                 </select>
               </div>
               <div class="col-md-3 d-flex align-items-end">
-                <button type="button" class="btn btn-sm btn-outline-primary w-100" id="admin-merge-btn">Merge into kept flat</button>
+                <button type="button" class="btn btn-sm btn-outline-primary w-100" id="admin-merge-btn">Merge / create duplex</button>
               </div>
-              <div class="col-md-3 d-flex align-items-end">
-                <button type="button" class="btn btn-sm btn-outline-danger w-100" id="admin-delete-btn">Deactivate this flat</button>
+            </div>
+            <div class="row g-2 align-items-end">
+              <div class="col-md-9 d-flex align-items-end">
+                <button type="button" class="btn btn-sm btn-outline-danger" id="admin-delete-btn">Deactivate this flat</button>
               </div>
             </div>
             <p class="text-danger small mb-0 d-none" id="admin-error"></p>
@@ -411,7 +446,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=unit-types)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=merge-visual)}"></script>
 </div>
 </body>
 </html>

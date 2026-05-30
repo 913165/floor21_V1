@@ -4,7 +4,9 @@ import com.floor21.dto.BuildingConfigDto;
 import com.floor21.dto.FlatAdminUpdateDto;
 import com.floor21.dto.FlatGridFlatDto;
 import com.floor21.dto.FlatGridFloorDto;
+import com.floor21.dto.FlatMergeCandidateDto;
 import com.floor21.dto.FlatMergeDto;
+import com.floor21.dto.FloorMergeSplitResult;
 import com.floor21.entity.Booking;
 import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
@@ -62,12 +64,15 @@ public class FlatService {
     public List<FlatGridFloorDto> getGridData(UUID buildingId) {
         Building building = buildingService.resolveForAccess(buildingId);
         UUID builderId = building.getBuilder().getId();
-        List<Flat> flats =
+        List<Flat> allFlats =
                 flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
                         buildingId, builderId);
+        List<Flat> flats = allFlats;
         Map<UUID, UUID> partnerIds = partnerFlatAllocationService.getFlatOwnerByPartnerId(buildingId);
         Map<UUID, String> partnerLabels = partnerFlatAllocationService.getFlatPartnerLabels(buildingId);
-        Map<UUID, Booking> bookingByFlatId = activeBookingsByFlatId(builderId, flats);
+        Map<UUID, Booking> bookingByFlatId = activeBookingsByFlatId(builderId, allFlats);
+        Map<UUID, Flat> flatById =
+                allFlats.stream().collect(Collectors.toMap(Flat::getId, f -> f, (a, b) -> a, HashMap::new));
         Map<Integer, List<Flat>> byFloor =
                 flats.stream().collect(Collectors.groupingBy(Flat::getFloorNumber, TreeMap::new, Collectors.toList()));
         List<Integer> orderedFloors = new ArrayList<>(byFloor.keySet());
@@ -78,44 +83,14 @@ public class FlatService {
                     byFloor.get(floor).stream()
                             .sorted(Comparator.comparing(Flat::getUnitNumber))
                             .map(
-                                    f -> {
-                                        Booking b = bookingByFlatId.get(f.getId());
-                                        Client bookedClient =
-                                                b != null && "BOOKED".equals(f.getStatus()) ? b.getClient() : null;
-                                        UUID assignedPartnerId = partnerIds.get(f.getId());
-                                        boolean bookable =
-                                                partnerFlatAllocationService.isBookableByCurrentUser(
-                                                        buildingId, assignedPartnerId);
-                                        String cardClass = resolveCardClass(f, b, bookable);
-                                        if (!bookable && !FlatUnitTypes.isNonBookable(f)) {
-                                            cardClass = cardClass + " flat-card--other-partner";
-                                        }
-                                        String ownerTitle =
-                                                bookable
-                                                        ? ownerCardTitle(f, b)
-                                                        : ("BOOKED".equals(f.getStatus()) ? "Booked" : "");
-                                        String ownerDetail = bookable ? ownerCardSubtitle(f, b) : "";
-                                        return new FlatGridFlatDto(
-                                                f.getId(),
-                                                f.getFlatNumber(),
-                                                f.getFloorNumber(),
-                                                f.getBhkType(),
-                                                f.getBasePrice(),
-                                                f.getAreaSqft(),
-                                                f.getStatus(),
-                                                Boolean.TRUE.equals(f.getParking()),
-                                                bookable ? buildBuyerTooltip(f, b) : "",
-                                                bookable ? resolveBookedClientId(f, b) : null,
-                                                ownerTitle,
-                                                ownerDetail,
-                                                bookable ? bookingCodeForTooltip(b) : null,
-                                                bookable && bookedClient != null ? pickPhone(bookedClient) : null,
-                                                bookable && bookedClient != null ? pickEmail(bookedClient) : null,
-                                                cardClass,
-                                                assignedPartnerId,
-                                                partnerLabels.get(f.getId()),
-                                                bookable);
-                                    })
+                                    f ->
+                                            toGridFlatDto(
+                                                    f,
+                                                    bookingByFlatId,
+                                                    flatById,
+                                                    buildingId,
+                                                    partnerIds,
+                                                    partnerLabels))
                             .toList();
             rows.add(new FlatGridFloorDto(floor, "Floor " + floor, cells));
         }
@@ -134,12 +109,37 @@ public class FlatService {
         return map;
     }
 
-    private static String resolveCardClass(Flat flat, Booking booking, boolean bookableByCurrentUser) {
+    private static String resolveCardClass(
+            Flat flat, Booking booking, boolean bookableByCurrentUser, Map<UUID, Flat> flatById) {
         String tone;
-        if (FlatUnitTypes.isNonBookable(flat)) {
+        if (FlatUnitTypes.isDuplexSecondary(flat)) {
+            tone = "flat-duplex-part";
+        } else if (FlatUnitTypes.isMergeAbsorbed(flat)) {
+            tone = "flat-merge-part";
+        } else if (FlatUnitTypes.isNonBookable(flat)) {
             tone = FlatUnitTypes.isParkingCode(flat.getBhkType()) || Boolean.TRUE.equals(flat.getParking())
                     ? "flat-parking"
                     : "flat-amenity";
+        } else if (FlatUnitTypes.isDuplexPrimary(flat)) {
+            if ("BOOKED".equals(flat.getStatus())) {
+                tone = "flat-booked";
+            } else if ("CANCELLED".equals(flat.getStatus())) {
+                tone = "flat-deactivated";
+            } else if ("HOLD".equals(flat.getStatus())) {
+                tone = "flat-hold";
+            } else {
+                tone = "flat-duplex-primary";
+            }
+        } else if (FlatUnitTypes.isMergePrimary(flat)) {
+            if ("BOOKED".equals(flat.getStatus())) {
+                tone = "flat-booked";
+            } else if ("CANCELLED".equals(flat.getStatus())) {
+                tone = "flat-deactivated";
+            } else if ("HOLD".equals(flat.getStatus())) {
+                tone = "flat-hold";
+            } else {
+                tone = "flat-merge-primary";
+            }
         } else if ("AVAILABLE".equals(flat.getStatus())) {
             tone = "flat-available";
         } else if ("BOOKED".equals(flat.getStatus())) {
@@ -152,10 +152,18 @@ public class FlatService {
         String owner = ownerCardTitle(flat, booking);
         boolean hasBuyer =
                 bookableByCurrentUser
-                        && "BOOKED".equals(flat.getStatus())
+                        && bookingShowsOnCard(flat, flatById, booking)
                         && owner != null
                         && !owner.isBlank();
-        return hasBuyer ? "flat-card " + tone + " flat-card--has-buyer" : "flat-card " + tone;
+        String linkClass = "";
+        if (FlatUnitTypes.isDuplexPrimary(flat)) {
+            linkClass = " flat-duplex";
+        } else if (FlatUnitTypes.isMergePrimary(flat)) {
+            linkClass = " flat-merge";
+        }
+        return hasBuyer
+                ? "flat-card " + tone + linkClass + " flat-card--has-buyer"
+                : "flat-card " + tone + linkClass;
     }
 
     private static String buildBuyerTooltip(Flat flat, Booking booking) {
@@ -528,6 +536,12 @@ public class FlatService {
     @Transactional
     public Flat updateFlatAsPlatformAdmin(UUID flatId, FlatAdminUpdateDto dto) {
         Flat flat = requireFlatForAdmin(flatId);
+        if (FlatUnitTypes.isDuplexSecondary(flat)) {
+            throw new IllegalArgumentException("Split the duplex before editing the linked upper unit.");
+        }
+        if (FlatUnitTypes.isMergeAbsorbed(flat)) {
+            throw new IllegalArgumentException("Restore the floor merge before editing the linked unit.");
+        }
         assertNoActiveBooking(flatId, "Cannot edit flat details while an active booking exists.");
         FlatUnitTypes.applyToFlat(flat, dto.bhkType(), dto.areaSqft(), dto.basePrice());
         return flatRepository.save(flat);
@@ -546,8 +560,20 @@ public class FlatService {
         if (flats.isEmpty()) {
             throw new IllegalArgumentException("No units on floor " + floorNumber + ".");
         }
+        if (flats.stream().anyMatch(FlatUnitTypes::isDuplexSecondary)) {
+            throw new IllegalArgumentException("Split duplex unit(s) on this floor before changing the whole floor.");
+        }
+        if (flats.stream().anyMatch(FlatUnitTypes::isDuplexPrimary)) {
+            throw new IllegalArgumentException("Split duplex unit(s) on this floor before changing the whole floor.");
+        }
+        if (flats.stream().anyMatch(FlatUnitTypes::isMergePrimary)) {
+            throw new IllegalArgumentException("Restore merged unit(s) on this floor before changing the whole floor.");
+        }
         long blocked =
-                flats.stream().filter(f -> bookingRepository.countActiveByFlatId(f.getId()) > 0).count();
+                flats.stream()
+                        .filter(f -> !FlatUnitTypes.isMergeAbsorbed(f))
+                        .filter(f -> bookingRepository.countActiveByFlatId(f.getId()) > 0)
+                        .count();
         if (blocked > 0) {
             throw new IllegalArgumentException(
                     "Cannot change floor "
@@ -557,6 +583,9 @@ public class FlatService {
                             + " unit(s) have an active booking.");
         }
         for (Flat flat : flats) {
+            if (FlatUnitTypes.isMergeAbsorbed(flat)) {
+                continue;
+            }
             FlatUnitTypes.applyToFlat(flat, dto.bhkType(), dto.areaSqft(), dto.basePrice());
         }
         return flatRepository.saveAll(flats);
@@ -565,6 +594,9 @@ public class FlatService {
     @Transactional
     public void deleteFlatAsPlatformAdmin(UUID flatId) {
         Flat flat = requireResidentialFlatForAdmin(flatId);
+        if (FlatUnitTypes.isMergePrimary(flat)) {
+            throw new IllegalArgumentException("Restore the merged unit before removing this flat.");
+        }
         assertNoActiveBooking(flatId, "Cannot remove a flat that has an active booking.");
         if ("BOOKED".equals(flat.getStatus())) {
             throw new IllegalArgumentException("Cannot remove a booked flat. Cancel the booking first.");
@@ -600,39 +632,195 @@ public class FlatService {
         if (!keep.getBuilding().getId().equals(remove.getBuilding().getId())) {
             throw new IllegalArgumentException("Both flats must belong to the same building.");
         }
-        if (!Objects.equals(keep.getFloorNumber(), remove.getFloorNumber())) {
-            throw new IllegalArgumentException("Merge is only supported for flats on the same floor.");
-        }
+        assertNotInDuplex(keep);
+        assertNotInDuplex(remove);
+        assertNotMerged(keep);
+        assertNotMerged(remove);
         assertNoActiveBooking(keep.getId(), "Cannot merge while the kept flat has an active booking.");
         assertNoActiveBooking(remove.getId(), "Cannot merge while the removed flat has an active booking.");
-        if ("BOOKED".equals(remove.getStatus())) {
-            throw new IllegalArgumentException("Cannot remove a booked flat. Cancel that booking first.");
+        if ("BOOKED".equals(remove.getStatus()) || "BOOKED".equals(keep.getStatus())) {
+            throw new IllegalArgumentException("Cannot merge a booked flat. Cancel the booking first.");
         }
-        if (!List.of("AVAILABLE", "HOLD").contains(remove.getStatus())) {
-            throw new IllegalArgumentException("Only an available or on-hold flat can be removed in a merge.");
+        if (!List.of("AVAILABLE", "HOLD").contains(remove.getStatus())
+                || !List.of("AVAILABLE", "HOLD").contains(keep.getStatus())) {
+            throw new IllegalArgumentException("Only available or on-hold flats can be merged.");
         }
-        flatRepository.delete(remove);
-        String bhk = dto.bhkType() != null && !dto.bhkType().isBlank()
-                ? normalizeBhkType(dto.bhkType())
-                : keep.getBhkType();
-        keep.setBhkType(bhk);
-        if (dto.areaSqft() != null) {
-            if (dto.areaSqft().signum() <= 0) {
-                throw new IllegalArgumentException("Area must be greater than zero.");
-            }
-            keep.setAreaSqft(dto.areaSqft());
+
+        if (!Objects.equals(keep.getFloorNumber(), remove.getFloorNumber())) {
+            return mergeVerticalDuplex(keep, remove, dto);
         }
-        if (dto.basePrice() != null) {
-            if (dto.basePrice().signum() < 0) {
-                throw new IllegalArgumentException("Price cannot be negative.");
-            }
-            keep.setBasePrice(dto.basePrice());
+
+        return mergeSameFloor(keep, remove, dto);
+    }
+
+    @Transactional
+    public FloorMergeSplitResult splitMergedFlatAsPlatformAdmin(UUID flatId) {
+        Flat flat = requireFlatForAdmin(flatId);
+        Flat keep =
+                FlatUnitTypes.isMergePrimary(flat)
+                        ? flat
+                        : flatRepository
+                                .findById(flat.getMergedIntoFlatId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Merge primary flat not found"));
+        if (!FlatUnitTypes.isMergePrimary(keep)) {
+            throw new IllegalArgumentException("This flat has no merged unit to restore.");
         }
+        Flat absorbed =
+                flatRepository
+                        .findById(keep.getMergedAbsorbedFlatId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Merged flat not found"));
+        if (!FlatUnitTypes.isMergeAbsorbed(absorbed)) {
+            throw new IllegalArgumentException("Merged unit link is invalid. Contact support.");
+        }
+        assertNoActiveBooking(keep.getId(), "Cannot restore merged unit while this flat has an active booking.");
+        if (keep.getPreMergeBhkType() != null) {
+            keep.setBhkType(keep.getPreMergeBhkType());
+        }
+        if (keep.getPreMergeAreaSqft() != null) {
+            keep.setAreaSqft(keep.getPreMergeAreaSqft());
+        }
+        if (keep.getPreMergeBasePrice() != null) {
+            keep.setBasePrice(keep.getPreMergeBasePrice());
+        }
+        if (keep.getPreMergeStatus() != null && !"BOOKED".equals(keep.getStatus())) {
+            keep.setStatus(keep.getPreMergeStatus());
+        }
+        keep.setMergedAbsorbedFlatId(null);
+        keep.setPreMergeBhkType(null);
+        keep.setPreMergeAreaSqft(null);
+        keep.setPreMergeBasePrice(null);
+        keep.setPreMergeStatus(null);
+        absorbed.setMergedIntoFlatId(null);
+        absorbed.setStatus(
+                absorbed.getPreMergeStatus() != null && !absorbed.getPreMergeStatus().isBlank()
+                        ? absorbed.getPreMergeStatus()
+                        : "AVAILABLE");
+        absorbed.setPreMergeStatus(null);
+        flatRepository.save(absorbed);
+        return new FloorMergeSplitResult(flatRepository.save(keep), absorbed);
+    }
+
+    private Flat mergeSameFloor(Flat keep, Flat remove, FlatMergeDto dto) {
+        keep.setPreMergeBhkType(keep.getBhkType());
+        keep.setPreMergeAreaSqft(keep.getAreaSqft());
+        keep.setPreMergeBasePrice(keep.getBasePrice());
+        keep.setPreMergeStatus(keep.getStatus());
+        remove.setPreMergeStatus(remove.getStatus());
+        keep.setMergedAbsorbedFlatId(remove.getId());
+        remove.setMergedIntoFlatId(keep.getId());
+        applyMergedDetails(keep, dto, false, null, null);
+        flatRepository.save(remove);
         return flatRepository.save(keep);
     }
 
+    @Transactional
+    public Flat splitDuplexAsPlatformAdmin(UUID flatId) {
+        Flat flat = requireFlatForAdmin(flatId);
+        if (!FlatUnitTypes.isDuplexPrimary(flat) && !FlatUnitTypes.isDuplexSecondary(flat)) {
+            throw new IllegalArgumentException("This flat is not part of a duplex.");
+        }
+        Flat primary =
+                FlatUnitTypes.isDuplexPrimary(flat)
+                        ? flat
+                        : flatRepository
+                                .findById(flat.getDuplexPrimaryFlatId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Duplex primary flat not found"));
+        Flat secondary =
+                flatRepository
+                        .findById(primary.getDuplexSecondaryFlatId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Duplex linked flat not found"));
+        assertNoActiveBooking(primary.getId(), "Cannot split duplex while the primary flat has an active booking.");
+        primary.setDuplexSecondaryFlatId(null);
+        secondary.setDuplexPrimaryFlatId(null);
+        if ("DUPLEX".equals(primary.getBhkType()) && secondary.getBhkType() != null && !secondary.getBhkType().isBlank()) {
+            primary.setBhkType(secondary.getBhkType());
+        }
+        if (secondary.getAreaSqft() != null) {
+            primary.setAreaSqft(secondary.getAreaSqft());
+        }
+        if (secondary.getBasePrice() != null) {
+            primary.setBasePrice(secondary.getBasePrice());
+        }
+        if (!"BOOKED".equals(secondary.getStatus())) {
+            secondary.setStatus("AVAILABLE");
+        }
+        flatRepository.save(secondary);
+        return flatRepository.save(primary);
+    }
+
+    private Flat mergeVerticalDuplex(Flat keep, Flat remove, FlatMergeDto dto) {
+        int floorDiff = Math.abs(keep.getFloorNumber() - remove.getFloorNumber());
+        if (floorDiff != 1) {
+            throw new IllegalArgumentException(
+                    "Duplex merge requires adjacent floors (e.g. floor 13 and 14).");
+        }
+        if (!Objects.equals(keep.getUnitNumber(), remove.getUnitNumber())) {
+            throw new IllegalArgumentException(
+                    "Duplex merge requires the same unit stack (e.g. 1301 with 1401).");
+        }
+        Flat lower = keep.getFloorNumber() < remove.getFloorNumber() ? keep : remove;
+        Flat upper = keep.getFloorNumber() < remove.getFloorNumber() ? remove : keep;
+        BigDecimal defaultArea = sumNullable(lower.getAreaSqft(), upper.getAreaSqft());
+        BigDecimal defaultPrice = sumNullable(lower.getBasePrice(), upper.getBasePrice());
+        applyMergedDetails(lower, dto, true, defaultArea, defaultPrice);
+        lower.setDuplexSecondaryFlatId(upper.getId());
+        upper.setDuplexPrimaryFlatId(lower.getId());
+        upper.setStatus("AVAILABLE");
+        flatRepository.save(upper);
+        return flatRepository.save(lower);
+    }
+
+    private void applyMergedDetails(
+            Flat target,
+            FlatMergeDto dto,
+            boolean verticalDuplex,
+            BigDecimal defaultArea,
+            BigDecimal defaultPrice) {
+        String bhk =
+                dto.bhkType() != null && !dto.bhkType().isBlank()
+                        ? normalizeBhkType(dto.bhkType())
+                        : (verticalDuplex ? "DUPLEX" : target.getBhkType());
+        target.setBhkType(bhk);
+        BigDecimal area = dto.areaSqft() != null ? dto.areaSqft() : defaultArea;
+        if (area != null) {
+            if (area.signum() <= 0) {
+                throw new IllegalArgumentException("Area must be greater than zero.");
+            }
+            target.setAreaSqft(area);
+        }
+        BigDecimal price = dto.basePrice() != null ? dto.basePrice() : defaultPrice;
+        if (price != null) {
+            if (price.signum() < 0) {
+                throw new IllegalArgumentException("Price cannot be negative.");
+            }
+            target.setBasePrice(price);
+        }
+    }
+
+    private static BigDecimal sumNullable(BigDecimal left, BigDecimal right) {
+        BigDecimal a = left != null ? left : BigDecimal.ZERO;
+        BigDecimal b = right != null ? right : BigDecimal.ZERO;
+        return a.add(b);
+    }
+
+    private static void assertNotInDuplex(Flat flat) {
+        if (FlatUnitTypes.isDuplexPrimary(flat) || FlatUnitTypes.isDuplexSecondary(flat)) {
+            throw new IllegalArgumentException(
+                    "Flat " + flat.getFlatNumber() + " is already part of a duplex. Split it first.");
+        }
+    }
+
+    private static void assertNotMerged(Flat flat) {
+        if (FlatUnitTypes.isMergePrimary(flat) || FlatUnitTypes.isMergeAbsorbed(flat)) {
+            throw new IllegalArgumentException(
+                    "Flat "
+                            + flat.getFlatNumber()
+                            + " is already part of a floor merge. Restore it first.");
+        }
+    }
+
     @Transactional(readOnly = true)
-    public List<FlatGridFlatDto> listMergeCandidatesOnFloor(UUID keepFlatId) {
+    public List<FlatMergeCandidateDto> listMergeCandidates(UUID keepFlatId) {
         Flat keep = requireResidentialFlatForAdmin(keepFlatId);
         UUID buildingId = keep.getBuilding().getId();
         UUID builderId = keep.getBuilder().getId();
@@ -640,17 +828,60 @@ public class FlatService {
                 .findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(buildingId, builderId)
                 .stream()
                 .filter(f -> !FlatUnitTypes.isNonBookable(f))
-                .filter(f -> Objects.equals(f.getFloorNumber(), keep.getFloorNumber()))
+                .filter(f -> !FlatUnitTypes.isDuplexPrimary(f))
+                .filter(f -> !FlatUnitTypes.isDuplexSecondary(f))
+                .filter(f -> !FlatUnitTypes.isMergeAbsorbed(f))
+                .filter(f -> !FlatUnitTypes.isMergePrimary(f))
                 .filter(f -> !f.getId().equals(keep.getId()))
                 .filter(f -> List.of("AVAILABLE", "HOLD").contains(f.getStatus()))
                 .filter(f -> bookingRepository.countActiveByFlatId(f.getId()) == 0)
-                .map(f -> toGridFlatDto(f, null))
+                .filter(
+                        f ->
+                                Objects.equals(f.getFloorNumber(), keep.getFloorNumber())
+                                        || isVerticalDuplexCandidate(keep, f))
+                .map(
+                        f ->
+                                new FlatMergeCandidateDto(
+                                        f.getId(),
+                                        f.getFlatNumber(),
+                                        f.getFloorNumber(),
+                                        f.getBhkType(),
+                                        f.getStatus(),
+                                        !Objects.equals(f.getFloorNumber(), keep.getFloorNumber())))
                 .toList();
     }
 
-    private FlatGridFlatDto toGridFlatDto(Flat f, Booking booking) {
-        Client bookedClient =
-                booking != null && "BOOKED".equals(f.getStatus()) ? booking.getClient() : null;
+    private static boolean isVerticalDuplexCandidate(Flat keep, Flat candidate) {
+        if (!Objects.equals(keep.getUnitNumber(), candidate.getUnitNumber())) {
+            return false;
+        }
+        return Math.abs(keep.getFloorNumber() - candidate.getFloorNumber()) == 1;
+    }
+
+    private FlatGridFlatDto toGridFlatDto(
+            Flat f,
+            Map<UUID, Booking> bookingByFlatId,
+            Map<UUID, Flat> flatById,
+            UUID buildingId,
+            Map<UUID, UUID> partnerIds,
+            Map<UUID, String> partnerLabels) {
+        Booking b = resolveBookingForGridCard(f, bookingByFlatId, flatById);
+        Client bookedClient = b != null && bookingShowsOnCard(f, flatById, b) ? b.getClient() : null;
+        UUID assignedPartnerId = partnerIds.get(f.getId());
+        boolean bookable =
+                !FlatUnitTypes.isDuplexSecondary(f)
+                        && !FlatUnitTypes.isMergeAbsorbed(f)
+                        && partnerFlatAllocationService.isBookableByCurrentUser(
+                                buildingId, assignedPartnerId);
+        String cardClass = resolveCardClass(f, b, bookable, flatById);
+        if (!bookable && !FlatUnitTypes.isNonBookable(f)) {
+            cardClass = cardClass + " flat-card--other-partner";
+        }
+        String ownerTitle = resolveGridOwnerTitle(f, b, bookable, flatById);
+        String ownerDetail = bookable ? ownerCardSubtitle(f, b) : resolveLinkedUnitDetail(f, flatById, b);
+        String partnerFlatNumber = duplexPartnerFlatNumber(f, flatById);
+        UUID partnerFlatId = duplexPartnerFlatId(f);
+        Flat mergeAbsorbed = mergeAbsorbedFlat(f, flatById);
         return new FlatGridFlatDto(
                 f.getId(),
                 f.getFlatNumber(),
@@ -660,17 +891,192 @@ public class FlatService {
                 f.getAreaSqft(),
                 f.getStatus(),
                 Boolean.TRUE.equals(f.getParking()),
-                buildBuyerTooltip(f, booking),
-                resolveBookedClientId(f, booking),
-                ownerCardTitle(f, booking),
-                ownerCardSubtitle(f, booking),
-                bookingCodeForTooltip(booking),
+                bookable ? buildBuyerTooltip(f, b) : buildLinkedUnitTooltip(f, flatById, b),
+                bookable ? resolveBookedClientId(f, b) : null,
+                ownerTitle,
+                ownerDetail,
+                bookable ? bookingCodeForTooltip(b) : null,
                 bookedClient != null ? pickPhone(bookedClient) : null,
                 bookedClient != null ? pickEmail(bookedClient) : null,
-                resolveCardClass(f, booking, true),
-                null,
-                null,
-                true);
+                cardClass,
+                assignedPartnerId,
+                partnerLabels.get(f.getId()),
+                bookable,
+                FlatUnitTypes.isDuplexSecondary(f),
+                FlatUnitTypes.isDuplexPrimary(f),
+                partnerFlatNumber,
+                partnerFlatId,
+                FlatUnitTypes.isMergePrimary(f),
+                FlatUnitTypes.isMergeAbsorbed(f),
+                mergePartnerFlatId(f),
+                mergeAbsorbed != null ? mergeAbsorbed.getId() : null,
+                mergeAbsorbed != null ? mergeAbsorbed.getFlatNumber() : null,
+                gridTypeLabel(f, flatById));
+    }
+
+    private static Flat mergeAbsorbedFlat(Flat flat, Map<UUID, Flat> flatById) {
+        if (!FlatUnitTypes.isMergePrimary(flat) || flat.getMergedAbsorbedFlatId() == null) {
+            return null;
+        }
+        return flatById.get(flat.getMergedAbsorbedFlatId());
+    }
+
+    private static UUID mergePartnerFlatId(Flat flat) {
+        if (FlatUnitTypes.isMergePrimary(flat)) {
+            return flat.getMergedAbsorbedFlatId();
+        }
+        if (FlatUnitTypes.isMergeAbsorbed(flat)) {
+            return flat.getMergedIntoFlatId();
+        }
+        return null;
+    }
+
+    private static UUID duplexPartnerFlatId(Flat flat) {
+        if (FlatUnitTypes.isDuplexPrimary(flat)) {
+            return flat.getDuplexSecondaryFlatId();
+        }
+        if (FlatUnitTypes.isDuplexSecondary(flat)) {
+            return flat.getDuplexPrimaryFlatId();
+        }
+        return null;
+    }
+
+    private static Booking resolveBookingForGridCard(
+            Flat f, Map<UUID, Booking> bookingByFlatId, Map<UUID, Flat> flatById) {
+        Booking direct = bookingByFlatId.get(f.getId());
+        if (direct != null) {
+            return direct;
+        }
+        if (FlatUnitTypes.isDuplexSecondary(f) && f.getDuplexPrimaryFlatId() != null) {
+            return bookingByFlatId.get(f.getDuplexPrimaryFlatId());
+        }
+        if (FlatUnitTypes.isMergeAbsorbed(f) && f.getMergedIntoFlatId() != null) {
+            return bookingByFlatId.get(f.getMergedIntoFlatId());
+        }
+        return null;
+    }
+
+    private static boolean bookingShowsOnCard(Flat f, Map<UUID, Flat> flatById, Booking b) {
+        if (b == null) {
+            return false;
+        }
+        if (FlatUnitTypes.isDuplexSecondary(f)) {
+            Flat primary = flatById.get(f.getDuplexPrimaryFlatId());
+            return primary != null && "BOOKED".equals(primary.getStatus());
+        }
+        if (FlatUnitTypes.isMergeAbsorbed(f)) {
+            Flat keep = flatById.get(f.getMergedIntoFlatId());
+            return keep != null && "BOOKED".equals(keep.getStatus());
+        }
+        return "BOOKED".equals(f.getStatus());
+    }
+
+    private static String resolveGridOwnerTitle(
+            Flat f, Booking b, boolean bookable, Map<UUID, Flat> flatById) {
+        if (FlatUnitTypes.isDuplexSecondary(f)) {
+            Flat primary = flatById.get(f.getDuplexPrimaryFlatId());
+            if (primary != null && "BOOKED".equals(primary.getStatus())) {
+                return "Booked";
+            }
+            return primary != null ? "Duplex · " + primary.getFlatNumber() : "Duplex";
+        }
+        if (FlatUnitTypes.isMergeAbsorbed(f)) {
+            Flat keep = flatById.get(f.getMergedIntoFlatId());
+            if (keep != null && "BOOKED".equals(keep.getStatus())) {
+                return "Booked";
+            }
+            return keep != null ? "Merged · " + keep.getFlatNumber() : "Merged";
+        }
+        if (bookable) {
+            return ownerCardTitle(f, b);
+        }
+        return "BOOKED".equals(f.getStatus()) ? "Booked" : "";
+    }
+
+    private static String resolveLinkedUnitDetail(Flat f, Map<UUID, Flat> flatById, Booking b) {
+        if (FlatUnitTypes.isDuplexSecondary(f)) {
+            Flat primary = flatById.get(f.getDuplexPrimaryFlatId());
+            if (primary == null) {
+                return "Linked duplex";
+            }
+            if (b != null && "BOOKED".equals(primary.getStatus())) {
+                return "Via " + primary.getFlatNumber();
+            }
+            return "With " + primary.getFlatNumber();
+        }
+        if (FlatUnitTypes.isMergeAbsorbed(f)) {
+            Flat keep = flatById.get(f.getMergedIntoFlatId());
+            if (keep == null) {
+                return "Linked merge";
+            }
+            if (b != null && "BOOKED".equals(keep.getStatus())) {
+                return "Via " + keep.getFlatNumber();
+            }
+            return "With " + keep.getFlatNumber();
+        }
+        return "";
+    }
+
+    private static String buildLinkedUnitTooltip(Flat f, Map<UUID, Flat> flatById, Booking b) {
+        if (FlatUnitTypes.isDuplexSecondary(f) && b != null) {
+            Flat primary = flatById.get(f.getDuplexPrimaryFlatId());
+            if (primary != null && "BOOKED".equals(primary.getStatus())) {
+                return buildBuyerTooltip(primary, b);
+            }
+        }
+        if (FlatUnitTypes.isMergeAbsorbed(f) && b != null) {
+            Flat keep = flatById.get(f.getMergedIntoFlatId());
+            if (keep != null && "BOOKED".equals(keep.getStatus())) {
+                return buildBuyerTooltip(keep, b);
+            }
+        }
+        return "";
+    }
+
+    private static String resolveDuplexSecondaryDetail(Flat f, Map<UUID, Flat> flatById, Booking b) {
+        return resolveLinkedUnitDetail(f, flatById, b);
+    }
+
+    private static String buildDuplexSecondaryTooltip(Flat f, Map<UUID, Flat> flatById, Booking b) {
+        return buildLinkedUnitTooltip(f, flatById, b);
+    }
+
+    private static String duplexPartnerFlatNumber(Flat f, Map<UUID, Flat> flatById) {
+        if (FlatUnitTypes.isDuplexSecondary(f) && f.getDuplexPrimaryFlatId() != null) {
+            Flat primary = flatById.get(f.getDuplexPrimaryFlatId());
+            return primary != null ? primary.getFlatNumber() : null;
+        }
+        if (FlatUnitTypes.isDuplexPrimary(f) && f.getDuplexSecondaryFlatId() != null) {
+            Flat secondary = flatById.get(f.getDuplexSecondaryFlatId());
+            return secondary != null ? secondary.getFlatNumber() : null;
+        }
+        return null;
+    }
+
+    private static String gridTypeLabel(Flat flat, Map<UUID, Flat> flatById) {
+        if (FlatUnitTypes.isDuplexSecondary(flat)) {
+            Flat primary = flatById.get(flat.getDuplexPrimaryFlatId());
+            return primary != null ? "Duplex · " + primary.getFlatNumber() : "Duplex";
+        }
+        if (FlatUnitTypes.isMergeAbsorbed(flat)) {
+            Flat keep = flatById.get(flat.getMergedIntoFlatId());
+            return keep != null ? "Merged · " + keep.getFlatNumber() : "Merged";
+        }
+        if (FlatUnitTypes.isDuplexPrimary(flat)) {
+            Flat secondary = flatById.get(flat.getDuplexSecondaryFlatId());
+            if (secondary != null) {
+                int lo = Math.min(flat.getFloorNumber(), secondary.getFloorNumber());
+                int hi = Math.max(flat.getFloorNumber(), secondary.getFloorNumber());
+                return "DUPLEX " + lo + "–" + hi;
+            }
+        }
+        if (FlatUnitTypes.isMergePrimary(flat)) {
+            Flat absorbed = flatById.get(flat.getMergedAbsorbedFlatId());
+            if (absorbed != null) {
+                return "MERGED · " + flat.getFlatNumber() + "+" + absorbed.getFlatNumber();
+            }
+        }
+        return flat.getBhkType();
     }
 
     private Flat requireFlatForAdmin(UUID flatId) {
@@ -684,7 +1090,7 @@ public class FlatService {
 
     private Flat requireResidentialFlatForAdmin(UUID flatId) {
         Flat flat = requireFlatForAdmin(flatId);
-        if (FlatUnitTypes.isNonBookable(flat)) {
+        if (FlatUnitTypes.isNonBookable(flat) && !FlatUnitTypes.isDuplexPrimary(flat)) {
             throw new IllegalArgumentException("Use unit type edit for parking and amenity slots.");
         }
         return flat;

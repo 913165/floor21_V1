@@ -15,7 +15,7 @@ public final class ResidentialBhkTypes {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    private static final Set<String> NAMED_TYPES = Set.of("STUDIO", "PENTHOUSE");
+    private static final Set<String> NAMED_TYPES = Set.of("STUDIO", "PENTHOUSE", "DUPLEX");
 
     private static final List<String> ALL =
             List.of(
@@ -33,7 +33,8 @@ public final class ResidentialBhkTypes {
                     "6BHK",
                     "6.5BHK",
                     "7BHK",
-                    "PENTHOUSE");
+                    "PENTHOUSE",
+                    "DUPLEX");
 
     private ResidentialBhkTypes() {}
 
@@ -121,6 +122,9 @@ public final class ResidentialBhkTypes {
         if ("PENTHOUSE".equals(trimmed) || "PH".equals(trimmed)) {
             return "PENTHOUSE";
         }
+        if ("DUPLEX".equals(trimmed)) {
+            return "DUPLEX";
+        }
         if (!trimmed.endsWith("BHK")) {
             trimmed = trimmed + "BHK";
         }
@@ -139,6 +143,9 @@ public final class ResidentialBhkTypes {
         }
         if ("PENTHOUSE".equals(normalized)) {
             return 8.0;
+        }
+        if ("DUPLEX".equals(normalized)) {
+            return 4.0;
         }
         return numericBhkValue(normalized);
     }
@@ -176,6 +183,9 @@ public final class ResidentialBhkTypes {
         if ("PENTHOUSE".equals(normalized)) {
             return 2800;
         }
+        if ("DUPLEX".equals(normalized)) {
+            return 1800;
+        }
         return (int) Math.round(280 + layoutSize(normalized) * 270);
     }
 
@@ -186,6 +196,9 @@ public final class ResidentialBhkTypes {
         }
         if ("PENTHOUSE".equals(normalized)) {
             return 25_000_000L;
+        }
+        if ("DUPLEX".equals(normalized)) {
+            return 12_000_000L;
         }
         return Math.round(layoutSize(normalized) * 4_200_000);
     }

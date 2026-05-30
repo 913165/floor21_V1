@@ -439,6 +439,87 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   overflow: visible;
 }
 
+.flat-grid-shell {
+  position: relative;
+}
+
+.flat-duplex-links-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 0;
+}
+
+.flat-duplex-link-outline {
+  fill: rgba(111, 66, 193, 0.06);
+  stroke: #7e57c2;
+  stroke-width: 2.5;
+  stroke-dasharray: 7 5;
+}
+
+.flat-duplex-link-label {
+  fill: #6f42c1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+[data-bs-theme="dark"] .flat-duplex-link-outline {
+  fill: rgba(142, 107, 184, 0.12);
+  stroke: #b39ddb;
+}
+
+[data-bs-theme="dark"] .flat-duplex-link-label {
+  fill: #ce93d8;
+}
+
+.flat-grid-shell > .flat-grid-legend,
+.flat-grid-shell > .d-flex,
+.flat-grid-shell > p {
+  position: relative;
+  z-index: 1;
+}
+
+.flat-grid-legend__dot--duplex {
+  background: transparent;
+  border: 2px dashed #7e57c2;
+  border-radius: 4px;
+  width: 0.85rem;
+  height: 0.55rem;
+}
+
+[data-bs-theme="dark"] .flat-grid-legend__dot--duplex {
+  border-color: #b39ddb;
+}
+
+.flat-grid-legend__dot--merge {
+  background: transparent;
+  border: 2px dashed #00897b;
+  border-radius: 4px;
+  width: 0.85rem;
+  height: 0.55rem;
+}
+
+[data-bs-theme="dark"] .flat-grid-legend__dot--merge {
+  border-color: #4db6ac;
+}
+
+.flat-merge-link-outline {
+  fill: rgba(0, 137, 123, 0.06);
+  stroke: #00897b;
+  stroke-width: 2.5;
+  stroke-dasharray: 7 5;
+}
+
+[data-bs-theme="dark"] .flat-merge-link-outline {
+  fill: rgba(77, 182, 172, 0.12);
+  stroke: #4db6ac;
+}
+
 #flat-grid > .d-flex {
   overflow: visible;
 }
@@ -1029,13 +1110,81 @@ body.modal-open .modal-backdrop {
   cursor: default;
 }
 
+.flat-duplex-primary {
+  background: #ebe2f7;
+  border-color: #7e57c2;
+}
+
+.flat-duplex-primary.flat-booked {
+  background: #dfe8fb;
+  border-color: #0d6efd;
+}
+
+[data-bs-theme="dark"] .flat-duplex-primary {
+  background: #2d2438;
+  border-color: #b39ddb;
+}
+
+.flat-duplex {
+  box-shadow: inset 0 0 0 2px rgba(111, 66, 193, 0.35);
+}
+
+.flat-merge-primary {
+  background: #dff2ef;
+  border-color: #00897b;
+}
+
+.flat-merge-primary.flat-booked {
+  background: #dfe8fb;
+  border-color: #0d6efd;
+}
+
+[data-bs-theme="dark"] .flat-merge-primary {
+  background: #1a2e2b;
+  border-color: #4db6ac;
+}
+
+.flat-merge {
+  box-shadow: inset 0 0 0 2px rgba(0, 137, 123, 0.35);
+}
+
+.flat-merge-part {
+  background: #e8f5f3;
+  border-color: #4db6ac;
+  color: #00695c;
+}
+
+.flat-merge-part .flat-type,
+.flat-merge-part .flat-owner-detail {
+  color: #00695c;
+}
+
+[data-bs-theme="dark"] .flat-merge-part {
+  background: #1e3330;
+  border-color: #4db6ac;
+  color: #80cbc4;
+}
+
+.flat-duplex-part {
+  background: #e8e0f0;
+  border-color: #8e6bb8;
+  border-style: dashed;
+  cursor: default;
+  opacity: 0.92;
+}
+
 [data-bs-theme="dark"] .flat-amenity {
   background: #2a3540;
   border-color: #5c7a99;
 }
 
+[data-bs-theme="dark"] .flat-duplex-part {
+  background: #2d2438;
+  border-color: #8e6bb8;
+}
+
 .flat-card--other-partner,
-.flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity) {
+.flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) {
   background: #eceff1 !important;
   border-color: #b0bec5 !important;
   border-style: dashed;
@@ -1046,7 +1195,7 @@ body.modal-open .modal-backdrop {
 }
 
 .flat-card--other-partner:hover,
-.flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):hover {
+.flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):hover {
   transform: none;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
   filter: grayscale(0.35);

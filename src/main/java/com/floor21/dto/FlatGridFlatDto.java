@@ -30,4 +30,24 @@ public record FlatGridFlatDto(
         /** Sales partner display name on the card; null if none. */
         String assignedPartnerName,
         /** False when another partner owns this flat and the viewer cannot book or hold it. */
-        boolean bookableByCurrentUser) {}
+        boolean bookableByCurrentUser,
+        /** True when this card is the linked upper/other half of a vertical duplex. */
+        boolean duplexSecondary,
+        /** True when this card is the lower bookable primary of a vertical duplex. */
+        boolean duplexPrimary,
+        /** Partner flat number for duplex link display (e.g. 1401). */
+        String duplexPartnerFlatNumber,
+        /** Partner flat id for drawing duplex outline on the grid. */
+        UUID duplexPartnerFlatId,
+        /** True when this flat absorbed another unit on the same floor. */
+        boolean mergePrimary,
+        /** True when this card is the linked absorbed half of a same-floor merge. */
+        boolean mergeSecondary,
+        /** Partner flat id for drawing merge outline on the grid. */
+        UUID mergePartnerFlatId,
+        /** Absorbed flat id for same-floor merge restore. */
+        UUID mergeAbsorbedFlatId,
+        /** Absorbed flat number shown in admin restore UI. */
+        String mergeAbsorbedFlatNumber,
+        /** Label shown on the card type line (may differ from raw bhkType). */
+        String gridTypeLabel) {}

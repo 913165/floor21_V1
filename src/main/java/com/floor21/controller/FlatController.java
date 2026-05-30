@@ -1,13 +1,16 @@
 package com.floor21.controller;
 
 import com.floor21.dto.FlatAdminUpdateDto;
+import com.floor21.dto.FlatMergeCandidateDto;
 import com.floor21.dto.FlatMergeDto;
+import com.floor21.dto.FloorMergeSplitResult;
 import com.floor21.dto.FlatPartnerAssignDto;
 import com.floor21.entity.Flat;
 import com.floor21.service.FlatService;
 import com.floor21.service.PartnerFlatAllocationService;
 import com.floor21.util.FlatUnitTypes;
 import jakarta.validation.Valid;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -97,31 +100,67 @@ public class FlatController {
         }
     }
 
+    @PostMapping(value = "/flats/{id}/split-duplex")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> splitDuplex(@PathVariable UUID id) {
+        try {
+            Flat flat = flatService.splitDuplexAsPlatformAdmin(id);
+            return ResponseEntity.ok(flatResponse(flat));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(value = "/flats/{id}/split-merge")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> splitMergedFlat(@PathVariable UUID id) {
+        try {
+            FloorMergeSplitResult result = flatService.splitMergedFlatAsPlatformAdmin(id);
+            Map<String, Object> map = flatResponse(result.keep());
+            map.put("restoredFlatId", result.restored().getId());
+            map.put("restoredFlatNumber", result.restored().getFlatNumber());
+            map.put(
+                    "message",
+                    "Restored flat "
+                            + result.restored().getFlatNumber()
+                            + ". Both units are separate again.");
+            return ResponseEntity.ok(map);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     @GetMapping(value = "/flats/{id}/merge-candidates", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     @ResponseBody
-    public List<Map<String, Object>> mergeCandidates(@PathVariable UUID id) {
-        return flatService.listMergeCandidatesOnFloor(id).stream()
-                .map(
-                        f ->
-                                Map.<String, Object>of(
-                                        "id", f.id(),
-                                        "flatNumber", f.flatNumber(),
-                                        "bhkType", f.bhkType(),
-                                        "status", f.status()))
-                .toList();
+    public List<FlatMergeCandidateDto> mergeCandidates(@PathVariable UUID id) {
+        return flatService.listMergeCandidates(id);
     }
 
     private static Map<String, Object> flatResponse(Flat flat) {
-        return Map.of(
-                "id", flat.getId(),
-                "flatNumber", flat.getFlatNumber(),
-                "bhkType", flat.getBhkType(),
-                "areaSqft", flat.getAreaSqft(),
-                "basePrice", flat.getBasePrice(),
-                "status", flat.getStatus(),
-                "floorNumber", flat.getFloorNumber(),
-                "parking", Boolean.TRUE.equals(flat.getParking()),
-                "amenity", FlatUnitTypes.isAmenityCode(flat.getBhkType()));
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", flat.getId());
+        map.put("flatNumber", flat.getFlatNumber());
+        map.put("bhkType", flat.getBhkType());
+        map.put("areaSqft", flat.getAreaSqft());
+        map.put("basePrice", flat.getBasePrice());
+        map.put("status", flat.getStatus());
+        map.put("floorNumber", flat.getFloorNumber());
+        map.put("parking", Boolean.TRUE.equals(flat.getParking()));
+        map.put("amenity", FlatUnitTypes.isAmenityCode(flat.getBhkType()));
+        map.put("duplexPrimary", FlatUnitTypes.isDuplexPrimary(flat));
+        map.put("duplexSecondary", FlatUnitTypes.isDuplexSecondary(flat));
+        map.put(
+                "duplexPartnerFlatId",
+                FlatUnitTypes.isDuplexPrimary(flat)
+                        ? flat.getDuplexSecondaryFlatId()
+                        : flat.getDuplexPrimaryFlatId());
+        map.put("mergePrimary", FlatUnitTypes.isMergePrimary(flat));
+        map.put("mergeSecondary", FlatUnitTypes.isMergeAbsorbed(flat));
+        map.put("mergePartnerFlatId", flat.getMergedAbsorbedFlatId() != null ? flat.getMergedAbsorbedFlatId() : flat.getMergedIntoFlatId());
+        map.put("mergeAbsorbedFlatId", flat.getMergedAbsorbedFlatId());
+        return map;
     }
 }

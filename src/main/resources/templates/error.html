@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="alert alert-danger">
+    <h1 class="h4 mb-2" th:text="'Something went wrong (' + ${status} + ')'">Something went wrong</h1>
+    <p class="mb-2" th:text="${message} ?: ${error}">An unexpected error occurred.</p>
+    <p class="small text-muted mb-3" th:if="${path}" th:text="'Path: ' + ${path}"></p>
+    <a class="btn btn-outline-secondary btn-sm" th:href="@{/dashboard}" data-turbo-frame="floor21-main">Back to dashboard</a>
+    <a class="btn btn-outline-secondary btn-sm ms-2" th:href="@{/admin/buildings}" data-turbo-frame="floor21-main">All buildings</a>
+  </div>
+</div>
+</body>
+</html>

@@ -50,6 +50,8 @@
     if (!cardEl) return false;
     if (cardEl.dataset.parking === "true") return true;
     if (cardEl.dataset.amenity === "true") return true;
+    if (cardEl.dataset.duplexSecondary === "true") return true;
+    if (cardEl.dataset.mergeSecondary === "true") return true;
     return isAmenityType(cardEl.dataset.type);
   }
 
@@ -63,20 +65,50 @@
     if (!cardEl || !opts) return;
     var parking = !!opts.parking;
     var amenity = !!opts.amenity;
+    var duplexSecondary = !!opts.duplexSecondary;
+    var duplexPrimary = !!opts.duplexPrimary;
+    var mergeSecondary = !!opts.mergeSecondary;
+    var mergePrimary = !!opts.mergePrimary;
     cardEl.dataset.parking = parking ? "true" : "false";
     cardEl.dataset.amenity = amenity ? "true" : "false";
+    cardEl.dataset.duplexSecondary = duplexSecondary ? "true" : "false";
+    cardEl.dataset.duplexPrimary = duplexPrimary ? "true" : "false";
+    cardEl.dataset.mergeSecondary = mergeSecondary ? "true" : "false";
+    cardEl.dataset.mergePrimary = mergePrimary ? "true" : "false";
     cardEl.classList.remove(
       "flat-available",
       "flat-booked",
       "flat-hold",
       "flat-deactivated",
       "flat-parking",
-      "flat-amenity"
+      "flat-amenity",
+      "flat-duplex",
+      "flat-duplex-part",
+      "flat-duplex-primary",
+      "flat-merge",
+      "flat-merge-part",
+      "flat-merge-primary"
     );
     if (parking) {
       cardEl.classList.add("flat-parking");
     } else if (amenity) {
       cardEl.classList.add("flat-amenity");
+    } else if (duplexSecondary) {
+      cardEl.classList.add("flat-duplex-part");
+    } else if (mergeSecondary) {
+      cardEl.classList.add("flat-merge-part");
+    } else if (duplexPrimary) {
+      if (opts.status === "BOOKED") cardEl.classList.add("flat-booked");
+      else if (opts.status === "CANCELLED") cardEl.classList.add("flat-deactivated");
+      else if (opts.status === "HOLD") cardEl.classList.add("flat-hold");
+      else cardEl.classList.add("flat-duplex-primary");
+      cardEl.classList.add("flat-duplex");
+    } else if (mergePrimary) {
+      if (opts.status === "BOOKED") cardEl.classList.add("flat-booked");
+      else if (opts.status === "CANCELLED") cardEl.classList.add("flat-deactivated");
+      else if (opts.status === "HOLD") cardEl.classList.add("flat-hold");
+      else cardEl.classList.add("flat-merge-primary");
+      cardEl.classList.add("flat-merge");
     } else if (opts.status === "AVAILABLE") {
       cardEl.classList.add("flat-available");
     } else if (opts.status === "BOOKED") {
@@ -176,14 +208,26 @@
     if (flat.floorNumber != null) cardEl.dataset.floor = String(flat.floorNumber);
     var parking = flat.parking === true || flat.parking === "true";
     var amenity = flat.amenity === true || flat.amenity === "true" || isAmenityType(flat.bhkType);
+    var duplexSecondary = flat.duplexSecondary === true || flat.duplexSecondary === "true";
+    var duplexPrimary = flat.duplexPrimary === true || flat.duplexPrimary === "true";
+    var mergeSecondary = flat.mergeSecondary === true || flat.mergeSecondary === "true";
+    var mergePrimary = flat.mergePrimary === true || flat.mergePrimary === "true";
     applyCardTypeClasses(cardEl, {
       parking: parking,
       amenity: amenity,
+      duplexSecondary: duplexSecondary,
+      duplexPrimary: duplexPrimary,
+      mergeSecondary: mergeSecondary,
+      mergePrimary: mergePrimary,
       status: flat.status || cardEl.dataset.status,
     });
+    var displayType = flat.gridTypeLabel || flat.bhkType;
+    if (displayType) {
+      cardEl.dataset.gridType = displayType;
+    }
     var typeSpan = cardEl.querySelector(".flat-type");
-    if (typeSpan && flat.bhkType) typeSpan.textContent = flat.bhkType;
-    if (parking || amenity) {
+    if (typeSpan && displayType) typeSpan.textContent = displayType;
+    if (parking || amenity || duplexSecondary || mergeSecondary) {
       delete cardEl.dataset.floorPlanSlot;
       stripFloorPlanTriggers(cardEl);
       return;
@@ -200,7 +244,7 @@
   async function loadMergeCandidates(flatId) {
     var select = document.getElementById("admin-merge-remove");
     if (!select) return;
-    select.innerHTML = '<option value="">— Select flat to remove —</option>';
+    select.innerHTML = '<option value="">— Select flat to link —</option>';
     var res = await fetch(appRoot() + "/flats/" + flatId + "/merge-candidates", {
       headers: { Accept: "application/json" },
     });
@@ -209,8 +253,14 @@
     list.forEach(function (c) {
       var opt = document.createElement("option");
       opt.value = c.id;
+      opt.dataset.verticalDuplex = c.verticalDuplex ? "true" : "false";
       opt.textContent =
-        (c.flatNumber || c.id) + " · " + (c.bhkType || "") + " · " + (c.status || "");
+        (c.flatNumber || c.id) +
+        " · " +
+        (c.bhkType || "") +
+        " · " +
+        (c.status || "") +
+        (c.verticalDuplex ? " · adjacent duplex" : " · same floor");
       select.appendChild(opt);
     });
   }
@@ -292,14 +342,45 @@
       if (price) price.value = cardEl.dataset.price || "";
       if (partner) partner.value = cardEl.dataset.partnerId || "";
       var nonBookable = isNonBookableUnit(cardEl);
-      ["admin-partner", "admin-partner-save", "admin-merge-remove", "admin-merge-btn", "admin-delete-btn"].forEach(
-        function (id) {
-          var el = document.getElementById(id);
-          if (!el) return;
-          var row = el.closest(".row");
-          if (row) row.classList.toggle("d-none", nonBookable);
-        }
-      );
+      var isDuplexLinked =
+        cardEl.dataset.duplexPrimary === "true" || cardEl.dataset.duplexSecondary === "true";
+      var isMergeLinked =
+        cardEl.dataset.mergePrimary === "true" || cardEl.dataset.mergeSecondary === "true";
+      var splitBtn = document.getElementById("admin-split-duplex-btn");
+      var splitRow = document.getElementById("admin-split-row");
+      var splitMergeRow = document.getElementById("admin-split-merge-row");
+      var splitMergeLabel = document.getElementById("admin-split-merge-label");
+      var mergeRow = document.getElementById("admin-merge-row");
+      if (splitRow) {
+        splitRow.classList.toggle("d-none", !isDuplexLinked);
+      }
+      if (splitBtn) {
+        splitBtn.disabled = nonBookable;
+      }
+      if (splitMergeRow) {
+        splitMergeRow.classList.toggle("d-none", !isMergeLinked);
+      }
+      if (splitMergeLabel) {
+        var absorbedNo = cardEl.dataset.mergeAbsorbedNumber || "merged unit";
+        splitMergeLabel.textContent =
+          "Same-floor merge — restore " + absorbedNo + " as a separate flat";
+      }
+      if (mergeRow) {
+        mergeRow.classList.toggle("d-none", nonBookable || isDuplexLinked || isMergeLinked);
+      }
+      ["admin-partner", "admin-partner-save", "admin-delete-btn"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var row = el.closest(".row");
+        if (row) row.classList.toggle("d-none", nonBookable);
+      });
+      var adminSaveRow = document.getElementById("admin-save-row");
+      if (adminSaveRow) {
+        adminSaveRow.classList.toggle(
+          "d-none",
+          cardEl.dataset.duplexSecondary === "true" || cardEl.dataset.mergeSecondary === "true"
+        );
+      }
       var adminDelete = document.getElementById("admin-delete-btn");
       if (adminDelete) {
         var isInactive = cardEl.dataset.status === "CANCELLED";
@@ -427,6 +508,299 @@
     }
   }
 
+  function drawFlatPairLinks() {
+    var grid = document.getElementById("flat-grid");
+    var svg = document.getElementById("flat-grid-duplex-links");
+    if (!grid || !svg) return;
+
+    while (svg.firstChild) {
+      svg.removeChild(svg.firstChild);
+    }
+
+    var width = grid.offsetWidth;
+    var height = grid.offsetHeight;
+    if (width <= 0 || height <= 0) return;
+
+    svg.setAttribute("width", String(width));
+    svg.setAttribute("height", String(height));
+    svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+
+    var gridRect = grid.getBoundingClientRect();
+    var drawn = {};
+
+    grid.querySelectorAll('.flat-card[data-duplex-primary="true"]').forEach(function (primary) {
+      var partnerId = primary.dataset.duplexPartnerId;
+      if (!partnerId) return;
+      var secondary = document.getElementById("flat-" + partnerId);
+      if (!secondary) return;
+
+      var pairKey = "duplex:" + [primary.dataset.flatId, partnerId].sort().join(":");
+      if (drawn[pairKey]) return;
+      drawn[pairKey] = true;
+
+      var pRect = primary.getBoundingClientRect();
+      var sRect = secondary.getBoundingClientRect();
+      var padX = 5;
+      var padY = 4;
+      var left = pRect.left - gridRect.left - padX;
+      var right = pRect.right - gridRect.left + padX;
+      var top = Math.min(pRect.top, sRect.top) - gridRect.top - padY;
+      var bottom = Math.max(pRect.bottom, sRect.bottom) - gridRect.top + padY;
+
+      appendLinkRect(svg, left, top, right, bottom, "flat-duplex-link-outline");
+    });
+
+    grid.querySelectorAll('.flat-card[data-merge-primary="true"]').forEach(function (primary) {
+      var partnerId = primary.dataset.mergePartnerId;
+      if (!partnerId) return;
+      var secondary = document.getElementById("flat-" + partnerId);
+      if (!secondary) return;
+
+      var pairKey = "merge:" + [primary.dataset.flatId, partnerId].sort().join(":");
+      if (drawn[pairKey]) return;
+      drawn[pairKey] = true;
+
+      var pRect = primary.getBoundingClientRect();
+      var sRect = secondary.getBoundingClientRect();
+      var padX = 5;
+      var padY = 4;
+      var left = Math.min(pRect.left, sRect.left) - gridRect.left - padX;
+      var right = Math.max(pRect.right, sRect.right) - gridRect.left + padX;
+      var top = Math.min(pRect.top, sRect.top) - gridRect.top - padY;
+      var bottom = Math.max(pRect.bottom, sRect.bottom) - gridRect.top + padY;
+
+      appendLinkRect(svg, left, top, right, bottom, "flat-merge-link-outline");
+    });
+  }
+
+  function appendLinkRect(svg, left, top, right, bottom, className) {
+    var rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", String(left));
+    rect.setAttribute("y", String(top));
+    rect.setAttribute("width", String(Math.max(0, right - left)));
+    rect.setAttribute("height", String(Math.max(0, bottom - top)));
+    rect.setAttribute("rx", "10");
+    rect.setAttribute("class", className);
+    svg.appendChild(rect);
+  }
+
+  function drawDuplexLinks() {
+    drawFlatPairLinks();
+  }
+
+  function scheduleDuplexLinks() {
+    window.requestAnimationFrame(function () {
+      drawDuplexLinks();
+    });
+  }
+
+  function closeFlatDetailsModal() {
+    var modalEl = document.getElementById("flat-details-modal");
+    if (modalEl && typeof bootstrap !== "undefined" && bootstrap.Modal) {
+      bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+    }
+  }
+
+  async function afterLayoutChange(keepFlatId, removeFlatId, options) {
+    options = options || {};
+    await refreshGrid();
+    if (removeFlatId) {
+      var removed = document.getElementById("flat-" + removeFlatId);
+      if (removed) removed.remove();
+    }
+    closeFlatDetailsModal();
+    if (keepFlatId) {
+      selectedFlatId = keepFlatId;
+      var updated = document.getElementById("flat-" + keepFlatId);
+      if (updated) window.floor21SelectFlat(updated, options.showModal !== false);
+    }
+    scheduleDuplexLinks();
+  }
+
+  function showGridToast(message, tone) {
+    var el = document.getElementById("flat-grid-toast");
+    if (!el || !message) return;
+    el.textContent = message;
+    el.classList.remove("d-none", "alert-success", "alert-danger");
+    el.classList.add(tone === "error" ? "alert-danger" : "alert-success");
+    clearTimeout(el._hideTimer);
+    el._hideTimer = setTimeout(function () {
+      el.classList.add("d-none");
+    }, 9000);
+  }
+
+  function highlightFlatCard(cardEl) {
+    if (!cardEl) return;
+    cardEl.classList.add("flat-card--focused");
+    cardEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    setTimeout(function () {
+      cardEl.classList.remove("flat-card--focused");
+    }, 5000);
+  }
+
+  function findFloorRow(floorNumber) {
+    var grid = document.getElementById("flat-grid");
+    if (!grid) return null;
+    var rows = grid.querySelectorAll("[data-floor-number]");
+    for (var i = 0; i < rows.length; i++) {
+      if (String(rows[i].getAttribute("data-floor-number")) === String(floorNumber)) {
+        return rows[i];
+      }
+    }
+    return null;
+  }
+
+  function syncFlatCardFromData(el, flat) {
+    if (!el || !flat) return;
+    el.dataset.status = flat.status;
+    el.dataset.type = flat.bhkType;
+    el.dataset.floor = flat.floorNumber;
+    el.dataset.price = flat.basePrice;
+    el.dataset.area = flat.areaSqft;
+    el.dataset.parking = flat.parking;
+    el.dataset.amenity = isAmenityType(flat.bhkType);
+    el.dataset.duplexPrimary = flat.duplexPrimary ? "true" : "false";
+    el.dataset.duplexSecondary = flat.duplexSecondary ? "true" : "false";
+    el.dataset.mergePrimary = flat.mergePrimary ? "true" : "false";
+    el.dataset.mergeSecondary = flat.mergeSecondary ? "true" : "false";
+    if (flat.mergePartnerFlatId) {
+      el.dataset.mergePartnerId = flat.mergePartnerFlatId;
+    } else {
+      delete el.dataset.mergePartnerId;
+    }
+    if (flat.mergeAbsorbedFlatId) {
+      el.dataset.mergeAbsorbedId = flat.mergeAbsorbedFlatId;
+    } else {
+      delete el.dataset.mergeAbsorbedId;
+    }
+    if (flat.mergeAbsorbedFlatNumber) {
+      el.dataset.mergeAbsorbedNumber = flat.mergeAbsorbedFlatNumber;
+    } else {
+      delete el.dataset.mergeAbsorbedNumber;
+    }
+    if (flat.duplexPartnerFlatId) {
+      el.dataset.duplexPartnerId = flat.duplexPartnerFlatId;
+    } else {
+      delete el.dataset.duplexPartnerId;
+    }
+    if (flat.gridTypeLabel) {
+      el.dataset.gridType = flat.gridTypeLabel;
+    }
+    el.dataset.bookable = flat.bookableByCurrentUser === false ? "false" : "true";
+    if (flat.assignedPartnerId) {
+      el.dataset.partnerId = flat.assignedPartnerId;
+    } else {
+      delete el.dataset.partnerId;
+    }
+    syncPartnerTag(el, flat.assignedPartnerId, flat.assignedPartnerName);
+    syncDeactivatedTag(el);
+    if (flat.clientId) {
+      el.dataset.clientId = flat.clientId;
+    } else {
+      delete el.dataset.clientId;
+    }
+    syncBuyerTooltip(el, flat);
+    syncCardOwner(el, flat);
+    var typeSpan = el.querySelector(".flat-type");
+    if (typeSpan && flat.gridTypeLabel) typeSpan.textContent = flat.gridTypeLabel;
+    else if (typeSpan && flat.bhkType) typeSpan.textContent = flat.bhkType;
+    if (flat.cardClass) {
+      el.className = flat.cardClass;
+    }
+    applyCardTypeClasses(el, {
+      parking: flat.parking === true,
+      amenity: isAmenityType(flat.bhkType),
+      duplexSecondary: flat.duplexSecondary === true,
+      duplexPrimary: flat.duplexPrimary === true,
+      mergeSecondary: flat.mergeSecondary === true,
+      mergePrimary: flat.mergePrimary === true,
+      status: flat.status,
+    });
+    if (
+      flat.bookableByCurrentUser === false &&
+      !flat.parking &&
+      !isAmenityType(flat.bhkType) &&
+      !flat.duplexSecondary &&
+      !flat.mergeSecondary
+    ) {
+      el.classList.add("flat-card--other-partner");
+      delete el.dataset.floorPlanSlot;
+    } else {
+      el.classList.remove("flat-card--other-partner");
+    }
+    stripFloorPlanTriggers(el);
+    stripNonBookableHover(el);
+    syncFloorPlanLink(el);
+  }
+
+  function createFlatCardFromData(flat) {
+    var card = document.createElement("div");
+    card.id = "flat-" + flat.id;
+    card.className = flat.cardClass || "flat-card flat-available";
+    card.dataset.flatId = flat.id;
+    var inner = document.createElement("div");
+    inner.className = "flat-card-inner";
+    var head = document.createElement("div");
+    head.className = "flat-card-head";
+    var num = document.createElement("span");
+    num.className = "flat-number";
+    num.textContent = flat.flatNumber || "";
+    head.appendChild(num);
+    var typeSpan = document.createElement("span");
+    typeSpan.className = "flat-type";
+    typeSpan.textContent = flat.gridTypeLabel || flat.bhkType || "";
+    head.appendChild(typeSpan);
+    inner.appendChild(head);
+    var owner = document.createElement("div");
+    owner.className = "flat-card-owner is-blank";
+    owner.innerHTML =
+      '<span class="flat-owner-name"></span><span class="flat-owner-detail"></span>';
+    inner.appendChild(owner);
+    if (flat.bookableByCurrentUser !== false || isPlatformAdminEdit()) {
+      var quick = document.createElement("button");
+      quick.type = "button";
+      quick.className = "flat-quick-link";
+      quick.dataset.flatId = flat.id;
+      quick.textContent = "Flat details";
+      inner.appendChild(quick);
+    }
+    card.appendChild(inner);
+    syncFlatCardFromData(card, flat);
+    return card;
+  }
+
+  function insertFlatCardInRow(floorRow, cardEl, flatNumber) {
+    var row = floorRow.querySelector(".flat-card-row");
+    if (!row) return;
+    var cards = row.querySelectorAll(".flat-card");
+    var inserted = false;
+    for (var i = 0; i < cards.length; i++) {
+      var n = cards[i].querySelector(".flat-number");
+      var existing = n ? n.textContent.trim() : "";
+      if (flatNumber && existing && String(flatNumber) < String(existing)) {
+        row.insertBefore(cardEl, cards[i]);
+        inserted = true;
+        break;
+      }
+    }
+    if (!inserted) row.appendChild(cardEl);
+  }
+
+  function syncGridFromData(floors) {
+    floors.forEach(function (floor) {
+      floor.flats.forEach(function (flat) {
+        var el = document.getElementById("flat-" + flat.id);
+        if (!el) {
+          var floorRow = findFloorRow(floor.floorNumber);
+          if (!floorRow) return;
+          el = createFlatCardFromData(flat);
+          insertFlatCardInRow(floorRow, el, flat.flatNumber);
+        }
+        syncFlatCardFromData(el, flat);
+      });
+    });
+  }
+
   async function refreshGrid() {
     var grid = document.getElementById("flat-grid");
     if (!grid) return;
@@ -437,53 +811,13 @@
     });
     if (!res.ok) return;
     var floors = await res.json();
-    floors.forEach(function (floor) {
-      floor.flats.forEach(function (flat) {
-        var el = document.getElementById("flat-" + flat.id);
-        if (!el) return;
-        el.dataset.status = flat.status;
-        el.dataset.type = flat.bhkType;
-        el.dataset.floor = flat.floorNumber;
-        el.dataset.price = flat.basePrice;
-        el.dataset.area = flat.areaSqft;
-        el.dataset.parking = flat.parking;
-        el.dataset.amenity = isAmenityType(flat.bhkType);
-        el.dataset.bookable = flat.bookableByCurrentUser === false ? "false" : "true";
-        if (flat.assignedPartnerId) {
-          el.dataset.partnerId = flat.assignedPartnerId;
-        } else {
-          delete el.dataset.partnerId;
-        }
-        syncPartnerTag(el, flat.assignedPartnerId, flat.assignedPartnerName);
-        syncDeactivatedTag(el);
-        if (flat.clientId) {
-          el.dataset.clientId = flat.clientId;
-        } else {
-          delete el.dataset.clientId;
-        }
-        syncBuyerTooltip(el, flat);
-        syncCardOwner(el, flat);
-        var typeSpan = el.querySelector(".flat-type");
-        if (typeSpan && flat.bhkType) typeSpan.textContent = flat.bhkType;
-        applyCardTypeClasses(el, {
-          parking: flat.parking === true,
-          amenity: isAmenityType(flat.bhkType),
-          status: flat.status,
-        });
-        if (flat.bookableByCurrentUser === false && !flat.parking && !isAmenityType(flat.bhkType)) {
-          el.classList.add("flat-card--other-partner");
-          delete el.dataset.floorPlanSlot;
-        }
-        stripFloorPlanTriggers(el);
-        stripNonBookableHover(el);
-        syncFloorPlanLink(el);
-      });
-    });
+    syncGridFromData(floors);
     applyBookingSelectionHighlight();
     if (selectedFlatId) {
       var selected = document.getElementById("flat-" + selectedFlatId);
       if (selected) syncActionButtons(selected);
     }
+    scheduleDuplexLinks();
   }
 
   async function postStatus(flatId, status) {
@@ -644,7 +978,8 @@
     if (titleEl) {
       titleEl.textContent = flatLabel ? "Flat " + flatLabel : "Flat details";
     }
-    document.getElementById("panel-type").textContent = el.dataset.type || "";
+    document.getElementById("panel-type").textContent =
+      el.dataset.gridType || el.dataset.type || "";
     document.getElementById("panel-floor").textContent = el.dataset.floor || "";
     document.getElementById("panel-area").textContent = el.dataset.area || "";
     document.getElementById("panel-price").textContent = el.dataset.price || "";
@@ -746,6 +1081,11 @@
     grid.dataset.f21Init = "true";
     mountModalsOnBody();
     initAllFlatCards();
+    scheduleDuplexLinks();
+    if (!window.__f21DuplexResizeBound) {
+      window.__f21DuplexResizeBound = true;
+      window.addEventListener("resize", scheduleDuplexLinks);
+    }
     loadSalesPartnersIntoSelect();
     var modalEl = document.getElementById("floor-plan-modal");
     if (modalEl) {
@@ -938,11 +1278,16 @@
         var removeSel = document.getElementById("admin-merge-remove");
         var removeId = removeSel ? removeSel.value : "";
         if (!removeId) {
-          showAdminError("Choose which flat to remove on this floor.");
+          showAdminError("Choose which flat to link.");
           return;
         }
         var form = readAdminForm();
-        if (!window.confirm("Merge will delete the selected unit and keep this flat with the details above. Continue?")) {
+        var selectedOpt = removeSel.options[removeSel.selectedIndex];
+        var verticalDuplex = selectedOpt && selectedOpt.dataset.verticalDuplex === "true";
+        var confirmMsg = verticalDuplex
+          ? "Create vertical duplex? The lower-floor unit stays bookable; the upper unit is linked (not deleted). Continue?"
+          : "Merge will hide the selected unit on this floor and keep this flat with the details above. You can restore it later. Continue?";
+        if (!window.confirm(confirmMsg)) {
           return;
         }
         showAdminError("");
@@ -962,7 +1307,85 @@
           showAdminError(await parseErrorResponse(res));
           return;
         }
-        window.location.reload();
+        var flat = await res.json();
+        var keepId = flat.id ? String(flat.id) : selectedFlatId;
+        await afterLayoutChange(keepId, null);
+      });
+    }
+
+    var adminSplitMerge = document.getElementById("admin-split-merge-btn");
+    if (adminSplitMerge) {
+      adminSplitMerge.addEventListener("click", async function () {
+        if (!selectedFlatId) return;
+        var card = document.getElementById("flat-" + selectedFlatId);
+        var absorbedNo =
+          card && card.dataset.mergeAbsorbedNumber ? card.dataset.mergeAbsorbedNumber : "the merged unit";
+        if (
+          !window.confirm(
+            "Restore " +
+              absorbedNo +
+              " as a separate flat? This flat will revert to its pre-merge type, area, and price."
+          )
+        ) {
+          return;
+        }
+        showAdminError("");
+        var headers = Object.assign({}, csrfHeaders());
+        var res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/split-merge", {
+          method: "POST",
+          headers: headers,
+        });
+        if (!res.ok) {
+          showAdminError(await parseErrorResponse(res));
+          return;
+        }
+        var result = await res.json();
+        var keepId = result.id ? String(result.id) : selectedFlatId;
+        var restoredId = result.restoredFlatId ? String(result.restoredFlatId) : null;
+        await afterLayoutChange(keepId, null, { showModal: false });
+        if (result.message) {
+          showGridToast(result.message);
+        }
+        var restoredCard = restoredId ? document.getElementById("flat-" + restoredId) : null;
+        var keepCard = document.getElementById("flat-" + keepId);
+        if (restoredCard) {
+          restoredCard.classList.add("flat-card--focused");
+          restoredCard.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+        }
+        if (keepCard) {
+          keepCard.classList.add("flat-card--focused");
+        }
+        setTimeout(function () {
+          if (restoredCard) restoredCard.classList.remove("flat-card--focused");
+          if (keepCard) keepCard.classList.remove("flat-card--focused");
+        }, 5000);
+      });
+    }
+
+    var adminSplitDuplex = document.getElementById("admin-split-duplex-btn");
+    if (adminSplitDuplex) {
+      adminSplitDuplex.addEventListener("click", async function () {
+        if (!selectedFlatId) return;
+        if (
+          !window.confirm(
+            "Split this duplex back into two separate units? Bookings must be cleared from the primary flat first."
+          )
+        ) {
+          return;
+        }
+        showAdminError("");
+        var headers = Object.assign({}, csrfHeaders());
+        var res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/split-duplex", {
+          method: "POST",
+          headers: headers,
+        });
+        if (!res.ok) {
+          showAdminError(await parseErrorResponse(res));
+          return;
+        }
+        var flat = await res.json();
+        var keepId = flat.id ? String(flat.id) : selectedFlatId;
+        await afterLayoutChange(keepId, null);
       });
     }
 
