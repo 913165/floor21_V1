@@ -78,14 +78,14 @@ public class AccountService {
         var staff = userRepository.findFirstByEmailIgnoreCaseAndActiveTrue(email);
         if (staff.isPresent()) {
             User user = staff.get();
-            UUID builderId = TenantContext.getBuilderIdOrNull();
-            if (builderId == null) {
-                builderId =
-                        userProjectAssignmentService
-                                .resolvePrimaryMembership(user.getId())
-                                .map(m -> m.getBuilder().getId())
-                                .orElse(null);
-            }
+            UUID contextBuilderId = TenantContext.getBuilderIdOrNull();
+            UUID builderId =
+                    contextBuilderId != null
+                            ? contextBuilderId
+                            : userProjectAssignmentService
+                                    .resolvePrimaryMembership(user.getId())
+                                    .map(m -> m.getBuilder().getId())
+                                    .orElse(null);
             String role =
                     builderId != null
                             ? userProjectAssignmentService.getRole(user.getId(), builderId)
