@@ -14,6 +14,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,7 +40,21 @@ public class AdminPlatformController {
     public String buildings(Model model) {
         model.addAttribute("pageTitle", "All buildings");
         model.addAttribute("buildings", buildingService.listAllForPlatformAdmin());
+        model.addAttribute("bookingCounts", buildingService.countBookingsPerBuilding());
         return "admin/buildings/list";
+    }
+
+    @PostMapping("/buildings/{id}/delete")
+    public String deleteBuilding(
+            @PathVariable UUID id, Authentication authentication, RedirectAttributes ra) {
+        try {
+            String actor = authentication != null ? authentication.getName() : "admin";
+            buildingService.deleteForPlatformAdmin(id, actor);
+            ra.addFlashAttribute("successMessage", "Building deleted.");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/admin/buildings";
     }
 
     @GetMapping("/activity")

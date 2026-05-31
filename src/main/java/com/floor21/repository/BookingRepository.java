@@ -33,6 +33,12 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     long countActiveByBuilding(
             @Param("builderId") UUID builderId, @Param("buildingId") UUID buildingId);
 
+    @Query("select count(b) from Booking b where b.flat.building.id = :buildingId")
+    long countByBuildingId(@Param("buildingId") UUID buildingId);
+
+    @Query("select b.flat.building.id, count(b) from Booking b group by b.flat.building.id")
+    List<Object[]> countGroupedByBuilding();
+
     @Query("select count(b) from Booking b where b.flat.id = :flatId and b.status = 'ACTIVE'")
     long countActiveByFlatId(@Param("flatId") UUID flatId);
 

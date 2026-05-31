@@ -3,11 +3,16 @@ package com.floor21.service;
 import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
 import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
+import com.floor21.repository.FlatRepository;
+import com.floor21.repository.PaymentSlabTemplateRepository;
+import com.floor21.repository.SlabRepository;
 import com.floor21.security.TenantContext;
 import com.floor21.util.ResidentialBhkTypes;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,6 +27,12 @@ public class BuildingService {
     private final BuildingRepository buildingRepository;
     private final BuilderRepository builderRepository;
     private final VaultAccessService vaultAccessService;
+    private final BookingRepository bookingRepository;
+    private final FlatRepository flatRepository;
+    private final PaymentSlabTemplateRepository paymentSlabTemplateRepository;
+    private final SlabRepository slabRepository;
+    private final BuildingFloorPlanService buildingFloorPlanService;
+    private final PlatformAuditService auditService;
 
     @Transactional(readOnly = true)
     public List<Building> listForTenant() {
@@ -84,6 +95,47 @@ public class BuildingService {
     @Transactional(readOnly = true)
     public List<Building> listAllForPlatformAdmin() {
         return buildingRepository.findAllForPlatformAdminOrderByBuilderAndName();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<UUID, Long> countBookingsPerBuilding() {
+        Map<UUID, Long> counts = new HashMap<>();
+        for (Object[] row : bookingRepository.countGroupedByBuilding()) {
+            counts.put((UUID) row[0], (Long) row[1]);
+        }
+        return counts;
+    }
+
+    @Transactional
+    public void deleteForPlatformAdmin(UUID buildingId, String adminEmail) {
+        Building building =
+                buildingRepository
+                        .findByIdWithBuilder(buildingId)
+                        .filter(b -> b.getBuilder() != null && !b.getBuilder().isPlatformAdmin())
+                        .orElseThrow(() -> new IllegalArgumentException("Building not found."));
+        long bookingCount = bookingRepository.countByBuildingId(buildingId);
+        if (bookingCount > 0) {
+            throw new IllegalArgumentException(
+                    "Cannot delete this building because "
+                            + bookingCount
+                            + " booking(s) are linked to its flats.");
+        }
+        UUID builderId = building.getBuilder().getId();
+        String buildingName = building.getBuildingName();
+
+        paymentSlabTemplateRepository.deleteByBuilding_Id(buildingId);
+        slabRepository.deleteByBuilding_Id(buildingId);
+        flatRepository.clearUnitLinksForBuilding(buildingId);
+        flatRepository.deleteByBuilding_IdAndBuilder_Id(buildingId, builderId);
+        buildingFloorPlanService.deleteAllForBuilding(buildingId);
+        buildingRepository.delete(building);
+
+        auditService.log(
+                "BUILDING_DELETED",
+                "building",
+                buildingId.toString(),
+                builderId,
+                buildingName + " deleted by " + adminEmail);
     }
 
     /** New buildings are created by the Floor21 platform admin only (see {@link #createForBuilder}). */

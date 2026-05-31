@@ -40,6 +40,16 @@
           <a class="btn btn-sm btn-outline-secondary"
              th:if="${b.builder != null}"
              th:href="@{/admin/projects/{id}/edit(id=${b.builder.id})}">Project</a>
+          <form class="d-inline"
+                th:if="${bookingCounts[b.id] == null or bookingCounts[b.id] == 0}"
+                th:action="@{/admin/buildings/{id}/delete(id=${b.id})}" method="post"
+                onsubmit="return confirm('Delete this building permanently? Flats and layout data will be removed. This cannot be undone.');">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+          </form>
+          <span class="text-muted small"
+                th:if="${bookingCounts[b.id] != null and bookingCounts[b.id] > 0}"
+                th:title="'This building has ' + ${bookingCounts[b.id]} + ' booking(s).'">Has bookings</span>
         </td>
       </tr>
       </tbody>

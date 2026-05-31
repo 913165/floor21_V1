@@ -27,7 +27,8 @@
 <header th:replace="~{layout/fragments/navbar :: navbar}"></header>
 <div class="floor21-shell d-flex flex-grow-1 w-100 min-vh-0">
   <aside th:replace="~{layout/fragments/sidebar :: sidebar}"></aside>
-  <turbo-frame id="floor21-main" class="floor21-panel flex-grow-1 py-3 px-3 px-md-4 overflow-auto">
+  <turbo-frame id="floor21-main" data-turbo-action="advance"
+               class="floor21-panel flex-grow-1 py-3 px-3 px-md-4 overflow-auto">
     <div class="floor21-panel__inner">
       <div th:if="${impersonationActive}" class="floor21-impersonation-banner floor21-impersonation-banner--inline text-center small py-2 px-3 mb-3">
         Viewing as <strong th:text="${impersonationBuilderName}">builder</strong>.
@@ -42,8 +43,8 @@
   </turbo-frame>
 </div>
 <script th:src="@{/vendor/bootstrap.bundle.min.js}"></script>
-  <script defer th:src="@{/js/turbo-drive.js(v=session-expiry)}"></script>
-<script defer th:src="@{/js/nav-active.js(v=turbo-frame)}"></script>
+  <script defer th:src="@{/js/turbo-drive.js(v=frame-advance)}"></script>
+<script defer th:src="@{/js/nav-active.js(v=frame-advance)}"></script>
 <script defer th:src="@{/js/layout.js(v=turbo-frame)}"></script>
 <script defer th:src="@{/js/password-toggle.js(v=turbo-frame)}"></script>
 <script defer th:src="@{/js/theme.js(v=turbo-frame)}"></script>

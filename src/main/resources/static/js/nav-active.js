@@ -2,7 +2,27 @@
  * Keeps sidebar highlight in sync when Turbo preserves the sidebar across visits.
  */
 (function () {
+  function servletPathFromLocation() {
+    var path = window.location.pathname || "";
+    var body = document.body;
+    if (!body) {
+      return path;
+    }
+    var root = body.getAttribute("data-app-root");
+    if (root) {
+      root = root.replace(/\/+$/, "");
+      if (root && path.indexOf(root) === 0) {
+        path = path.slice(root.length) || "/";
+      }
+    }
+    return path;
+  }
+
   function currentNavPath() {
+    var fromLocation = servletPathFromLocation();
+    if (fromLocation && fromLocation !== "/") {
+      return fromLocation;
+    }
     var meta = document.querySelector('meta[name="floor21-nav-path"]');
     if (meta) {
       var value = meta.getAttribute("content");
@@ -10,7 +30,7 @@
         return value;
       }
     }
-    return "";
+    return fromLocation || "";
   }
 
   function linkIsActive(path, link) {

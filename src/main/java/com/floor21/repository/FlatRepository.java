@@ -62,6 +62,18 @@ public interface FlatRepository extends JpaRepository<Flat, UUID> {
     long countAllByStatus(@Param("status") String status);
 
     @Modifying(clearAutomatically = true)
+    @Query(
+            """
+            update Flat f set
+              f.duplexPrimaryFlatId = null,
+              f.duplexSecondaryFlatId = null,
+              f.mergedIntoFlatId = null,
+              f.mergedAbsorbedFlatId = null
+            where f.building.id = :buildingId
+            """)
+    void clearUnitLinksForBuilding(@Param("buildingId") UUID buildingId);
+
+    @Modifying(clearAutomatically = true)
     @Query("delete from Flat f where f.building.id = :buildingId and f.builder.id = :builderId")
     void deleteByBuilding_IdAndBuilder_Id(
             @Param("buildingId") UUID buildingId, @Param("builderId") UUID builderId);

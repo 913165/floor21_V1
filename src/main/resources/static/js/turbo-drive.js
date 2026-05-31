@@ -57,6 +57,7 @@
         return;
       }
       link.setAttribute("data-turbo-frame", FRAME_ID);
+      link.setAttribute("data-turbo-action", "advance");
     });
   }
 
@@ -107,6 +108,9 @@
     }
     if (!link.getAttribute("data-turbo-frame")) {
       link.setAttribute("data-turbo-frame", FRAME_ID);
+    }
+    if (!link.getAttribute("data-turbo-action")) {
+      link.setAttribute("data-turbo-action", "advance");
     }
   });
 })();

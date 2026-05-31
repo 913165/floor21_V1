@@ -3,11 +3,13 @@ package com.floor21.service;
 import com.floor21.entity.Building;
 import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BuildingRepository;
+import com.floor21.security.TenantContext;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Comparator;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -32,11 +34,9 @@ public class BuildingFloorPlanService {
     @Value("${floor21.upload-root}")
     private String uploadRoot;
 
-    private final BuildingService buildingService;
-
     @Transactional
     public void savePlans(UUID buildingId, MultipartFile plan1Bhk, MultipartFile plan2Bhk, MultipartFile plan3Bhk) {
-        Building building = buildingService.resolveForAccess(buildingId);
+        Building building = requireBuildingForAccess(buildingId);
 
         Path base = Paths.get(uploadRoot).toAbsolutePath().normalize();
         Path buildingDir = base.resolve("buildings").resolve(buildingId.toString());
@@ -52,6 +52,47 @@ public class BuildingFloorPlanService {
         }
 
         buildingRepository.save(building);
+    }
+
+    private Building requireBuildingForAccess(UUID buildingId) {
+        UUID tenantId = TenantContext.getBuilderIdOrNull();
+        if (tenantId != null) {
+            Building building =
+                    buildingRepository
+                            .findByIdAndBuilder_Id(buildingId, tenantId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+            if (!TenantContext.canAccessBuilding(buildingId)) {
+                throw new ResourceNotFoundException("Building not found");
+            }
+            return building;
+        }
+        return buildingRepository
+                .findByIdWithBuilder(buildingId)
+                .filter(b -> b.getBuilder() != null && !b.getBuilder().isPlatformAdmin())
+                .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+    }
+
+    /** Removes uploaded floor-plan files for a building (best-effort). */
+    public void deleteAllForBuilding(UUID buildingId) {
+        Path base = Paths.get(uploadRoot).toAbsolutePath().normalize();
+        Path buildingDir = base.resolve("buildings").resolve(buildingId.toString()).normalize();
+        Path buildingsRoot = base.resolve("buildings").normalize();
+        if (!buildingDir.startsWith(buildingsRoot) || !Files.isDirectory(buildingDir)) {
+            return;
+        }
+        try {
+            try (var walk = Files.walk(buildingDir)) {
+                walk.sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException ignored) {
+                        // best-effort cleanup
+                    }
+                });
+            }
+        } catch (IOException ignored) {
+            // best-effort cleanup
+        }
     }
 
     private String storeOne(
