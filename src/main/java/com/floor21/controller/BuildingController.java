@@ -175,6 +175,7 @@ public class BuildingController {
                 canManagePartnerAllocation() ? partnerFlatAllocationService.listPartnersForBuilding(id) : List.of());
         if (flatCount > 0) {
             model.addAttribute("topFloorNumber", flatService.getTopFloorNumber(id));
+            model.addAttribute("maxRemovableTopFloors", flatService.getMaxRemovableTopFloors(id));
             model.addAttribute("addFloorMix", flatService.bhkMixForTopResidentialFloor(id));
         }
         return "buildings/flat-grid";
@@ -305,6 +306,30 @@ public class BuildingController {
                             + " (now "
                             + (topBefore + added)
                             + " total). Existing flats were kept.");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/buildings/" + id + "/flats";
+    }
+
+    @PostMapping("/{id}/flats/remove-top-floors")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public String removeTopFloors(
+            @PathVariable UUID id, @RequestParam int floorsToRemove, RedirectAttributes ra) {
+        try {
+            int topBefore = flatService.getTopFloorNumber(id);
+            int removed = flatService.removeTopFloors(id, floorsToRemove);
+            int topAfter = topBefore - removed;
+            ra.addFlashAttribute(
+                    "successMessage",
+                    removed
+                            + " top floor(s) removed (floor "
+                            + (topBefore - removed + 1)
+                            + " through "
+                            + topBefore
+                            + "). Building now ends at floor "
+                            + topAfter
+                            + ".");
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
         }

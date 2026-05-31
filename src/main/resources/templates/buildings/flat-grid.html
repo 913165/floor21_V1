@@ -166,14 +166,14 @@
   </div>
 
   <div class="card shadow-sm mb-3" sec:authorize="hasRole('SUPER_ADMIN')" th:if="${flatCount != null && flatCount > 0}">
-    <div class="card-header">Add floors on top</div>
+    <div class="card-header">Add or remove top floors</div>
     <div class="card-body">
       <p class="text-muted small mb-2">
-        Extend the building upward without removing existing flats. New rows are added above
-        <strong th:text="'Floor ' + ${topFloorNumber}">Floor 0</strong> using the layout below
-        (defaults match the current top floor).
+        Current top floor:
+        <strong th:text="'Floor ' + ${topFloorNumber}">Floor 0</strong>.
+        Extend upward or remove the top residential row(s). Parking floors are never removed.
       </p>
-      <form class="row g-2 align-items-end"
+      <form class="row g-2 align-items-end mb-3"
             th:action="@{/buildings/{id}/flats/add-floors(id=${building.id})}"
             method="post">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -196,7 +196,26 @@
           <button class="btn btn-outline-primary" type="submit">Add floors</button>
         </div>
       </form>
-      <p class="text-muted small mb-0 mt-2">New floors are residential only (above parking). Active bookings on lower floors are not affected.</p>
+      <form class="row g-2 align-items-end"
+            th:if="${maxRemovableTopFloors != null && maxRemovableTopFloors > 0}"
+            th:action="@{/buildings/{id}/flats/remove-top-floors(id=${building.id})}"
+            method="post"
+            th:attr="data-confirm=|Remove the top floor(s) and all flats on them? This cannot be undone.|"
+            onsubmit="return confirm(this.dataset.confirm);">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <div class="col-auto">
+          <label class="form-label">Floors to remove</label>
+          <input class="form-control" type="number" name="floorsToRemove" required min="1"
+                 th:max="${maxRemovableTopFloors}" value="1"/>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-outline-danger" type="submit">Remove top floor(s)</button>
+        </div>
+      </form>
+      <p class="text-muted small mb-0 mt-2">
+        Top-floor removal is blocked when any unit there is booked, merged, or part of a duplex.
+        Lower floors and their bookings are not affected.
+      </p>
     </div>
   </div>
 

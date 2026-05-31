@@ -414,6 +414,99 @@ public class FlatService {
         return additionalFloors;
     }
 
+    @Transactional(readOnly = true)
+    public int getMaxRemovableTopFloors(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        int topFloor =
+                flatRepository.findMaxFloorNumberByBuilding_IdAndBuilder_Id(
+                        buildingId, building.getBuilder().getId());
+        int parking = building.getParkingFloors() != null ? building.getParkingFloors() : 0;
+        return Math.max(0, topFloor - parking - 1);
+    }
+
+    /**
+     * Removes the top residential floor(s) and their flats. Parking floors cannot be removed.
+     *
+     * @return number of floors removed
+     */
+    @Transactional
+    public int removeTopFloors(UUID buildingId, int floorsToRemove) {
+        if (floorsToRemove < 1) {
+            throw new IllegalArgumentException("Remove at least one floor.");
+        }
+        if (floorsToRemove > 50) {
+            throw new IllegalArgumentException("Remove at most 50 floors at a time.");
+        }
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        int topFloor = flatRepository.findMaxFloorNumberByBuilding_IdAndBuilder_Id(buildingId, builderId);
+        if (topFloor <= 0) {
+            throw new IllegalArgumentException("No flats on the grid yet.");
+        }
+        int parking = building.getParkingFloors() != null ? building.getParkingFloors() : 0;
+        int minResidentialTop = parking + 1;
+        if (topFloor <= parking) {
+            throw new IllegalArgumentException("Only residential floors above parking can be removed.");
+        }
+        int maxRemovable = topFloor - minResidentialTop;
+        if (floorsToRemove > maxRemovable) {
+            throw new IllegalArgumentException(
+                    "Cannot remove "
+                            + floorsToRemove
+                            + " floor(s). At most "
+                            + maxRemovable
+                            + " can be removed while keeping floor "
+                            + minResidentialTop
+                            + ".");
+        }
+        int fromFloor = topFloor - floorsToRemove + 1;
+        List<Flat> flatsToRemove =
+                flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberBetweenOrderByFloorNumberDescUnitNumberAsc(
+                        buildingId, builderId, fromFloor, topFloor);
+        if (flatsToRemove.isEmpty()) {
+            throw new IllegalArgumentException("No flats found on the top floor(s) to remove.");
+        }
+        for (Flat flat : flatsToRemove) {
+            validateFlatRemovableForTopFloorDeletion(flat);
+        }
+        flatRepository.deleteByBuilding_IdAndBuilder_IdAndFloorNumberBetween(
+                buildingId, builderId, fromFloor, topFloor);
+        int newTop = topFloor - floorsToRemove;
+        building.setTotalFloors(Math.max(parking, newTop));
+        buildingRepository.save(building);
+        return floorsToRemove;
+    }
+
+    private void validateFlatRemovableForTopFloorDeletion(Flat flat) {
+        if (FlatUnitTypes.isMergePrimary(flat) || FlatUnitTypes.isMergeAbsorbed(flat)) {
+            throw new IllegalArgumentException(
+                    "Floor "
+                            + flat.getFloorNumber()
+                            + " has merged units. Restore them before removing the floor.");
+        }
+        if (FlatUnitTypes.isDuplexPrimary(flat) || FlatUnitTypes.isDuplexSecondary(flat)) {
+            throw new IllegalArgumentException(
+                    "Floor "
+                            + flat.getFloorNumber()
+                            + " has duplex units. Split the duplex before removing the floor.");
+        }
+        assertNoActiveBooking(
+                flat.getId(),
+                "Cannot remove floor "
+                        + flat.getFloorNumber()
+                        + " while flat "
+                        + flat.getFlatNumber()
+                        + " has an active booking.");
+        if ("BOOKED".equals(flat.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Cannot remove floor "
+                            + flat.getFloorNumber()
+                            + " while flat "
+                            + flat.getFlatNumber()
+                            + " is booked. Cancel the booking first.");
+        }
+    }
+
     private static void appendResidentialFloorFlats(
             List<Flat> batch,
             Builder builder,

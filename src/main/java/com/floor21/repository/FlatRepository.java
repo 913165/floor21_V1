@@ -76,4 +76,21 @@ public interface FlatRepository extends JpaRepository<Flat, UUID> {
 
     List<Flat> findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
             UUID buildingId, UUID builderId, int floorNumber);
+
+    List<Flat> findByBuilding_IdAndBuilder_IdAndFloorNumberBetweenOrderByFloorNumberDescUnitNumberAsc(
+            UUID buildingId, UUID builderId, int fromFloor, int toFloor);
+
+    @Modifying(clearAutomatically = true)
+    @Query(
+            """
+            delete from Flat f
+            where f.building.id = :buildingId
+              and f.builder.id = :builderId
+              and f.floorNumber between :fromFloor and :toFloor
+            """)
+    void deleteByBuilding_IdAndBuilder_IdAndFloorNumberBetween(
+            @Param("buildingId") UUID buildingId,
+            @Param("builderId") UUID builderId,
+            @Param("fromFloor") int fromFloor,
+            @Param("toFloor") int toFloor);
 }
