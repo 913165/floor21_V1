@@ -3,6 +3,7 @@ package com.floor21.controller;
 import com.floor21.entity.User;
 import com.floor21.service.AdminStaffService;
 import com.floor21.service.AdminUserService;
+import com.floor21.util.IndianStates;
 import com.floor21.service.StaffBuildingAccessService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -68,6 +69,7 @@ public class AdminUserController {
         if (builders.isEmpty()) {
             model.addAttribute("pageTitle", editing ? "Edit user" : "New user");
             model.addAttribute("noBuilders", true);
+            model.addAttribute("indianStates", IndianStates.all());
             return "admin/users/form";
         }
         UUID resolvedBuilderId =
@@ -84,6 +86,7 @@ public class AdminUserController {
         model.addAttribute("builders", builders);
         model.addAttribute("staff", formUser);
         model.addAttribute("selectedBuilderId", resolvedBuilderId);
+        model.addAttribute("indianStates", IndianStates.all());
         return "admin/users/form";
     }
 }

@@ -7,6 +7,7 @@ import com.floor21.entity.User;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.UserRepository;
+import com.floor21.util.UserContactFields;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -86,36 +87,36 @@ public class AdminStaffService {
         String normalizedRole = StaffBuildingAccessService.normalizeRole(role);
         User entity;
         boolean created = form.getId() == null;
+        String password = requirePassword(rawPassword);
         if (created) {
-            if (rawPassword == null || rawPassword.isBlank()) {
-                throw new IllegalArgumentException("Password is required for new staff.");
-            }
             if (userRepository.existsByBuilder_IdAndEmailIgnoreCase(builderId, form.getEmail())) {
                 throw new IllegalArgumentException("Email is already used for this builder.");
             }
             entity = new User();
             entity.setBuilder(builder);
             entity.setCreatedAt(Instant.now());
-            entity.setPasswordHash(passwordEncoder.encode(rawPassword));
-            entity.setAdminVisiblePassword(rawPassword);
+            entity.setPasswordHash(passwordEncoder.encode(password));
+            entity.setAdminVisiblePassword(password);
         } else {
             entity = getStaff(builderId, form.getId());
             if (userRepository.existsByBuilder_IdAndEmailIgnoreCaseAndIdNot(
                     builderId, form.getEmail(), entity.getId())) {
                 throw new IllegalArgumentException("Email is already used for this builder.");
             }
-            if (rawPassword != null && !rawPassword.isBlank()) {
-                String trimmed = rawPassword.trim();
-                if (!trimmed.equals(entity.getAdminVisiblePassword())) {
-                    entity.setPasswordHash(passwordEncoder.encode(trimmed));
-                }
-                entity.setAdminVisiblePassword(trimmed);
+            if (!password.equals(entity.getAdminVisiblePassword())) {
+                entity.setPasswordHash(passwordEncoder.encode(password));
             }
+            entity.setAdminVisiblePassword(password);
         }
         entity.setRole(normalizedRole);
         entity.setFullName(form.getFullName().trim());
         entity.setEmail(form.getEmail().trim().toLowerCase(Locale.ROOT));
         entity.setActive(form.getActive() != null ? form.getActive() : true);
+        UserContactFields.applyFromForm(entity, form);
+        if (StaffBuildingAccessService.ROLE_EXECUTIVE.equals(normalizedRole)
+                && (buildingIds == null || buildingIds.isEmpty())) {
+            throw new IllegalArgumentException("Select at least one building for a sales / partner user.");
+        }
         User saved = userRepository.save(entity);
         staffBuildingAccessService.replaceAssignments(builderId, saved, normalizedRole, buildingIds);
         auditService.log(
@@ -125,5 +126,16 @@ public class AdminStaffService {
                 builderId,
                 saved.getEmail() + " (" + normalizedRole + ")");
         return saved;
+    }
+
+    private static String requirePassword(String rawPassword) {
+        if (rawPassword == null || rawPassword.isBlank()) {
+            throw new IllegalArgumentException("Password is required.");
+        }
+        String trimmed = rawPassword.trim();
+        if (trimmed.length() < 6) {
+            throw new IllegalArgumentException("Password must be at least 6 characters.");
+        }
+        return trimmed;
     }
 }

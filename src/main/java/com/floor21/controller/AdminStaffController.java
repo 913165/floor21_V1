@@ -3,6 +3,7 @@ package com.floor21.controller;
 import com.floor21.entity.User;
 import com.floor21.service.AdminStaffService;
 import com.floor21.service.StaffBuildingAccessService;
+import com.floor21.util.IndianStates;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -96,6 +97,7 @@ public class AdminStaffController {
         } else {
             model.addAttribute("building", null);
         }
+        model.addAttribute("indianStates", IndianStates.all());
         return "admin/staff/form";
     }
 

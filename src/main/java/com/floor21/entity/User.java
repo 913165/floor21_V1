@@ -56,4 +56,25 @@ public class User {
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
+
+    @Column(name = "pan_number", length = 20)
+    private String panNumber;
+
+    @Column(name = "tan_number", length = 20)
+    private String tanNumber;
+
+    @Column(name = "gst_number", length = 20)
+    private String gstNumber;
+
+    @Column(name = "mobile_number", length = 20)
+    private String mobileNumber;
+
+    @Column(columnDefinition = "TEXT")
+    private String address;
+
+    @Column(name = "address_state", length = 100)
+    private String addressState;
+
+    @Column(name = "address_pin", length = 6)
+    private String addressPin;
 }

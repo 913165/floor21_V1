@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="addressFields">
+  <div class="col-12">
+    <label class="form-label" for="user-address-line">Address <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
+    <textarea class="form-control" id="user-address-line" rows="2" th:field="*{address}"
+              required minlength="3"
+              placeholder="Street, area, city"></textarea>
+    <div class="invalid-feedback">Address is required.</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="user-address-state">State <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
+    <select class="form-select" id="user-address-state" th:field="*{addressState}" required>
+      <option value="">Select state / UT</option>
+      <option th:each="s : ${indianStates}" th:value="${s}" th:text="${s}">State</option>
+    </select>
+    <div class="invalid-feedback">Please select a state or union territory.</div>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label" for="user-address-pin">PIN code <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
+    <input class="form-control font-monospace"
+           id="user-address-pin"
+           th:field="*{addressPin}"
+           type="text"
+           required
+           inputmode="numeric"
+           autocomplete="postal-code"
+           maxlength="6"
+           minlength="6"
+           pattern="[1-9][0-9]{5}"
+           title="Enter a 6-digit PIN code (first digit 1–9)"
+           placeholder="e.g. 110001"/>
+    <div class="invalid-feedback">Enter a valid 6-digit PIN code (e.g. 110001).</div>
+    <div class="form-text">6 digits; first digit cannot be 0.</div>
+  </div>
+  <script>
+    (function () {
+      var pin = document.getElementById("user-address-pin");
+      var form = pin && pin.closest("form");
+      if (!pin || !form) return;
+      pin.addEventListener("input", function () {
+        pin.value = pin.value.replace(/\D/g, "").slice(0, 6);
+        pin.setCustomValidity("");
+      });
+      form.addEventListener(
+          "submit",
+          function (e) {
+            if (!form.checkValidity()) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+            form.classList.add("was-validated");
+          },
+          false);
+    })();
+  </script>
+</th:block>
+</body>
+</html>
