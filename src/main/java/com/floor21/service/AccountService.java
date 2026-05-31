@@ -8,6 +8,7 @@ import com.floor21.repository.UserRepository;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
 import java.util.Locale;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
