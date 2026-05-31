@@ -4,11 +4,13 @@ import com.floor21.dto.BuildingConfigDto;
 import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
 import com.floor21.repository.BuilderRepository;
+import com.floor21.repository.BuildingRepository;
 import com.floor21.service.BuildingService;
 import com.floor21.service.FlatService;
 import com.floor21.service.PlatformAdminService;
 import com.floor21.service.PlatformAuditService;
 import com.floor21.service.PlatformSettingsService;
+import com.floor21.service.UserProjectAssignmentService;
 import com.floor21.util.ResidentialBhkTypes;
 import java.time.Instant;
 import java.util.Map;
@@ -22,7 +24,6 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -31,11 +32,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class AdminController {
 
     private final BuilderRepository builderRepository;
+    private final BuildingRepository buildingRepository;
     private final BuildingService buildingService;
     private final FlatService flatService;
     private final PlatformAdminService platformAdminService;
     private final PlatformAuditService auditService;
     private final PlatformSettingsService platformSettingsService;
+    private final UserProjectAssignmentService userProjectAssignmentService;
 
     @GetMapping
     public String list(Model model) {
@@ -55,6 +58,10 @@ public class AdminController {
     public String edit(@PathVariable UUID id, Model model) {
         model.addAttribute("pageTitle", "Edit project");
         model.addAttribute("builder", builderRepository.findById(id).orElseThrow());
+        model.addAttribute(
+                "projectLayout",
+                buildingRepository.findFirstByBuilder_IdOrderByBuildingNameAsc(id).orElse(null));
+        model.addAttribute("partnerCount", userProjectAssignmentService.countForProject(id));
         return "admin/builders/form";
     }
 
@@ -63,6 +70,13 @@ public class AdminController {
         if (form.getCompanyName() == null || form.getCompanyName().isBlank()) {
             model.addAttribute("pageTitle", form.getId() == null ? "New project" : "Edit project");
             model.addAttribute("builder", form);
+            if (form.getId() != null) {
+                model.addAttribute(
+                        "projectLayout",
+                        buildingRepository
+                                .findFirstByBuilder_IdOrderByBuildingNameAsc(form.getId())
+                                .orElse(null));
+            }
             model.addAttribute("errorMessage", "Project name is required.");
             return "admin/builders/form";
         }
@@ -108,8 +122,27 @@ public class AdminController {
         return "redirect:/admin/projects/" + id + "/edit";
     }
 
+    @PostMapping("/{id}/delete")
+    public String delete(@PathVariable UUID id, Authentication authentication, RedirectAttributes ra) {
+        try {
+            String actor = authentication != null ? authentication.getName() : "admin";
+            platformAdminService.deleteProject(id, actor);
+            ra.addFlashAttribute("successMessage", "Project deleted.");
+            return "redirect:/admin/projects";
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/admin/projects/" + id + "/edit";
+        }
+    }
+
     @GetMapping("/{builderId}/buildings/new")
-    public String newBuilding(@PathVariable UUID builderId, Model model) {
+    public String newBuilding(@PathVariable UUID builderId, Model model, RedirectAttributes ra) {
+        var existing = buildingRepository.findFirstByBuilder_IdOrderByBuildingNameAsc(builderId);
+        if (existing.isPresent()) {
+            ra.addFlashAttribute(
+                    "errorMessage", "This project already has a layout. Edit the existing layout instead.");
+            return "redirect:/buildings/" + existing.get().getId() + "/edit";
+        }
         Builder builder = builderRepository.findById(builderId).orElseThrow();
         Building building = new Building();
         building.setBuildingName(builder.getCompanyName());
@@ -126,6 +159,16 @@ public class AdminController {
             @ModelAttribute Building building,
             Model model,
             RedirectAttributes ra) {
+        if (buildingRepository.countByBuilder_Id(builderId) > 0) {
+            UUID layoutId =
+                    buildingRepository
+                            .findFirstByBuilder_IdOrderByBuildingNameAsc(builderId)
+                            .map(Building::getId)
+                            .orElseThrow();
+            ra.addFlashAttribute(
+                    "errorMessage", "This project already has a layout. Edit the existing layout instead.");
+            return "redirect:/buildings/" + layoutId + "/edit";
+        }
         Builder builder = builderRepository.findById(builderId).orElseThrow();
         applyProjectDetailsToBuilding(building, builder);
         try {
@@ -170,8 +213,12 @@ public class AdminController {
 
     private static void applyProjectDetailsToBuilding(Building building, Builder builder) {
         building.setBuildingName(builder.getCompanyName());
-        building.setCity(builder.getCity());
-        building.setAddress(builder.getAddress());
+        if (building.getCity() == null || building.getCity().isBlank()) {
+            building.setCity(builder.getCity());
+        }
+        if (building.getAddress() == null || building.getAddress().isBlank()) {
+            building.setAddress(builder.getAddress());
+        }
     }
 
     private static void assertInitialLayoutMix(Building form) {

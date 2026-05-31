@@ -80,6 +80,19 @@ public class AdminStaffController {
         }
     }
 
+    @PostMapping("/admin/projects/{builderId}/staff/{staffId}/remove")
+    public String removeFromProject(
+            @PathVariable UUID builderId, @PathVariable UUID staffId, RedirectAttributes ra) {
+        try {
+            adminStaffService.removeFromProject(builderId, staffId);
+            ra.addFlashAttribute("successMessage", "Partner removed from project.");
+            return "redirect:/admin/projects/" + builderId + "/staff";
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/admin/projects/" + builderId + "/staff";
+        }
+    }
+
     @GetMapping("/admin/projects/{builderId}/staff/new")
     public String formNewBuilder(
             @PathVariable UUID builderId,

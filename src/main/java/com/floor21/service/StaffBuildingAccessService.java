@@ -89,6 +89,11 @@ public class StaffBuildingAccessService {
         }
     }
 
+    @Transactional
+    public void clearProjectBuildingAccess(UUID builderId, UUID userId) {
+        assignmentRepository.deleteByUser_IdAndBuilding_Builder_Id(userId, builderId);
+    }
+
     public static void validateRole(String role) {
         if (role == null || role.isBlank()) {
             throw new IllegalArgumentException("Role is required.");

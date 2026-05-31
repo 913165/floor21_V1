@@ -30,4 +30,13 @@ public interface UserBuildingVaultAccessRepository
     boolean existsByUser_IdAndBuilding_IdAndEnabledTrue(UUID userId, UUID buildingId);
 
     void deleteByUser_IdAndBuilding_Id(UUID userId, UUID buildingId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(
+            """
+            DELETE FROM UserBuildingVaultAccess g
+            WHERE g.user.id = :userId AND g.building.builder.id = :builderId
+            """)
+    void deleteByUser_IdAndBuilding_Builder_Id(
+            @Param("userId") UUID userId, @Param("builderId") UUID builderId);
 }

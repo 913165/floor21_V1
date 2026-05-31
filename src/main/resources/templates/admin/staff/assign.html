@@ -57,7 +57,7 @@
         <select class="form-select" id="layout-ids-select" name="buildingIds" multiple size="8" required>
           <option th:each="layout : ${projectLayouts}"
                   th:value="${layout.id}"
-                  th:text="${layout.buildingName}"
+                  th:text="${layout.buildingName + ' · ' + #strings.toUpperCase(#strings.substring(layout.id.toString(), 0, 8))}"
                   th:selected="${assignedLayoutIds != null and assignedLayoutIds.contains(layout.id)}">Layout</option>
         </select>
         <div class="form-text">Hold Ctrl (Windows) or Cmd (Mac) to select more than one layout.</div>

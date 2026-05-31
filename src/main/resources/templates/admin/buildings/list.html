@@ -12,6 +12,7 @@
       <thead>
       <tr>
         <th>Builder</th>
+        <th>Layout ID</th>
         <th>Building</th>
         <th>City</th>
         <th>Floors</th>
@@ -22,6 +23,10 @@
       <tbody>
       <tr th:each="b : ${buildings}">
         <td th:text="${b.builder != null ? b.builder.companyName : '—'}">—</td>
+        <td class="font-monospace small text-muted">
+          <span th:title="${b.id}"
+                th:text="${#strings.toUpperCase(#strings.substring(b.id.toString(), 0, 8))}">A1B2C3D4</span>
+        </td>
         <td th:text="${b.buildingName}"></td>
         <td th:text="${b.city}"></td>
         <td th:text="${b.totalFloors}"></td>
@@ -30,6 +35,8 @@
           <a class="btn btn-sm btn-outline-primary" th:href="@{/buildings/{id}/flats(id=${b.id})}">Flats</a>
           <a class="btn btn-sm btn-outline-secondary"
              th:href="@{/admin/buildings/{id}/staff(id=${b.id})}">Partners</a>
+          <a class="btn btn-sm btn-outline-secondary"
+             th:href="@{/buildings/{id}/edit(id=${b.id})}">Edit layout</a>
           <a class="btn btn-sm btn-outline-secondary"
              th:if="${b.builder != null}"
              th:href="@{/admin/projects/{id}/edit(id=${b.builder.id})}">Project</a>

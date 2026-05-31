@@ -36,6 +36,10 @@ public interface UserProjectAssignmentRepository extends JpaRepository<UserProje
 
     boolean existsByUser_IdAndBuilder_Id(UUID userId, UUID builderId);
 
+    long countByBuilder_Id(UUID builderId);
+
+    void deleteByUser_IdAndBuilder_Id(UUID userId, UUID builderId);
+
     @Query(
             """
             SELECT u FROM User u

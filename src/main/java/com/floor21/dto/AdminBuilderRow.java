@@ -10,5 +10,7 @@ public record AdminBuilderRow(
         String city,
         boolean active,
         long buildingCount,
+        UUID layoutId,
+        long partnerCount,
         Instant lastLoginAt,
         Instant createdAt) {}

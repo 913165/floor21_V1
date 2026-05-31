@@ -12,6 +12,8 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
 
     List<Client> findByBuilder_IdOrderByFirstNameAscLastNameAsc(UUID builderId);
 
+    void deleteByBuilder_Id(UUID builderId);
+
     Optional<Client> findByIdAndBuilder_Id(UUID id, UUID builderId);
 
     @Query(

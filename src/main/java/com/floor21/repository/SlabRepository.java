@@ -11,6 +11,8 @@ public interface SlabRepository extends JpaRepository<Slab, UUID> {
 
     List<Slab> findByBuilder_IdOrderBySlabNameAsc(UUID builderId);
 
+    void deleteByBuilder_Id(UUID builderId);
+
     Optional<Slab> findByIdAndBuilder_Id(UUID id, UUID builderId);
 
     @Query(

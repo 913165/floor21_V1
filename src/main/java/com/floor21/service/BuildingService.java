@@ -96,6 +96,9 @@ public class BuildingService {
         if (builder.isPlatformAdmin()) {
             throw new IllegalArgumentException("Cannot attach buildings to the platform admin account.");
         }
+        if (buildingRepository.countByBuilder_Id(builderId) > 0) {
+            throw new IllegalArgumentException("This project already has a layout.");
+        }
         validateBuildingForm(form);
         Building entity = new Building();
         entity.setCreatedAt(Instant.now());

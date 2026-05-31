@@ -77,7 +77,7 @@
                 name="buildingIds" multiple size="12" required>
           <option th:each="b : ${buildings}"
                   th:value="${b.id}"
-                  th:text="${b.buildingName}"
+                  th:text="${b.buildingName + ' · ' + #strings.toUpperCase(#strings.substring(b.id.toString(), 0, 8))}"
                   th:selected="${assignedBuildingIds != null and assignedBuildingIds.contains(b.id)}">Building</option>
         </select>
         <div class="form-text" id="building-access-hint">

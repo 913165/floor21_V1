@@ -66,9 +66,17 @@
         </td>
         <td class="text-nowrap small"
             th:text="${u.lastLoginAt() != null ? #temporals.format(u.lastLoginAt(), 'dd MMM yyyy HH:mm') : 'ù'}">ù</td>
-        <td class="text-end">
+        <td class="text-end text-nowrap">
           <a class="btn btn-sm btn-outline-secondary"
              th:href="@{/admin/projects/{bid}/staff/{uid}/edit(bid=${builder.id}, uid=${u.id()})}">Edit</a>
+          <form class="d-inline"
+                th:if="${building == null}"
+                th:action="@{/admin/projects/{bid}/staff/{uid}/remove(bid=${builder.id}, uid=${u.id()})}"
+                method="post"
+                onsubmit="return confirm('Remove this partner from the project? Their login account stays in User Management.');">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+          </form>
         </td>
       </tr>
       <tr th:if="${#lists.isEmpty(staff)}">

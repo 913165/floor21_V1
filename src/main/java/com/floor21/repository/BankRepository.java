@@ -12,5 +12,7 @@ public interface BankRepository extends JpaRepository<Bank, UUID> {
 
     List<Bank> findByBuilder_IdOrderByBankNameAscBranchAscIdAsc(UUID builderId);
 
+    void deleteByBuilder_Id(UUID builderId);
+
     Optional<Bank> findByIdAndBuilder_Id(UUID id, UUID builderId);
 }

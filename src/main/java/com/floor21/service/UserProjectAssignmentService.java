@@ -63,6 +63,19 @@ public class UserProjectAssignmentService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public long countForProject(UUID builderId) {
+        return assignmentRepository.countByBuilder_Id(builderId);
+    }
+
+    @Transactional
+    public void removeMembership(UUID builderId, UUID userId) {
+        if (!hasMembership(userId, builderId)) {
+            throw new IllegalArgumentException("Partner not found on this project.");
+        }
+        assignmentRepository.deleteByUser_IdAndBuilder_Id(userId, builderId);
+    }
+
     @Transactional
     public UserProjectAssignment saveMembership(UUID builderId, User user, Builder builder, String role) {
         String normalizedRole = StaffBuildingAccessService.normalizeRole(role);

@@ -10,5 +10,7 @@ public interface BrokerRepository extends JpaRepository<Broker, UUID> {
 
     List<Broker> findByBuilder_IdAndActiveTrueOrderByFullNameAsc(UUID builderId);
 
+    void deleteByBuilder_Id(UUID builderId);
+
     Optional<Broker> findByIdAndBuilder_Id(UUID id, UUID builderId);
 }

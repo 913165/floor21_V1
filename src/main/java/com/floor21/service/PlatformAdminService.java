@@ -4,14 +4,20 @@ import com.floor21.dto.AdminBuilderRow;
 import com.floor21.dto.DashboardDto.RecentBookingRow;
 import com.floor21.dto.PlatformDashboardDto;
 import com.floor21.entity.Booking;
+import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
 import com.floor21.entity.PlatformAuditLog;
 import com.floor21.entity.User;
+import com.floor21.repository.BankRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuildingRepository;
+import com.floor21.repository.BrokerRepository;
 import com.floor21.repository.BuilderRepository;
+import com.floor21.repository.ClientRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.repository.PlatformAuditLogRepository;
+import com.floor21.repository.SlabRepository;
+import com.floor21.repository.UserProjectAssignmentRepository;
 import com.floor21.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -32,6 +38,11 @@ public class PlatformAdminService {
     private final FlatRepository flatRepository;
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
+    private final SlabRepository slabRepository;
+    private final ClientRepository clientRepository;
+    private final BrokerRepository brokerRepository;
+    private final BankRepository bankRepository;
+    private final UserProjectAssignmentRepository userProjectAssignmentRepository;
     private final PlatformAuditLogRepository auditLogRepository;
     private final PlatformAuditService auditService;
 
@@ -130,7 +141,50 @@ public class PlatformAdminService {
         auditService.log("BUILDER_DEACTIVATED", "builder", id.toString(), id, "Deactivated by " + adminEmail);
     }
 
+    @Transactional
+    public void deleteProject(UUID id, String adminEmail) {
+        Builder builder =
+                builderRepository
+                        .findById(id)
+                        .filter(b -> !b.isPlatformAdmin())
+                        .orElseThrow(() -> new IllegalArgumentException("Project not found."));
+        if (buildingRepository.countByBuilder_Id(id) > 0) {
+            throw new IllegalArgumentException(
+                    "Cannot delete a project that already has a layout. Edit the layout instead.");
+        }
+        if (flatRepository.countByBuilder_Id(id) > 0) {
+            throw new IllegalArgumentException("Cannot delete this project while flat inventory exists.");
+        }
+        long partnerCount = userProjectAssignmentRepository.countByBuilder_Id(id);
+        if (partnerCount > 0) {
+            throw new IllegalArgumentException(
+                    "Remove all partners from this project first (Projects → Partners → Remove).");
+        }
+        if (!userRepository.findByBuilder_IdOrderByFullNameAsc(id).isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Remove all partners from this project first (Projects → Partners → Remove).");
+        }
+        String projectName = builder.getCompanyName();
+        slabRepository.deleteByBuilder_Id(id);
+        clientRepository.deleteByBuilder_Id(id);
+        brokerRepository.deleteByBuilder_Id(id);
+        bankRepository.deleteByBuilder_Id(id);
+        auditLogRepository.clearBuilderId(id);
+        builderRepository.delete(builder);
+        auditService.log(
+                "BUILDER_DELETED",
+                "builder",
+                id.toString(),
+                null,
+                projectName + " deleted by " + adminEmail);
+    }
+
     private AdminBuilderRow toBuilderRow(Builder b) {
+        UUID layoutId =
+                buildingRepository
+                        .findFirstByBuilder_IdOrderByBuildingNameAsc(b.getId())
+                        .map(Building::getId)
+                        .orElse(null);
         return new AdminBuilderRow(
                 b.getId(),
                 b.getCompanyName(),
@@ -138,6 +192,8 @@ public class PlatformAdminService {
                 b.getCity(),
                 Boolean.TRUE.equals(b.getActive()),
                 buildingRepository.countByBuilder_Id(b.getId()),
+                layoutId,
+                userProjectAssignmentRepository.countByBuilder_Id(b.getId()),
                 b.getLastLoginAt(),
                 b.getCreatedAt());
     }
