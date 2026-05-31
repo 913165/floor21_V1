@@ -1,4 +1,4 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
@@ -20,13 +20,13 @@
          th:href="@{/admin/buildings/{bid}/staff/new(bid=${building.id})}">Add partners for this building</a>
       <a class="btn btn-primary btn-sm"
          th:if="${building == null}"
-         th:href="@{/admin/builders/{id}/staff/new(id=${builder.id})}">Add user</a>
+         th:href="@{/admin/projects/{id}/staff/new(id=${builder.id})}">Add user</a>
       <a class="btn btn-outline-secondary btn-sm"
          th:if="${building != null}"
-         th:href="@{/admin/builders/{id}/staff(id=${builder.id})}">All builder partners</a>
+         th:href="@{/admin/projects/{id}/staff(id=${builder.id})}">All builder partners</a>
       <a class="btn btn-outline-secondary btn-sm"
          th:if="${building == null}"
-         th:href="@{/admin/builders/{id}/edit(id=${builder.id})}">Back to builder</a>
+         th:href="@{/admin/projects/{id}/edit(id=${builder.id})}">Back to project</a>
       <a class="btn btn-outline-secondary btn-sm"
          th:if="${building != null}"
          th:href="@{/admin/buildings}">All buildings</a>
@@ -62,16 +62,16 @@
           <span class="badge text-bg-primary" th:if="${u.role() == 'BUILDER_ADMIN'}">Builder admin</span>
           <span th:if="${u.role() != 'EXECUTIVE' and u.role() != 'BUILDER_ADMIN'}" th:text="${u.role()}"></span>
         </td>
-        <td class="small" th:text="${#strings.listJoin(u.buildingAccess(), ', ')}">â€”</td>
+        <td class="small" th:text="${#strings.listJoin(u.buildingAccess(), ', ')}">—</td>
         <td>
           <span class="badge" th:classappend="${u.active()} ? 'text-bg-success' : 'text-bg-secondary'"
-                th:text="${u.active()} ? 'Yes' : 'No'">â€”</span>
+                th:text="${u.active()} ? 'Yes' : 'No'">—</span>
         </td>
         <td class="text-nowrap small"
-            th:text="${u.lastLoginAt() != null ? #temporals.format(u.lastLoginAt(), 'dd MMM yyyy HH:mm') : 'â€”'}">â€”</td>
+            th:text="${u.lastLoginAt() != null ? #temporals.format(u.lastLoginAt(), 'dd MMM yyyy HH:mm') : '—'}">—</td>
         <td class="text-end">
           <a class="btn btn-sm btn-outline-secondary"
-             th:href="@{/admin/builders/{bid}/staff/{uid}/edit(bid=${builder.id}, uid=${u.id()})}">Edit</a>
+             th:href="@{/admin/projects/{bid}/staff/{uid}/edit(bid=${builder.id}, uid=${u.id()})}">Edit</a>
         </td>
       </tr>
       <tr th:if="${#lists.isEmpty(staff)}">

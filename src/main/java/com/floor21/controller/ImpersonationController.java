@@ -23,6 +23,6 @@ public class ImpersonationController {
         } catch (IllegalStateException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
         }
-        return "redirect:/admin/builders";
+        return "redirect:/admin/projects";
     }
 }

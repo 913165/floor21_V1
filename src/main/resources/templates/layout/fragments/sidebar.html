@@ -62,10 +62,10 @@
 
     <p class="floor21-nav__section" sec:authorize="hasRole('SUPER_ADMIN')">Platform</p>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
-       th:href="@{/admin/builders}"
-       data-nav-prefix="/admin/builders"
+       th:href="@{/admin/projects}"
+       data-nav-prefix="/admin/projects"
        data-nav-exclude-contains="/staff"
-       th:classappend="${#strings.startsWith(path, '/admin/builders') and !#strings.contains(path, '/staff')} ? ' is-active' : ''">Builders</a>
+       th:classappend="${(#strings.startsWith(path, '/admin/projects') or #strings.startsWith(path, '/admin/builders')) and !#strings.contains(path, '/staff')} ? ' is-active' : ''">Projects</a>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/users}"
        data-nav-prefix="/admin/users"

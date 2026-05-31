@@ -1,104 +1,104 @@
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout/base :: layout(~{::content})}">
-<body>
-<div th:fragment="content">
-  <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
-
-  <h1 class="h3 mb-2" th:text="${pageTitle}">User</h1>
-  <p class="text-muted small mb-3" th:unless="${noBuilders}">
-    Create a login account (email and password). Assign buildings to partners from each building’s partner list or flat grid.
-    <span class="text-danger">*</span> All fields are required.
-  </p>
-
-  <div class="alert alert-warning" th:if="${noBuilders}">
-    Add a <a th:href="@{/admin/builders/new}">builder</a> before creating users.
-  </div>
-
-  <form class="card card-body shadow-sm col-lg-8 needs-validation"
-        th:unless="${noBuilders}"
-        th:action="@{/admin/users/save}"
-        th:object="${staff}" method="post"
-        novalidate>
-    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-    <input type="hidden" th:field="*{id}"/>
-    <input type="hidden" name="builderId" th:value="${builder.id}" th:if="${staff.id != null}"/>
-
-    <div class="row g-3">
-      <div class="col-md-6" th:if="${staff.id == null}">
-        <label class="form-label" for="builder-select">Builder <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
-        <select class="form-select" id="builder-select" name="builderId" required>
-          <option th:each="b : ${builders}"
-                  th:value="${b.id}"
-                  th:text="${b.companyName}"
-                  th:selected="${b.id == selectedBuilderId}">Builder</option>
-        </select>
-        <div class="invalid-feedback">Builder is required.</div>
-      </div>
-      <div class="col-md-6" th:if="${staff.id != null}">
-        <label class="form-label">Builder</label>
-        <p class="form-control-plaintext mb-0" th:text="${builder.companyName}">—</p>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="user-full-name">Full name <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
-        <input class="form-control" id="user-full-name" th:field="*{fullName}" required minlength="2"/>
-        <div class="invalid-feedback">Full name is required.</div>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="user-email">Email (login) <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
-        <input class="form-control" id="user-email" type="email" th:field="*{email}" required autocomplete="username"/>
-        <div class="invalid-feedback">A valid email is required.</div>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label" for="user-password" th:text="${staff.id != null} ? 'Password (login)' : 'Password'">Password <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
-        <input class="form-control"
-               id="user-password"
-               name="rawPassword"
-               autocomplete="new-password"
-               data-password-toggle
-               required
-               minlength="6"
-               th:attr="type=${staff.id != null} ? 'text' : 'password'"
-               th:value="${staff.id != null and staff.adminVisiblePassword != null} ? ${staff.adminVisiblePassword} : ''"
-               th:placeholder="${staff.id != null and staff.adminVisiblePassword == null}
-                 ? 'Enter login password'
-                 : 'Required'"/>
-        <div class="invalid-feedback">Password is required (minimum 6 characters).</div>
-        <div class="form-text" th:if="${staff.id != null}">
-          Shown for platform admin reference. Edit and save to change the user’s login password.
-        </div>
-      </div>
-      <th:block th:replace="~{admin/fragments/user-tax-contact-fields :: taxContactFields}"></th:block>
-      <div class="col-md-6">
-        <label class="form-label" for="user-role">Role <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
-        <select class="form-select" id="user-role" name="role" required>
-          <option value="EXECUTIVE"
-                  th:selected="${staff.role == 'EXECUTIVE' or (staff.id == null and staff.role == null)}">
-            Partner
-          </option>
-          <option value="BUILDER_ADMIN" th:selected="${staff.role == 'BUILDER_ADMIN'}">
-            Builder admin
-          </option>
-        </select>
-        <div class="invalid-feedback">Role is required.</div>
-      </div>
-      <div class="col-12">
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" th:field="*{active}"/>
-          <label class="form-check-label">Active (can sign in)</label>
-        </div>
-      </div>
-      <p class="col-12 text-muted small mb-0">
-        Vault access (user + building) is configured under
-        <a th:href="@{/admin/vault-config}">Platform → Vault config</a>.
-      </p>
-    </div>
-
-    <div class="mt-4 d-flex flex-wrap gap-2">
-      <button class="btn btn-primary" type="submit">Save user</button>
-      <a class="btn btn-link" th:href="@{/admin/users}">Cancel</a>
-    </div>
-  </form>
-</div>
-</body>
-</html>
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+  <h1 class="h3 mb-2" th:text="${pageTitle}">User</h1>
+  <p class="text-muted small mb-3" th:unless="${noBuilders}">
+    Create a login account (email and password). Assign buildings to partners from each building’s partner list or flat grid.
+    <span class="text-danger">*</span> All fields are required.
+  </p>
+
+  <div class="alert alert-warning" th:if="${noBuilders}">
+    Add a <a th:href="@{/admin/projects/new}">project</a> before creating users.
+  </div>
+
+  <form class="card card-body shadow-sm col-lg-8 needs-validation"
+        th:unless="${noBuilders}"
+        th:action="@{/admin/users/save}"
+        th:object="${staff}" method="post"
+        novalidate>
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <input type="hidden" th:field="*{id}"/>
+    <input type="hidden" name="builderId" th:value="${builder.id}" th:if="${staff.id != null}"/>
+
+    <div class="row g-3">
+      <div class="col-md-6" th:if="${staff.id == null}">
+        <label class="form-label" for="builder-select">Project <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
+        <select class="form-select" id="builder-select" name="builderId" required>
+          <option th:each="b : ${builders}"
+                  th:value="${b.id}"
+                  th:text="${b.companyName}"
+                  th:selected="${b.id == selectedBuilderId}">Project</option>
+        </select>
+        <div class="invalid-feedback">Project is required.</div>
+      </div>
+      <div class="col-md-6" th:if="${staff.id != null}">
+        <label class="form-label">Project</label>
+        <p class="form-control-plaintext mb-0" th:text="${builder.companyName}">—</p>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="user-full-name">Full name <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
+        <input class="form-control" id="user-full-name" th:field="*{fullName}" required minlength="2"/>
+        <div class="invalid-feedback">Full name is required.</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="user-email">Email (login) <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
+        <input class="form-control" id="user-email" type="email" th:field="*{email}" required autocomplete="username"/>
+        <div class="invalid-feedback">A valid email is required.</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="user-password" th:text="${staff.id != null} ? 'Password (login)' : 'Password'">Password <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
+        <input class="form-control"
+               id="user-password"
+               name="rawPassword"
+               autocomplete="new-password"
+               data-password-toggle
+               required
+               minlength="6"
+               th:attr="type=${staff.id != null} ? 'text' : 'password'"
+               th:value="${staff.id != null and staff.adminVisiblePassword != null} ? ${staff.adminVisiblePassword} : ''"
+               th:placeholder="${staff.id != null and staff.adminVisiblePassword == null}
+                 ? 'Enter login password'
+                 : 'Required'"/>
+        <div class="invalid-feedback">Password is required (minimum 6 characters).</div>
+        <div class="form-text" th:if="${staff.id != null}">
+          Shown for platform admin reference. Edit and save to change the user’s login password.
+        </div>
+      </div>
+      <th:block th:replace="~{admin/fragments/user-tax-contact-fields :: taxContactFields}"></th:block>
+      <div class="col-md-6">
+        <label class="form-label" for="user-role">Role <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
+        <select class="form-select" id="user-role" name="role" required>
+          <option value="EXECUTIVE"
+                  th:selected="${staff.role == 'EXECUTIVE' or (staff.id == null and staff.role == null)}">
+            Partner
+          </option>
+          <option value="BUILDER_ADMIN" th:selected="${staff.role == 'BUILDER_ADMIN'}">
+            Builder admin
+          </option>
+        </select>
+        <div class="invalid-feedback">Role is required.</div>
+      </div>
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" th:field="*{active}"/>
+          <label class="form-check-label">Active (can sign in)</label>
+        </div>
+      </div>
+      <p class="col-12 text-muted small mb-0">
+        Vault access (user + building) is configured under
+        <a th:href="@{/admin/vault-config}">Platform → Vault config</a>.
+      </p>
+    </div>
+
+    <div class="mt-4 d-flex flex-wrap gap-2">
+      <button class="btn btn-primary" type="submit">Save user</button>
+      <a class="btn btn-link" th:href="@{/admin/users}">Cancel</a>
+    </div>
+  </form>
+</div>
+</body>
+</html>

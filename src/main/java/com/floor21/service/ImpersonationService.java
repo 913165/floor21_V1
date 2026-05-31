@@ -87,14 +87,22 @@ public class ImpersonationService {
     }
 
     private void switchToBuilderPrincipal(Builder builder) {
+        String loginEmail =
+                builder.getEmail() != null && !builder.getEmail().isBlank()
+                        ? builder.getEmail()
+                        : "project+" + builder.getId() + "@impersonation.floor21";
+        String passwordHash =
+                builder.getPasswordHash() != null && !builder.getPasswordHash().isBlank()
+                        ? builder.getPasswordHash()
+                        : "{noop}";
         var delegate =
                 new org.springframework.security.core.userdetails.User(
-                        builder.getEmail(),
-                        builder.getPasswordHash(),
+                        loginEmail,
+                        passwordHash,
                         List.of(new SimpleGrantedAuthority("ROLE_BUILDER_ADMIN")));
         Floor21UserPrincipal principal =
                 new Floor21UserPrincipal(
-                        builder.getId(), null, builder.getEmail(), builder.getPasswordHash(), false, delegate);
+                        builder.getId(), null, loginEmail, passwordHash, false, delegate);
         UsernamePasswordAuthenticationToken token =
                 new UsernamePasswordAuthenticationToken(principal, principal.getPassword(), principal.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(token);

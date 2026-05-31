@@ -44,6 +44,12 @@ public class Floor21UserDetailsService implements UserDetailsService {
     }
 
     private UserDetails builderPrincipal(Builder builder) {
+        if (builder.getEmail() == null
+                || builder.getEmail().isBlank()
+                || builder.getPasswordHash() == null
+                || builder.getPasswordHash().isBlank()) {
+            throw new UsernameNotFoundException("No login on project record; use a user account.");
+        }
         boolean active = Boolean.TRUE.equals(builder.getActive());
         if (!active) {
             throw new UsernameNotFoundException("Inactive builder");

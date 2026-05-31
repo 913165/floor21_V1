@@ -1,4 +1,4 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
@@ -67,8 +67,8 @@
         <div class="card-header">Newest builders</div>
         <ul class="list-group list-group-flush">
           <li class="list-group-item d-flex justify-content-between" th:each="b : ${pd.recentBuilders()}">
-            <span th:text="${b.companyName()}">â€”</span>
-            <span class="text-muted small" th:text="${b.city()}">â€”</span>
+            <span th:text="${b.companyName()}">—</span>
+            <span class="text-muted small" th:text="${b.city()}">—</span>
           </li>
           <li class="list-group-item text-muted" th:if="${#lists.isEmpty(pd.recentBuilders())}">No builders.</li>
         </ul>

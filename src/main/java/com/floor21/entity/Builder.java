@@ -24,10 +24,10 @@ public class Builder {
     @Column(name = "company_name", nullable = false, length = 200)
     private String companyName;
 
-    @Column(nullable = false, unique = true, length = 150)
+    @Column(unique = true, length = 150)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
 
     /** BCrypt (or delegating) hash of the vault PIN; separate from login password. */

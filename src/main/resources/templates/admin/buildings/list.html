@@ -5,7 +5,7 @@
 <div th:fragment="content">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0" th:text="${pageTitle}">All buildings</h1>
-    <a class="btn btn-outline-secondary btn-sm" th:href="@{/admin/builders}">Builders</a>
+    <a class="btn btn-outline-secondary btn-sm" th:href="@{/admin/projects}">Projects</a>
   </div>
   <div class="table-responsive card shadow-sm">
     <table class="table table-hover mb-0">
@@ -21,7 +21,7 @@
       </thead>
       <tbody>
       <tr th:each="b : ${buildings}">
-        <td th:text="${b.builder != null ? b.builder.companyName : 'â€”'}">â€”</td>
+        <td th:text="${b.builder != null ? b.builder.companyName : '—'}">—</td>
         <td th:text="${b.buildingName}"></td>
         <td th:text="${b.city}"></td>
         <td th:text="${b.totalFloors}"></td>
@@ -32,7 +32,7 @@
              th:href="@{/admin/buildings/{id}/staff(id=${b.id})}">Partners</a>
           <a class="btn btn-sm btn-outline-secondary"
              th:if="${b.builder != null}"
-             th:href="@{/admin/builders/{id}/edit(id=${b.builder.id})}">Builder</a>
+             th:href="@{/admin/projects/{id}/edit(id=${b.builder.id})}">Project</a>
         </td>
       </tr>
       </tbody>

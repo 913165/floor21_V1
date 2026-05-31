@@ -24,7 +24,7 @@ public class AdminStaffController {
     private final AdminStaffService adminStaffService;
     private final StaffBuildingAccessService staffBuildingAccessService;
 
-    @GetMapping("/admin/builders/{builderId}/staff")
+    @GetMapping("/admin/projects/{builderId}/staff")
     public String listForBuilder(@PathVariable UUID builderId, Model model) {
         var builder = adminStaffService.requireTenantBuilder(builderId);
         model.addAttribute("pageTitle", "Partners — " + builder.getCompanyName());
@@ -45,7 +45,7 @@ public class AdminStaffController {
         return "admin/staff/list";
     }
 
-    @GetMapping("/admin/builders/{builderId}/staff/new")
+    @GetMapping("/admin/projects/{builderId}/staff/new")
     public String formNewBuilder(
             @PathVariable UUID builderId,
             @RequestParam(required = false) UUID buildingId,
@@ -59,12 +59,12 @@ public class AdminStaffController {
         return staffForm(building.getBuilder().getId(), buildingId, null, model);
     }
 
-    @GetMapping("/admin/builders/{builderId}/staff/{staffId}/edit")
+    @GetMapping("/admin/projects/{builderId}/staff/{staffId}/edit")
     public String formEditBuilder(@PathVariable UUID builderId, @PathVariable UUID staffId, Model model) {
         return staffForm(builderId, null, staffId, model);
     }
 
-    @PostMapping("/admin/builders/{builderId}/staff/save")
+    @PostMapping("/admin/projects/{builderId}/staff/save")
     public String saveBuilder(
             @PathVariable UUID builderId,
             @ModelAttribute User staff,
@@ -111,12 +111,12 @@ public class AdminStaffController {
         try {
             adminStaffService.save(builderId, staff, rawPassword, role, buildingIds);
             ra.addFlashAttribute("successMessage", "Staff member saved.");
-            return "redirect:/admin/builders/" + builderId + "/staff";
+            return "redirect:/admin/projects/" + builderId + "/staff";
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
             return staff.getId() != null
-                    ? "redirect:/admin/builders/" + builderId + "/staff/" + staff.getId() + "/edit"
-                    : "redirect:/admin/builders/" + builderId + "/staff/new";
+                    ? "redirect:/admin/projects/" + builderId + "/staff/" + staff.getId() + "/edit"
+                    : "redirect:/admin/projects/" + builderId + "/staff/new";
         }
     }
 }

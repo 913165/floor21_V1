@@ -4,8 +4,6 @@
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content">
-  <div class="alert alert-success" th:if="${successMessage}" th:text="${successMessage}"></div>
-  <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
       <h1 class="h3 mb-0" th:text="${pageTitle}">Flats</h1>

@@ -6,8 +6,8 @@
 <div th:fragment="content">
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <h1 class="h3 mb-0" th:text="${pageTitle}">Buildings</h1>
-    <a class="btn btn-primary" sec:authorize="hasRole('SUPER_ADMIN')" th:href="@{/admin/builders}">
-      Add building (via builder)
+    <a class="btn btn-primary" sec:authorize="hasRole('SUPER_ADMIN')" th:href="@{/admin/projects}">
+      Projects
     </a>
   </div>
   <p class="text-muted small mb-3" sec:authorize="hasRole('BUILDER_ADMIN') and !hasRole('SUPER_ADMIN')">
@@ -35,7 +35,7 @@
           <a class="btn btn-sm btn-outline-secondary" th:href="@{/buildings/{id}/edit(id=${b.id})}">Edit</a>
           <a class="btn btn-sm btn-outline-secondary"
              th:if="${platformAdminView and b.builder != null}"
-             th:href="@{/admin/builders/{id}/edit(id=${b.builder.id})}">Builder</a>
+             th:href="@{/admin/projects/{id}/edit(id=${b.builder.id})}">Project</a>
         </td>
       </tr>
       </tbody>

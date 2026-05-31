@@ -97,7 +97,7 @@ public class AdminPlatformController {
         return reportService.exportInventory();
     }
 
-    @PostMapping("/builders/{builderId}/impersonate")
+    @PostMapping("/projects/{builderId}/impersonate")
     public String impersonate(
             @PathVariable UUID builderId, HttpServletRequest request, RedirectAttributes ra) {
         try {
@@ -106,7 +106,7 @@ public class AdminPlatformController {
             return "redirect:/dashboard";
         } catch (IllegalArgumentException | IllegalStateException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
-            return "redirect:/admin/builders/" + builderId + "/edit";
+            return "redirect:/admin/projects/" + builderId + "/edit";
         }
     }
 }
