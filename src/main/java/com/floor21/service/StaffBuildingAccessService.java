@@ -25,20 +25,21 @@ public class StaffBuildingAccessService {
     private final UserRepository userRepository;
     private final BuildingRepository buildingRepository;
     private final UserBuildingAssignmentRepository assignmentRepository;
+    private final UserProjectAssignmentService userProjectAssignmentService;
 
     /**
      * {@code null} = unrestricted (all buildings for the builder). Non-null set = only those buildings.
      */
     @Transactional(readOnly = true)
-    public Set<UUID> resolveAllowedBuildingIds(UUID staffUserId) {
-        User user =
-                userRepository
-                        .findById(staffUserId)
-                        .orElseThrow(() -> new IllegalArgumentException("Staff member not found."));
-        if (ROLE_BUILDER_ADMIN.equals(user.getRole())) {
+    public Set<UUID> resolveAllowedBuildingIds(UUID staffUserId, UUID builderId) {
+        userRepository
+                .findById(staffUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Staff member not found."));
+        String role = userProjectAssignmentService.getRole(staffUserId, builderId);
+        if (ROLE_BUILDER_ADMIN.equals(role)) {
             return null;
         }
-        List<UUID> assigned = assignmentRepository.findBuildingIdsByUserId(staffUserId);
+        List<UUID> assigned = assignmentRepository.findBuildingIdsByUserIdAndBuilderId(staffUserId, builderId);
         if (assigned.isEmpty()) {
             return null;
         }
@@ -46,15 +47,13 @@ public class StaffBuildingAccessService {
     }
 
     @Transactional(readOnly = true)
-    public List<String> describeBuildingAccess(UUID staffUserId) {
-        User user =
-                userRepository
-                        .findById(staffUserId)
-                        .orElseThrow(() -> new IllegalArgumentException("Staff member not found."));
-        if (ROLE_BUILDER_ADMIN.equals(user.getRole())) {
+    public List<String> describeBuildingAccess(UUID staffUserId, UUID builderId) {
+        String role = userProjectAssignmentService.getRole(staffUserId, builderId);
+        if (ROLE_BUILDER_ADMIN.equals(role)) {
             return List.of("All buildings (admin)");
         }
-        List<UserBuildingAssignment> rows = assignmentRepository.findByUser_IdOrderByBuilding_BuildingNameAsc(staffUserId);
+        List<UserBuildingAssignment> rows =
+                assignmentRepository.findByUser_IdAndBuilding_Builder_IdOrderByBuildingName(staffUserId, builderId);
         if (rows.isEmpty()) {
             return List.of("All buildings");
         }
@@ -62,18 +61,17 @@ public class StaffBuildingAccessService {
     }
 
     @Transactional(readOnly = true)
-    public List<UUID> assignedBuildingIds(UUID staffUserId) {
-        return assignmentRepository.findBuildingIdsByUserId(staffUserId);
+    public List<UUID> assignedBuildingIds(UUID staffUserId, UUID builderId) {
+        return assignmentRepository.findBuildingIdsByUserIdAndBuilderId(staffUserId, builderId);
     }
 
     @Transactional
     public void replaceAssignments(UUID builderId, User user, String role, List<UUID> buildingIds) {
-        assignmentRepository.deleteByUser_Id(user.getId());
+        assignmentRepository.deleteByUser_IdAndBuilding_Builder_Id(user.getId(), builderId);
         if (!ROLE_EXECUTIVE.equals(role)) {
             return;
         }
         if (buildingIds == null || buildingIds.isEmpty()) {
-            // No rows = access to all buildings for this builder (see listStaffForBuilding).
             return;
         }
         Set<UUID> unique = new HashSet<>(buildingIds);
@@ -111,18 +109,20 @@ public class StaffBuildingAccessService {
         buildingRepository
                 .findByIdAndBuilder_Id(buildingId, builderId)
                 .orElseThrow(() -> new IllegalArgumentException("Building not found."));
-        List<User> all = userRepository.findByBuilder_IdOrderByFullNameAsc(builderId);
-        return all.stream()
+        return userProjectAssignmentService.listForProject(builderId).stream()
+                .map(a -> a.getUser())
                 .filter(
                         u -> {
-                            if (ROLE_BUILDER_ADMIN.equals(u.getRole())) {
+                            String role = userProjectAssignmentService.getRole(u.getId(), builderId);
+                            if (ROLE_BUILDER_ADMIN.equals(role)) {
                                 return true;
                             }
-                            long n = assignmentRepository.countByUser_Id(u.getId());
-                            if (n == 0) {
+                            List<UUID> assigned =
+                                    assignmentRepository.findBuildingIdsByUserIdAndBuilderId(u.getId(), builderId);
+                            if (assigned.isEmpty()) {
                                 return true;
                             }
-                            return assignmentRepository.existsByUser_IdAndBuilding_Id(u.getId(), buildingId);
+                            return assigned.contains(buildingId);
                         })
                 .toList();
     }

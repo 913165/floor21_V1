@@ -35,6 +35,7 @@ public class BookingService {
     private final UserRepository userRepository;
     private final BuilderRepository builderRepository;
     private final PartnerFlatAllocationService partnerFlatAllocationService;
+    private final UserProjectAssignmentService userProjectAssignmentService;
 
     @Transactional(readOnly = true)
     public List<Booking> list() {
@@ -148,7 +149,7 @@ public class BookingService {
         if (execId != null) {
             userRepository
                     .findById(execId)
-                    .filter(u -> u.getBuilder().getId().equals(builderId))
+                    .filter(u -> userProjectAssignmentService.hasMembership(u.getId(), builderId))
                     .ifPresent(entity::setExecutive);
         } else {
             entity.setExecutive(null);

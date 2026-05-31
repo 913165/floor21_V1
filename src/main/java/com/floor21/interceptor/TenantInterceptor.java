@@ -38,7 +38,8 @@ public class TenantInterceptor implements HandlerInterceptor {
         TenantContext.setBuilderId(builderId);
         if (principal.getStaffUserId() != null) {
             TenantContext.setAllowedBuildingIds(
-                    staffBuildingAccessService.resolveAllowedBuildingIds(principal.getStaffUserId()));
+                    staffBuildingAccessService.resolveAllowedBuildingIds(
+                            principal.getStaffUserId(), builderId));
         }
         HttpSession session = request.getSession(true);
         session.setAttribute(Floor21UserPrincipal.SESSION_BUILDER_ID, builderId.toString());

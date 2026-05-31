@@ -34,6 +34,7 @@ public class ReceiptService {
     private final BuilderRepository builderRepository;
     private final BankRepository bankRepository;
     private final UserRepository userRepository;
+    private final UserProjectAssignmentService userProjectAssignmentService;
 
     @Transactional(readOnly = true)
     public BigDecimal totalForBooking(UUID bookingId) {
@@ -219,7 +220,9 @@ public class ReceiptService {
         }
         String email = auth.getName();
         Optional<User> staff =
-                userRepository.findFirstByEmailIgnoreCaseAndActiveTrue(email).filter(u -> builderId.equals(u.getBuilder().getId()));
+                userRepository
+                        .findFirstByEmailIgnoreCaseAndActiveTrue(email)
+                        .filter(u -> userProjectAssignmentService.hasMembership(u.getId(), builderId));
         return staff.map(User::getFullName).orElse(email);
     }
 

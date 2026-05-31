@@ -1,8 +1,11 @@
 package com.floor21.controller;
 
+import com.floor21.entity.Building;
 import com.floor21.entity.User;
 import com.floor21.service.AdminStaffService;
+import com.floor21.service.AdminUserService;
 import com.floor21.service.StaffBuildingAccessService;
+import com.floor21.service.UserProjectAssignmentService;
 import com.floor21.util.IndianStates;
 import java.util.List;
 import java.util.UUID;
@@ -22,7 +25,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class AdminStaffController {
 
     private final AdminStaffService adminStaffService;
+    private final AdminUserService adminUserService;
     private final StaffBuildingAccessService staffBuildingAccessService;
+    private final UserProjectAssignmentService userProjectAssignmentService;
 
     @GetMapping("/admin/projects/{builderId}/staff")
     public String listForBuilder(@PathVariable UUID builderId, Model model) {
@@ -43,6 +48,36 @@ public class AdminStaffController {
         model.addAttribute("building", building);
         model.addAttribute("staff", adminStaffService.listStaffViewsForBuilding(buildingId));
         return "admin/staff/list";
+    }
+
+    @GetMapping("/admin/projects/{builderId}/staff/assign")
+    public String assignForm(@PathVariable UUID builderId, Model model) {
+        var builder = adminStaffService.requireTenantBuilder(builderId);
+        List<Building> layouts = adminStaffService.listBuilderBuildings(builderId);
+        model.addAttribute("pageTitle", "Add partner — " + builder.getCompanyName());
+        model.addAttribute("builder", builder);
+        model.addAttribute("availableUsers", adminUserService.listUsersAvailableForProject(builderId));
+        model.addAttribute("projectLayouts", layouts);
+        model.addAttribute(
+                "assignedLayoutIds", layouts.size() == 1 ? List.of(layouts.getFirst().getId()) : List.of());
+        return "admin/staff/assign";
+    }
+
+    @PostMapping("/admin/projects/{builderId}/staff/assign")
+    public String assignSave(
+            @PathVariable UUID builderId,
+            @RequestParam UUID userId,
+            @RequestParam String role,
+            @RequestParam(required = false) List<UUID> buildingIds,
+            RedirectAttributes ra) {
+        try {
+            adminStaffService.assignToProject(builderId, userId, role, buildingIds);
+            ra.addFlashAttribute("successMessage", "Partner added to project.");
+            return "redirect:/admin/projects/" + builderId + "/staff";
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/admin/projects/" + builderId + "/staff/assign";
+        }
     }
 
     @GetMapping("/admin/projects/{builderId}/staff/new")
@@ -78,7 +113,9 @@ public class AdminStaffController {
     private String staffForm(UUID builderId, UUID preselectBuildingId, UUID staffId, Model model) {
         var builder = adminStaffService.requireTenantBuilder(builderId);
         User staff = staffId != null ? adminStaffService.getStaff(builderId, staffId) : new User();
-        if (staff.getId() == null && staff.getRole() == null) {
+        if (staff.getId() != null) {
+            staff.setRole(userProjectAssignmentService.getRole(staff.getId(), builderId));
+        } else if (staff.getRole() == null) {
             staff.setRole(StaffBuildingAccessService.ROLE_EXECUTIVE);
         }
         model.addAttribute("pageTitle", (staffId != null ? "Edit" : "New") + " staff — " + builder.getCompanyName());
@@ -88,7 +125,7 @@ public class AdminStaffController {
         model.addAttribute(
                 "assignedBuildingIds",
                 staff.getId() != null
-                        ? staffBuildingAccessService.assignedBuildingIds(staff.getId())
+                        ? staffBuildingAccessService.assignedBuildingIds(staff.getId(), builderId)
                         : (preselectBuildingId != null ? List.of(preselectBuildingId) : List.of()));
         if (preselectBuildingId != null) {
             model.addAttribute(

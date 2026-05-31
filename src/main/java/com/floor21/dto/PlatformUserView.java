@@ -17,7 +17,29 @@ public record PlatformUserView(
         UUID builderId,
         String builderCompanyName) {
 
+    public static PlatformUserView from(
+            User user, String projectNames, String role, List<String> buildingAccess) {
+        return new PlatformUserView(
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                role,
+                user.getActive(),
+                user.getLastLoginAt(),
+                buildingAccess,
+                null,
+                projectNames);
+    }
+
     public static PlatformUserView from(User user, Builder builder, List<String> buildingAccess) {
+        return from(
+                user,
+                builder != null ? builder.getCompanyName() : "—",
+                user.getRole(),
+                buildingAccess);
+    }
+
+    public static PlatformUserView unassigned(User user) {
         return new PlatformUserView(
                 user.getId(),
                 user.getFullName(),
@@ -25,8 +47,8 @@ public record PlatformUserView(
                 user.getRole(),
                 user.getActive(),
                 user.getLastLoginAt(),
-                buildingAccess,
-                builder.getId(),
-                builder.getCompanyName());
+                List.of("Not assigned to a project yet"),
+                null,
+                "—");
     }
 }

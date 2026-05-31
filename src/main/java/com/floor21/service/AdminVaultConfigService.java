@@ -6,8 +6,10 @@ import com.floor21.dto.VaultConfigView.VaultGrantRow;
 import com.floor21.entity.Building;
 import com.floor21.entity.User;
 import com.floor21.entity.UserBuildingVaultAccess;
+import com.floor21.entity.UserProjectAssignment;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.UserBuildingVaultAccessRepository;
+import com.floor21.repository.UserProjectAssignmentRepository;
 import com.floor21.repository.UserRepository;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,6 +30,8 @@ public class AdminVaultConfigService {
     private final UserBuildingVaultAccessRepository vaultAccessRepository;
     private final UserRepository userRepository;
     private final BuildingRepository buildingRepository;
+    private final UserProjectAssignmentRepository userProjectAssignmentRepository;
+    private final UserProjectAssignmentService userProjectAssignmentService;
     private final PlatformAuditService auditService;
 
     @Transactional(readOnly = true)
@@ -40,7 +44,7 @@ public class AdminVaultConfigService {
                     new VaultGrantRow(
                             u.getId(),
                             b.getId(),
-                            userDisplayLabel(u),
+                            userDisplayLabel(u, b.getBuilder().getId()),
                             b.getBuildingName(),
                             b.getBuilder().getCompanyName(),
                             Boolean.TRUE.equals(g.getEnabled())));
@@ -50,23 +54,32 @@ public class AdminVaultConfigService {
 
     private List<PickerOption> loadUserPicker() {
         List<PickerOption> options = new ArrayList<>();
-        for (User user : userRepository.findAllTenantUsersForPlatformAdmin()) {
+        for (UserProjectAssignment assignment :
+                userProjectAssignmentRepository.findAllWithUserAndBuilderOrderByLabels()) {
+            User user = assignment.getUser();
             if (user.getActive() != null && !user.getActive()) {
                 continue;
             }
+            UUID builderId = assignment.getBuilder().getId();
             options.add(
-                    new PickerOption(
-                            user.getId(), userDisplayLabel(user), user.getBuilder().getId()));
+                    new PickerOption(user.getId(), userDisplayLabel(user, builderId), builderId));
         }
         return options;
     }
 
-    private static String userDisplayLabel(User user) {
+    private String userDisplayLabel(User user, UUID builderId) {
         String roleLabel =
-                StaffBuildingAccessService.ROLE_BUILDER_ADMIN.equals(user.getRole())
+                StaffBuildingAccessService.ROLE_BUILDER_ADMIN.equals(
+                                userProjectAssignmentService.getRole(user.getId(), builderId))
                         ? "Builder admin"
                         : "Partner";
-        return user.getBuilder().getCompanyName()
+        String projectName =
+                userProjectAssignmentService.listMemberships(user.getId()).stream()
+                        .filter(m -> m.getBuilder().getId().equals(builderId))
+                        .map(m -> m.getBuilder().getCompanyName())
+                        .findFirst()
+                        .orElse("—");
+        return projectName
                 + " — "
                 + user.getFullName()
                 + " ("
@@ -112,7 +125,7 @@ public class AdminVaultConfigService {
             if (user == null || building == null) {
                 continue;
             }
-            if (!user.getBuilder().getId().equals(building.getBuilder().getId())) {
+            if (!userProjectAssignmentService.hasMembership(userId, building.getBuilder().getId())) {
                 continue;
             }
             vaultAccessRepository.save(new UserBuildingVaultAccess(user, building));

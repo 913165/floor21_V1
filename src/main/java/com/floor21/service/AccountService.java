@@ -6,6 +6,7 @@ import com.floor21.entity.User;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.UserRepository;
 import com.floor21.security.Floor21UserPrincipal;
+import com.floor21.security.TenantContext;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -29,6 +30,7 @@ public class AccountService {
     private final UserDetailsService userDetailsService;
     private final VaultPinService vaultPinService;
     private final VaultAccessService vaultAccessService;
+    private final UserProjectAssignmentService userProjectAssignmentService;
 
     @Transactional(readOnly = true)
     public String currentDisplayName() {
@@ -75,15 +77,36 @@ public class AccountService {
         var staff = userRepository.findFirstByEmailIgnoreCaseAndActiveTrue(email);
         if (staff.isPresent()) {
             User user = staff.get();
-            Builder builder = user.getBuilder();
+            UUID builderId = TenantContext.getBuilderIdOrNull();
+            if (builderId == null) {
+                builderId =
+                        userProjectAssignmentService
+                                .resolvePrimaryMembership(user.getId())
+                                .map(m -> m.getBuilder().getId())
+                                .orElse(null);
+            }
+            String role =
+                    builderId != null
+                            ? userProjectAssignmentService.getRole(user.getId(), builderId)
+                            : user.getRole();
+            String projectName =
+                    builderId != null
+                            ? userProjectAssignmentService
+                                    .listMemberships(user.getId())
+                                    .stream()
+                                    .filter(m -> m.getBuilder().getId().equals(builderId))
+                                    .map(m -> m.getBuilder().getCompanyName())
+                                    .findFirst()
+                                    .orElse("—")
+                            : userProjectAssignmentService.formatProjectNames(user.getId());
             boolean vaultAccess = vaultAccessService.canCurrentUserAccessVault();
             boolean builderAdminRole =
-                    StaffBuildingAccessService.ROLE_BUILDER_ADMIN.equals(user.getRole());
+                    StaffBuildingAccessService.ROLE_BUILDER_ADMIN.equals(role);
             return new AccountProfileView(
                     user.getFullName(),
                     email,
-                    formatRole(user.getRole()),
-                    builder.getCompanyName(),
+                    formatRole(role),
+                    projectName,
                     builderAdminRole,
                     false,
                     vaultAccess && vaultPinService.hasPinConfigured(),

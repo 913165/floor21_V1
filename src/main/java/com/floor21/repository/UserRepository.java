@@ -17,12 +17,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByBuilder_IdAndEmailIgnoreCase(UUID builderId, String email);
 
-    @org.springframework.data.jpa.repository.Query(
-            """
-            select u from User u
-            join fetch u.builder b
-            where b.platformAdmin = false
-            order by lower(b.companyName), lower(u.fullName)
-            """)
-    java.util.List<User> findAllTenantUsersForPlatformAdmin();
+    java.util.List<User> findByBuilderIsNullOrderByFullNameAsc();
+
+    java.util.List<User> findAllByOrderByFullNameAsc();
+
+    boolean existsByEmailIgnoreCase(String email);
+
+    boolean existsByEmailIgnoreCaseAndIdNot(String email, UUID id);
 }

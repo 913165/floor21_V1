@@ -1,0 +1,90 @@
+package com.floor21.service;
+
+import com.floor21.entity.Builder;
+import com.floor21.entity.User;
+import com.floor21.entity.UserProjectAssignment;
+import com.floor21.repository.UserProjectAssignmentRepository;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class UserProjectAssignmentService {
+
+    private final UserProjectAssignmentRepository assignmentRepository;
+
+    @Transactional(readOnly = true)
+    public boolean hasMembership(UUID userId, UUID builderId) {
+        return assignmentRepository.existsByUser_IdAndBuilder_Id(userId, builderId);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasAnyMembership(UUID userId) {
+        return assignmentRepository.findByUser_IdWithBuilder(userId).stream().findAny().isPresent();
+    }
+
+    @Transactional(readOnly = true)
+    public String getRole(UUID userId, UUID builderId) {
+        return assignmentRepository
+                .findByUser_IdAndBuilder_Id(userId, builderId)
+                .map(UserProjectAssignment::getRole)
+                .orElseThrow(() -> new IllegalArgumentException("User is not linked to this project."));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<UserProjectAssignment> resolvePrimaryMembership(UUID userId) {
+        return assignmentRepository.findFirstByUser_IdOrderByBuilder_CompanyNameAsc(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserProjectAssignment> listMemberships(UUID userId) {
+        return assignmentRepository.findByUser_IdWithBuilder(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserProjectAssignment> listForProject(UUID builderId) {
+        return assignmentRepository.findByBuilder_IdWithUser(builderId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> listUsersAvailableForProject(UUID builderId) {
+        return assignmentRepository.findUsersNotOnProject(builderId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> listActiveUsersForProject(UUID builderId) {
+        return assignmentRepository.findByBuilder_IdWithUser(builderId).stream()
+                .map(UserProjectAssignment::getUser)
+                .filter(u -> u.getActive() == null || u.getActive())
+                .toList();
+    }
+
+    @Transactional
+    public UserProjectAssignment saveMembership(UUID builderId, User user, Builder builder, String role) {
+        String normalizedRole = StaffBuildingAccessService.normalizeRole(role);
+        UserProjectAssignment assignment =
+                assignmentRepository
+                        .findByUser_IdAndBuilder_Id(user.getId(), builderId)
+                        .orElseGet(() -> new UserProjectAssignment(user, builder, normalizedRole));
+        assignment.setRole(normalizedRole);
+        return assignmentRepository.save(assignment);
+    }
+
+    @Transactional(readOnly = true)
+    public String formatProjectNames(UUID userId) {
+        List<UserProjectAssignment> memberships = listMemberships(userId);
+        if (memberships.isEmpty()) {
+            return "—";
+        }
+        return memberships.stream()
+                .map(a -> a.getBuilder().getCompanyName())
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("—");
+    }
+}

@@ -2,8 +2,8 @@ package com.floor21.controller;
 
 import com.floor21.entity.Booking;
 import com.floor21.repository.FlatRepository;
-import com.floor21.repository.UserRepository;
 import com.floor21.security.TenantContext;
+import com.floor21.service.UserProjectAssignmentService;
 import com.floor21.util.FlatUnitTypes;
 import com.floor21.service.BookingService;
 import com.floor21.service.BrokerService;
@@ -34,8 +34,8 @@ public class BookingController {
     private final ClientService clientService;
     private final BrokerService brokerService;
     private final FlatRepository flatRepository;
-    private final UserRepository userRepository;
     private final ReceiptService receiptService;
+    private final UserProjectAssignmentService userProjectAssignmentService;
 
     @InitBinder("booking")
     public void initBinder(WebDataBinder binder) {
@@ -91,7 +91,7 @@ public class BookingController {
                 "flats",
                 flatRepository.findBookableResidentialByBuilder_IdAndStatusIn(
                         builderId, FlatUnitTypes.amenityCodesUpper(), List.of("AVAILABLE", "HOLD")));
-        model.addAttribute("executives", userRepository.findByBuilder_IdAndActiveTrueOrderByFullNameAsc(builderId));
+        model.addAttribute("executives", userProjectAssignmentService.listActiveUsersForProject(builderId));
         return "bookings/form";
     }
 
@@ -118,7 +118,7 @@ public class BookingController {
                         builderId,
                         FlatUnitTypes.amenityCodesUpper(),
                         List.of("AVAILABLE", "HOLD", "BOOKED")));
-        model.addAttribute("executives", userRepository.findByBuilder_IdAndActiveTrueOrderByFullNameAsc(builderId));
+        model.addAttribute("executives", userProjectAssignmentService.listActiveUsersForProject(builderId));
         return "bookings/form";
     }
 

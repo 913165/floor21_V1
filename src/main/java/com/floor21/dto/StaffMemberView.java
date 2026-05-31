@@ -13,12 +13,12 @@ public record StaffMemberView(
         java.time.Instant lastLoginAt,
         List<String> buildingAccess) {
 
-    public static StaffMemberView from(User user, List<String> buildingAccess) {
+    public static StaffMemberView from(User user, String role, List<String> buildingAccess) {
         return new StaffMemberView(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
-                user.getRole(),
+                role,
                 user.getActive(),
                 user.getLastLoginAt(),
                 buildingAccess);

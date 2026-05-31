@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3 mb-2" th:text="${pageTitle}">Add partner</h1>
+  <p class="text-muted small mb-3">
+    Link an existing user to project <strong th:text="${builder.companyName}">—</strong>
+    and choose their role and layout access.
+  </p>
+
+  <div class="alert alert-warning" th:if="${#lists.isEmpty(availableUsers)}">
+    No users available to add. Every existing user may already be a partner on this project.
+    Create another login under
+    <a th:href="@{/admin/users/new}">User Management → New user</a> first.
+  </div>
+
+  <form class="card card-body shadow-sm col-lg-8 needs-validation"
+        th:unless="${#lists.isEmpty(availableUsers)}"
+        th:action="@{/admin/projects/{id}/staff/assign(id=${builder.id})}"
+        method="post" id="assign-form" novalidate>
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="user-id">User <span class="text-danger">*</span></label>
+        <select class="form-select" id="user-id" name="userId" required>
+          <option value="" disabled selected th:if="${selectedUserId == null}">Choose a user…</option>
+          <option th:each="u : ${availableUsers}"
+                  th:value="${u.id}"
+                  th:text="${u.fullName + ' (' + u.email + ')'}"
+                  th:selected="${selectedUserId != null and selectedUserId == u.id}">User</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="assign-role">Role <span class="text-danger">*</span></label>
+        <select class="form-select" id="assign-role" name="role" required>
+          <option value="EXECUTIVE" th:selected="${selectedRole == null or selectedRole == 'EXECUTIVE'}">
+            Partner (selected project layouts)
+          </option>
+          <option value="BUILDER_ADMIN" th:selected="${selectedRole == 'BUILDER_ADMIN'}">
+            Project admin (all layouts)
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <div class="border-top pt-3 mt-3" id="layout-access-section">
+      <h6 class="mb-2">Project layout access</h6>
+      <div th:if="${#lists.isEmpty(projectLayouts)}" class="text-muted small">
+        No project layout yet.
+        <a th:href="@{/admin/projects/{id}/buildings/new(id=${builder.id})}">Generate project layout</a> first.
+      </div>
+      <div th:unless="${#lists.isEmpty(projectLayouts)}">
+        <label class="form-label" for="layout-ids-select">Project layouts
+          <span class="text-danger partner-layout-required">*</span></label>
+        <select class="form-select" id="layout-ids-select" name="buildingIds" multiple size="8" required>
+          <option th:each="layout : ${projectLayouts}"
+                  th:value="${layout.id}"
+                  th:text="${layout.buildingName}"
+                  th:selected="${assignedLayoutIds != null and assignedLayoutIds.contains(layout.id)}">Layout</option>
+        </select>
+        <div class="form-text">Hold Ctrl (Windows) or Cmd (Mac) to select more than one layout.</div>
+      </div>
+    </div>
+
+    <div class="mt-4 d-flex flex-wrap gap-2">
+      <button class="btn btn-primary" type="submit">Add partner</button>
+      <a class="btn btn-link" th:href="@{/admin/projects/{id}/staff(id=${builder.id})}">Cancel</a>
+    </div>
+  </form>
+</div>
+<script th:inline="javascript">
+  (function () {
+    var role = document.getElementById("assign-role");
+    var section = document.getElementById("layout-access-section");
+    if (!role || !section) return;
+    function sync() {
+      var admin = role.value === "BUILDER_ADMIN";
+      section.classList.toggle("opacity-50", admin);
+      var select = document.getElementById("layout-ids-select");
+      if (select) {
+        select.disabled = admin;
+        select.required = !admin;
+        if (admin) {
+          Array.from(select.options).forEach(function (opt) { opt.selected = false; });
+        }
+      }
+      section.querySelectorAll(".partner-layout-required").forEach(function (el) {
+        el.classList.toggle("invisible", admin);
+      });
+    }
+    role.addEventListener("change", sync);
+    sync();
+  })();
+</script>
+</body>
+</html>

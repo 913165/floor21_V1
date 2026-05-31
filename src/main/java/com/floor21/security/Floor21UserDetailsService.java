@@ -2,8 +2,10 @@ package com.floor21.security;
 
 import com.floor21.entity.Builder;
 import com.floor21.entity.User;
+import com.floor21.entity.UserProjectAssignment;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.UserRepository;
+import com.floor21.service.UserProjectAssignmentService;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ public class Floor21UserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final BuilderRepository builderRepository;
+    private final UserProjectAssignmentService userProjectAssignmentService;
 
     @Override
     @Transactional(readOnly = true)
@@ -32,8 +35,13 @@ public class Floor21UserDetailsService implements UserDetailsService {
     }
 
     private UserDetails staffPrincipal(User staff) {
-        UUID builderId = staff.getBuilder().getId();
-        String role = "ROLE_" + staff.getRole();
+        UserProjectAssignment membership =
+                userProjectAssignmentService
+                        .resolvePrimaryMembership(staff.getId())
+                        .orElseThrow(
+                                () -> new UsernameNotFoundException("User is not assigned to a project yet."));
+        UUID builderId = membership.getBuilder().getId();
+        String role = "ROLE_" + membership.getRole();
         var delegate =
                 new org.springframework.security.core.userdetails.User(
                         staff.getEmail(),
