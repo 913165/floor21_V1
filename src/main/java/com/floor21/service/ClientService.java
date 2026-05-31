@@ -104,8 +104,6 @@ public class ClientService {
         entity.setAadhaarNumber(form.getAadhaarNumber());
         entity.setDob(form.getDob());
         entity.setDateOfMarriage(form.getDateOfMarriage());
-        entity.setDndNoCall(form.getDndNoCall());
-        entity.setDndOnlyEmail(form.getDndOnlyEmail());
         entity.setCommAddress1(form.getCommAddress1());
         entity.setCommAddress2(form.getCommAddress2());
         entity.setCommAddress3(form.getCommAddress3());

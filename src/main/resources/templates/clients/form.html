@@ -7,33 +7,106 @@
   <form class="card card-body shadow-sm" th:action="@{/clients/save}" th:object="${client}" method="post">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
     <input type="hidden" th:field="*{id}"/>
+
+    <p class="text-muted small mb-3"><span class="text-danger">*</span> Required field</p>
+
+    <h2 class="h6 text-muted text-uppercase mb-3">Personal</h2>
     <div class="row g-3">
       <div class="col-md-4">
-        <label class="form-label">First name</label>
+        <label class="form-label">First name <span class="text-danger">*</span></label>
         <input class="form-control" th:field="*{firstName}" required/>
       </div>
       <div class="col-md-4">
-        <label class="form-label">Last name</label>
-        <input class="form-control" th:field="*{lastName}"/>
+        <label class="form-label">Last name <span class="text-danger">*</span></label>
+        <input class="form-control" th:field="*{lastName}" required/>
       </div>
       <div class="col-md-4">
-        <label class="form-label">City</label>
-        <input class="form-control" th:field="*{city}"/>
+        <label class="form-label">Company</label>
+        <input class="form-control" th:field="*{companyName}"/>
       </div>
       <div class="col-md-6">
-        <label class="form-label">Mobile</label>
-        <input class="form-control" th:field="*{mobile1}"/>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label">Email</label>
-        <input class="form-control" type="email" th:field="*{email1}"/>
-      </div>
-      <div class="col-12">
-        <label class="form-label">Address</label>
-        <textarea class="form-control" rows="2" th:field="*{address1}"></textarea>
+        <label class="form-label">Occupation</label>
+        <input class="form-control" th:field="*{occupation}"/>
       </div>
     </div>
-    <div class="mt-3">
+
+    <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Address</h2>
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Address line 1 <span class="text-danger">*</span></label>
+        <input class="form-control" th:field="*{address1}" required/>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Address line 2</label>
+        <input class="form-control" th:field="*{address2}"/>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Address line 3</label>
+        <input class="form-control" th:field="*{address3}"/>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">City <span class="text-danger">*</span></label>
+        <input class="form-control" th:field="*{city}" required/>
+      </div>
+    </div>
+
+    <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Contact</h2>
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Phone (office)</label>
+        <input class="form-control" th:field="*{phoneOffice}"/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Phone (residence)</label>
+        <input class="form-control" th:field="*{phoneResidence}"/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Mobile 1 <span class="text-danger">*</span></label>
+        <input class="form-control" th:field="*{mobile1}" required/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Mobile 2</label>
+        <input class="form-control" th:field="*{mobile2}"/>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Email 1</label>
+        <input class="form-control" type="email" th:field="*{email1}"/>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Email 2</label>
+        <input class="form-control" type="email" th:field="*{email2}"/>
+      </div>
+    </div>
+
+    <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Identity &amp; dates</h2>
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">PAN no <span class="text-danger">*</span></label>
+        <input class="form-control text-uppercase" th:field="*{panNumber}" maxlength="20" required/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Aadhaar <span class="text-danger">*</span></label>
+        <input class="form-control" th:field="*{aadhaarNumber}" maxlength="20" required/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Date of birth <span class="text-danger">*</span></label>
+        <input class="form-control" type="date" th:field="*{dob}" required/>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Date of marriage</label>
+        <input class="form-control" type="date" th:field="*{dateOfMarriage}"/>
+      </div>
+    </div>
+
+    <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Notes</h2>
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Particulars</label>
+        <textarea class="form-control" rows="4" th:field="*{particulars}"></textarea>
+      </div>
+    </div>
+
+    <div class="mt-4">
       <button class="btn btn-primary" type="submit">Save</button>
       <a class="btn btn-link" th:href="@{/clients}">Cancel</a>
     </div>

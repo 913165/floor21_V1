@@ -9,6 +9,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -29,9 +31,11 @@ public class Client {
     @JoinColumn(name = "builder_id", nullable = false)
     private Builder builder;
 
+    @NotBlank(message = "First name is required.")
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
 
+    @NotBlank(message = "Last name is required.")
     @Column(name = "last_name", length = 100)
     private String lastName;
 
@@ -41,6 +45,7 @@ public class Client {
     @Column(length = 100)
     private String occupation;
 
+    @NotBlank(message = "Address line 1 is required.")
     @Column(columnDefinition = "TEXT")
     private String address1;
 
@@ -50,6 +55,7 @@ public class Client {
     @Column(columnDefinition = "TEXT")
     private String address3;
 
+    @NotBlank(message = "City is required.")
     @Column(length = 100)
     private String city;
 
@@ -59,6 +65,7 @@ public class Client {
     @Column(name = "phone_residence", length = 20)
     private String phoneResidence;
 
+    @NotBlank(message = "Mobile 1 is required.")
     @Column(length = 20)
     private String mobile1;
 
@@ -71,12 +78,15 @@ public class Client {
     @Column(length = 150)
     private String email2;
 
+    @NotBlank(message = "PAN no is required.")
     @Column(name = "pan_number", length = 20)
     private String panNumber;
 
+    @NotBlank(message = "Aadhaar is required.")
     @Column(name = "aadhaar_number", length = 20)
     private String aadhaarNumber;
 
+    @NotNull(message = "Date of birth is required.")
     private LocalDate dob;
 
     @Column(name = "date_of_marriage")

@@ -2,10 +2,12 @@ package com.floor21.controller;
 
 import com.floor21.entity.Client;
 import com.floor21.service.ClientService;
+import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -58,7 +60,18 @@ public class ClientController {
     }
 
     @PostMapping("/save")
-    public String save(@ModelAttribute Client client, RedirectAttributes ra) {
+    public String save(
+            @Valid @ModelAttribute("client") Client client,
+            BindingResult bindingResult,
+            Model model,
+            RedirectAttributes ra) {
+        if (bindingResult.hasErrors()) {
+            model.addAttribute(
+                    "pageTitle", client.getId() == null ? "New Client" : "Edit Client");
+            model.addAttribute(
+                    "errorMessage", bindingResult.getAllErrors().getFirst().getDefaultMessage());
+            return "clients/form";
+        }
         clientService.save(client);
         ra.addFlashAttribute("successMessage", "Client saved");
         return "redirect:/clients";
