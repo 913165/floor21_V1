@@ -38,6 +38,11 @@ public class LayoutControllerAdvice {
         return ResidentialBhkTypes.all();
     }
 
+    @ModelAttribute("perFloorLayoutBhkTypes")
+    public List<String> perFloorLayoutBhkTypes() {
+        return ResidentialBhkTypes.perFloorLayout();
+    }
+
     @ModelAttribute("flatAmenityTypes")
     public List<String> flatAmenityTypes() {
         return FlatUnitTypes.amenityTypes();

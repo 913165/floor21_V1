@@ -42,6 +42,11 @@ public final class ResidentialBhkTypes {
         return ALL;
     }
 
+    /** Studio and 1–7 BHK only — used for uniform per-floor layout (building form, generate flats). */
+    public static List<String> perFloorLayout() {
+        return ALL.stream().filter(t -> !"PENTHOUSE".equals(t) && !"DUPLEX".equals(t)).toList();
+    }
+
     public static Map<String, Integer> emptyCountMap() {
         Map<String, Integer> map = new LinkedHashMap<>();
         for (String type : ALL) {

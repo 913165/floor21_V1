@@ -142,7 +142,7 @@
           <label class="form-label">Flats / floor</label>
           <input class="form-control" type="number" th:field="*{flatsPerFloor}" required min="1"/>
         </div>
-        <div class="col-auto" th:each="bhkType : ${residentialBhkTypes}">
+        <div class="col-auto" th:each="bhkType : ${perFloorLayoutBhkTypes}">
           <label class="form-label" th:text="${bhkType + ' / floor'}">1BHK / floor</label>
           <input class="form-control" type="number" min="0"
                  th:name="|bhkPerFloor['${bhkType}']|"
@@ -186,7 +186,7 @@
           <input class="form-control" type="number" name="flatsPerFloor"
                  th:value="${building.flatsPerFloor}" required min="1"/>
         </div>
-        <div class="col-auto" th:each="bhkType : ${residentialBhkTypes}">
+        <div class="col-auto" th:each="bhkType : ${perFloorLayoutBhkTypes}">
           <label class="form-label" th:text="${bhkType + ' / floor'}">1BHK / floor</label>
           <input class="form-control" type="number" min="0"
                  th:name="|bhkPerFloor['${bhkType}']|"
