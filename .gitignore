@@ -66,6 +66,13 @@ application-secret.yml
 # Node (if frontend tooling added later)
 node_modules/
 
+# Playwright E2E (e2e/ — see e2e/README.md)
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/blob-report/
+e2e/playwright/.cache/
+
 # Test / coverage
 .nyc_output/
 coverage/
