@@ -6,6 +6,7 @@ import com.floor21.entity.UserBuildingAssignment;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.UserBuildingAssignmentRepository;
 import com.floor21.repository.UserRepository;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -28,7 +29,8 @@ public class StaffBuildingAccessService {
     private final UserProjectAssignmentService userProjectAssignmentService;
 
     /**
-     * {@code null} = unrestricted (all buildings for the builder). Non-null set = only those buildings.
+     * {@code null} = unrestricted (project admin: all buildings). Empty set = partner with no buildings yet.
+     * Non-empty set = only those buildings.
      */
     @Transactional(readOnly = true)
     public Set<UUID> resolveAllowedBuildingIds(UUID staffUserId, UUID builderId) {
@@ -41,7 +43,7 @@ public class StaffBuildingAccessService {
         }
         List<UUID> assigned = assignmentRepository.findBuildingIdsByUserIdAndBuilderId(staffUserId, builderId);
         if (assigned.isEmpty()) {
-            return null;
+            return Collections.emptySet();
         }
         return new HashSet<>(assigned);
     }
@@ -55,7 +57,7 @@ public class StaffBuildingAccessService {
         List<UserBuildingAssignment> rows =
                 assignmentRepository.findByUser_IdAndBuilding_Builder_IdOrderByBuildingName(staffUserId, builderId);
         if (rows.isEmpty()) {
-            return List.of("All buildings (none restricted yet)");
+            return List.of("No buildings assigned");
         }
         return rows.stream().map(a -> a.getBuilding().getBuildingName()).toList();
     }
@@ -124,10 +126,7 @@ public class StaffBuildingAccessService {
                             }
                             List<UUID> assigned =
                                     assignmentRepository.findBuildingIdsByUserIdAndBuilderId(u.getId(), builderId);
-                            if (assigned.isEmpty()) {
-                                return true;
-                            }
-                            return assigned.contains(buildingId);
+                            return !assigned.isEmpty() && assigned.contains(buildingId);
                         })
                 .toList();
     }
