@@ -3,10 +3,6 @@ spring:
     show-sql: true
   thymeleaf:
     cache: false
-  flyway:
-    # Local DB may still list old V2–V50 after migration squash; schema is already applied.
-    ignore-missing-migrations: true
-
 logging:
   level:
     com.floor21: DEBUG

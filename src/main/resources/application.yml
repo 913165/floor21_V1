@@ -27,6 +27,8 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # After migration squash: DB may still list old V2–V50 in history.
+    ignore-missing-migrations: true
 
   thymeleaf:
     prefix: classpath:/templates/

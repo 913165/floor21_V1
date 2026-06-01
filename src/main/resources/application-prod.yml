@@ -3,10 +3,6 @@ spring:
     show-sql: false
   thymeleaf:
     cache: true
-  flyway:
-    # DB may still list old V2–V50 in flyway_schema_history after migration squash.
-    ignore-missing-migrations: true
-
 logging:
   file:
     path: logs
