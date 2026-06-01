@@ -54,12 +54,6 @@
         <td th:text="${b.active}"></td>
         <td class="text-end text-nowrap">
           <a class="btn btn-sm btn-outline-primary" th:href="@{/buildings/{id}/flats(id=${b.id})}">Flats</a>
-          <a class="btn btn-sm btn-outline-secondary"
-             th:if="${bookingCounts[b.id] == null or bookingCounts[b.id] == 0}"
-             th:href="@{/admin/buildings/{id}/edit(id=${b.id})}">Edit layout</a>
-          <span class="text-muted small"
-                th:if="${bookingCounts[b.id] != null and bookingCounts[b.id] > 0}"
-                th:title="'Layout is locked while ' + ${bookingCounts[b.id]} + ' booking(s) exist.'">Layout locked</span>
           <form class="d-inline"
                 th:if="${bookingCounts[b.id] == null or bookingCounts[b.id] == 0}"
                 th:action="@{/admin/buildings/{id}/delete(id=${b.id})}" method="post"
