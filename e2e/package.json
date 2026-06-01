@@ -1,0 +1,17 @@
+{
+  "name": "floor21-e2e",
+  "private": true,
+  "description": "Playwright UI tests for Floor21 (runs against a live Spring Boot instance)",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "codegen": "playwright codegen",
+    "report": "playwright show-report",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  }
+}
