@@ -16,6 +16,8 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
+    # Ensure Flyway applies migrations (e.g. V2) before Hibernate validates the schema.
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: validate
     show-sql: false

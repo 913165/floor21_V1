@@ -31,6 +31,9 @@ public class User {
     @Column(name = "full_name", nullable = false, length = 200)
     private String fullName;
 
+    @Column(name = "company_name", length = 200)
+    private String companyName;
+
     @Column(nullable = false, length = 150)
     private String email;
 

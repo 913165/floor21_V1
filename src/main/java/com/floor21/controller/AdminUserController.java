@@ -1,11 +1,14 @@
 package com.floor21.controller;
 
+import com.floor21.dto.PlatformUserView;
 import com.floor21.entity.User;
 import com.floor21.service.AdminUserService;
 import com.floor21.service.UserProjectAssignmentService;
 import com.floor21.util.IndianStates;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,9 +28,23 @@ public class AdminUserController {
     private final UserProjectAssignmentService userProjectAssignmentService;
 
     @GetMapping
-    public String list(Model model) {
+    public String list(
+            Model model,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(defaultValue = "companyName") String sort,
+            @RequestParam(defaultValue = "asc") String dir) {
+        String sortKey = AdminUserService.normalizeUsersSort(sort);
+        boolean ascending = AdminUserService.normalizeUsersSortAscending(sortKey, dir);
+        Page<PlatformUserView> userPage =
+                adminUserService.listUsersPage(page, size, sortKey, ascending ? "asc" : "desc");
         model.addAttribute("pageTitle", "Users");
-        model.addAttribute("users", adminUserService.listAllUsers());
+        model.addAttribute("userPage", userPage);
+        model.addAttribute("users", userPage.getContent());
+        model.addAttribute("sort", sortKey);
+        model.addAttribute("dir", ascending ? "asc" : "desc");
+        model.addAttribute("pageSize", userPage.getSize());
+        model.addAttribute("pageSizeOptions", List.of(10, 25, 50));
         return "admin/users/list";
     }
 

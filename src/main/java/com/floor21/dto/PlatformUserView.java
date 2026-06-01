@@ -9,9 +9,11 @@ import java.util.UUID;
 public record PlatformUserView(
         UUID id,
         String fullName,
+        String companyName,
         String email,
         String role,
         Boolean active,
+        Instant createdAt,
         Instant lastLoginAt,
         List<String> buildingAccess,
         UUID builderId,
@@ -22,9 +24,11 @@ public record PlatformUserView(
         return new PlatformUserView(
                 user.getId(),
                 user.getFullName(),
+                displayCompanyName(user),
                 user.getEmail(),
                 role,
                 user.getActive(),
+                user.getCreatedAt(),
                 user.getLastLoginAt(),
                 buildingAccess,
                 null,
@@ -43,12 +47,21 @@ public record PlatformUserView(
         return new PlatformUserView(
                 user.getId(),
                 user.getFullName(),
+                displayCompanyName(user),
                 user.getEmail(),
                 user.getRole(),
                 user.getActive(),
+                user.getCreatedAt(),
                 user.getLastLoginAt(),
                 List.of("Not assigned to a project yet"),
                 null,
                 "—");
+    }
+
+    private static String displayCompanyName(User user) {
+        if (user.getCompanyName() != null && !user.getCompanyName().isBlank()) {
+            return user.getCompanyName().trim();
+        }
+        return "—";
     }
 }

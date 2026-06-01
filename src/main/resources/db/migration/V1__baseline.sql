@@ -758,6 +758,11 @@ ALTER TABLE users
     ADD COLUMN address_pin VARCHAR(6);
 
 -- -----------------------------------------------------------------------------
+-- User company / business name (User Management)
+-- -----------------------------------------------------------------------------
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name VARCHAR(200);
+
+-- -----------------------------------------------------------------------------
 -- V48__builders_optional_login.sql
 -- -----------------------------------------------------------------------------
 -- Projects (builders) no longer require a login on the tenant row; users are added separately.

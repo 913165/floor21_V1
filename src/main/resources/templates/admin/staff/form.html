@@ -25,6 +25,12 @@
         <div class="invalid-feedback">Full name is required.</div>
       </div>
       <div class="col-md-6">
+        <label class="form-label" for="staff-company-name">Company name <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
+        <input class="form-control" id="staff-company-name" th:field="*{companyName}" required minlength="2"
+               maxlength="200" placeholder="e.g. partner firm or agency name"/>
+        <div class="invalid-feedback">Company name is required.</div>
+      </div>
+      <div class="col-md-6">
         <label class="form-label" for="staff-email">Email (login) <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
         <input class="form-control" id="staff-email" type="email" th:field="*{email}" required autocomplete="username"/>
         <div class="invalid-feedback">A valid email is required.</div>

@@ -3,6 +3,7 @@
 The app uses a **single** Flyway script:
 
 - `src/main/resources/db/migration/V1__baseline.sql` — full schema, alters, and dev seed data (replaces the old `V1`–`V50` chain).
+- `src/main/resources/db/migration/V2__users_company_name.sql` — adds `users.company_name` for User Management.
 
 ## New install (empty database)
 
@@ -43,6 +44,32 @@ ls target/classes/db/migration/
 ```
 
 Always run **`mvn clean`** (or `./mvnw clean package`) after pulling migration changes. A plain `package` can leave old SQL files in `target/classes`.
+
+## `missing column [company_name] in table [users]`
+
+Hibernate validates the schema before Flyway has applied `V2__users_company_name.sql`.
+
+1. Rebuild so `V2__users_company_name.sql` is on the classpath:
+
+   ```bash
+   ./mvnw clean package -DskipTests
+   ```
+
+2. Restart the app (Flyway should apply version 2 on startup).
+
+**If startup still fails**, apply the column once in PostgreSQL:
+
+```sql
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name VARCHAR(200);
+INSERT INTO flyway_schema_history (
+    installed_rank, version, description, type, script, checksum, installed_by, installed_on, execution_time, success
+) VALUES (
+    (SELECT COALESCE(MAX(installed_rank), 0) + 1 FROM flyway_schema_history),
+    '2', 'users company name', 'SQL', 'V2__users_company_name.sql', 0, 'manual', NOW(), 0, TRUE
+) ON CONFLICT DO NOTHING;
+```
+
+(If version 2 is already in `flyway_schema_history`, only run the `ALTER TABLE` line.)
 
 ## Flyway checksum mismatch on startup
 

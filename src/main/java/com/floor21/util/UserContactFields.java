@@ -7,6 +7,8 @@ public final class UserContactFields {
     private UserContactFields() {}
 
     public static void applyFromForm(User entity, User form) {
+        entity.setCompanyName(requireField(form.getCompanyName(), "Company name is required."));
+
         String normalizedPan = IndianTaxIds.normalizePan(requireField(form.getPanNumber(), "PAN is required."));
         if (!IndianTaxIds.isValidPan(normalizedPan)) {
             throw new IllegalArgumentException("PAN must be 10 characters (e.g. ABCDE1234F).");

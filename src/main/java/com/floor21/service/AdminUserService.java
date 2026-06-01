@@ -17,6 +17,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +27,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class AdminUserService {
+
+    public static final int USERS_DEFAULT_PAGE_SIZE = 25;
+    public static final int USERS_MAX_PAGE_SIZE = 100;
+
+    private static final Set<String> USERS_SORT_FIELDS =
+            Set.of(
+                    "fullName",
+                    "companyName",
+                    "email",
+                    "project",
+                    "role",
+                    "active",
+                    "lastLoginAt",
+                    "createdAt");
 
     private final BuilderRepository builderRepository;
     private final UserRepository userRepository;
@@ -33,7 +50,23 @@ public class AdminUserService {
     private final PlatformAuditService auditService;
 
     @Transactional(readOnly = true)
-    public List<PlatformUserView> listAllUsers() {
+    public Page<PlatformUserView> listUsersPage(int page, int size, String sort, String dir) {
+        String sortKey = normalizeUsersSort(sort);
+        boolean ascending = normalizeUsersSortAscending(sortKey, dir);
+        int safeSize = Math.min(Math.max(size, 5), USERS_MAX_PAGE_SIZE);
+        int safePage = Math.max(page, 0);
+
+        List<PlatformUserView> sorted = new ArrayList<>(loadAllUserRows());
+        sorted.sort(comparatorForUsersSort(sortKey, ascending));
+
+        int total = sorted.size();
+        int from = Math.min(safePage * safeSize, total);
+        int to = Math.min(from + safeSize, total);
+        List<PlatformUserView> slice = from < to ? sorted.subList(from, to) : List.of();
+        return new PageImpl<>(slice, PageRequest.of(safePage, safeSize), total);
+    }
+
+    private List<PlatformUserView> loadAllUserRows() {
         List<PlatformUserView> rows = new ArrayList<>();
         Set<UUID> seen = new LinkedHashSet<>();
         for (User user : userRepository.findByBuilderIsNullOrderByFullNameAsc()) {
@@ -53,10 +86,64 @@ public class AdminUserService {
             }
             rows.add(toPlatformUserView(user, memberships));
         }
-        rows.sort(
-                Comparator.comparing(PlatformUserView::builderCompanyName, String.CASE_INSENSITIVE_ORDER)
-                        .thenComparing(PlatformUserView::fullName, String.CASE_INSENSITIVE_ORDER));
         return rows;
+    }
+
+    public static String normalizeUsersSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return "companyName";
+        }
+        String key = sort.trim();
+        return USERS_SORT_FIELDS.contains(key) ? key : "companyName";
+    }
+
+    public static boolean normalizeUsersSortAscending(String sortKey, String dir) {
+        if (dir != null && !dir.isBlank()) {
+            return "asc".equalsIgnoreCase(dir.trim());
+        }
+        return switch (sortKey) {
+            case "fullName", "companyName", "email", "project", "role" -> true;
+            default -> false;
+        };
+    }
+
+    private static Comparator<PlatformUserView> comparatorForUsersSort(String sortKey, boolean ascending) {
+        Comparator<PlatformUserView> comparator =
+                switch (sortKey) {
+                    case "fullName" ->
+                            Comparator.comparing(
+                                    PlatformUserView::fullName,
+                                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                    case "email" ->
+                            Comparator.comparing(
+                                    PlatformUserView::email,
+                                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                    case "project" ->
+                            Comparator.comparing(
+                                    PlatformUserView::builderCompanyName,
+                                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                    case "role" ->
+                            Comparator.comparing(
+                                    PlatformUserView::role,
+                                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                    case "active" ->
+                            Comparator.comparing(
+                                    PlatformUserView::active,
+                                    Comparator.nullsLast(Comparator.naturalOrder()));
+                    case "lastLoginAt" ->
+                            Comparator.comparing(
+                                    PlatformUserView::lastLoginAt,
+                                    Comparator.nullsLast(Comparator.naturalOrder()));
+                    case "createdAt" ->
+                            Comparator.comparing(
+                                    PlatformUserView::createdAt,
+                                    Comparator.nullsLast(Comparator.naturalOrder()));
+                    default ->
+                            Comparator.comparing(
+                                    PlatformUserView::companyName,
+                                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                };
+        return ascending ? comparator : comparator.reversed();
     }
 
     @Transactional(readOnly = true)
@@ -94,22 +181,29 @@ public class AdminUserService {
             entity.setAdminVisiblePassword(password);
         } else {
             entity = requireUser(form.getId());
-            if (userProjectAssignmentService.hasAnyMembership(entity.getId())) {
-                throw new IllegalArgumentException(
-                        "This user is linked to one or more projects. Edit role and layout access from Projects → Partners.");
+            boolean assignedToProject = userProjectAssignmentService.hasAnyMembership(entity.getId());
+            if (assignedToProject) {
+                applyAssignedUserProfileUpdate(entity, form, password);
+            } else {
+                if (userRepository.existsByEmailIgnoreCaseAndIdNot(form.getEmail(), entity.getId())) {
+                    throw new IllegalArgumentException("Email is already used by another user.");
+                }
+                if (!password.equals(entity.getAdminVisiblePassword())) {
+                    entity.setPasswordHash(passwordEncoder.encode(password));
+                }
+                entity.setAdminVisiblePassword(password);
+                entity.setFullName(form.getFullName().trim());
+                entity.setEmail(form.getEmail().trim().toLowerCase(Locale.ROOT));
+                entity.setActive(form.getActive() != null ? form.getActive() : true);
+                UserContactFields.applyFromForm(entity, form);
             }
-            if (userRepository.existsByEmailIgnoreCaseAndIdNot(form.getEmail(), entity.getId())) {
-                throw new IllegalArgumentException("Email is already used by another user.");
-            }
-            if (!password.equals(entity.getAdminVisiblePassword())) {
-                entity.setPasswordHash(passwordEncoder.encode(password));
-            }
-            entity.setAdminVisiblePassword(password);
         }
-        entity.setFullName(form.getFullName().trim());
-        entity.setEmail(form.getEmail().trim().toLowerCase(Locale.ROOT));
-        entity.setActive(form.getActive() != null ? form.getActive() : true);
-        UserContactFields.applyFromForm(entity, form);
+        if (created) {
+            entity.setFullName(form.getFullName().trim());
+            entity.setEmail(form.getEmail().trim().toLowerCase(Locale.ROOT));
+            entity.setActive(form.getActive() != null ? form.getActive() : true);
+            UserContactFields.applyFromForm(entity, form);
+        }
         User saved = userRepository.save(entity);
         auditService.log(
                 created ? "USER_CREATED" : "USER_UPDATED",
@@ -138,6 +232,16 @@ public class AdminUserService {
         }
         buildingAccess = buildingAccess.stream().distinct().toList();
         return PlatformUserView.from(user, projects, roleLabel, buildingAccess);
+    }
+
+    /** Profile fields only; name, email, and role stay as-is (change those under Projects → Partners). */
+    private void applyAssignedUserProfileUpdate(User entity, User form, String password) {
+        if (!password.equals(entity.getAdminVisiblePassword())) {
+            entity.setPasswordHash(passwordEncoder.encode(password));
+        }
+        entity.setAdminVisiblePassword(password);
+        entity.setCompanyName(form.getCompanyName().trim());
+        UserContactFields.applyFromForm(entity, form);
     }
 
     private static String requirePassword(String rawPassword, boolean created, UUID userId) {
