@@ -117,10 +117,6 @@ public class AdminStaffService {
         entity.setEmail(form.getEmail().trim().toLowerCase(Locale.ROOT));
         entity.setActive(form.getActive() != null ? form.getActive() : true);
         UserContactFields.applyFromForm(entity, form);
-        if (StaffBuildingAccessService.ROLE_EXECUTIVE.equals(normalizedRole)
-                && (buildingIds == null || buildingIds.isEmpty())) {
-            throw new IllegalArgumentException("Select at least one project layout for a partner user.");
-        }
         User saved = userRepository.save(entity);
         userProjectAssignmentService.saveMembership(builderId, saved, builder, normalizedRole);
         staffBuildingAccessService.replaceAssignments(builderId, saved, normalizedRole, buildingIds);
@@ -144,10 +140,6 @@ public class AdminStaffService {
             throw new IllegalArgumentException("This user is already a partner on this project.");
         }
         String normalizedRole = StaffBuildingAccessService.normalizeRole(role);
-        if (StaffBuildingAccessService.ROLE_EXECUTIVE.equals(normalizedRole)
-                && (buildingIds == null || buildingIds.isEmpty())) {
-            throw new IllegalArgumentException("Select at least one project layout for a partner user.");
-        }
         userProjectAssignmentService.saveMembership(builderId, user, builder, normalizedRole);
         staffBuildingAccessService.replaceAssignments(builderId, user, normalizedRole, buildingIds);
         auditService.log(

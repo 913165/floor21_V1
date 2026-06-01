@@ -1,0 +1,97 @@
+package com.floor21.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+import com.floor21.dto.AdminBuilderRow;
+import com.floor21.entity.Builder;
+import com.floor21.repository.BankRepository;
+import com.floor21.repository.BookingRepository;
+import com.floor21.repository.BuildingRepository;
+import com.floor21.repository.BrokerRepository;
+import com.floor21.repository.BuilderRepository;
+import com.floor21.repository.ClientRepository;
+import com.floor21.repository.FlatRepository;
+import com.floor21.repository.PlatformAuditLogRepository;
+import com.floor21.repository.SlabRepository;
+import com.floor21.repository.UserProjectAssignmentRepository;
+import com.floor21.repository.UserRepository;
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+
+@ExtendWith(MockitoExtension.class)
+class PlatformAdminServiceProjectsPageTest {
+
+    @Mock private BuilderRepository builderRepository;
+    @Mock private BuildingRepository buildingRepository;
+    @Mock private FlatRepository flatRepository;
+    @Mock private BookingRepository bookingRepository;
+    @Mock private UserRepository userRepository;
+    @Mock private SlabRepository slabRepository;
+    @Mock private ClientRepository clientRepository;
+    @Mock private BrokerRepository brokerRepository;
+    @Mock private BankRepository bankRepository;
+    @Mock private UserProjectAssignmentRepository userProjectAssignmentRepository;
+    @Mock private PlatformAuditLogRepository auditLogRepository;
+    @Mock private PlatformAuditService auditService;
+
+    private PlatformAdminService service;
+
+    @BeforeEach
+    void setUp() {
+        service =
+                new PlatformAdminService(
+                        builderRepository,
+                        buildingRepository,
+                        flatRepository,
+                        bookingRepository,
+                        userRepository,
+                        slabRepository,
+                        clientRepository,
+                        brokerRepository,
+                        bankRepository,
+                        userProjectAssignmentRepository,
+                        auditLogRepository,
+                        auditService);
+    }
+
+    @Test
+    void listBuildersPage_sortsByLastActivityAndPaginates() {
+        Builder older = tenant("Older", Instant.parse("2024-01-01T00:00:00Z"), null);
+        Builder newer = tenant("Newer", Instant.parse("2024-06-01T00:00:00Z"), Instant.parse("2025-01-01T00:00:00Z"));
+        when(builderRepository.findAllTenantsOrderByCompanyNameAsc()).thenReturn(List.of(older, newer));
+        stubRowCounts();
+
+        Page<AdminBuilderRow> page = service.listBuildersPage(0, 25, "lastActivity", "desc");
+
+        assertThat(page.getTotalElements()).isEqualTo(2);
+        assertThat(page.getContent().get(0).companyName()).isEqualTo("Newer");
+        assertThat(page.getContent().get(1).companyName()).isEqualTo("Older");
+    }
+
+    private Builder tenant(String name, Instant createdAt, Instant updatedAt) {
+        Builder b = new Builder();
+        b.setId(UUID.randomUUID());
+        b.setCompanyName(name);
+        b.setPlatformAdmin(false);
+        b.setActive(true);
+        b.setCreatedAt(createdAt);
+        b.setUpdatedAt(updatedAt);
+        return b;
+    }
+
+    private void stubRowCounts() {
+        when(buildingRepository.findFirstByBuilder_IdOrderByBuildingNameAsc(any())).thenReturn(Optional.empty());
+        when(buildingRepository.countByBuilder_Id(any())).thenReturn(0L);
+        when(userProjectAssignmentRepository.countByBuilder_Id(any())).thenReturn(0L);
+    }
+}

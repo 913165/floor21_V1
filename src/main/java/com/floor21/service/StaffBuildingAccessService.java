@@ -55,7 +55,7 @@ public class StaffBuildingAccessService {
         List<UserBuildingAssignment> rows =
                 assignmentRepository.findByUser_IdAndBuilding_Builder_IdOrderByBuildingName(staffUserId, builderId);
         if (rows.isEmpty()) {
-            return List.of("All buildings");
+            return List.of("All buildings (none restricted yet)");
         }
         return rows.stream().map(a -> a.getBuilding().getBuildingName()).toList();
     }

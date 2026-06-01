@@ -3,20 +3,86 @@
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <h1 class="h3 mb-0" th:text="${pageTitle}">Builders</h1>
-    <a class="btn btn-primary" th:href="@{/admin/projects/new}">New project</a>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <form class="d-flex align-items-center gap-2" method="get" th:action="@{/admin/projects}">
+        <input type="hidden" name="sort" th:value="${sort}"/>
+        <input type="hidden" name="dir" th:value="${dir}"/>
+        <input type="hidden" name="page" value="0"/>
+        <label class="form-label small text-muted mb-0" for="projects-page-size">Per page</label>
+        <select class="form-select form-select-sm" id="projects-page-size" name="size"
+                style="width: auto" onchange="this.form.submit()">
+          <option th:each="opt : ${pageSizeOptions}"
+                  th:value="${opt}"
+                  th:text="${opt}"
+                  th:selected="${pageSize == opt}">25</option>
+        </select>
+      </form>
+      <a class="btn btn-primary" th:href="@{/admin/projects/new}">New project</a>
+    </div>
   </div>
 
   <div class="table-responsive card shadow-sm">
-    <table class="table mb-0">
+    <table class="table table-hover mb-0">
       <thead>
       <tr>
-        <th>Project</th>
-        <th>City</th>
-        <th>Buildings</th>
-        <th>Active</th>
-        <th>Last login</th>
+        <th>
+          <a class="floor21-sort-th"
+             th:classappend="${sort == 'companyName'} ? 'floor21-sort-th--active' : ''"
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='companyName', dir=${sort == 'companyName' and dir == 'asc' ? 'desc' : 'asc'})}">
+            Project<span class="floor21-sort-th__icon" th:if="${sort == 'companyName'}"
+                         th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
+          </a>
+        </th>
+        <th>
+          <a class="floor21-sort-th"
+             th:classappend="${sort == 'city'} ? 'floor21-sort-th--active' : ''"
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='city', dir=${sort == 'city' and dir == 'asc' ? 'desc' : 'asc'})}">
+            City<span class="floor21-sort-th__icon" th:if="${sort == 'city'}"
+                      th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
+          </a>
+        </th>
+        <th>
+          <a class="floor21-sort-th"
+             th:classappend="${sort == 'buildingCount'} ? 'floor21-sort-th--active' : ''"
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='buildingCount', dir=${sort == 'buildingCount' and dir == 'desc' ? 'asc' : 'desc'})}">
+            Buildings<span class="floor21-sort-th__icon" th:if="${sort == 'buildingCount'}"
+                           th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
+          </a>
+        </th>
+        <th>
+          <a class="floor21-sort-th"
+             th:classappend="${sort == 'active'} ? 'floor21-sort-th--active' : ''"
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='active', dir=${sort == 'active' and dir == 'desc' ? 'asc' : 'desc'})}">
+            Active<span class="floor21-sort-th__icon" th:if="${sort == 'active'}"
+                        th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
+          </a>
+        </th>
+        <th>
+          <a class="floor21-sort-th"
+             th:classappend="${sort == 'createdAt'} ? 'floor21-sort-th--active' : ''"
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='createdAt', dir=${sort == 'createdAt' and dir == 'desc' ? 'asc' : 'desc'})}">
+            Created<span class="floor21-sort-th__icon" th:if="${sort == 'createdAt'}"
+                          th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
+          </a>
+        </th>
+        <th>
+          <a class="floor21-sort-th"
+             th:classappend="${sort == 'updatedAt'} ? 'floor21-sort-th--active' : ''"
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='updatedAt', dir=${sort == 'updatedAt' and dir == 'desc' ? 'asc' : 'desc'})}">
+            Updated<span class="floor21-sort-th__icon" th:if="${sort == 'updatedAt'}"
+                          th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
+          </a>
+        </th>
+        <th>
+          <a class="floor21-sort-th"
+             th:classappend="${sort == 'lastLoginAt'} ? 'floor21-sort-th--active' : ''"
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='lastLoginAt', dir=${sort == 'lastLoginAt' and dir == 'desc' ? 'asc' : 'desc'})}">
+            Last login<span class="floor21-sort-th__icon" th:if="${sort == 'lastLoginAt'}"
+                            th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
+          </a>
+        </th>
         <th></th>
       </tr>
       </thead>
@@ -32,7 +98,12 @@
           <span class="badge" th:classappend="${b.active()} ? 'text-bg-success' : 'text-bg-secondary'"
                 th:text="${b.active()} ? 'Yes' : 'No'">?</span>
         </td>
-        <td class="text-nowrap small" th:text="${b.lastLoginAt() != null ? #temporals.format(b.lastLoginAt(), 'dd MMM yyyy') : '?'}">?</td>
+        <td class="text-nowrap small text-muted"
+            th:text="${b.createdAt() != null ? #temporals.format(b.createdAt(), 'dd MMM yyyy') : '?'}">?</td>
+        <td class="text-nowrap small text-muted"
+            th:text="${b.updatedAt() != null ? #temporals.format(b.updatedAt(), 'dd MMM yyyy') : '?'}">?</td>
+        <td class="text-nowrap small"
+            th:text="${b.lastLoginAt() != null ? #temporals.format(b.lastLoginAt(), 'dd MMM yyyy') : '?'}">?</td>
         <td class="text-end text-nowrap">
           <form class="d-inline" th:action="@{/admin/projects/{id}/impersonate(id=${b.id()})}" method="post" th:if="${b.active()}">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -51,9 +122,41 @@
           </form>
         </td>
       </tr>
+      <tr th:if="${#lists.isEmpty(builders)}">
+        <td colspan="8" class="text-muted text-center py-4">No projects found.</td>
+      </tr>
       </tbody>
     </table>
   </div>
+
+  <nav class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3"
+       th:if="${projectPage != null and projectPage.totalElements > 0}"
+       aria-label="Projects pagination">
+    <p class="text-muted small mb-0">
+      Showing
+      <strong th:text="${projectPage.number * projectPage.size + 1}">1</strong>?<strong
+            th:text="${projectPage.number * projectPage.size + projectPage.numberOfElements}">25</strong>
+      of <strong th:text="${projectPage.totalElements}">0</strong>
+    </p>
+    <ul class="pagination pagination-sm mb-0" th:if="${projectPage.totalPages > 1}">
+      <li class="page-item" th:classappend="${!projectPage.hasPrevious()} ? 'disabled'">
+        <a class="page-link"
+           th:if="${projectPage.hasPrevious()}"
+           th:href="@{/admin/projects(page=${projectPage.number - 1}, size=${pageSize}, sort=${sort}, dir=${dir})}">Previous</a>
+        <span class="page-link" th:unless="${projectPage.hasPrevious()}">Previous</span>
+      </li>
+      <li class="page-item disabled">
+        <span class="page-link"
+              th:text="|Page ${projectPage.number + 1} of ${projectPage.totalPages}|">Page 1 of 1</span>
+      </li>
+      <li class="page-item" th:classappend="${!projectPage.hasNext()} ? 'disabled'">
+        <a class="page-link"
+           th:if="${projectPage.hasNext()}"
+           th:href="@{/admin/projects(page=${projectPage.number + 1}, size=${pageSize}, sort=${sort}, dir=${dir})}">Next</a>
+        <span class="page-link" th:unless="${projectPage.hasNext()}">Next</span>
+      </li>
+    </ul>
+  </nav>
 </div>
 </body>
 </html>

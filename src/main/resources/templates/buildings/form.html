@@ -55,7 +55,11 @@
           Unit counts per floor must add up to <strong>Flats / floor</strong>.
           Submitting generates the flat grid for this building only.
         </p>
-        <p class="text-muted small mb-0" th:unless="${generateInitialLayout}">
+        <p class="text-muted small mb-0" th:if="${editLayoutFlow}">
+          Changing floors, flats per floor, or unit mix will <strong>replace the entire flat grid</strong> for this building
+          (only allowed when there are no bookings).
+        </p>
+        <p class="text-muted small mb-0" th:unless="${generateInitialLayout or editLayoutFlow}">
           Unit counts per floor (Studio and 1–7 BHK) must add up to <strong>Flats / floor</strong> when you enter them.
           Penthouse and duplex are set later on the flat grid. Leave all at 0 if you will set the layout later on the flat grid.
         </p>
@@ -77,7 +81,7 @@
     </div>
     <div class="mt-3">
       <button class="btn btn-primary" type="submit"
-              th:text="${generateInitialLayout} ? 'Generate building layout' : 'Save'">Save</button>
+              th:text="${generateInitialLayout} ? 'Generate building layout' : (${editLayoutFlow} ? 'Save layout' : 'Save')}">Save</button>
       <a class="btn btn-link"
          th:with="cancelLink=${cancelHref != null ? cancelHref : '/buildings'}"
          th:href="@{${cancelLink}}">Cancel</a>

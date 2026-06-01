@@ -1,5 +1,6 @@
 package com.floor21.controller;
 
+import com.floor21.dto.AdminBuilderRow;
 import com.floor21.entity.Builder;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.BuildingRepository;
@@ -7,16 +8,19 @@ import com.floor21.service.PlatformAdminService;
 import com.floor21.service.PlatformAuditService;
 import com.floor21.service.UserProjectAssignmentService;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -31,9 +35,23 @@ public class AdminController {
     private final UserProjectAssignmentService userProjectAssignmentService;
 
     @GetMapping
-    public String list(Model model) {
+    public String list(
+            Model model,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(defaultValue = "lastActivity") String sort,
+            @RequestParam(defaultValue = "desc") String dir) {
+        String sortKey = PlatformAdminService.normalizeProjectsSort(sort);
+        boolean ascending = PlatformAdminService.normalizeProjectsSortAscending(sortKey, dir);
+        Page<AdminBuilderRow> projectPage =
+                platformAdminService.listBuildersPage(page, size, sortKey, ascending ? "asc" : "desc");
         model.addAttribute("pageTitle", "Projects");
-        model.addAttribute("builders", platformAdminService.listBuilders());
+        model.addAttribute("projectPage", projectPage);
+        model.addAttribute("builders", projectPage.getContent());
+        model.addAttribute("sort", sortKey);
+        model.addAttribute("dir", ascending ? "asc" : "desc");
+        model.addAttribute("pageSize", projectPage.getSize());
+        model.addAttribute("pageSizeOptions", List.of(10, 25, 50));
         return "admin/builders/list";
     }
 

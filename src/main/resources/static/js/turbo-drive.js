@@ -98,6 +98,17 @@
 
   onPageReady(onReady);
 
+  document.addEventListener("turbo:frame-missing", function (event) {
+    var detail = event.detail;
+    if (!detail || !detail.response) {
+      return;
+    }
+    event.preventDefault();
+    if (detail.visit) {
+      detail.visit(detail.response);
+    }
+  });
+
   document.addEventListener("turbo:click", function (event) {
     var link = event.target.closest("a[href]");
     if (!link || link.getAttribute("data-turbo") === "false") {

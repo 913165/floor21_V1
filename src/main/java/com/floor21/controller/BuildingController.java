@@ -61,11 +61,19 @@ public class BuildingController {
             model.addAttribute("platformAdminView", false);
             model.addAttribute("buildings", buildingService.listForTenant());
         }
+        model.addAttribute("bookingCounts", buildingService.countBookingsPerBuilding());
         return "buildings/list";
     }
 
     @GetMapping("/{id}/edit")
-    public String editForm(@PathVariable UUID id, Model model) {
+    public String editForm(
+            @PathVariable UUID id, Model model, RedirectAttributes ra) {
+        if (!buildingService.canEditLayout(id)) {
+            ra.addFlashAttribute(
+                    "errorMessage",
+                    "This building has bookings. Layout cannot be changed until those bookings are removed.");
+            return "redirect:/buildings";
+        }
         Building building = buildingService.resolveForAccess(id);
         building.setBhkPerFloor(ResidentialBhkTypes.countsFromBuilding(building));
         model.addAttribute("pageTitle", "Edit Building");
@@ -82,8 +90,16 @@ public class BuildingController {
     @PostMapping("/save")
     public String save(@ModelAttribute Building building, RedirectAttributes ra) {
         try {
+            Building before = null;
+            if (building.getId() != null) {
+                buildingService.assertLayoutEditable(building.getId());
+                before = buildingService.resolveForAccess(building.getId());
+            }
             Building saved = buildingService.save(building);
-            ra.addFlashAttribute("successMessage", "Building saved");
+            if (before != null) {
+                flatService.regenerateLayoutIfChanged(before, saved);
+            }
+            ra.addFlashAttribute("successMessage", "Building layout saved");
             return "redirect:/buildings/" + saved.getId() + "/flats";
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());

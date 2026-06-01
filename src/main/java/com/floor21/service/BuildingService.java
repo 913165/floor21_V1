@@ -106,6 +106,27 @@ public class BuildingService {
         return counts;
     }
 
+    @Transactional(readOnly = true)
+    public long countBookingsForBuilding(UUID buildingId) {
+        return bookingRepository.countByBuildingId(buildingId);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canEditLayout(UUID buildingId) {
+        return countBookingsForBuilding(buildingId) == 0;
+    }
+
+    @Transactional(readOnly = true)
+    public void assertLayoutEditable(UUID buildingId) {
+        long bookingCount = countBookingsForBuilding(buildingId);
+        if (bookingCount > 0) {
+            throw new IllegalArgumentException(
+                    "Cannot edit the building layout while "
+                            + bookingCount
+                            + " booking(s) exist for this building. Cancel or move those bookings first.");
+        }
+    }
+
     @Transactional
     public void deleteForPlatformAdmin(UUID buildingId, String adminEmail) {
         Building building =

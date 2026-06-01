@@ -1998,3 +1998,27 @@ body.modal-open .modal-backdrop {
   color: var(--bs-body-color);
   box-shadow: none;
 }
+
+.floor21-sort-th {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.floor21-sort-th:hover {
+  color: var(--bs-primary);
+  text-decoration: none;
+}
+
+.floor21-sort-th--active {
+  font-weight: 600;
+  color: var(--bs-primary);
+}
+
+.floor21-sort-th__icon {
+  font-size: 0.7em;
+  opacity: 0.85;
+}

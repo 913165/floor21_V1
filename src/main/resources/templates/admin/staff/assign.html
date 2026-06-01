@@ -5,8 +5,9 @@
 <div th:fragment="content">
   <h1 class="h3 mb-2" th:text="${pageTitle}">Add partner</h1>
   <p class="text-muted small mb-3">
-    Link an existing user to project <strong th:text="${builder.companyName}">—</strong>
-    and choose their role and layout access.
+    Link an existing user to project <strong th:text="${builder.companyName}">—</strong>.
+    Building access is optional and can be set now or later under
+    <a th:href="@{/admin/buildings(projectId=${builder.id})}">All buildings</a>.
   </p>
 
   <div class="alert alert-warning" th:if="${#lists.isEmpty(availableUsers)}">
@@ -15,10 +16,10 @@
     <a th:href="@{/admin/users/new}">User Management → New user</a> first.
   </div>
 
-  <form class="card card-body shadow-sm col-lg-8 needs-validation"
+  <form class="card card-body shadow-sm col-lg-8"
         th:unless="${#lists.isEmpty(availableUsers)}"
         th:action="@{/admin/projects/{id}/staff/assign(id=${builder.id})}"
-        method="post" id="assign-form" novalidate>
+        method="post" id="assign-form">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
     <div class="row g-3">
@@ -36,32 +37,29 @@
         <label class="form-label" for="assign-role">Role <span class="text-danger">*</span></label>
         <select class="form-select" id="assign-role" name="role" required>
           <option value="EXECUTIVE" th:selected="${selectedRole == null or selectedRole == 'EXECUTIVE'}">
-            Partner (selected project layouts)
+            Partner
           </option>
           <option value="BUILDER_ADMIN" th:selected="${selectedRole == 'BUILDER_ADMIN'}">
-            Project admin (all layouts)
+            Project admin (all buildings)
           </option>
         </select>
+        <div class="form-text">Project admin can manage every building on this project.</div>
       </div>
     </div>
 
-    <div class="border-top pt-3 mt-3" id="layout-access-section">
-      <h6 class="mb-2">Project layout access</h6>
-      <div th:if="${#lists.isEmpty(projectLayouts)}" class="text-muted small">
-        No project layout yet.
-        <a th:href="@{/admin/buildings/new(builderId=${builder.id})}">Add a building layout</a> first.
-      </div>
-      <div th:unless="${#lists.isEmpty(projectLayouts)}">
-        <label class="form-label" for="layout-ids-select">Project layouts
-          <span class="text-danger partner-layout-required">*</span></label>
-        <select class="form-select" id="layout-ids-select" name="buildingIds" multiple size="8" required>
-          <option th:each="layout : ${projectLayouts}"
-                  th:value="${layout.id}"
-                  th:text="${layout.buildingName + ' · ' + #strings.toUpperCase(#strings.substring(layout.id.toString(), 0, 8))}"
-                  th:selected="${assignedLayoutIds != null and assignedLayoutIds.contains(layout.id)}">Layout</option>
-        </select>
-        <div class="form-text">Hold Ctrl (Windows) or Cmd (Mac) to select more than one building.</div>
-      </div>
+    <div class="border-top pt-3 mt-3" id="building-access-section" th:if="${!#lists.isEmpty(projectLayouts)}">
+      <h6 class="mb-2">Building access <span class="text-muted fw-normal">(optional)</span></h6>
+      <p class="text-muted small mb-2">
+        For <strong>Partner</strong> users, limit which buildings they can open. Leave none selected to assign buildings later.
+      </p>
+      <label class="form-label" for="layout-ids-select">Buildings</label>
+      <select class="form-select" id="layout-ids-select" name="buildingIds" multiple size="8">
+        <option th:each="layout : ${projectLayouts}"
+                th:value="${layout.id}"
+                th:text="${layout.buildingName + ' · ' + #strings.toUpperCase(#strings.substring(layout.id.toString(), 0, 8))}"
+                th:selected="${assignedLayoutIds != null and assignedLayoutIds.contains(layout.id)}">Layout</option>
+      </select>
+      <div class="form-text">Hold Ctrl (Windows) or Cmd (Mac) to select more than one building.</div>
     </div>
 
     <div class="mt-4 d-flex flex-wrap gap-2">
@@ -73,22 +71,18 @@
 <script th:inline="javascript">
   (function () {
     var role = document.getElementById("assign-role");
-    var section = document.getElementById("layout-access-section");
+    var section = document.getElementById("building-access-section");
     if (!role || !section) return;
     function sync() {
       var admin = role.value === "BUILDER_ADMIN";
-      section.classList.toggle("opacity-50", admin);
+      section.classList.toggle("d-none", admin);
       var select = document.getElementById("layout-ids-select");
       if (select) {
         select.disabled = admin;
-        select.required = !admin;
         if (admin) {
           Array.from(select.options).forEach(function (opt) { opt.selected = false; });
         }
       }
-      section.querySelectorAll(".partner-layout-required").forEach(function (el) {
-        el.classList.toggle("invisible", admin);
-      });
     }
     role.addEventListener("change", sync);
     sync();

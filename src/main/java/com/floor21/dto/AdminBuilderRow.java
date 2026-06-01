@@ -13,4 +13,17 @@ public record AdminBuilderRow(
         UUID layoutId,
         long partnerCount,
         Instant lastLoginAt,
-        Instant createdAt) {}
+        Instant createdAt,
+        Instant updatedAt) {
+
+    /** Most recent of {@link #createdAt} and {@link #updatedAt}; used for list ordering. */
+    public Instant lastActivityAt() {
+        if (createdAt == null) {
+            return updatedAt;
+        }
+        if (updatedAt == null) {
+            return createdAt;
+        }
+        return updatedAt.isAfter(createdAt) ? updatedAt : createdAt;
+    }
+}

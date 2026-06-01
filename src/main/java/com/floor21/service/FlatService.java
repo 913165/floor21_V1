@@ -264,6 +264,44 @@ public class FlatService {
                 .orElse(null);
     }
 
+    /**
+     * Rebuilds the flat grid when floor layout settings changed and the building has no bookings.
+     * No-op when layout fields are unchanged or there are no flats yet (use generate on the flat grid instead).
+     */
+    @Transactional
+    public void regenerateLayoutIfChanged(Building before, Building saved) {
+        if (layoutConfigEquals(before, saved)) {
+            return;
+        }
+        long flatCount = countFlatsForBuilding(saved.getId());
+        if (flatCount == 0) {
+            return;
+        }
+        generateFlats(saved.getId(), configFromBuilding(saved), true);
+    }
+
+    private static BuildingConfigDto configFromBuilding(Building building) {
+        BuildingConfigDto cfg = new BuildingConfigDto();
+        cfg.setTotalFloors(building.getTotalFloors());
+        cfg.setParkingFloors(building.getParkingFloors() != null ? building.getParkingFloors() : 0);
+        cfg.setFlatsPerFloor(building.getFlatsPerFloor());
+        Map<String, Integer> mix = ResidentialBhkTypes.countsFromBuilding(building);
+        cfg.setBhkPerFloor(mix);
+        cfg.setBhk1PerFloor(mix.getOrDefault("1BHK", 0));
+        cfg.setBhk2PerFloor(mix.getOrDefault("2BHK", 0));
+        cfg.setBhk3PerFloor(mix.getOrDefault("3BHK", 0));
+        return cfg;
+    }
+
+    private static boolean layoutConfigEquals(Building a, Building b) {
+        return Objects.equals(a.getTotalFloors(), b.getTotalFloors())
+                && Objects.equals(
+                        a.getParkingFloors() != null ? a.getParkingFloors() : 0,
+                        b.getParkingFloors() != null ? b.getParkingFloors() : 0)
+                && Objects.equals(a.getFlatsPerFloor(), b.getFlatsPerFloor())
+                && ResidentialBhkTypes.countsFromBuilding(a).equals(ResidentialBhkTypes.countsFromBuilding(b));
+    }
+
     @Transactional
     public void generateFlats(UUID buildingId, BuildingConfigDto cfg, boolean confirmReplace) {
         Building building = buildingService.resolveForAccess(buildingId);

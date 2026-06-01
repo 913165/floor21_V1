@@ -66,18 +66,18 @@
         Builder admins always have access to every building for this company.
       </p>
       <div th:if="${#lists.isEmpty(buildings)}" class="text-muted small">
-        No buildings yet.
-        <a th:href="@{/admin/projects/{id}/buildings/new(id=${builder.id})}">Generate project layout</a> first.
+        No buildings on this project yet. You can still save the user; assign buildings later under
+        <a th:href="@{/admin/buildings(projectId=${builder.id})}">All buildings</a>.
       </div>
       <div th:unless="${#lists.isEmpty(buildings)}">
-        <label class="form-label" for="building-access-filter">Buildings <span class="text-danger partner-building-required" aria-hidden="true">*</span></label>
+        <label class="form-label" for="building-access-filter">Buildings <span class="text-muted fw-normal">(optional)</span></label>
         <input type="search" class="form-control form-control-sm mb-2" id="building-access-filter"
                placeholder="Type to filter buildings" autocomplete="off"/>
         <select class="form-select building-access-select" id="building-ids-select"
-                name="buildingIds" multiple size="12" required>
+                name="buildingIds" multiple size="12">
           <option th:each="b : ${buildings}"
                   th:value="${b.id}"
-                  th:text="${b.buildingName + ' · ' + #strings.toUpperCase(#strings.substring(b.id.toString(), 0, 8))}"
+                  th:text="${b.buildingName + '  ' + #strings.toUpperCase(#strings.substring(b.id.toString(), 0, 8))}"
                   th:selected="${assignedBuildingIds != null and assignedBuildingIds.contains(b.id)}">Building</option>
         </select>
         <div class="form-text" id="building-access-hint">
@@ -109,7 +109,6 @@
       var filter = document.getElementById("building-access-filter");
       if (select) {
         select.disabled = admin;
-        select.required = !admin;
         if (admin) {
           Array.from(select.options).forEach(function (opt) {
             opt.selected = false;
@@ -117,9 +116,6 @@
         }
       }
       if (filter) filter.disabled = admin;
-      section.querySelectorAll(".partner-building-required").forEach(function (el) {
-        el.classList.toggle("invisible", admin);
-      });
     }
     var staffForm = document.getElementById("staff-form");
     if (staffForm) {

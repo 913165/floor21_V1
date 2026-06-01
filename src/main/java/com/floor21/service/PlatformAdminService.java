@@ -23,15 +23,35 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class PlatformAdminService {
+
+    public static final int PROJECTS_DEFAULT_PAGE_SIZE = 25;
+    public static final int PROJECTS_MAX_PAGE_SIZE = 100;
+
+    private static final Set<String> PROJECTS_SORT_FIELDS =
+            Set.of(
+                    "companyName",
+                    "city",
+                    "buildingCount",
+                    "active",
+                    "createdAt",
+                    "updatedAt",
+                    "lastLoginAt",
+                    "lastActivity");
 
     private final BuilderRepository builderRepository;
     private final BuildingRepository buildingRepository;
@@ -66,13 +86,11 @@ public class PlatformAdminService {
                 bookingRepository.findTop10ByOrderByCreatedAtDesc().stream().map(this::toBookingRow).toList();
         List<AdminBuilderRow> recentBuilders =
                 builderRepository.findAllTenantsOrderByCompanyNameAsc().stream()
-                        .sorted((a, b) -> {
-                            Instant ca = a.getCreatedAt() != null ? a.getCreatedAt() : Instant.EPOCH;
-                            Instant cb = b.getCreatedAt() != null ? b.getCreatedAt() : Instant.EPOCH;
-                            return cb.compareTo(ca);
-                        })
-                        .limit(5)
                         .map(this::toBuilderRow)
+                        .sorted(Comparator.comparing(
+                                AdminBuilderRow::lastActivityAt,
+                                Comparator.nullsLast(Comparator.reverseOrder())))
+                        .limit(5)
                         .toList();
         return new PlatformDashboardDto(
                 totalBuilders,
@@ -89,8 +107,77 @@ public class PlatformAdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<AdminBuilderRow> listBuilders() {
-        return builderRepository.findAllTenantsOrderByCompanyNameAsc().stream().map(this::toBuilderRow).toList();
+    public Page<AdminBuilderRow> listBuildersPage(int page, int size, String sort, String dir) {
+        String sortKey = normalizeProjectsSort(sort);
+        boolean ascending = normalizeProjectsSortAscending(sortKey, dir);
+        int safeSize = Math.min(Math.max(size, 5), PROJECTS_MAX_PAGE_SIZE);
+        int safePage = Math.max(page, 0);
+
+        List<AdminBuilderRow> sorted = new ArrayList<>(loadAllBuilderRows());
+        sorted.sort(comparatorForProjectsSort(sortKey, ascending));
+
+        int total = sorted.size();
+        int from = Math.min(safePage * safeSize, total);
+        int to = Math.min(from + safeSize, total);
+        List<AdminBuilderRow> slice = from < to ? sorted.subList(from, to) : List.of();
+        return new PageImpl<>(slice, PageRequest.of(safePage, safeSize), total);
+    }
+
+    private List<AdminBuilderRow> loadAllBuilderRows() {
+        return builderRepository.findAllTenantsOrderByCompanyNameAsc().stream()
+                .map(this::toBuilderRow)
+                .toList();
+    }
+
+    public static String normalizeProjectsSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return "lastActivity";
+        }
+        String key = sort.trim();
+        return PROJECTS_SORT_FIELDS.contains(key) ? key : "lastActivity";
+    }
+
+    public static boolean normalizeProjectsSortAscending(String sortKey, String dir) {
+        if (dir != null && !dir.isBlank()) {
+            return "asc".equalsIgnoreCase(dir.trim());
+        }
+        return switch (sortKey) {
+            case "companyName", "city", "active" -> true;
+            default -> false;
+        };
+    }
+
+    private static Comparator<AdminBuilderRow> comparatorForProjectsSort(String sortKey, boolean ascending) {
+        Comparator<AdminBuilderRow> comparator =
+                switch (sortKey) {
+                    case "companyName" ->
+                            Comparator.comparing(
+                                    AdminBuilderRow::companyName,
+                                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                    case "city" ->
+                            Comparator.comparing(
+                                    AdminBuilderRow::city,
+                                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                    case "buildingCount" -> Comparator.comparingLong(AdminBuilderRow::buildingCount);
+                    case "active" -> Comparator.comparing(AdminBuilderRow::active);
+                    case "createdAt" ->
+                            Comparator.comparing(
+                                    AdminBuilderRow::createdAt,
+                                    Comparator.nullsLast(Comparator.naturalOrder()));
+                    case "updatedAt" ->
+                            Comparator.comparing(
+                                    AdminBuilderRow::updatedAt,
+                                    Comparator.nullsLast(Comparator.naturalOrder()));
+                    case "lastLoginAt" ->
+                            Comparator.comparing(
+                                    AdminBuilderRow::lastLoginAt,
+                                    Comparator.nullsLast(Comparator.naturalOrder()));
+                    default ->
+                            Comparator.comparing(
+                                    AdminBuilderRow::lastActivityAt,
+                                    Comparator.nullsLast(Comparator.naturalOrder()));
+                };
+        return ascending ? comparator : comparator.reversed();
     }
 
     @Transactional(readOnly = true)
@@ -195,7 +282,8 @@ public class PlatformAdminService {
                 layoutId,
                 userProjectAssignmentRepository.countByBuilder_Id(b.getId()),
                 b.getLastLoginAt(),
-                b.getCreatedAt());
+                b.getCreatedAt(),
+                b.getUpdatedAt());
     }
 
     private RecentBookingRow toBookingRow(Booking b) {

@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -139,6 +140,24 @@ public class AdminPlatformController {
         model.addAttribute("adminBuildingsFlow", true);
     }
 
+    private static void populateAdminBuildingEditLayoutForm(Model model, Building building) {
+        Builder builder = building.getBuilder();
+        String projectLabel = builder != null ? builder.getCompanyName() : null;
+        String buildingLabel = building.getBuildingName();
+        model.addAttribute(
+                "pageTitle",
+                projectLabel != null
+                        ? "Edit building layout — " + buildingLabel + " (" + projectLabel + ")"
+                        : "Edit building layout — " + buildingLabel);
+        model.addAttribute("building", building);
+        model.addAttribute("projectName", projectLabel);
+        model.addAttribute("builderLabel", projectLabel);
+        model.addAttribute("formAction", "/admin/buildings/" + building.getId() + "/update");
+        model.addAttribute("cancelHref", "/admin/buildings");
+        model.addAttribute("adminBuildingsFlow", true);
+        model.addAttribute("editLayoutFlow", true);
+    }
+
     private static void mergeSubmittedBhkMix(Building building) {
         if (building.getBhkPerFloor() != null && !building.getBhkPerFloor().isEmpty()) {
             building.setBhkPerFloor(ResidentialBhkTypes.normalizeMix(building.getBhkPerFloor()));
@@ -186,6 +205,65 @@ public class AdminPlatformController {
         cfg.setBhk2PerFloor(mix.getOrDefault("2BHK", 0));
         cfg.setBhk3PerFloor(mix.getOrDefault("3BHK", 0));
         return cfg;
+    }
+
+    @GetMapping("/buildings/{id}/edit")
+    public String editBuilding(@PathVariable UUID id, Model model, RedirectAttributes ra) {
+        if (!buildingService.canEditLayout(id)) {
+            ra.addFlashAttribute(
+                    "errorMessage",
+                    "This building has bookings. Layout cannot be edited until those bookings are removed.");
+            return "redirect:/admin/buildings";
+        }
+        Building building =
+                buildingRepository
+                        .findByIdWithBuilder(id)
+                        .filter(b -> b.getBuilder() != null && !b.getBuilder().isPlatformAdmin())
+                        .orElseThrow();
+        building.setBhkPerFloor(ResidentialBhkTypes.countsFromBuilding(building));
+        populateAdminBuildingEditLayoutForm(model, building);
+        return "buildings/form";
+    }
+
+    @PostMapping("/buildings/{id}/update")
+    public String updateBuildingLayout(
+            @PathVariable UUID id,
+            @ModelAttribute Building building,
+            Model model,
+            RedirectAttributes ra) {
+        building.setId(id);
+        Building before =
+                buildingRepository
+                        .findByIdWithBuilder(id)
+                        .filter(b -> b.getBuilder() != null && !b.getBuilder().isPlatformAdmin())
+                        .orElseThrow();
+        try {
+            buildingService.assertLayoutEditable(id);
+            mergeSubmittedBhkMix(building);
+            assertInitialLayoutMix(building);
+            Building saved = buildingService.save(building);
+            flatService.regenerateLayoutIfChanged(before, saved);
+            ra.addFlashAttribute(
+                    "successMessage",
+                    "Building layout updated"
+                            + (layoutConfigChanged(before, saved) ? " and flat grid regenerated." : "."));
+            return "redirect:/buildings/" + saved.getId() + "/flats";
+        } catch (IllegalArgumentException ex) {
+            mergeSubmittedBhkMix(building);
+            populateAdminBuildingEditLayoutForm(model, building);
+            model.addAttribute("errorMessage", ex.getMessage());
+            return "buildings/form";
+        }
+    }
+
+    private static boolean layoutConfigChanged(Building before, Building after) {
+        return !Objects.equals(before.getTotalFloors(), after.getTotalFloors())
+                || !Objects.equals(
+                        before.getParkingFloors() != null ? before.getParkingFloors() : 0,
+                        after.getParkingFloors() != null ? after.getParkingFloors() : 0)
+                || !Objects.equals(before.getFlatsPerFloor(), after.getFlatsPerFloor())
+                || !ResidentialBhkTypes.countsFromBuilding(before)
+                        .equals(ResidentialBhkTypes.countsFromBuilding(after));
     }
 
     @PostMapping("/buildings/{id}/delete")
