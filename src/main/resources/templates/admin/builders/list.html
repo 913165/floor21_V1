@@ -7,14 +7,14 @@
     <h1 class="h3 mb-0" th:text="${pageTitle}">Builders</h1>
     <a class="btn btn-primary" th:href="@{/admin/projects/new}">New project</a>
   </div>
-  
+
   <div class="table-responsive card shadow-sm">
     <table class="table mb-0">
       <thead>
       <tr>
         <th>Project</th>
         <th>City</th>
-        <th>Layout</th>
+        <th>Buildings</th>
         <th>Active</th>
         <th>Last login</th>
         <th></th>
@@ -25,8 +25,8 @@
         <td th:text="${b.companyName()}"></td>
         <td th:text="${b.city() != null ? b.city() : '?'}"></td>
         <td>
-          <span class="badge text-bg-success" th:if="${b.buildingCount() > 0}">Yes</span>
-          <span class="badge text-bg-secondary" th:if="${b.buildingCount() == 0}">No</span>
+          <span class="badge text-bg-primary" th:if="${b.buildingCount() > 0}" th:text="${b.buildingCount()}">0</span>
+          <span class="badge text-bg-secondary" th:if="${b.buildingCount() == 0}">0</span>
         </td>
         <td>
           <span class="badge" th:classappend="${b.active()} ? 'text-bg-success' : 'text-bg-secondary'"
@@ -40,14 +40,10 @@
           </form>
           <a class="btn btn-sm btn-outline-primary" th:href="@{/admin/projects/{id}/staff(id=${b.id()})}">Partners</a>
           <a class="btn btn-sm btn-outline-primary"
-             th:if="${b.buildingCount() == 0}"
-             th:href="@{/admin/projects/{id}/buildings/new(id=${b.id()})}">Generate project layout</a>
-          <a class="btn btn-sm btn-outline-secondary"
-             th:if="${b.layoutId() != null}"
-             th:href="@{/buildings/{id}/edit(id=${b.layoutId()})}">Edit layout</a>
+             th:href="@{/admin/buildings(projectId=${b.id()})}">Buildings</a>
           <a class="btn btn-sm btn-outline-secondary" th:href="@{/admin/projects/{id}/edit(id=${b.id()})}">Edit</a>
           <form class="d-inline"
-                th:if="${b.layoutId() == null and b.partnerCount() == 0}"
+                th:if="${b.buildingCount() == 0 and b.partnerCount() == 0}"
                 th:action="@{/admin/projects/{id}/delete(id=${b.id()})}" method="post"
                 onsubmit="return confirm('Delete this project permanently? This cannot be undone.');">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -61,4 +57,3 @@
 </div>
 </body>
 </html>
-

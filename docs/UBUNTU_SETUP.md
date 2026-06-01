@@ -108,6 +108,8 @@ Default DB (see `docker-compose.yml`):
 
 App datasource in `application.yml` should point at this host (`localhost:5432`) when Spring Boot runs on the same machine.
 
+**Flyway:** the repo ships one migration file, `V1__baseline.sql`. On a **new** database the app creates the schema on first start. If this server still has the old `V1`–`V50` Flyway history, back up first, then drop/recreate the database or follow [DB_MIGRATIONS.md](DB_MIGRATIONS.md).
+
 ---
 
 ## 6. Networks, tags, and firewall

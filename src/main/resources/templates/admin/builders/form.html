@@ -6,35 +6,16 @@
   <h1 class="h3 mb-4" th:text="${pageTitle}">Project</h1>
   <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
   <p class="text-muted small mb-3" th:if="${builder.id == null}">
-    Create the project first, then add login users under <a th:href="@{/admin/users}">User Management</a>.
+    Create the project first, then add buildings and layouts under
+    <a th:href="@{/admin/buildings}">All buildings</a>, then add login users under
+    <a th:href="@{/admin/users}">User Management</a>.
   </p>
   <p class="text-muted small mb-3" th:if="${builder.id != null}">
-    Add partners from <a th:href="@{/admin/projects/{id}/staff(id=${builder.id})}">Partners</a>
-    after creating users under User Management.
-    Each project has one layout only — generate it once, then edit from the flat grid or layout settings.
+    Manage buildings and layouts from
+    <a th:href="@{/admin/buildings(projectId=${builder.id})}">All buildings</a>
+    (filtered to this project).
+    Add partners from <a th:href="@{/admin/projects/{id}/staff(id=${builder.id})}">Partners</a>.
   </p>
-
-  <div class="card shadow-sm mb-4" th:if="${projectLayout != null}">
-    <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
-      <div>
-        <h2 class="h6 mb-1">Project layout</h2>
-        <p class="text-muted small mb-0">
-          Layout ID
-          <span class="font-monospace"
-                th:title="${projectLayout.id}"
-                th:text="${#strings.toUpperCase(#strings.substring(projectLayout.id.toString(), 0, 8))}">A1B2C3D4</span>
-          ·
-          <span th:text="${projectLayout.totalFloors} + ' floors'">—</span>
-        </p>
-      </div>
-      <div class="d-flex flex-wrap gap-2">
-        <a class="btn btn-sm btn-outline-secondary"
-           th:href="@{/buildings/{id}/edit(id=${projectLayout.id})}">Edit layout</a>
-        <a class="btn btn-sm btn-outline-primary"
-           th:href="@{/buildings/{id}/flats(id=${projectLayout.id})}">Flats</a>
-      </div>
-    </div>
-  </div>
 
   <form class="card card-body shadow-sm" th:action="@{/admin/projects/save}" th:object="${builder}" method="post">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -64,8 +45,11 @@
     <div class="mt-3 d-flex flex-wrap align-items-center gap-2">
       <button class="btn btn-primary" type="submit">Save</button>
       <a class="btn btn-outline-primary"
-         th:if="${builder.id != null and projectLayout == null}"
-         th:href="@{/admin/projects/{id}/buildings/new(id=${builder.id})}">Generate project layout</a>
+         th:if="${builder.id != null}"
+         th:href="@{/admin/buildings/new(builderId=${builder.id})}">Add building</a>
+      <a class="btn btn-outline-secondary"
+         th:if="${builder.id != null}"
+         th:href="@{/admin/buildings(projectId=${builder.id})}">View buildings</a>
       <a class="btn btn-outline-primary"
          th:if="${builder.id != null}"
          th:href="@{/admin/projects/{id}/staff(id=${builder.id})}">Partners</a>
@@ -82,14 +66,19 @@
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
       <button class="btn btn-outline-danger" type="submit">Deactivate</button>
     </form>
-    <form th:if="${projectLayout == null and partnerCount != null and partnerCount == 0}"
+    <form th:if="${buildingCount != null and buildingCount == 0 and partnerCount != null and partnerCount == 0}"
           th:action="@{/admin/projects/{id}/delete(id=${builder.id})}" method="post"
           onsubmit="return confirm('Delete this project permanently? This cannot be undone.');">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
       <button class="btn btn-danger" type="submit">Delete project</button>
     </form>
     <p class="text-muted small mb-0 align-self-center"
-       th:if="${projectLayout == null and partnerCount != null and partnerCount > 0}">
+       th:if="${buildingCount != null and buildingCount > 0}">
+      Remove all buildings before deleting this project (see
+      <a th:href="@{/admin/buildings(projectId=${builder.id})}">All buildings</a>).
+    </p>
+    <p class="text-muted small mb-0 align-self-center"
+       th:if="${buildingCount != null and buildingCount == 0 and partnerCount != null and partnerCount > 0}">
       Remove all partners before deleting this project.
       <a th:href="@{/admin/projects/{id}/staff(id=${builder.id})}">Go to Partners</a>
     </p>

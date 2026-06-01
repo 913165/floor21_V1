@@ -1,2 +1,0 @@
-ALTER TABLE buildings
-    ADD COLUMN vault_enabled BOOLEAN NOT NULL DEFAULT TRUE;

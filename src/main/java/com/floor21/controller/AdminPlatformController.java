@@ -1,14 +1,22 @@
 package com.floor21.controller;
 
+import com.floor21.dto.BuildingConfigDto;
+import com.floor21.entity.Building;
+import com.floor21.entity.Builder;
+import com.floor21.repository.BuilderRepository;
+import com.floor21.repository.BuildingRepository;
 import com.floor21.service.AdminReportService;
 import com.floor21.service.BuildingService;
+import com.floor21.service.FlatService;
 import com.floor21.service.ImpersonationService;
 import com.floor21.service.PlatformAdminService;
 import com.floor21.service.PlatformAuditService;
 import com.floor21.service.PlatformSettingsService;
+import com.floor21.util.ResidentialBhkTypes;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +26,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,13 +44,148 @@ public class AdminPlatformController {
     private final AdminReportService reportService;
     private final ImpersonationService impersonationService;
     private final BuildingService buildingService;
+    private final BuilderRepository builderRepository;
+    private final BuildingRepository buildingRepository;
+    private final FlatService flatService;
 
     @GetMapping("/buildings")
-    public String buildings(Model model) {
+    public String buildings(
+            Model model, @RequestParam(required = false) UUID projectId) {
         model.addAttribute("pageTitle", "All buildings");
-        model.addAttribute("buildings", buildingService.listAllForPlatformAdmin());
+        model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
+        model.addAttribute("filterProjectId", projectId);
+        List<Building> all = buildingService.listAllForPlatformAdmin();
+        if (projectId != null) {
+            all =
+                    all.stream()
+                            .filter(
+                                    b ->
+                                            b.getBuilder() != null
+                                                    && projectId.equals(b.getBuilder().getId()))
+                            .toList();
+        }
+        model.addAttribute("buildings", all);
         model.addAttribute("bookingCounts", buildingService.countBookingsPerBuilding());
         return "admin/buildings/list";
+    }
+
+    @GetMapping("/buildings/new")
+    public String newBuilding(
+            Model model, @RequestParam(required = false) UUID builderId) {
+        model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
+        model.addAttribute("selectedBuilderId", builderId);
+        Building building = new Building();
+        building.setBhkPerFloor(ResidentialBhkTypes.emptyCountMap());
+        if (builderId != null) {
+            Builder builder = builderRepository.findById(builderId).orElseThrow();
+            if (buildingRepository.countByBuilder_Id(builderId) == 0) {
+                building.setBuildingName(builder.getCompanyName());
+            }
+            building.setCity(builder.getCity());
+            building.setAddress(builder.getAddress());
+            populateAdminBuildingLayoutForm(model, builder, building);
+        } else {
+            populateAdminBuildingLayoutForm(model, null, building);
+        }
+        return "buildings/form";
+    }
+
+    @PostMapping("/buildings/save")
+    public String saveBuilding(
+            @RequestParam UUID builderId,
+            @ModelAttribute Building building,
+            Model model,
+            RedirectAttributes ra) {
+        Builder builder = builderRepository.findById(builderId).orElseThrow();
+        prefillAddressFromBuilder(building, builder);
+        try {
+            assertInitialLayoutMix(building);
+            Building saved = buildingService.createForBuilder(builderId, building);
+            flatService.generateFlats(saved.getId(), layoutConfigFrom(saved), false);
+            long flatCount = flatService.countFlatsForBuilding(saved.getId());
+            ra.addFlashAttribute(
+                    "successMessage",
+                    "Building \""
+                            + saved.getBuildingName()
+                            + "\" created with "
+                            + flatCount
+                            + " flats on the grid.");
+            return "redirect:/buildings/" + saved.getId() + "/flats";
+        } catch (IllegalArgumentException ex) {
+            mergeSubmittedBhkMix(building);
+            prefillAddressFromBuilder(building, builder);
+            model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
+            model.addAttribute("selectedBuilderId", builderId);
+            populateAdminBuildingLayoutForm(model, builder, building);
+            model.addAttribute("errorMessage", ex.getMessage());
+            return "buildings/form";
+        }
+    }
+
+    private static void populateAdminBuildingLayoutForm(
+            Model model, Builder builder, Building building) {
+        String projectLabel = builder != null ? builder.getCompanyName() : null;
+        model.addAttribute(
+                "pageTitle",
+                projectLabel != null
+                        ? "Add building layout — " + projectLabel
+                        : "Add building layout");
+        model.addAttribute("building", building);
+        model.addAttribute("projectName", projectLabel);
+        model.addAttribute("builderLabel", projectLabel);
+        model.addAttribute("formAction", "/admin/buildings/save");
+        model.addAttribute("cancelHref", "/admin/buildings");
+        model.addAttribute("generateInitialLayout", true);
+        model.addAttribute("adminBuildingsFlow", true);
+    }
+
+    private static void mergeSubmittedBhkMix(Building building) {
+        if (building.getBhkPerFloor() != null && !building.getBhkPerFloor().isEmpty()) {
+            building.setBhkPerFloor(ResidentialBhkTypes.normalizeMix(building.getBhkPerFloor()));
+        }
+    }
+
+    private static void prefillAddressFromBuilder(Building building, Builder builder) {
+        if (building.getCity() == null || building.getCity().isBlank()) {
+            building.setCity(builder.getCity());
+        }
+        if (building.getAddress() == null || building.getAddress().isBlank()) {
+            building.setAddress(builder.getAddress());
+        }
+    }
+
+    private static void assertInitialLayoutMix(Building form) {
+        int parking = form.getParkingFloors() != null ? form.getParkingFloors() : 0;
+        int residential = form.getTotalFloors() - parking;
+        if (residential <= 0) {
+            return;
+        }
+        Map<String, Integer> mix =
+                form.getBhkPerFloor() != null && !form.getBhkPerFloor().isEmpty()
+                        ? ResidentialBhkTypes.normalizeMix(form.getBhkPerFloor())
+                        : ResidentialBhkTypes.countsFromBuilding(form);
+        int mixTotal = ResidentialBhkTypes.sumCounts(mix);
+        if (mixTotal != form.getFlatsPerFloor()) {
+            throw new IllegalArgumentException(
+                    "Unit counts per floor must add up to flats per floor (currently "
+                            + mixTotal
+                            + ", expected "
+                            + form.getFlatsPerFloor()
+                            + ") to generate the building layout.");
+        }
+    }
+
+    private static BuildingConfigDto layoutConfigFrom(Building building) {
+        BuildingConfigDto cfg = new BuildingConfigDto();
+        cfg.setTotalFloors(building.getTotalFloors());
+        cfg.setParkingFloors(building.getParkingFloors() != null ? building.getParkingFloors() : 0);
+        cfg.setFlatsPerFloor(building.getFlatsPerFloor());
+        Map<String, Integer> mix = ResidentialBhkTypes.countsFromBuilding(building);
+        cfg.setBhkPerFloor(mix);
+        cfg.setBhk1PerFloor(mix.getOrDefault("1BHK", 0));
+        cfg.setBhk2PerFloor(mix.getOrDefault("2BHK", 0));
+        cfg.setBhk3PerFloor(mix.getOrDefault("3BHK", 0));
+        return cfg;
     }
 
     @PostMapping("/buildings/{id}/delete")

@@ -114,7 +114,7 @@ Use **Logout** in the navbar, or open **http://localhost/floor21/logout** (POST 
 |--------|-------------|
 | `JAVA_HOME not found` (Windows) | Use `$env:JAVA_HOME = "..."` in PowerShell, not `set ...`. |
 | DB connection / timezone errors | JDK on Windows may use `Asia/Calcutta`; the app normalizes to `Asia/Kolkata` at startup. Ensure Postgres is reachable. |
-| Schema validation / missing tables | Use `spring-boot-starter-flyway` (already in `pom.xml`). With a dirty DB, drop/recreate schema or DB and start again. |
+| Schema validation / missing tables | Flyway uses one script: `db/migration/V1__baseline.sql`. On a DB that used the old V1–V50 files, drop/recreate the database (see [docs/DB_MIGRATIONS.md](docs/DB_MIGRATIONS.md)) and start again. |
 | Port 80 in use / permission denied | On Linux run `setcap` (see [docs/UBUNTU_SETUP.md](docs/UBUNTU_SETUP.md)); on Windows run the terminal as Administrator, or change `server.port` in `application.yml`. |
 
 For full stack details, see `Floor21_SpringBoot_Thymeleaf_Prompt.md`.

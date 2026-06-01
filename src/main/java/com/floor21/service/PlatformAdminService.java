@@ -150,7 +150,7 @@ public class PlatformAdminService {
                         .orElseThrow(() -> new IllegalArgumentException("Project not found."));
         if (buildingRepository.countByBuilder_Id(id) > 0) {
             throw new IllegalArgumentException(
-                    "Cannot delete a project that already has a layout. Edit the layout instead.");
+                    "Cannot delete a project that has buildings. Remove all buildings first.");
         }
         if (flatRepository.countByBuilder_Id(id) > 0) {
             throw new IllegalArgumentException("Cannot delete this project while flat inventory exists.");

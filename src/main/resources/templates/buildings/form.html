@@ -4,8 +4,9 @@
 <body>
 <div th:fragment="content">
   <h1 class="h3 mb-4" th:text="${pageTitle}">Building</h1>
-  <p class="alert alert-info py-2 small" th:if="${builderLabel != null}">
-    Assigning to builder: <strong th:text="${builderLabel}">—</strong>
+  <p class="alert alert-danger py-2 small" th:if="${errorMessage}" th:text="${errorMessage}"></p>
+  <p class="alert alert-info py-2 small" th:if="${builderLabel != null and !adminBuildingsFlow}">
+    Project: <strong th:text="${builderLabel}">—</strong>
   </p>
   <form class="card card-body shadow-sm"
         th:with="saveAction=${formAction != null ? formAction : '/buildings/save'}"
@@ -14,14 +15,21 @@
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
     <input type="hidden" th:field="*{id}"/>
     <div class="row g-3">
-      <div class="col-md-6" th:if="${generateInitialLayout}">
-        <label class="form-label">Project name</label>
-        <input class="form-control" type="text" th:value="${projectName}" readonly aria-readonly="true"/>
-        <input type="hidden" th:field="*{buildingName}"/>
+      <div class="col-12" th:if="${adminBuildingsFlow}">
+        <label class="form-label" for="admin-builder-id">Project <span class="text-danger">*</span></label>
+        <select class="form-select" id="admin-builder-id" name="builderId" required>
+          <option value="">— Select project —</option>
+          <option th:each="p : ${projects}"
+                  th:value="${p.id}"
+                  th:text="${p.companyName}"
+                  th:selected="${selectedBuilderId != null and selectedBuilderId == p.id}"></option>
+        </select>
+        <p class="form-text mb-0">Choose the project this building belongs to. Changing the selection reloads address defaults from the project.</p>
       </div>
-      <div class="col-md-6" th:unless="${generateInitialLayout}">
-        <label class="form-label">Building name</label>
-        <input class="form-control" th:field="*{buildingName}" required/>
+      <div class="col-md-6">
+        <label class="form-label">Building name <span class="text-danger">*</span></label>
+        <input class="form-control" th:field="*{buildingName}" required
+               th:placeholder="${generateInitialLayout} ? 'e.g. Tower A, Wing B' : null"/>
       </div>
       <div class="col-md-3">
         <label class="form-label">Total floors</label>
@@ -43,33 +51,24 @@
       </div>
       <div class="col-12">
         <p class="text-muted small mb-0" th:if="${generateInitialLayout}">
-          Unit counts per floor (Studio and 1–7 BHK) must add up to <strong>Flats / floor</strong>.
-          Submitting generates the full flat grid for this project. Penthouse and duplex can be set later on the grid.
+          Each building has its own layout (floors, flats per floor, and unit mix).
+          Unit counts per floor must add up to <strong>Flats / floor</strong>.
+          Submitting generates the flat grid for this building only.
         </p>
         <p class="text-muted small mb-0" th:unless="${generateInitialLayout}">
           Unit counts per floor (Studio and 1–7 BHK) must add up to <strong>Flats / floor</strong> when you enter them.
           Penthouse and duplex are set later on the flat grid. Leave all at 0 if you will set the layout later on the flat grid.
         </p>
       </div>
-      <div class="col-12" th:if="${generateInitialLayout}">
-        <label class="form-label">Address</label>
-        <textarea class="form-control" rows="2" readonly aria-readonly="true"
-                  th:text="${building.address}"></textarea>
-        <input type="hidden" th:field="*{address}"/>
-      </div>
-      <div class="col-md-4" th:if="${generateInitialLayout}">
-        <label class="form-label">City</label>
-        <input class="form-control" type="text" th:field="*{city}" readonly aria-readonly="true"/>
-      </div>
-      <div class="col-12" th:unless="${generateInitialLayout}">
+      <div class="col-12">
         <label class="form-label">Address</label>
         <textarea class="form-control" rows="2" th:field="*{address}"></textarea>
       </div>
-      <div class="col-md-4" th:unless="${generateInitialLayout}">
+      <div class="col-md-4">
         <label class="form-label">City</label>
         <input class="form-control" th:field="*{city}"/>
       </div>
-      <div class="col-md-4 d-flex align-items-end">
+      <div class="col-md-4 d-flex align-items-end" th:unless="${generateInitialLayout}">
         <div class="form-check">
           <input class="form-check-input" type="checkbox" th:field="*{active}"/>
           <label class="form-check-label">Active</label>
@@ -78,12 +77,25 @@
     </div>
     <div class="mt-3">
       <button class="btn btn-primary" type="submit"
-              th:text="${generateInitialLayout} ? 'Generate project layout' : 'Save'">Save</button>
+              th:text="${generateInitialLayout} ? 'Generate building layout' : 'Save'">Save</button>
       <a class="btn btn-link"
          th:with="cancelLink=${cancelHref != null ? cancelHref : '/buildings'}"
          th:href="@{${cancelLink}}">Cancel</a>
     </div>
   </form>
+  <script th:if="${adminBuildingsFlow}">
+    (function () {
+      var sel = document.getElementById("admin-builder-id");
+      if (!sel) return;
+      sel.addEventListener("change", function () {
+        var id = sel.value;
+        if (!id) return;
+        var root = (document.body.getAttribute("data-app-root") || "").replace(/\/+$/, "");
+        window.location.href =
+          root + "/admin/buildings/new?builderId=" + encodeURIComponent(id);
+      });
+    })();
+  </script>
 </div>
 </body>
 </html>

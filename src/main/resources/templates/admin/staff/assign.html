@@ -49,7 +49,7 @@
       <h6 class="mb-2">Project layout access</h6>
       <div th:if="${#lists.isEmpty(projectLayouts)}" class="text-muted small">
         No project layout yet.
-        <a th:href="@{/admin/projects/{id}/buildings/new(id=${builder.id})}">Generate project layout</a> first.
+        <a th:href="@{/admin/buildings/new(builderId=${builder.id})}">Add a building layout</a> first.
       </div>
       <div th:unless="${#lists.isEmpty(projectLayouts)}">
         <label class="form-label" for="layout-ids-select">Project layouts
@@ -60,7 +60,7 @@
                   th:text="${layout.buildingName + ' · ' + #strings.toUpperCase(#strings.substring(layout.id.toString(), 0, 8))}"
                   th:selected="${assignedLayoutIds != null and assignedLayoutIds.contains(layout.id)}">Layout</option>
         </select>
-        <div class="form-text">Hold Ctrl (Windows) or Cmd (Mac) to select more than one layout.</div>
+        <div class="form-text">Hold Ctrl (Windows) or Cmd (Mac) to select more than one building.</div>
       </div>
     </div>
 

@@ -1,19 +1,12 @@
 package com.floor21.controller;
 
-import com.floor21.dto.BuildingConfigDto;
-import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.BuildingRepository;
-import com.floor21.service.BuildingService;
-import com.floor21.service.FlatService;
 import com.floor21.service.PlatformAdminService;
 import com.floor21.service.PlatformAuditService;
-import com.floor21.service.PlatformSettingsService;
 import com.floor21.service.UserProjectAssignmentService;
-import com.floor21.util.ResidentialBhkTypes;
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -33,11 +26,8 @@ public class AdminController {
 
     private final BuilderRepository builderRepository;
     private final BuildingRepository buildingRepository;
-    private final BuildingService buildingService;
-    private final FlatService flatService;
     private final PlatformAdminService platformAdminService;
     private final PlatformAuditService auditService;
-    private final PlatformSettingsService platformSettingsService;
     private final UserProjectAssignmentService userProjectAssignmentService;
 
     @GetMapping
@@ -58,9 +48,7 @@ public class AdminController {
     public String edit(@PathVariable UUID id, Model model) {
         model.addAttribute("pageTitle", "Edit project");
         model.addAttribute("builder", builderRepository.findById(id).orElseThrow());
-        model.addAttribute(
-                "projectLayout",
-                buildingRepository.findFirstByBuilder_IdOrderByBuildingNameAsc(id).orElse(null));
+        model.addAttribute("buildingCount", buildingRepository.countByBuilder_Id(id));
         model.addAttribute("partnerCount", userProjectAssignmentService.countForProject(id));
         return "admin/builders/form";
     }
@@ -71,11 +59,7 @@ public class AdminController {
             model.addAttribute("pageTitle", form.getId() == null ? "New project" : "Edit project");
             model.addAttribute("builder", form);
             if (form.getId() != null) {
-                model.addAttribute(
-                        "projectLayout",
-                        buildingRepository
-                                .findFirstByBuilder_IdOrderByBuildingNameAsc(form.getId())
-                                .orElse(null));
+                model.addAttribute("buildingCount", buildingRepository.countByBuilder_Id(form.getId()));
             }
             model.addAttribute("errorMessage", "Project name is required.");
             return "admin/builders/form";
@@ -135,123 +119,9 @@ public class AdminController {
         }
     }
 
+    /** Legacy URL — use {@code /admin/buildings/new?builderId=} instead. */
     @GetMapping("/{builderId}/buildings/new")
-    public String newBuilding(@PathVariable UUID builderId, Model model, RedirectAttributes ra) {
-        var existing = buildingRepository.findFirstByBuilder_IdOrderByBuildingNameAsc(builderId);
-        if (existing.isPresent()) {
-            ra.addFlashAttribute(
-                    "errorMessage", "This project already has a layout. Edit the existing layout instead.");
-            return "redirect:/buildings/" + existing.get().getId() + "/edit";
-        }
-        Builder builder = builderRepository.findById(builderId).orElseThrow();
-        Building building = new Building();
-        building.setBuildingName(builder.getCompanyName());
-        building.setCity(builder.getCity());
-        building.setAddress(builder.getAddress());
-        building.setBhkPerFloor(ResidentialBhkTypes.emptyCountMap());
-        populateProjectLayoutForm(model, builderId, builder, building);
-        return "buildings/form";
-    }
-
-    @PostMapping("/{builderId}/buildings/save")
-    public String saveBuilding(
-            @PathVariable UUID builderId,
-            @ModelAttribute Building building,
-            Model model,
-            RedirectAttributes ra) {
-        if (buildingRepository.countByBuilder_Id(builderId) > 0) {
-            UUID layoutId =
-                    buildingRepository
-                            .findFirstByBuilder_IdOrderByBuildingNameAsc(builderId)
-                            .map(Building::getId)
-                            .orElseThrow();
-            ra.addFlashAttribute(
-                    "errorMessage", "This project already has a layout. Edit the existing layout instead.");
-            return "redirect:/buildings/" + layoutId + "/edit";
-        }
-        Builder builder = builderRepository.findById(builderId).orElseThrow();
-        applyProjectDetailsToBuilding(building, builder);
-        try {
-            assertInitialLayoutMix(building);
-            Building saved = buildingService.createForBuilder(builderId, building);
-            flatService.generateFlats(saved.getId(), layoutConfigFrom(saved), false);
-            long flatCount = flatService.countFlatsForBuilding(saved.getId());
-            ra.addFlashAttribute(
-                    "successMessage",
-                    "Project layout for \""
-                            + saved.getBuilder().getCompanyName()
-                            + "\" created with "
-                            + flatCount
-                            + " flats on the grid.");
-            return "redirect:/buildings/" + saved.getId() + "/flats";
-        } catch (IllegalArgumentException ex) {
-            mergeSubmittedBhkMix(building);
-            applyProjectDetailsToBuilding(building, builder);
-            populateProjectLayoutForm(model, builderId, builder, building);
-            model.addAttribute("errorMessage", ex.getMessage());
-            return "buildings/form";
-        }
-    }
-
-    private static void populateProjectLayoutForm(
-            Model model, UUID builderId, Builder builder, Building building) {
-        model.addAttribute("pageTitle", "Generate project layout — " + builder.getCompanyName());
-        model.addAttribute("building", building);
-        model.addAttribute("projectName", builder.getCompanyName());
-        model.addAttribute("builderLabel", builder.getCompanyName());
-        model.addAttribute("formAction", "/admin/projects/" + builderId + "/buildings/save");
-        model.addAttribute("cancelHref", "/admin/projects/" + builderId + "/edit");
-        model.addAttribute("generateInitialLayout", true);
-    }
-
-    /** Keeps per-floor BHK counts on validation failure when the form is re-rendered. */
-    private static void mergeSubmittedBhkMix(Building building) {
-        if (building.getBhkPerFloor() != null && !building.getBhkPerFloor().isEmpty()) {
-            building.setBhkPerFloor(ResidentialBhkTypes.normalizeMix(building.getBhkPerFloor()));
-        }
-    }
-
-    private static void applyProjectDetailsToBuilding(Building building, Builder builder) {
-        building.setBuildingName(builder.getCompanyName());
-        if (building.getCity() == null || building.getCity().isBlank()) {
-            building.setCity(builder.getCity());
-        }
-        if (building.getAddress() == null || building.getAddress().isBlank()) {
-            building.setAddress(builder.getAddress());
-        }
-    }
-
-    private static void assertInitialLayoutMix(Building form) {
-        int parking = form.getParkingFloors() != null ? form.getParkingFloors() : 0;
-        int residential = form.getTotalFloors() - parking;
-        if (residential <= 0) {
-            return;
-        }
-        Map<String, Integer> mix =
-                form.getBhkPerFloor() != null && !form.getBhkPerFloor().isEmpty()
-                        ? ResidentialBhkTypes.normalizeMix(form.getBhkPerFloor())
-                        : ResidentialBhkTypes.countsFromBuilding(form);
-        int mixTotal = ResidentialBhkTypes.sumCounts(mix);
-        if (mixTotal != form.getFlatsPerFloor()) {
-            throw new IllegalArgumentException(
-                    "Unit counts per floor must add up to flats per floor (currently "
-                            + mixTotal
-                            + ", expected "
-                            + form.getFlatsPerFloor()
-                            + ") to generate the project layout.");
-        }
-    }
-
-    private static BuildingConfigDto layoutConfigFrom(Building building) {
-        BuildingConfigDto cfg = new BuildingConfigDto();
-        cfg.setTotalFloors(building.getTotalFloors());
-        cfg.setParkingFloors(building.getParkingFloors() != null ? building.getParkingFloors() : 0);
-        cfg.setFlatsPerFloor(building.getFlatsPerFloor());
-        Map<String, Integer> mix = ResidentialBhkTypes.countsFromBuilding(building);
-        cfg.setBhkPerFloor(mix);
-        cfg.setBhk1PerFloor(mix.getOrDefault("1BHK", 0));
-        cfg.setBhk2PerFloor(mix.getOrDefault("2BHK", 0));
-        cfg.setBhk3PerFloor(mix.getOrDefault("3BHK", 0));
-        return cfg;
+    public String legacyNewBuilding(@PathVariable UUID builderId) {
+        return "redirect:/admin/buildings/new?builderId=" + builderId;
     }
 }

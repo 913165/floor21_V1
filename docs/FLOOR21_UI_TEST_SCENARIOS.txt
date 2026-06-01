@@ -2,10 +2,10 @@
 FLOOR21 — UI TEST SCENARIOS (MANUAL)
 ================================================================================
 Version: May 2026 (Vault, partner grid, platform admin)
-Environment: Staging / local after latest deploy + DB migrations through V41
+Environment: Staging / local after latest deploy + Flyway baseline
 
 Before testing:
-  - Run app with Flyway migrations applied (V35–V41 if fresh DB).
+  - Run app with V1__baseline.sql applied (fresh DB or reset per docs/DB_MIGRATIONS.md).
   - Hard-refresh browser (Ctrl+F5) after deploy.
   - Use test data: at least 1 builder, 2 buildings, several flats, 2+ bookings.
   - Prepare 3 login types (see section 0).

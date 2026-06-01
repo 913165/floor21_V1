@@ -504,17 +504,7 @@ floor21/
 │   │       │       └── flat-grid.js             ← AJAX flat selection + booking logic
 │   │       │
 │   │       └── db/migration/
-│   │           ├── V1__create_builders.sql
-│   │           ├── V2__create_users.sql
-│   │           ├── V3__create_buildings.sql
-│   │           ├── V4__create_flats.sql
-│   │           ├── V5__create_clients.sql
-│   │           ├── V6__create_brokers.sql
-│   │           ├── V7__create_bookings.sql
-│   │           ├── V8__create_receipts.sql
-│   │           ├── V9__create_cancellations.sql
-│   │           ├── V10__create_extra_expenses.sql
-│   │           └── V11__create_slabs.sql
+│   │           └── V1__baseline.sql   (consolidated schema + seed; see docs/DB_MIGRATIONS.md)
 │   │
 │   └── test/
 │       └── java/com/floor21/
