@@ -110,6 +110,8 @@ App datasource in `application.yml` should point at this host (`localhost:5432`)
 
 **Flyway:** the repo ships one migration file, `V1__baseline.sql`. On a **new** database the app creates the schema on first start. If this server still has the old `V1`–`V50` Flyway history, back up first, then drop/recreate the database or follow [DB_MIGRATIONS.md](DB_MIGRATIONS.md).
 
+After `git pull`, always build with **`./mvnw clean package`** (not `package` alone) so `target/classes/db/migration/` does not keep deleted SQL files. See [DB_MIGRATIONS.md](DB_MIGRATIONS.md) if startup reports duplicate version 1 or checksum mismatch.
+
 ---
 
 ## 6. Networks, tags, and firewall

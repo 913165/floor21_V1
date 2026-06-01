@@ -16,6 +16,34 @@ docker compose up -d
 # then start the Spring Boot app
 ```
 
+## “Found more than one migration with version 1”
+
+Flyway sees both `V1__create_builders.sql` and `V1__baseline.sql` (usually under `target/classes/db/migration/`).
+
+**On the server:**
+
+```bash
+cd /home/tinumistry/floor21_V1   # your deploy path
+git pull
+
+# Source must contain ONLY the baseline file:
+ls src/main/resources/db/migration/
+# Expected: V1__baseline.sql
+
+# Remove leftover old migrations if present (keep V1__baseline.sql):
+find src/main/resources/db/migration -name 'V*.sql' ! -name 'V1__baseline.sql' -delete
+
+# Rebuild without stale target/ classes:
+./mvnw clean package -DskipTests
+
+ls target/classes/db/migration/
+# Expected: V1__baseline.sql only
+
+# Restart the app service
+```
+
+Always run **`mvn clean`** (or `./mvnw clean package`) after pulling migration changes. A plain `package` can leave old SQL files in `target/classes`.
+
 ## Flyway checksum mismatch on startup
 
 Error example:
