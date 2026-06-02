@@ -49,3 +49,39 @@ export async function fillNewProjectForm(
 export async function submitProjectForm(main: Locator) {
   await main.getByRole('button', { name: 'Save' }).click();
 }
+
+export async function createProject(
+  page: Page,
+  data: { name: string; city?: string; address?: string; active?: boolean },
+): Promise<{ projectId: string; list: Locator }> {
+  const main = await openNewProjectForm(page);
+  await fillNewProjectForm(main, data);
+  await submitProjectForm(main);
+
+  const list = await waitForMainPanel(page);
+  await expect(page).toHaveURL(/\/admin\/projects/);
+  await expect(list.getByText('Project saved')).toBeVisible();
+
+  const row = list.locator('tbody tr').filter({ hasText: data.name });
+  await expect(row).toBeVisible();
+  const projectId = projectIdFromPartnersLink(
+    await row.getByRole('link', { name: 'Partners' }).getAttribute('href'),
+  );
+  return { projectId, list };
+}
+
+export function projectIdFromPartnersLink(href: string | null): string {
+  const match = href?.match(/\/admin\/projects\/([0-9a-f-]+)\/staff/i);
+  if (!match) {
+    throw new Error(`Could not parse project id from href: ${href}`);
+  }
+  return match[1];
+}
+
+export function buildingIdFromFlatsUrl(url: string): string {
+  const match = url.match(/\/buildings\/([0-9a-f-]+)\/flats/i);
+  if (!match) {
+    throw new Error(`Could not parse building id from url: ${url}`);
+  }
+  return match[1];
+}

@@ -93,13 +93,14 @@ e2e/
 │   ├── admin-users.spec.ts
 │   ├── admin-users-create.spec.ts
 │   ├── admin-projects.spec.ts
-│   └── admin-buildings-create.spec.ts
+│   ├── admin-buildings-create.spec.ts
+│   └── platform-onboarding-flow.spec.ts
 └── package.json
 ```
 
 Demo users (seeded): `super@floor21.com` / `super123`, `admin@skylinehomes.com` / `admin123`.
 
-**DB note:** `admin-projects.spec.ts` inserts project rows. `admin-users-create.spec.ts` inserts user rows. `admin-buildings-create.spec.ts` inserts 3 buildings (with generated flats) per run. None delete them afterward.
+**DB note:** `admin-projects.spec.ts` inserts project rows. `admin-users-create.spec.ts` inserts user rows. `admin-buildings-create.spec.ts` inserts 3 buildings (with generated flats) per run. `platform-onboarding-flow.spec.ts` inserts 1 project, 2 users, 1 building, and 2 partner links per run. None delete them afterward.
 
 **Note:** `baseURL` must include a trailing slash (`http://localhost/floor21/`) so paths resolve under the Spring context path. Use relative paths like `page.goto('login')`, not `page.goto('/login')`.
 
