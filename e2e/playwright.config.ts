@@ -5,7 +5,7 @@ import path from 'path';
 const repoRoot = path.resolve(__dirname, '..');
 
 const baseURL =
-  process.env.FLOOR21_BASE_URL?.replace(/\/$/, '') ?? 'http://localhost/floor21';
+  (process.env.FLOOR21_BASE_URL?.replace(/\/$/, '') ?? 'http://localhost/floor21') + '/';
 
 export default defineConfig({
   testDir: './tests',

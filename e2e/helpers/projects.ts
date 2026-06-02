@@ -1,0 +1,51 @@
+import { expect, type Locator, type Page } from '@playwright/test';
+import { mainPanel } from './auth';
+
+export function uniqueProjectName(label = 'E2E Project'): string {
+  return `${label} ${Date.now()}`;
+}
+
+export async function waitForMainPanel(page: Page): Promise<Locator> {
+  const main = mainPanel(page);
+  await main.waitFor({ state: 'attached', timeout: 15_000 });
+  await expect(main).not.toHaveAttribute('aria-busy', 'true', { timeout: 15_000 });
+  return main;
+}
+
+export async function openProjectsList(page: Page): Promise<Locator> {
+  await page.locator('#floor21-sidebar').getByRole('link', { name: 'Projects' }).click();
+  const main = await waitForMainPanel(page);
+  await expect(main.getByRole('heading', { name: 'Projects' })).toBeVisible();
+  return main;
+}
+
+export async function openNewProjectForm(page: Page): Promise<Locator> {
+  const main = await openProjectsList(page);
+  await main.getByRole('link', { name: 'New project' }).click();
+  const form = await waitForMainPanel(page);
+  await expect(form.getByRole('heading', { name: 'New project' })).toBeVisible();
+  return form;
+}
+
+export async function fillNewProjectForm(
+  main: Locator,
+  data: { name: string; city?: string; address?: string; active?: boolean },
+) {
+  await main.locator('#companyName').fill(data.name);
+  if (data.city != null) {
+    await main.locator('#city').fill(data.city);
+  }
+  if (data.address != null) {
+    await main.locator('#address').fill(data.address);
+  }
+  const active = main.locator('input[type=checkbox][name="active"]');
+  if (data.active === false) {
+    await active.uncheck();
+  } else if (data.active === true) {
+    await active.check();
+  }
+}
+
+export async function submitProjectForm(main: Locator) {
+  await main.getByRole('button', { name: 'Save' }).click();
+}

@@ -12,17 +12,29 @@ import com.floor21.repository.SlabRepository;
 import com.floor21.security.TenantContext;
 import com.floor21.util.ResidentialBhkTypes;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class BuildingService {
+
+    public static final int BUILDINGS_DEFAULT_PAGE_SIZE = 25;
+    public static final int BUILDINGS_MAX_PAGE_SIZE = 100;
+
+    private static final Set<String> BUILDINGS_SORT_FIELDS =
+            Set.of("project", "buildingName", "city", "totalFloors", "active", "createdAt");
 
     private final BuildingRepository buildingRepository;
     private final BuilderRepository builderRepository;
@@ -95,6 +107,90 @@ public class BuildingService {
     @Transactional(readOnly = true)
     public List<Building> listAllForPlatformAdmin() {
         return buildingRepository.findAllForPlatformAdminOrderByBuilderAndName();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Building> listBuildingsPage(
+            int page, int size, String sort, String dir, UUID projectId) {
+        String sortKey = normalizeBuildingsSort(sort);
+        boolean ascending = normalizeBuildingsSortAscending(sortKey, dir);
+        int safeSize = Math.min(Math.max(size, 5), BUILDINGS_MAX_PAGE_SIZE);
+        int safePage = Math.max(page, 0);
+
+        List<Building> filtered = new ArrayList<>(listAllForPlatformAdmin());
+        if (projectId != null) {
+            filtered =
+                    filtered.stream()
+                            .filter(
+                                    b ->
+                                            b.getBuilder() != null
+                                                    && projectId.equals(b.getBuilder().getId()))
+                            .toList();
+        }
+
+        List<Building> sorted = new ArrayList<>(filtered);
+        sorted.sort(comparatorForBuildingsSort(sortKey, ascending));
+
+        int total = sorted.size();
+        int from = Math.min(safePage * safeSize, total);
+        int to = Math.min(from + safeSize, total);
+        List<Building> slice = from < to ? sorted.subList(from, to) : List.of();
+        return new PageImpl<>(slice, PageRequest.of(safePage, safeSize), total);
+    }
+
+    public static String normalizeBuildingsSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return "project";
+        }
+        String key = sort.trim();
+        return BUILDINGS_SORT_FIELDS.contains(key) ? key : "project";
+    }
+
+    public static boolean normalizeBuildingsSortAscending(String sortKey, String dir) {
+        if (dir != null && !dir.isBlank()) {
+            return "asc".equalsIgnoreCase(dir.trim());
+        }
+        return switch (sortKey) {
+            case "project", "buildingName", "city" -> true;
+            default -> false;
+        };
+    }
+
+    private static Comparator<Building> comparatorForBuildingsSort(String sortKey, boolean ascending) {
+        Comparator<Building> comparator =
+                switch (sortKey) {
+                    case "buildingName" ->
+                            Comparator.comparing(
+                                    Building::getBuildingName,
+                                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                    case "city" ->
+                            Comparator.comparing(
+                                    Building::getCity,
+                                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                    case "totalFloors" ->
+                            Comparator.comparing(
+                                    Building::getTotalFloors,
+                                    Comparator.nullsLast(Comparator.naturalOrder()));
+                    case "active" -> Comparator.comparing(b -> Boolean.TRUE.equals(b.getActive()));
+                    case "createdAt" ->
+                            Comparator.comparing(
+                                    Building::getCreatedAt,
+                                    Comparator.nullsLast(Comparator.naturalOrder()));
+                    default ->
+                            Comparator.comparing(
+                                    b ->
+                                            b.getBuilder() != null
+                                                    ? b.getBuilder().getCompanyName()
+                                                    : null,
+                                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+                };
+        if ("project".equals(sortKey)) {
+            comparator =
+                    comparator.thenComparing(
+                            Building::getBuildingName,
+                            Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+        }
+        return ascending ? comparator : comparator.reversed();
     }
 
     @Transactional(readOnly = true)

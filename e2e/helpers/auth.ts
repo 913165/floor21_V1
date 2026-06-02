@@ -11,13 +11,18 @@ export const BUILDER_ADMIN = {
   password: 'admin123',
 } as const;
 
-/** Main content turbo-frame used by layout/base.html. */
+/** Main content turbo-frame used by layout/base.html (not an iframe). */
+export function mainPanel(page: Page) {
+  return page.locator('#floor21-main');
+}
+
+/** @deprecated use mainPanel — turbo-frame is not an iframe */
 export function mainFrame(page: Page) {
-  return page.frameLocator('#floor21-main');
+  return mainPanel(page);
 }
 
 export async function login(page: Page, email: string, password: string) {
-  await page.goto('/login');
+  await page.goto('login');
   await page.locator('#login-email').fill(email);
   await page.locator('#login-password').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();

@@ -80,8 +80,9 @@
       </div>
     </div>
     <div class="mt-3">
-      <button class="btn btn-primary" type="submit"
-              th:text="${generateInitialLayout} ? 'Generate building layout' : (${editLayoutFlow} ? 'Save layout' : 'Save')}">Save</button>
+      <button class="btn btn-primary" type="submit" th:if="${generateInitialLayout}">Generate building layout</button>
+      <button class="btn btn-primary" type="submit" th:if="${editLayoutFlow}">Save layout</button>
+      <button class="btn btn-primary" type="submit" th:unless="${generateInitialLayout or editLayoutFlow}">Save</button>
       <a class="btn btn-link"
          th:with="cancelLink=${cancelHref != null ? cancelHref : '/buildings'}"
          th:href="@{${cancelLink}}">Cancel</a>

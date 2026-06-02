@@ -136,8 +136,9 @@
        aria-label="Users pagination">
     <p class="text-muted small mb-0">
       Showing
-      <strong th:text="${userPage.number * userPage.size + 1}">1</strong>?<strong
-            th:text="${userPage.number * userPage.size + userPage.numberOfElements}">25</strong>
+      <strong th:text="${userPage.number * userPage.size + 1}">1</strong>
+      to
+      <strong th:text="${userPage.number * userPage.size + userPage.numberOfElements}">25</strong>
       of <strong th:text="${userPage.totalElements}">0</strong>
     </p>
     <ul class="pagination pagination-sm mb-0" th:if="${userPage.totalPages > 1}">

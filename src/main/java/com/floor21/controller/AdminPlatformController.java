@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -51,21 +52,26 @@ public class AdminPlatformController {
 
     @GetMapping("/buildings")
     public String buildings(
-            Model model, @RequestParam(required = false) UUID projectId) {
+            Model model,
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(defaultValue = "project") String sort,
+            @RequestParam(defaultValue = "asc") String dir) {
+        String sortKey = BuildingService.normalizeBuildingsSort(sort);
+        boolean ascending = BuildingService.normalizeBuildingsSortAscending(sortKey, dir);
+        Page<Building> buildingPage =
+                buildingService.listBuildingsPage(
+                        page, size, sortKey, ascending ? "asc" : "desc", projectId);
         model.addAttribute("pageTitle", "All buildings");
         model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
         model.addAttribute("filterProjectId", projectId);
-        List<Building> all = buildingService.listAllForPlatformAdmin();
-        if (projectId != null) {
-            all =
-                    all.stream()
-                            .filter(
-                                    b ->
-                                            b.getBuilder() != null
-                                                    && projectId.equals(b.getBuilder().getId()))
-                            .toList();
-        }
-        model.addAttribute("buildings", all);
+        model.addAttribute("buildingPage", buildingPage);
+        model.addAttribute("buildings", buildingPage.getContent());
+        model.addAttribute("sort", sortKey);
+        model.addAttribute("dir", ascending ? "asc" : "desc");
+        model.addAttribute("pageSize", buildingPage.getSize());
+        model.addAttribute("pageSizeOptions", List.of(10, 25, 50));
         model.addAttribute("bookingCounts", buildingService.countBookingsPerBuilding());
         return "admin/buildings/list";
     }

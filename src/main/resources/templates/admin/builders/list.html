@@ -134,8 +134,9 @@
        aria-label="Projects pagination">
     <p class="text-muted small mb-0">
       Showing
-      <strong th:text="${projectPage.number * projectPage.size + 1}">1</strong>?<strong
-            th:text="${projectPage.number * projectPage.size + projectPage.numberOfElements}">25</strong>
+      <strong th:text="${projectPage.number * projectPage.size + 1}">1</strong>
+      to
+      <strong th:text="${projectPage.number * projectPage.size + projectPage.numberOfElements}">25</strong>
       of <strong th:text="${projectPage.totalElements}">0</strong>
     </p>
     <ul class="pagination pagination-sm mb-0" th:if="${projectPage.totalPages > 1}">

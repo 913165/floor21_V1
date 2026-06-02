@@ -5,7 +5,10 @@
   "scripts": {
     "test": "playwright test",
     "test:ui": "playwright test --ui",
-    "test:headed": "playwright test --headed",
+    "test:headed": "playwright test --headed --workers=1",
+    "test:headed:slow": "playwright test --headed --config=playwright.slow.config.ts",
+    "test:headed:slower": "playwright test --headed --config=playwright.slower.config.ts",
+    "test:headed:watch": "playwright test --headed --config=playwright.watch.config.ts",
     "test:debug": "playwright test --debug",
     "codegen": "playwright codegen",
     "report": "playwright show-report",
