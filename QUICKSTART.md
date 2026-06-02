@@ -90,17 +90,13 @@ On first startup, **Flyway** applies migrations and **seed data** (demo users).
 
 2. Sign in with **email** and **password** (Spring Security uses the field name `username` for email on the login form — the page is already wired that way).
 
-### Demo accounts (from seed migration)
+### Platform admin (seed login)
 
 | Role | Email | Password |
 |------|--------|----------|
 | Super admin (platform) | `super@floor21.com` | `super123` |
-| Builder (Skyline tenant) | `admin@skylinehomes.com` | `admin123` |
-| Builder staff — admin | `staff.admin@skylinehomes.com` | `staff123` |
-| Builder staff — executive | `exec@skylinehomes.com` | `exec123` |
 
-- **Super admin** can use **Admin → Builders** and the dashboard; tenant pages are restricted.
-- **Builder / staff** users get the full tenant UI (buildings, clients, bookings, etc.) for their builder.
+Demo tenant projects are not seeded. Create projects, users, buildings, and partners from the Admin UI after sign-in.
 
 After login you land on **http://localhost/floor21/dashboard**.
 

@@ -94,13 +94,26 @@ e2e/
 │   ├── admin-users-create.spec.ts
 │   ├── admin-projects.spec.ts
 │   ├── admin-buildings-create.spec.ts
-│   └── platform-onboarding-flow.spec.ts
+│   └── floor21-full-flow.spec.ts
 └── package.json
 ```
 
-Demo users (seeded): `super@floor21.com` / `super123`, `admin@skylinehomes.com` / `admin123`.
+Seeded login: `super@floor21.com` / `super123` (platform super admin only).
 
-**DB note:** `admin-projects.spec.ts` inserts project rows. `admin-users-create.spec.ts` inserts user rows. `admin-buildings-create.spec.ts` inserts 3 buildings (with generated flats) per run. `platform-onboarding-flow.spec.ts` inserts 1 project, 2 users, 1 building, and 2 partner links per run. None delete them afterward.
+**DB note:** `floor21-full-flow.spec.ts` inserts a full tenant + booking per run (use `--workers=1`). Other specs insert their own test data. None delete rows afterward.
+
+### Full flow in Playwright UI (admin + partner, step by step)
+
+```powershell
+cd C:\work_floor21\floor21\e2e
+npm run test:ui -- tests/floor21-full-flow.spec.ts --workers=1
+```
+
+Expand **Floor21 — full flow (admin + partner)**, then click ▶ on each step in order.
+
+**Admin before partner:** Partner steps read credentials from `e2e/.flow-state.json`, written after each admin step. Run **Admin — 1** through **Admin — 5** before any **Partner —** step (or run the full file top to bottom). If partner login fails with “Flow state missing”, run the admin steps first.
+
+**Credentials output:** After each admin step (and before partner login), emails/passwords are printed to the terminal and Playwright UI **Log** tab, attached under **Attachments**, and saved to `e2e/.flow-credentials.txt` (open that file anytime to copy login details).
 
 **Note:** `baseURL` must include a trailing slash (`http://localhost/floor21/`) so paths resolve under the Spring context path. Use relative paths like `page.goto('login')`, not `page.goto('/login')`.
 

@@ -96,7 +96,7 @@ public class BookingService {
             }
             entity = new Booking();
             entity.setCreatedAt(Instant.now());
-            entity.setBookingCode(nextBookingCode(builderId));
+            entity.setBookingCode(nextBookingCode());
             flat.setStatus("BOOKED");
             flatRepository.save(flat);
         } else {
@@ -179,11 +179,12 @@ public class BookingService {
         return null;
     }
 
-    private String nextBookingCode(UUID builderId) {
+    private String nextBookingCode() {
         int year = LocalDate.now().getYear();
         LocalDate start = LocalDate.of(year, 1, 1);
         LocalDate end = LocalDate.of(year, 12, 31);
-        long seq = bookingRepository.countByBuilder_IdAndBookingDateBetween(builderId, start, end) + 1;
+        // booking_code is globally unique; sequence must not reset per builder/project.
+        long seq = bookingRepository.countByBookingDateBetween(start, end) + 1;
         return String.format("F21-%d-%04d", year, seq);
     }
 }

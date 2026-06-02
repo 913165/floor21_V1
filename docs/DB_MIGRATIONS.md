@@ -129,7 +129,7 @@ For most teams: **new environments** use `V1__baseline.sql`; **production** stay
 | Role | Email | Password |
 |------|--------|----------|
 | Super admin | `super@floor21.com` | `super123` |
-| Builder admin | `admin@skylinehomes.com` | `admin123` |
-| Executive | `exec@skylinehomes.com` | `exec123` |
+
+Migration `V3__remove_demo_seed_data.sql` removes the old demo tenant projects (Skyline, Green Valley, Sunrise) and related seed rows on startup. Only the platform super admin remains from seed data.
 
 Passwords use Spring Security `{noop}` encoding in seed SQL.

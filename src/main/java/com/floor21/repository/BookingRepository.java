@@ -68,6 +68,8 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     long countByBuilder_IdAndBookingDateBetween(UUID builderId, java.time.LocalDate start, java.time.LocalDate end);
 
+    long countByBookingDateBetween(java.time.LocalDate start, java.time.LocalDate end);
+
     @Query(
             "select b from Booking b join fetch b.client where b.builder.id = :builderId and b.status = 'ACTIVE' "
                     + "and b.flat.id in :flatIds order by b.bookingDate desc")

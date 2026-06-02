@@ -7,6 +7,7 @@ export const SUPER_ADMIN = {
 } as const;
 
 export const BUILDER_ADMIN = {
+  /** Legacy demo tenant removed by V3 migration; create a project + partner user for tenant tests. */
   email: 'admin@skylinehomes.com',
   password: 'admin123',
 } as const;
