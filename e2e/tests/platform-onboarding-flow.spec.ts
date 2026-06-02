@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { loginAsSuperAdmin } from '../helpers/auth';
+import { login, loginAsSuperAdmin } from '../helpers/auth';
 import {
   buildingRow,
   createBuilding,
@@ -20,7 +20,7 @@ import { createUser, sampleUserData, type NewUserInput } from '../helpers/users'
 test.describe('Platform — full onboarding flow', () => {
   test.describe.configure({ timeout: 180_000 });
 
-  test('creates project, two users, one building, and adds both as partners', async ({ page }) => {
+  test('creates project, two users, one building, and assigns random flats to both partners', async ({ page }) => {
     const stamp = Date.now();
     const projectName = uniqueProjectName('E2E Flow');
     const building = {
@@ -29,8 +29,16 @@ test.describe('Platform — full onboarding flow', () => {
       city: 'Mumbai',
       address: `E2E Flow Address, Andheri ${stamp}`,
     };
-    const user1 = sampleUserData(1);
-    const user2 = sampleUserData(2);
+    const user1: NewUserInput = {
+      ...sampleUserData(1),
+      fullName: 'Aarav Sharma',
+      email: `aarav.sharma.${stamp}@example.test`,
+    };
+    const user2: NewUserInput = {
+      ...sampleUserData(2),
+      fullName: 'Priya Nair',
+      email: `priya.nair.${stamp}@example.test`,
+    };
 
     await loginAsSuperAdmin(page);
 
@@ -58,6 +66,32 @@ test.describe('Platform — full onboarding flow', () => {
     await addPartnerToProject(page, projectId, user1, buildingId);
     await addPartnerToProject(page, projectId, user2, buildingId);
 
+    await page.goto(`buildings/${buildingId}/flats`, { waitUntil: 'commit' });
+    const adminGrid = await waitForMainPanel(page);
+    await expect(adminGrid.locator('#flat-grid')).toBeVisible();
+
+    const candidateFlats = adminGrid.locator(
+      '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"]',
+    );
+    const candidateCount = await candidateFlats.count();
+    expect(candidateCount).toBeGreaterThanOrEqual(4);
+
+    const flatIds: string[] = [];
+    for (let i = 0; i < candidateCount; i++) {
+      const id = await candidateFlats.nth(i).getAttribute('data-flat-id');
+      if (id) flatIds.push(id);
+    }
+    const shuffled = shuffle(flatIds);
+    const assignToUser1 = shuffled.slice(0, 2);
+    const assignToUser2 = shuffled.slice(2, 4);
+
+    for (const flatId of assignToUser1) {
+      await assignFlatToPartner(page, flatId, user1.fullName);
+    }
+    for (const flatId of assignToUser2) {
+      await assignFlatToPartner(page, flatId, user2.fullName);
+    }
+
     await page.goto(`admin/projects/${projectId}/staff`, { waitUntil: 'commit' });
     const partners = await waitForMainPanel(page);
     await expect(partners.getByRole('heading', { name: /Partners|Staff/i })).toBeVisible();
@@ -65,8 +99,61 @@ test.describe('Platform — full onboarding flow', () => {
     await expect(partners.locator('tbody tr').filter({ hasText: user2.email })).toBeVisible();
     await expect(partners.locator('tbody tr').filter({ hasText: user1.email })).toContainText(building.name);
     await expect(partners.locator('tbody tr').filter({ hasText: user2.email })).toContainText(building.name);
+
+    await logoutCurrentUser(page);
+    await login(page, user1.email, user1.password);
+    await expect(page).toHaveURL(/\/dashboard/);
+
+    await page.goto(`buildings/${buildingId}/flats`, { waitUntil: 'commit' });
+    const partnerGrid = await waitForMainPanel(page);
+    await expect(partnerGrid.locator('#flat-grid')).toBeVisible();
+
+    const visibleCards = partnerGrid.locator(
+      '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"]',
+    );
+    const visibleCount = await visibleCards.count();
+    expect(visibleCount).toBeGreaterThanOrEqual(4);
+
+    const accessibleCards = partnerGrid.locator(
+      '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"][data-bookable="true"]',
+    );
+    await expect(accessibleCards).toHaveCount(assignToUser1.length);
+
   });
 });
+
+async function assignFlatToPartner(page: Page, flatId: string, partnerName: string) {
+  const card = page.locator(`#flat-${flatId}`);
+  const detailsBtn = card.locator('.flat-quick-link');
+  await detailsBtn.scrollIntoViewIfNeeded();
+  await detailsBtn.click();
+
+  const modal = page.locator('#flat-details-modal');
+  await expect(modal).toBeVisible();
+  await modal.locator('#admin-partner').selectOption({ label: partnerName });
+  await modal.locator('#admin-partner-save').click();
+  await expect(card).toContainText(partnerName);
+
+  // Close modal before assigning the next flat; open modal/backdrop blocks grid clicks.
+  await modal.locator('.btn-close').click();
+  await expect(modal).toBeHidden();
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+async function logoutCurrentUser(page: Page) {
+  const profileMenu = page.locator('#profileMenu');
+  await profileMenu.click();
+  await page.getByRole('button', { name: 'Log out' }).click();
+  await expect(page).toHaveURL(/\/login(\?|$)/);
+}
 
 async function addPartnerToProject(
   page: Page,
