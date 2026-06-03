@@ -1016,14 +1016,21 @@
       '<svg class="parking-plan__car-svg" viewBox="0 0 48 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
       '<line class="parking-plan__bay-line" x1="2.5" y1="1" x2="2.5" y2="95"/>' +
       '<line class="parking-plan__bay-line" x1="45.5" y1="1" x2="45.5" y2="95"/>' +
-      '<path class="parking-plan__car-body" d="M24 6 C18.5 6 14.5 9.5 13 15 L11.5 20 10 26 9 32 Q8.5 37 9 42 L9.5 48 Q9 53 9.5 58 L10.5 64 11.5 70 12.5 75 C13.5 80 16 84 19.5 86 L24 88 C25 88.8 27 88.8 28 88 L32.5 86 C36 84 38.5 80 39.5 75 L40.5 70 41.5 64 42.5 58 Q43 53 42.5 48 L43 42 Q42.5 37 43 32 L42 26 40.5 20 39 15 C37.5 9.5 33.5 6 28 6 Z"/>' +
-      '<path class="parking-plan__car-glass" d="M15 26 L33 26 L31.5 41 L16.5 41 Z"/>' +
-      '<path class="parking-plan__car-glass" d="M16 54 L32 54 L30.5 68 L17.5 68 Z"/>' +
-      '<path class="parking-plan__car-detail" d="M14 18 Q24 20 34 18"/>' +
-      '<path class="parking-plan__car-detail" d="M15 74 Q24 76 33 74"/>' +
-      '<ellipse class="parking-plan__car-mirror" cx="6" cy="36" rx="2.4" ry="3.4"/>' +
-      '<ellipse class="parking-plan__car-mirror" cx="42" cy="36" rx="2.4" ry="3.4"/>' +
-      "</svg>"
+      '<g class="parking-plan__car-shape">' +
+      '<path class="parking-plan__car-body" d="' +
+      "M24 3.6 C18.6 3.6 13.8 6.1 12.2 10.8 L10.6 16.8 C9.9 19.8 9.4 23.2 9.2 26.8 L8.8 33.8 C8.5 38.8 8.5 43.8 8.8 48.8 L9.2 55.8 C9.4 59.4 9.9 62.8 10.6 65.8 L12.2 71.8 C13.8 76.5 18.6 79 24 79.4 C29.4 79 34.2 76.5 35.8 71.8 L37.4 65.8 C38.1 62.8 38.6 59.4 38.8 55.8 L39.2 48.8 C39.5 43.8 39.5 38.8 39.2 33.8 L38.8 26.8 C38.6 23.2 38.1 19.8 37.4 16.8 L35.8 10.8 C34.2 6.1 29.4 3.6 24 3.6 Z" +
+      '"/>' +
+      '<path class="parking-plan__car-cabin" d="' +
+      "M17 20.2 H31 C32.2 20.2 33.1 21.5 33.3 23.5 L34 41.2 C34.2 47.8 34 54.2 33.2 60.2 L32.3 68.2 C31.9 71.2 30.4 73.4 27.8 73.8 H20.2 C17.6 73.4 16.1 71.2 15.7 68.2 L14.8 60.2 C14 54.2 13.8 47.8 14 41.2 L14.7 23.5 C14.9 21.5 15.8 20.2 17 20.2 Z" +
+      '"/>' +
+      '<rect class="parking-plan__car-sunroof" x="19.2" y="39.2" width="9.6" height="13.8" rx="2"/>' +
+      '<path class="parking-plan__car-mirror" d="M6.8 23.2 L10.4 21.8 L11.2 26.4 L7.8 27.8 Z"/>' +
+      '<path class="parking-plan__car-mirror" d="M41.2 23.2 L37.6 21.8 L36.8 26.4 L40.2 27.8 Z"/>' +
+      '<ellipse class="parking-plan__car-accent parking-plan__car-accent--light" cx="16.2" cy="8.2" rx="2.3" ry="1.35"/>' +
+      '<ellipse class="parking-plan__car-accent parking-plan__car-accent--light" cx="31.8" cy="8.2" rx="2.3" ry="1.35"/>' +
+      '<rect class="parking-plan__car-accent parking-plan__car-accent--tail" x="13.2" y="73.2" width="3.8" height="2.4" rx="0.5"/>' +
+      '<rect class="parking-plan__car-accent parking-plan__car-accent--tail" x="31" y="73.2" width="3.8" height="2.4" rx="0.5"/>' +
+      "</g></svg>"
     );
   }
 
@@ -1087,19 +1094,11 @@
       '<div class="parking-plan__row parking-plan__row--top">' +
       topHtml +
       "</div>" +
-      '<div class="parking-plan__aisle">' +
-      '<span class="parking-plan__arrow" aria-hidden="true"></span>' +
-      '<span class="parking-plan__aisle-label">Drive aisle</span>' +
-      '<span class="parking-plan__arrow parking-plan__arrow--reverse" aria-hidden="true"></span>' +
-      "</div>" +
+      '<div class="parking-plan__aisle" aria-hidden="true"></div>' +
       '<div class="parking-plan__row parking-plan__row--bottom">' +
       bottomHtml +
       "</div>" +
-      '<div class="parking-plan__ramps">' +
-      '<div class="parking-plan__ramp parking-plan__ramp--out"><span>OUT</span><small>SLOPE 15%</small></div>' +
-      '<div class="parking-plan__road">Secondary road</div>' +
-      '<div class="parking-plan__ramp parking-plan__ramp--in"><span>IN</span><small>SLOPE 15%</small></div>' +
-      "</div>" +
+      '<div class="parking-plan__ramps" aria-hidden="true"></div>' +
       "</div>";
   }
 
