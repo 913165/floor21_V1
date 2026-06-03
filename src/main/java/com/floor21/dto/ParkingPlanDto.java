@@ -8,7 +8,12 @@ public record ParkingPlanDto(
         int slotCount,
         List<Integer> topRow,
         List<Integer> bottomRow,
-        List<ParkingPlanSlotDto> slots) {
+        List<ParkingPlanSlotDto> slots,
+        int gridCols,
+        int gridRows,
+        List<ParkingGridPlacementDto> placements,
+        boolean gridLayout,
+        int carSizePercent) {
 
     public record ParkingPlanSlotDto(
             int slotNumber,

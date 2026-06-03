@@ -19,6 +19,7 @@
   var parkingConfigFloorNumber = null;
   var parkingLinkParkingFlatId = null;
   var parkingLinkFloorNumber = null;
+  var parkingLinkSlotNumber = null;
   var parkingResidentialCache = null;
   var parkingSlotsCache = null;
 
@@ -915,6 +916,7 @@
       floor.parkingSlotCount || 0,
       floor.parkingRangeLabel || "",
       parkingSectionConfigured(floor) ? "1" : "0",
+      floor.parkingCarSizePercent != null ? floor.parkingCarSizePercent : 100,
       first ? first.id : "",
       first && first.areaSqft != null ? first.areaSqft : "",
       first && first.basePrice != null ? first.basePrice : "",
@@ -923,11 +925,402 @@
 
   function parkingPlanLinkSignature(plan) {
     if (!plan || !plan.slots) return "";
-    return plan.slots
+    var links = plan.slots
       .map(function (s) {
         return s.slotNumber + ":" + (s.linkedResidentialFlatId || "");
       })
       .join("|");
+    var layout = (plan.placements || [])
+      .map(function (p) {
+        return (
+          p.slotNumber +
+          "@" +
+          p.col +
+          "," +
+          p.row +
+          ":" +
+          (p.orientation || "vertical")
+        );
+      })
+      .join("|");
+    return links + "||" + layout + "||" + (plan.gridCols || "") + "x" + (plan.gridRows || "") + "||" + (plan.carSizePercent || 100);
+  }
+
+  function findPlanPlacement(plan, slotNumber) {
+    if (!plan || !plan.placements) return null;
+    for (var i = 0; i < plan.placements.length; i++) {
+      if (plan.placements[i].slotNumber === slotNumber) return plan.placements[i];
+    }
+    return null;
+  }
+
+  function cloneParkingPlan(plan) {
+    return {
+      floorNumber: plan.floorNumber,
+      slotCount: plan.slotCount,
+      topRow: plan.topRow ? plan.topRow.slice() : [],
+      bottomRow: plan.bottomRow ? plan.bottomRow.slice() : [],
+      slots: plan.slots ? plan.slots.slice() : [],
+      gridCols: plan.gridCols,
+      gridRows: plan.gridRows,
+      gridLayout: plan.gridLayout,
+      carSizePercent: plan.carSizePercent != null ? plan.carSizePercent : 100,
+      placements: (plan.placements || []).map(function (p) {
+        return {
+          slotNumber: p.slotNumber,
+          col: p.col,
+          row: p.row,
+          orientation: p.orientation || "vertical",
+        };
+      }),
+    };
+  }
+
+  function renderParkingPlanSlot(slot, canLink, placement) {
+    if (!slot) return "";
+    var slotNumber = slot.slotNumber;
+    var flatNumber = slot.flatNumber || "";
+    var linked = slot.linkedResidentialFlatNumber || "";
+    var linkedClass = linked ? " parking-plan__slot--linked" : "";
+    var clickable = canLink ? " parking-plan__slot--clickable" : "";
+    var orientClass =
+      placement && placement.orientation === "horizontal"
+        ? " parking-plan__slot--horizontal"
+        : " parking-plan__slot--vertical";
+    var dragClass = canLink ? " parking-plan__slot--draggable" : "";
+    var title = linked
+      ? "Slot " + slotNumber + " — linked to flat " + linked
+      : canLink
+        ? "Slot " + slotNumber + " — click to link or rotate"
+        : flatNumber
+          ? "Unit " + flatNumber
+          : "Slot " + slotNumber;
+    var gridStyle = placement
+      ? ' style="grid-column:' +
+        (placement.col + 1) +
+        ";grid-row:" +
+        (placement.row + 1) +
+        '"'
+      : "";
+    return (
+      '<div class="parking-plan__slot' +
+      linkedClass +
+      clickable +
+      orientClass +
+      dragClass +
+      '" data-parking-flat-id="' +
+      (slot.flatId || "") +
+      '" data-slot-number="' +
+      slotNumber +
+      '"' +
+      (slot.linkedResidentialFlatId
+        ? ' data-linked-flat-id="' + slot.linkedResidentialFlatId + '"'
+        : "") +
+      ' title="' +
+      title.replace(/"/g, "&quot;") +
+      '"' +
+      (canLink ? ' draggable="true"' : "") +
+      gridStyle +
+      ">" +
+      '<div class="parking-plan__bay">' +
+      renderParkingCarSvg() +
+      '<span class="parking-plan__slot-no">' +
+      slotNumber +
+      "</span>" +
+      (linked ? '<span class="parking-plan__slot-flat">' + linked + "</span>" : "") +
+      "</div>" +
+      "</div>"
+    );
+  }
+
+  function parkingCarScale(plan) {
+    var pct = plan && plan.carSizePercent != null ? plan.carSizePercent : 100;
+    return Math.max(0.5, Math.min(1.5, pct / 100));
+  }
+
+  function renderParkingPlanGrid(plan, rootEl, canEdit) {
+    var cols = plan.gridCols || 14;
+    var rows = plan.gridRows || 8;
+    var cellsHtml = "";
+    var r;
+    var c;
+    for (r = 0; r < rows; r++) {
+      for (c = 0; c < cols; c++) {
+        cellsHtml +=
+          '<div class="parking-plan__cell' +
+          (canEdit ? " parking-plan__cell--drop" : "") +
+          '" data-col="' +
+          c +
+          '" data-row="' +
+          r +
+          '" style="grid-column:' +
+          (c + 1) +
+          ";grid-row:" +
+          (r + 1) +
+          '"></div>';
+      }
+    }
+    var slotsHtml = (plan.placements || [])
+      .map(function (p) {
+        return renderParkingPlanSlot(findPlanSlot(plan, p.slotNumber), canEdit, p);
+      })
+      .join("");
+    var toolbar = canEdit
+      ? '<div class="parking-plan__layout-toolbar">' +
+        '<button type="button" class="btn btn-sm btn-primary parking-plan__save-layout" data-floor-number="' +
+        plan.floorNumber +
+        '">Save layout</button>' +
+        '<span class="text-muted small parking-plan__layout-hint">Drag cars to grid cells. Click a car to link or rotate.</span>' +
+        '<span class="text-danger small parking-plan__layout-error d-none"></span>' +
+        "</div>"
+      : "";
+    rootEl.innerHTML =
+      '<div class="parking-plan__sheet parking-plan__sheet--grid" style="--parking-car-scale:' +
+      parkingCarScale(plan) +
+      '">' +
+      toolbar +
+      '<div class="parking-plan__grid" style="--parking-grid-cols:' +
+      cols +
+      ";--parking-grid-rows:" +
+      rows +
+      '">' +
+      cellsHtml +
+      slotsHtml +
+      "</div></div>";
+    rootEl._parkingLayoutState = {
+      floorNumber: plan.floorNumber,
+      gridCols: cols,
+      gridRows: rows,
+      placements: (plan.placements || []).map(function (p) {
+        return {
+          slotNumber: p.slotNumber,
+          col: p.col,
+          row: p.row,
+          orientation: p.orientation || "vertical",
+        };
+      }),
+      dirty: false,
+      plan: cloneParkingPlan(plan),
+    };
+    updateParkingLayoutToolbar(rootEl);
+  }
+
+  function updateParkingLayoutToolbar(rootEl) {
+    if (!rootEl) return;
+    var state = rootEl._parkingLayoutState;
+    var saveBtn = rootEl.querySelector(".parking-plan__save-layout");
+    if (saveBtn && state) {
+      saveBtn.disabled = !state.dirty;
+      saveBtn.classList.toggle("disabled", !state.dirty);
+    }
+  }
+
+  function showParkingLayoutError(rootEl, message) {
+    var el = rootEl ? rootEl.querySelector(".parking-plan__layout-error") : null;
+    if (!el) return;
+    if (!message) {
+      el.textContent = "";
+      el.classList.add("d-none");
+      return;
+    }
+    el.textContent = message;
+    el.classList.remove("d-none");
+  }
+
+  function rerenderParkingPlanFromState(rootEl) {
+    var state = rootEl && rootEl._parkingLayoutState;
+    if (!state || !state.plan) return;
+    var wasDirty = state.dirty;
+    var plan = cloneParkingPlan(state.plan);
+    plan.placements = state.placements.map(function (p) {
+      return {
+        slotNumber: p.slotNumber,
+        col: p.col,
+        row: p.row,
+        orientation: p.orientation || "vertical",
+      };
+    });
+    renderParkingPlanGrid(plan, rootEl, isPlatformAdminEdit());
+    rootEl._parkingLayoutState.dirty = wasDirty;
+    updateParkingLayoutToolbar(rootEl);
+  }
+
+  function moveParkingSlotOnGrid(state, slotNumber, toCol, toRow) {
+    var moving = null;
+    var occupant = null;
+    var i;
+    for (i = 0; i < state.placements.length; i++) {
+      if (state.placements[i].slotNumber === slotNumber) moving = state.placements[i];
+      if (state.placements[i].col === toCol && state.placements[i].row === toRow) {
+        occupant = state.placements[i];
+      }
+    }
+    if (!moving) return;
+    if (occupant && occupant.slotNumber !== slotNumber) {
+      var oldCol = moving.col;
+      var oldRow = moving.row;
+      moving.col = toCol;
+      moving.row = toRow;
+      occupant.col = oldCol;
+      occupant.row = oldRow;
+    } else {
+      moving.col = toCol;
+      moving.row = toRow;
+    }
+    state.dirty = true;
+  }
+
+  function toggleParkingSlotOrientation(state, slotNumber) {
+    var i;
+    for (i = 0; i < state.placements.length; i++) {
+      if (state.placements[i].slotNumber === slotNumber) {
+        state.placements[i].orientation =
+          state.placements[i].orientation === "horizontal" ? "vertical" : "horizontal";
+        state.dirty = true;
+        return;
+      }
+    }
+  }
+
+  async function persistParkingLayout(rootEl) {
+    var state = rootEl && rootEl._parkingLayoutState;
+    if (!state) return { ok: false, error: "Layout is not available." };
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    if (!buildingId) return { ok: false, error: "Building not found." };
+    showParkingLayoutError(rootEl, "");
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    var res = await fetch(
+      appRoot() +
+        "/buildings/" +
+        buildingId +
+        "/flats/floor/" +
+        encodeURIComponent(state.floorNumber) +
+        "/parking-layout",
+      {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({
+          gridCols: state.gridCols,
+          gridRows: state.gridRows,
+          placements: state.placements,
+        }),
+      }
+    );
+    if (!res.ok) {
+      return { ok: false, error: await parseErrorResponse(res) };
+    }
+    var plan = await res.json();
+    state.dirty = false;
+    state.plan = cloneParkingPlan(plan);
+    state.placements = (plan.placements || []).map(function (p) {
+      return {
+        slotNumber: p.slotNumber,
+        col: p.col,
+        row: p.row,
+        orientation: p.orientation || "vertical",
+      };
+    });
+    invalidateParkingPlanCache(state.floorNumber);
+    showParkingPlanInSection(plan, true);
+    return { ok: true };
+  }
+
+  async function saveParkingLayoutFromRoot(rootEl) {
+    var state = rootEl && rootEl._parkingLayoutState;
+    if (!state || !state.dirty) return;
+    var result = await persistParkingLayout(rootEl);
+    if (!result.ok) showParkingLayoutError(rootEl, result.error);
+  }
+
+  function ensureParkingGridDelegation() {
+    if (window.__f21ParkingGridBound) return;
+    window.__f21ParkingGridBound = true;
+
+    document.addEventListener("dragstart", function (e) {
+      var slot = e.target.closest(".parking-plan__slot--draggable");
+      if (!slot) return;
+      e.dataTransfer.setData("text/plain", slot.getAttribute("data-slot-number") || "");
+      e.dataTransfer.effectAllowed = "move";
+      slot.classList.add("parking-plan__slot--dragging");
+    });
+
+    document.addEventListener("dragend", function (e) {
+      var slot = e.target.closest(".parking-plan__slot--draggable");
+      if (slot) slot.classList.remove("parking-plan__slot--dragging");
+      document.querySelectorAll(".parking-plan__cell--drag-over").forEach(function (cell) {
+        cell.classList.remove("parking-plan__cell--drag-over");
+      });
+    });
+
+    document.addEventListener("dragover", function (e) {
+      var cell = e.target.closest(".parking-plan__cell--drop");
+      if (!cell) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      cell.classList.add("parking-plan__cell--drag-over");
+    });
+
+    document.addEventListener("dragleave", function (e) {
+      var cell = e.target.closest(".parking-plan__cell--drop");
+      if (cell) cell.classList.remove("parking-plan__cell--drag-over");
+    });
+
+    document.addEventListener("drop", function (e) {
+      var cell = e.target.closest(".parking-plan__cell--drop");
+      if (!cell) return;
+      e.preventDefault();
+      cell.classList.remove("parking-plan__cell--drag-over");
+      var root = cell.closest(".flat-parking-section__plan-root");
+      var state = root && root._parkingLayoutState;
+      if (!state) return;
+      var slotNumber = Number(e.dataTransfer.getData("text/plain"));
+      if (!slotNumber) return;
+      moveParkingSlotOnGrid(state, slotNumber, Number(cell.dataset.col), Number(cell.dataset.row));
+      rerenderParkingPlanFromState(root);
+      showParkingLayoutError(root, "");
+    });
+
+    document.addEventListener("click", function (e) {
+      var saveBtn = e.target.closest(".parking-plan__save-layout");
+      if (!saveBtn || saveBtn.disabled) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var root = saveBtn.closest(".flat-parking-section__plan-root");
+      if (root) saveParkingLayoutFromRoot(root);
+    });
+  }
+
+  function renderParkingPlan(plan, rootEl) {
+    if (!rootEl || !plan) return;
+    var canEdit = isPlatformAdminEdit();
+    if (plan.gridLayout && plan.placements && plan.placements.length) {
+      renderParkingPlanGrid(plan, rootEl, canEdit);
+      return;
+    }
+    var topHtml = (plan.topRow || [])
+      .map(function (n) {
+        return renderParkingPlanSlot(findPlanSlot(plan, n), canEdit, findPlanPlacement(plan, n));
+      })
+      .join("");
+    var bottomHtml = (plan.bottomRow || [])
+      .map(function (n) {
+        return renderParkingPlanSlot(findPlanSlot(plan, n), canEdit, findPlanPlacement(plan, n));
+      })
+      .join("");
+    rootEl.innerHTML =
+      '<div class="parking-plan__sheet" style="--parking-car-scale:' +
+      parkingCarScale(plan) +
+      '">' +
+      '<div class="parking-plan__row parking-plan__row--top">' +
+      topHtml +
+      "</div>" +
+      '<div class="parking-plan__aisle" aria-hidden="true"></div>' +
+      '<div class="parking-plan__row parking-plan__row--bottom">' +
+      bottomHtml +
+      "</div>" +
+      '<div class="parking-plan__ramps" aria-hidden="true"></div>' +
+      "</div>";
   }
 
   function showParkingPlanInSection(plan, force) {
@@ -953,6 +1346,7 @@
       root.dataset.loadedSlots = String(plan.slotCount);
       root.dataset.loadedLinks = linkSig;
     }
+    section.dataset.carSizePercent = String(plan.carSizePercent != null ? plan.carSizePercent : 100);
     section.classList.add("flat-parking-section--split");
     var planPane = section.querySelector(".flat-parking-section__plan");
     if (planPane) planPane.setAttribute("aria-hidden", "false");
@@ -1034,74 +1428,6 @@
     );
   }
 
-  function renderParkingPlanSlot(slot, canLink) {
-    if (!slot) return "";
-    var slotNumber = slot.slotNumber;
-    var flatNumber = slot.flatNumber || "";
-    var linked = slot.linkedResidentialFlatNumber || "";
-    var linkedClass = linked ? " parking-plan__slot--linked" : "";
-    var clickable = canLink ? " parking-plan__slot--clickable" : "";
-    var title = linked
-      ? "Slot " + slotNumber + " — linked to flat " + linked
-      : canLink
-        ? "Slot " + slotNumber + " — click to link to a flat"
-        : flatNumber
-          ? "Unit " + flatNumber
-          : "Slot " + slotNumber;
-    return (
-      '<div class="parking-plan__slot' +
-      linkedClass +
-      clickable +
-      '" data-parking-flat-id="' +
-      (slot.flatId || "") +
-      '" data-slot-number="' +
-      slotNumber +
-      '"' +
-      (slot.linkedResidentialFlatId
-        ? ' data-linked-flat-id="' + slot.linkedResidentialFlatId + '"'
-        : "") +
-      ' title="' +
-      title.replace(/"/g, "&quot;") +
-      '"' +
-      (canLink ? ' role="button" tabindex="0"' : "") +
-      ">" +
-      '<div class="parking-plan__bay">' +
-      renderParkingCarSvg() +
-      '<span class="parking-plan__slot-no">' +
-      slotNumber +
-      "</span>" +
-      (linked ? '<span class="parking-plan__slot-flat">' + linked + "</span>" : "") +
-      "</div>" +
-      "</div>"
-    );
-  }
-
-  function renderParkingPlan(plan, rootEl) {
-    if (!rootEl || !plan) return;
-    var canLink = isPlatformAdminEdit();
-    var topHtml = (plan.topRow || [])
-      .map(function (n) {
-        return renderParkingPlanSlot(findPlanSlot(plan, n), canLink);
-      })
-      .join("");
-    var bottomHtml = (plan.bottomRow || [])
-      .map(function (n) {
-        return renderParkingPlanSlot(findPlanSlot(plan, n), canLink);
-      })
-      .join("");
-    rootEl.innerHTML =
-      '<div class="parking-plan__sheet">' +
-      '<div class="parking-plan__row parking-plan__row--top">' +
-      topHtml +
-      "</div>" +
-      '<div class="parking-plan__aisle" aria-hidden="true"></div>' +
-      '<div class="parking-plan__row parking-plan__row--bottom">' +
-      bottomHtml +
-      "</div>" +
-      '<div class="parking-plan__ramps" aria-hidden="true"></div>' +
-      "</div>";
-  }
-
   async function fetchParkingPlan(floorNumber) {
     var grid = document.getElementById("flat-grid");
     var buildingId = grid ? grid.getAttribute("data-building-id") : null;
@@ -1114,6 +1440,11 @@
     return res.json();
   }
 
+  function syncParkingConfigCarSizeLabel(value) {
+    var label = document.getElementById("parking-config-car-size-value");
+    if (label) label.textContent = String(value);
+  }
+
   function openParkingConfigModal(sectionEl) {
     if (!sectionEl || !isPlatformAdminEdit()) return;
     mountModalsOnBody();
@@ -1121,11 +1452,17 @@
     var modalEl = document.getElementById("parking-config-modal");
     var label = document.getElementById("parking-config-floor-label");
     var slots = document.getElementById("parking-config-slots");
+    var carSize = document.getElementById("parking-config-car-size");
     if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) return;
     if (label) label.textContent = "Floor " + parkingConfigFloorNumber;
     if (slots) {
       var current = sectionEl.dataset.slotCount || "4";
       slots.value = current;
+    }
+    if (carSize) {
+      var sizeValue = sectionEl.dataset.carSizePercent || "100";
+      carSize.value = sizeValue;
+      syncParkingConfigCarSizeLabel(sizeValue);
     }
     showParkingConfigError("");
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
@@ -1135,10 +1472,16 @@
     var grid = document.getElementById("flat-grid");
     var buildingId = grid ? grid.getAttribute("data-building-id") : null;
     var slotsEl = document.getElementById("parking-config-slots");
+    var carSizeEl = document.getElementById("parking-config-car-size");
     if (!buildingId || !parkingConfigFloorNumber || !slotsEl) return;
     var slotCount = Number(slotsEl.value);
     if (!slotCount || slotCount < 1 || slotCount > 200) {
       showParkingConfigError("Enter a slot count between 1 and 200.");
+      return;
+    }
+    var carSizePercent = carSizeEl ? Number(carSizeEl.value) : 100;
+    if (!carSizePercent || carSizePercent < 50 || carSizePercent > 150) {
+      showParkingConfigError("Car size must be between 50% and 150%.");
       return;
     }
     showParkingConfigError("");
@@ -1153,7 +1496,7 @@
       {
         method: "POST",
         headers: headers,
-        body: JSON.stringify({ slotCount: slotCount }),
+        body: JSON.stringify({ slotCount: slotCount, carSizePercent: carSizePercent }),
       }
     );
     if (!res.ok) {
@@ -1203,26 +1546,62 @@
     return parkingResidentialCache;
   }
 
+  function syncParkingLinkOrientationLabel(state, slotEl) {
+    var label = document.getElementById("parking-link-orientation-value");
+    if (!label) return;
+    var orient = "vertical";
+    if (state && parkingLinkSlotNumber) {
+      for (var i = 0; i < state.placements.length; i++) {
+        if (state.placements[i].slotNumber === Number(parkingLinkSlotNumber)) {
+          orient = state.placements[i].orientation || "vertical";
+          break;
+        }
+      }
+    } else if (slotEl) {
+      orient = slotEl.classList.contains("parking-plan__slot--horizontal") ? "horizontal" : "vertical";
+    }
+    label.textContent = orient === "horizontal" ? "Horizontal" : "Vertical";
+  }
+
+  async function rotateParkingSlotFromModal() {
+    if (!parkingLinkFloorNumber || !parkingLinkSlotNumber) return;
+    var section = parkingSectionForFloor(parkingLinkFloorNumber);
+    var root = section && parkingPlanRootForSection(section);
+    var state = root && root._parkingLayoutState;
+    if (!state) {
+      showParkingLinkError("Layout is not available for this floor.");
+      return;
+    }
+    showParkingLinkError("");
+    toggleParkingSlotOrientation(state, Number(parkingLinkSlotNumber));
+    syncParkingLinkOrientationLabel(state, null);
+    var result = await persistParkingLayout(root);
+    if (!result.ok) showParkingLinkError(result.error);
+  }
+
   async function openParkingLinkModal(slotEl) {
     if (!slotEl || !isPlatformAdminEdit()) return;
     mountModalsOnBody();
     parkingLinkParkingFlatId = slotEl.getAttribute("data-parking-flat-id");
     var section = slotEl.closest(".flat-parking-section");
     parkingLinkFloorNumber = section ? section.dataset.floorNumber : null;
-    var slotNumber = slotEl.getAttribute("data-slot-number");
+    parkingLinkSlotNumber = slotEl.getAttribute("data-slot-number");
     var linkedId = slotEl.getAttribute("data-linked-flat-id") || "";
     var modalEl = document.getElementById("parking-link-modal");
     var label = document.getElementById("parking-link-slot-label");
     var select = document.getElementById("parking-link-flat");
+    var root = section && parkingPlanRootForSection(section);
+    var state = root && root._parkingLayoutState;
     if (!modalEl || !parkingLinkParkingFlatId || typeof bootstrap === "undefined" || !bootstrap.Modal) {
       return;
     }
     if (label) {
       label.textContent =
         "Parking slot " +
-        (slotNumber || "") +
+        (parkingLinkSlotNumber || "") +
         (parkingLinkFloorNumber ? " · Floor " + parkingLinkFloorNumber : "");
     }
+    syncParkingLinkOrientationLabel(state, slotEl);
     showParkingLinkError("");
     if (select) {
       select.innerHTML = '<option value="">— Not linked —</option>';
@@ -1461,6 +1840,10 @@
     var snapshot = parkingFloorSnapshot(floor);
     var unchanged = el.dataset.parkingSnapshot === snapshot;
     el.setAttribute("data-slot-count", String(floor.parkingSlotCount || 0));
+    el.setAttribute(
+      "data-car-size-percent",
+      String(floor.parkingCarSizePercent != null ? floor.parkingCarSizePercent : 100)
+    );
     el.setAttribute("data-range-label", floor.parkingRangeLabel || "");
     el.setAttribute("data-configured", configured ? "true" : "false");
     el.classList.toggle("flat-parking-section--configured", configured);
@@ -1889,6 +2272,7 @@
       return;
     }
     mountModalsOnBody();
+    ensureParkingGridDelegation();
     if (grid.dataset.f21Init === "true") {
       return;
     }
@@ -1914,10 +2298,22 @@
         saveParkingConfig();
       });
     }
+    var parkingConfigCarSize = document.getElementById("parking-config-car-size");
+    if (parkingConfigCarSize) {
+      parkingConfigCarSize.addEventListener("input", function () {
+        syncParkingConfigCarSizeLabel(parkingConfigCarSize.value);
+      });
+    }
     var parkingLinkSave = document.getElementById("parking-link-save");
     if (parkingLinkSave) {
       parkingLinkSave.addEventListener("click", function () {
         saveParkingLink();
+      });
+    }
+    var parkingLinkRotate = document.getElementById("parking-link-rotate");
+    if (parkingLinkRotate) {
+      parkingLinkRotate.addEventListener("click", function () {
+        rotateParkingSlotFromModal();
       });
     }
     var parkingAddBtn = document.getElementById("panel-parking-add-btn");

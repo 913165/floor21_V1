@@ -1248,6 +1248,101 @@ body.modal-open .modal-backdrop {
   border-radius: 0.25rem;
 }
 
+.parking-plan__sheet--grid {
+  padding: 0.55rem;
+  overflow: visible;
+}
+
+.parking-plan__layout-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.parking-plan__layout-hint {
+  flex: 1 1 12rem;
+}
+
+.parking-plan__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--parking-grid-cols, 14), minmax(1.85rem, 1fr));
+  grid-template-rows: repeat(var(--parking-grid-rows, 8), minmax(2.15rem, auto));
+  gap: 2px;
+  overflow: visible;
+}
+
+.parking-plan__cell {
+  border: 1px dashed rgba(108, 117, 125, 0.28);
+  border-radius: 0.15rem;
+  min-height: 2.15rem;
+  z-index: 1;
+  overflow: visible;
+}
+
+.parking-plan__cell--drag-over {
+  background: rgba(13, 110, 253, 0.12);
+  border-color: rgba(13, 110, 253, 0.55);
+}
+
+.parking-plan__sheet--grid .parking-plan__slot {
+  max-width: none;
+  min-width: 0;
+  z-index: 2;
+  align-self: stretch;
+  justify-self: stretch;
+  overflow: visible;
+}
+
+.parking-plan__sheet--grid .parking-plan__bay {
+  max-width: 100%;
+  width: 100%;
+  height: 100%;
+  min-height: 2rem;
+  overflow: visible;
+}
+
+.parking-plan__slot--horizontal {
+  overflow: visible;
+}
+
+.parking-plan__slot--horizontal .parking-plan__bay {
+  position: relative;
+  overflow: visible;
+  width: 100%;
+  height: 100%;
+  min-height: 2.15rem;
+  max-width: none;
+}
+
+.parking-plan__slot--horizontal .parking-plan__car-svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  transform: translate(-50%, -50%) rotate(90deg) scale(var(--parking-car-scale, 1));
+  transform-origin: center center;
+}
+
+.parking-plan__slot--horizontal .parking-plan__slot-no,
+.parking-plan__slot--horizontal .parking-plan__slot-flat {
+  z-index: 3;
+}
+
+.flat-parking-section--split .parking-plan__slot--horizontal {
+  max-width: none;
+}
+
+.flat-parking-section--split .parking-plan__slot--horizontal .parking-plan__bay {
+  max-width: none;
+}
+
+.parking-plan__slot--dragging {
+  opacity: 0.55;
+}
+
 .parking-plan__row {
   display: flex;
   flex-wrap: nowrap;
@@ -1263,7 +1358,8 @@ body.modal-open .modal-backdrop {
 }
 
 .parking-plan__row--top .parking-plan__car-svg {
-  transform: rotate(180deg);
+  transform: rotate(180deg) scale(var(--parking-car-scale, 1));
+  transform-origin: center center;
 }
 
 .parking-plan__slot {
@@ -1289,6 +1385,8 @@ body.modal-open .modal-backdrop {
   width: 100%;
   height: 100%;
   display: block;
+  transform: scale(var(--parking-car-scale, 1));
+  transform-origin: center center;
 }
 
 .parking-plan__car-shape {
@@ -1413,6 +1511,15 @@ body.modal-open .modal-backdrop {
 .parking-plan__ramps {
   min-height: 2.35rem;
   margin-top: 0.5rem;
+}
+
+[data-bs-theme="dark"] .parking-plan__cell {
+  border-color: rgba(173, 181, 189, 0.28);
+}
+
+[data-bs-theme="dark"] .parking-plan__cell--drag-over {
+  background: rgba(96, 165, 250, 0.14);
+  border-color: rgba(147, 197, 253, 0.55);
 }
 
 [data-bs-theme="dark"] .parking-plan__sheet {

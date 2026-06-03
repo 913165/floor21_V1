@@ -10,6 +10,8 @@ import com.floor21.dto.FlatMergeDto;
 import com.floor21.dto.FloorMergeSplitResult;
 import com.floor21.dto.LinkedParkingSlotDto;
 import com.floor21.dto.ParkingFloorConfigDto;
+import com.floor21.dto.ParkingGridPlacementDto;
+import com.floor21.dto.ParkingLayoutDto;
 import com.floor21.dto.ParkingLinkDto;
 import com.floor21.dto.ParkingPlanDto;
 import com.floor21.dto.ParkingResidentialOptionDto;
@@ -106,6 +108,11 @@ public class FlatService {
             String parkingRangeLabel = parkingSection ? parkingRangeLabel(cells) : null;
             boolean parkingConfigured =
                     parkingSection && ParkingFloorConfigUtil.isConfigured(building, floor);
+            int parkingCarSizePercent =
+                    parkingConfigured
+                            ? ParkingFloorConfigUtil.resolveCarSizePercent(
+                                    ParkingFloorConfigUtil.forFloor(building, floor))
+                            : ParkingFloorConfigUtil.DEFAULT_CAR_SIZE_PERCENT;
             rows.add(
                     new FlatGridFloorDto(
                             floor,
@@ -114,7 +121,8 @@ public class FlatService {
                             parkingSection,
                             parkingSlotCount,
                             parkingRangeLabel,
-                            parkingConfigured));
+                            parkingConfigured,
+                            parkingCarSizePercent));
         }
         return rows;
     }
@@ -137,7 +145,37 @@ public class FlatService {
                 || flats.stream().anyMatch(f -> !FlatUnitTypes.isParkingCode(f.getBhkType()))) {
             throw new IllegalArgumentException("No parking layout on floor " + floorNumber + ".");
         }
-        return buildParkingPlan(floorNumber, flats);
+        return buildParkingPlan(building, floorNumber, flats);
+    }
+
+    @Transactional
+    public ParkingPlanDto saveParkingLayout(
+            UUID buildingId, int floorNumber, ParkingLayoutDto dto) {
+        if (floorNumber < 1) {
+            throw new IllegalArgumentException("Invalid floor number.");
+        }
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!ParkingFloorConfigUtil.isConfigured(building, floorNumber)) {
+            throw new IllegalArgumentException(
+                    "Parking is not configured for floor " + floorNumber + " yet.");
+        }
+        ParkingFloorConfigUtil.FloorConfig config =
+                ParkingFloorConfigUtil.forFloor(building, floorNumber);
+        validateParkingLayout(dto, config.slotCount());
+        List<ParkingFloorConfigUtil.GridPlacement> placements =
+                dto.placements().stream()
+                        .map(
+                                p ->
+                                        new ParkingFloorConfigUtil.GridPlacement(
+                                                p.slotNumber(),
+                                                p.col(),
+                                                p.row(),
+                                                normalizeParkingOrientation(p.orientation())))
+                        .toList();
+        ParkingFloorConfigUtil.saveLayout(
+                building, floorNumber, dto.gridCols(), dto.gridRows(), placements);
+        buildingRepository.save(building);
+        return getParkingPlan(buildingId, floorNumber);
     }
 
     @Transactional
@@ -183,9 +221,12 @@ public class FlatService {
             flat.setFlatNumber(String.format("%02d%02d", floorNumber, unit));
             flatRepository.save(flat);
         }
-        ParkingFloorConfigUtil.markConfigured(building, floorNumber, slotCount);
+        int carSizePercent =
+                ParkingFloorConfigUtil.normalizeCarSizePercent(dto.carSizePercent());
+        ParkingFloorConfigUtil.markConfigured(
+                building, floorNumber, slotCount, carSizePercent);
         buildingRepository.save(building);
-        return buildParkingPlan(floorNumber, existing);
+        return buildParkingPlan(building, floorNumber, existing);
     }
 
     @Transactional(readOnly = true)
@@ -351,7 +392,7 @@ public class FlatService {
         return flat;
     }
 
-    private ParkingPlanDto buildParkingPlan(int floorNumber, List<Flat> flats) {
+    private ParkingPlanDto buildParkingPlan(Building building, int floorNumber, List<Flat> flats) {
         int n = flats.size();
         int bottomCount = (int) Math.ceil(n / 2.0);
         List<Integer> bottomRow = new ArrayList<>();
@@ -362,6 +403,18 @@ public class FlatService {
         for (int slot = n; slot > bottomCount; slot--) {
             topRow.add(slot);
         }
+        ParkingFloorConfigUtil.FloorConfig config =
+                ParkingFloorConfigUtil.forFloor(building, floorNumber);
+        int gridCols =
+                config.gridCols() != null
+                        ? config.gridCols()
+                        : ParkingFloorConfigUtil.DEFAULT_GRID_COLS;
+        int gridRows =
+                config.gridRows() != null
+                        ? config.gridRows()
+                        : ParkingFloorConfigUtil.DEFAULT_GRID_ROWS;
+        List<ParkingGridPlacementDto> placements =
+                resolveGridPlacements(config, n, gridCols, gridRows);
         List<ParkingPlanDto.ParkingPlanSlotDto> slots = new ArrayList<>();
         java.util.Set<UUID> linkedIds =
                 flats.stream()
@@ -391,7 +444,78 @@ public class FlatService {
                             linkedId,
                             linkedNumber));
         }
-        return new ParkingPlanDto(floorNumber, n, topRow, bottomRow, slots);
+        int carSizePercent = ParkingFloorConfigUtil.resolveCarSizePercent(config);
+        return new ParkingPlanDto(
+                floorNumber,
+                n,
+                topRow,
+                bottomRow,
+                slots,
+                gridCols,
+                gridRows,
+                placements,
+                true,
+                carSizePercent);
+    }
+
+    private static List<ParkingGridPlacementDto> resolveGridPlacements(
+            ParkingFloorConfigUtil.FloorConfig config, int slotCount, int gridCols, int gridRows) {
+        List<ParkingFloorConfigUtil.GridPlacement> source =
+                config.placements() != null && !config.placements().isEmpty()
+                        ? config.placements()
+                        : ParkingFloorConfigUtil.defaultGridPlacements(slotCount, gridCols, gridRows);
+        List<ParkingGridPlacementDto> out = new ArrayList<>();
+        for (ParkingFloorConfigUtil.GridPlacement p : source) {
+            out.add(
+                    new ParkingGridPlacementDto(
+                            p.slotNumber(),
+                            p.col(),
+                            p.row(),
+                            normalizeParkingOrientation(p.orientation())));
+        }
+        return out;
+    }
+
+    private static void validateParkingLayout(ParkingLayoutDto dto, int slotCount) {
+        if (dto.placements().size() != slotCount) {
+            throw new IllegalArgumentException(
+                    "Layout must include exactly " + slotCount + " parking slots.");
+        }
+        java.util.Set<Integer> slotNumbers = new java.util.HashSet<>();
+        java.util.Set<String> cells = new java.util.HashSet<>();
+        for (ParkingGridPlacementDto p : dto.placements()) {
+            if (p.slotNumber() < 1 || p.slotNumber() > slotCount) {
+                throw new IllegalArgumentException("Invalid slot number: " + p.slotNumber());
+            }
+            if (!slotNumbers.add(p.slotNumber())) {
+                throw new IllegalArgumentException("Duplicate slot number: " + p.slotNumber());
+            }
+            if (p.col() < 0 || p.col() >= dto.gridCols()) {
+                throw new IllegalArgumentException("Column out of range for slot " + p.slotNumber());
+            }
+            if (p.row() < 0 || p.row() >= dto.gridRows()) {
+                throw new IllegalArgumentException("Row out of range for slot " + p.slotNumber());
+            }
+            String cell = p.col() + ":" + p.row();
+            if (!cells.add(cell)) {
+                throw new IllegalArgumentException("Two slots cannot occupy the same grid cell.");
+            }
+            normalizeParkingOrientation(p.orientation());
+        }
+    }
+
+    private static String normalizeParkingOrientation(String orientation) {
+        if (orientation == null || orientation.isBlank()) {
+            return "vertical";
+        }
+        String value = orientation.trim().toLowerCase(Locale.ROOT);
+        if ("vertical".equals(value) || "v".equals(value)) {
+            return "vertical";
+        }
+        if ("horizontal".equals(value) || "h".equals(value)) {
+            return "horizontal";
+        }
+        throw new IllegalArgumentException("Orientation must be vertical or horizontal.");
     }
 
     private static String parkingRangeLabel(List<FlatGridFlatDto> cells) {

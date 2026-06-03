@@ -276,6 +276,7 @@
              th:classappend="${floor.parkingConfigured()} ? ' flat-parking-section--configured flat-parking-section--split' : ' flat-parking-section--pending'"
              th:attr="data-floor-number=${floor.floorNumber()},
                       data-slot-count=${floor.parkingSlotCount()},
+                      data-car-size-percent=${floor.parkingCarSizePercent()},
                       data-range-label=${floor.parkingRangeLabel()},
                       data-configured=${floor.parkingConfigured()},
                       data-first-flat-id=${floor.flats()[0].id()},
@@ -532,12 +533,16 @@
           <p class="text-muted small mb-2" id="parking-config-floor-label">Floor</p>
           <label class="form-label small mb-1" for="parking-config-slots">Number of parking slots</label>
           <input class="form-control form-control-sm" type="number" id="parking-config-slots" min="1" max="200" step="1" value="4"/>
-          <p class="text-muted small mt-2 mb-0">Slots are shown in a two-row plan with a central driveway, similar to a typical parking level drawing.</p>
+          <label class="form-label small mb-1 mt-3" for="parking-config-car-size">
+            Car size <span id="parking-config-car-size-value">100</span>%
+          </label>
+          <input class="form-range" type="range" id="parking-config-car-size" min="50" max="150" step="5" value="100"/>
+          <p class="text-muted small mt-2 mb-0">Adjust how large each car appears in the parking grid.</p>
           <p class="text-danger small mb-0 mt-2 d-none" id="parking-config-error"></p>
         </div>
         <div class="modal-footer py-2 px-3">
           <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-sm btn-primary" id="parking-config-save">Save layout</button>
+          <button type="button" class="btn btn-sm btn-primary" id="parking-config-save">Save</button>
         </div>
       </div>
     </div>
@@ -556,6 +561,13 @@
           <select class="form-select form-select-sm" id="parking-link-flat">
             <option value="">— Not linked —</option>
           </select>
+          <div class="d-flex align-items-center justify-content-between gap-2 mt-3 pt-2 border-top">
+            <div>
+              <div class="text-muted small">Orientation</div>
+              <div class="small fw-semibold" id="parking-link-orientation-value">Vertical</div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="parking-link-rotate">Rotate slot</button>
+          </div>
           <p class="text-muted small mt-2 mb-0">One flat can have multiple parking slots. Choose a flat or clear the link.</p>
           <p class="text-danger small mb-0 mt-2 d-none" id="parking-link-error"></p>
         </div>
