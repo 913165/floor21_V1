@@ -1,8 +1,10 @@
 package com.floor21.controller;
 
 import com.floor21.dto.BuildingConfigDto;
+import com.floor21.dto.FlatAddToFloorDto;
 import com.floor21.dto.FlatAdminUpdateDto;
 import com.floor21.entity.Building;
+import com.floor21.entity.Flat;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.service.BuildingFloorPlanService;
 import com.floor21.service.BuildingService;
@@ -326,6 +328,30 @@ public class BuildingController {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
         }
         return "redirect:/buildings/" + id + "/flats";
+    }
+
+    @PostMapping(value = "/{id}/flats/add-to-floor", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> addFlatToFloor(
+            @PathVariable UUID id, @Valid @RequestBody FlatAddToFloorDto body) {
+        try {
+            Flat flat = flatService.addFlatToFloorAsPlatformAdmin(id, body);
+            return ResponseEntity.ok(
+                    Map.of(
+                            "ok",
+                            true,
+                            "id",
+                            flat.getId(),
+                            "flatNumber",
+                            flat.getFlatNumber(),
+                            "floorNumber",
+                            flat.getFloorNumber(),
+                            "bhkType",
+                            flat.getBhkType()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
     }
 
     @PostMapping("/{id}/flats/remove-top-floors")

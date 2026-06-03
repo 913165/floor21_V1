@@ -17,7 +17,7 @@
 
   /** Bootstrap backdrop is on body; modals must be too or backdrop blocks clicks. */
   function mountModalsOnBody() {
-    ["flat-details-modal", "floor-plan-modal"].forEach(function (id) {
+    ["flat-details-modal", "floor-plan-modal", "flat-add-modal"].forEach(function (id) {
       var el = document.getElementById(id);
       if (el && el.parentElement !== document.body) {
         document.body.appendChild(el);
@@ -795,8 +795,10 @@
   }
 
   function syncGridFromData(floors) {
+    var liveIds = new Set();
     floors.forEach(function (floor) {
       floor.flats.forEach(function (flat) {
+        liveIds.add(String(flat.id));
         var el = document.getElementById("flat-" + flat.id);
         if (!el) {
           var floorRow = findFloorRow(floor.floorNumber);
@@ -807,6 +809,16 @@
         syncFlatCardFromData(el, flat);
       });
     });
+
+    var grid = document.getElementById("flat-grid");
+    if (grid) {
+      grid.querySelectorAll(".flat-card[data-flat-id]").forEach(function (card) {
+        var id = card.getAttribute("data-flat-id");
+        if (id && !liveIds.has(id)) {
+          card.remove();
+        }
+      });
+    }
   }
 
   async function refreshGrid() {
@@ -820,6 +832,7 @@
     if (!res.ok) return;
     var floors = await res.json();
     syncGridFromData(floors);
+    initAllFlatCards();
     applyBookingSelectionHighlight();
     if (selectedFlatId) {
       var selected = document.getElementById("flat-" + selectedFlatId);
@@ -1284,8 +1297,108 @@
         if (modalEl && window.bootstrap && bootstrap.Modal) {
           bootstrap.Modal.getOrCreateInstance(modalEl).hide();
         }
+        if (card) {
+          card.remove();
+        }
         selectedFlatId = null;
         await refreshGrid();
+      });
+    }
+
+    var addFloorNumber = null;
+    grid.querySelectorAll(".flat-add-unit-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        addFloorNumber = btn.getAttribute("data-floor-number");
+        var title = document.getElementById("flat-add-modal-title");
+        if (title) {
+          title.textContent = "Add unit to floor " + addFloorNumber;
+        }
+        var err = document.getElementById("flat-add-error");
+        if (err) {
+          err.textContent = "";
+          err.classList.add("d-none");
+        }
+        var bhkSel = document.getElementById("flat-add-bhk");
+        if (bhkSel) {
+          bhkSel.value = "2BHK";
+        }
+        var areaInput = document.getElementById("flat-add-area");
+        if (areaInput) {
+          areaInput.value = "";
+        }
+        var priceInput = document.getElementById("flat-add-price");
+        if (priceInput) {
+          priceInput.value = "";
+        }
+        var addModal = document.getElementById("flat-add-modal");
+        if (addModal && window.bootstrap && bootstrap.Modal) {
+          bootstrap.Modal.getOrCreateInstance(addModal).show();
+        }
+      });
+    });
+
+    var flatAddSubmit = document.getElementById("flat-add-submit");
+    if (flatAddSubmit) {
+      flatAddSubmit.addEventListener("click", async function () {
+        if (!addFloorNumber) return;
+        var buildingId = grid.getAttribute("data-building-id");
+        if (!buildingId) return;
+        var err = document.getElementById("flat-add-error");
+        var bhkSel = document.getElementById("flat-add-bhk");
+        var areaInput = document.getElementById("flat-add-area");
+        var priceInput = document.getElementById("flat-add-price");
+        var payload = {
+          floorNumber: parseInt(addFloorNumber, 10),
+          bhkType: bhkSel ? bhkSel.value : "2BHK",
+        };
+        if (areaInput && areaInput.value.trim()) {
+          payload.areaSqft = parseFloat(areaInput.value);
+        }
+        if (priceInput && priceInput.value.trim()) {
+          payload.basePrice = parseFloat(priceInput.value);
+        }
+        if (err) {
+          err.textContent = "";
+          err.classList.add("d-none");
+        }
+        flatAddSubmit.disabled = true;
+        try {
+          var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+          var res = await fetch(appRoot() + "/buildings/" + buildingId + "/flats/add-to-floor", {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) {
+            if (err) {
+              err.textContent = await parseErrorResponse(res);
+              err.classList.remove("d-none");
+            }
+            return;
+          }
+          var data = await res.json();
+          var addModal = document.getElementById("flat-add-modal");
+          if (addModal && window.bootstrap && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(addModal).hide();
+          }
+          await refreshGrid();
+          showGridToast(
+            "Added unit " + (data.flatNumber || "") + " (" + (data.bhkType || "") + ") on floor " + addFloorNumber,
+            "success",
+          );
+          if (data.id) {
+            var newCard = document.getElementById("flat-" + data.id);
+            if (newCard) {
+              newCard.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+              newCard.classList.add("flat-card--focused");
+              setTimeout(function () {
+                newCard.classList.remove("flat-card--focused");
+              }, 4000);
+            }
+          }
+        } finally {
+          flatAddSubmit.disabled = false;
+        }
       });
     }
 

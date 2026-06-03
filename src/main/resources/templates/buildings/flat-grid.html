@@ -259,7 +259,12 @@
       <span sec:authorize="!hasRole('SUPER_ADMIN')">No flat rows to display yet.</span>
     </p>
     <div th:each="floor : ${floors}" class="d-flex flex-wrap align-items-stretch gap-3 mb-3" th:attr="data-floor-number=${floor.floorNumber()}">
-      <span class="floor-label text-muted small text-nowrap align-self-center" th:text="${floor.label()}">Floor</span>
+      <div class="d-flex flex-column align-items-start gap-1 flex-shrink-0">
+        <span class="floor-label text-muted small text-nowrap" th:text="${floor.label()}">Floor</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary flat-add-unit-btn"
+                sec:authorize="hasRole('SUPER_ADMIN')"
+                th:attr="data-floor-number=${floor.floorNumber()}">+ Add unit</button>
+      </div>
       <div class="flat-card-row flex-grow-1 min-w-0">
         <div th:each="flat : ${floor.flats()}"
              th:id="'flat-' + ${flat.id()}"
@@ -400,6 +405,7 @@
               To create a <strong>vertical duplex</strong> (e.g. 1301 + 1401), pick the adjacent same-stack unit below and merge —
               the lower floor becomes the bookable primary. To undo, open either half and use <strong>Split duplex</strong>.
               Same-floor merges hide the absorbed unit but can be restored with <strong>Restore merged flat</strong>.
+              After deleting a unit, use <strong>+ Add unit</strong> on that floor row to add a replacement slot.
             </p>
             <div class="row g-2 align-items-end border-top pt-2 mt-2">
               <div class="col-md-6">
@@ -464,7 +470,40 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=flat-delete)}"></script>
+  <div class="modal fade" id="flat-add-modal" tabindex="-1" aria-labelledby="flat-add-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content shadow">
+        <div class="modal-header py-2 px-3">
+          <h6 class="modal-title mb-0" id="flat-add-modal-title">Add unit to floor</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body pt-2 pb-3">
+          <label class="form-label small mb-1" for="flat-add-bhk">Unit type</label>
+          <select class="form-select form-select-sm" id="flat-add-bhk" aria-label="Unit type">
+            <optgroup label="Residential">
+              <option th:each="t : ${residentialBhkTypes}" th:value="${t}" th:text="${t}">2BHK</option>
+            </optgroup>
+            <optgroup label="Parking &amp; amenities">
+              <option value="PKG">PKG (Parking)</option>
+              <option th:each="t : ${flatAmenityTypes}" th:value="${t}" th:text="${t}">GYM</option>
+            </optgroup>
+          </select>
+          <label class="form-label small mb-1 mt-2" for="flat-add-area">Area (sqft)</label>
+          <input class="form-control form-control-sm" type="number" id="flat-add-area" min="1" step="1"
+                 placeholder="Leave blank for default"/>
+          <label class="form-label small mb-1 mt-2" for="flat-add-price">Base price</label>
+          <input class="form-control form-control-sm" type="number" id="flat-add-price" min="0" step="1"
+                 placeholder="Leave blank for default"/>
+          <p class="text-danger small mb-0 mt-2 d-none" id="flat-add-error"></p>
+        </div>
+        <div class="modal-footer py-2 px-3">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-sm btn-primary" id="flat-add-submit">Add unit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script defer th:src="@{/js/flat-grid.js(v=flat-add-modal-fix)}"></script>
 </div>
 </body>
 </html>

@@ -37,6 +37,8 @@ function loadFlow() {
     Object.assign(flow, saved);
     flow.clients = flow.clients ?? [];
     flow.bookings = flow.bookings ?? [];
+    flow.parkingFlatCount = flow.parkingFlatCount ?? 0;
+    flow.residentialFlatCount = flow.residentialFlatCount ?? 0;
     if (!flow.clientDisplayName && flow.clients.length > 0) {
       flow.clientDisplayName = flow.clients[0].displayName;
     } else if (!flow.clientDisplayName) {
@@ -65,6 +67,9 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
   test('Admin — 3. Create building', async ({ page }, testInfo) => {
     loadFlow();
     await adminCreateBuilding(page, flow);
+    expect(flow.building.parkingFloors).toBe(3);
+    expect(flow.parkingFlatCount).toBe(12);
+    expect(flow.residentialFlatCount).toBe(20);
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-after-building');
   });

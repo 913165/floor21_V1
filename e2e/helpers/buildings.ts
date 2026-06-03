@@ -11,6 +11,19 @@ export type NewBuildingInput = {
   address?: string;
 };
 
+export function expectedParkingFlatCount(data: NewBuildingInput): number {
+  const parkingFloors = data.parkingFloors ?? 0;
+  const flatsPerFloor = data.flatsPerFloor ?? 4;
+  return parkingFloors * flatsPerFloor;
+}
+
+export function expectedResidentialFlatCount(data: NewBuildingInput): number {
+  const totalFloors = data.totalFloors ?? 5;
+  const parkingFloors = data.parkingFloors ?? 0;
+  const flatsPerFloor = data.flatsPerFloor ?? 4;
+  return Math.max(0, totalFloors - parkingFloors) * flatsPerFloor;
+}
+
 export function sampleBuildingData(index: number): NewBuildingInput {
   const stamp = Date.now();
   return {
@@ -69,6 +82,12 @@ export async function createBuilding(page: Page, data: NewBuildingInput, project
   await fillNewBuildingForm(form, data);
   await submitNewBuildingForm(form, page);
   await expect(page.locator('#flat-grid')).toBeVisible({ timeout: 30_000 });
+
+  const parkingCount = expectedParkingFlatCount(data);
+  if (parkingCount > 0) {
+    const parking = page.locator('#flat-grid [data-flat-id][data-parking="true"]');
+    await expect(parking).toHaveCount(parkingCount);
+  }
 }
 
 export function buildingRow(list: Locator, buildingName: string) {

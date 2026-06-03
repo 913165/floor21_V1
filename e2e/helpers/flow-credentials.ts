@@ -33,6 +33,15 @@ export function formatFlowCredentials(flow: PlatformFlowState): string {
     `  Building ID: ${flow.buildingId || '(not created yet)'}`,
   ];
 
+  if (flow.building.parkingFloors != null && flow.building.parkingFloors > 0) {
+    lines.push(
+      `  Layout:      ${flow.building.totalFloors ?? '?'} floors, ${flow.building.parkingFloors} parking floor(s), ${flow.building.flatsPerFloor ?? '?'} units/floor`,
+    );
+    if (flow.parkingFlatCount > 0) {
+      lines.push(`  Parking slots: ${flow.parkingFlatCount}`);
+    }
+  }
+
   if (flow.residentialFlatCount > 0) {
     const assigned = flow.assignToUser1.length + flow.assignToUser2.length;
     lines.push(

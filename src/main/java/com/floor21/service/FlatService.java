@@ -1,6 +1,7 @@
 package com.floor21.service;
 
 import com.floor21.dto.BuildingConfigDto;
+import com.floor21.dto.FlatAddToFloorDto;
 import com.floor21.dto.FlatAdminUpdateDto;
 import com.floor21.dto.FlatGridFlatDto;
 import com.floor21.dto.FlatGridFloorDto;
@@ -733,6 +734,50 @@ public class FlatService {
         }
         partnerFlatAllocationService.clearAssignmentForFlat(flatId);
         flatRepository.delete(flat);
+    }
+
+    /**
+     * Adds one new unit slot to an existing floor row (e.g. after deleting a flat). Uses the next unit
+     * number on that floor; flat number is {@code floor + unit} (e.g. 0305).
+     */
+    @Transactional
+    public Flat addFlatToFloorAsPlatformAdmin(UUID buildingId, FlatAddToFloorDto dto) {
+        if (dto.floorNumber() == null || dto.floorNumber() < 1) {
+            throw new IllegalArgumentException("Floor number is required.");
+        }
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        int floorNumber = dto.floorNumber();
+        if (building.getTotalFloors() == null || floorNumber > building.getTotalFloors()) {
+            throw new IllegalArgumentException(
+                    "Floor must be between 1 and " + building.getTotalFloors() + ".");
+        }
+        List<Flat> onFloor =
+                flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                        buildingId, builderId, floorNumber);
+        if (onFloor.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Floor "
+                            + floorNumber
+                            + " has no units yet. Use Generate flats or Add floors first.");
+        }
+        String bhk = FlatUnitTypes.normalize(dto.bhkType());
+        if (bhk == null || bhk.isBlank()) {
+            throw new IllegalArgumentException("Unit type is required.");
+        }
+        int nextUnit = onFloor.stream().mapToInt(Flat::getUnitNumber).max().orElse(0) + 1;
+        Builder builder = builderRepository.findById(builderId).orElseThrow();
+        Instant now = Instant.now();
+        Flat flat = new Flat();
+        flat.setBuilder(builder);
+        flat.setBuilding(building);
+        flat.setFloorNumber(floorNumber);
+        flat.setUnitNumber(nextUnit);
+        flat.setFlatNumber(String.format("%02d%02d", floorNumber, nextUnit));
+        flat.setCreatedAt(now);
+        flat.setStatus("AVAILABLE");
+        FlatUnitTypes.applyToFlat(flat, bhk, dto.areaSqft(), dto.basePrice());
+        return flatRepository.save(flat);
     }
 
     @Transactional

@@ -2,6 +2,8 @@ import { expect, type Page } from '@playwright/test';
 import {
   buildingRow,
   createBuilding,
+  expectedParkingFlatCount,
+  expectedResidentialFlatCount,
   openAllBuildingsList,
   sampleBuildingData,
   type NewBuildingInput,
@@ -39,6 +41,7 @@ export type PlatformFlowState = {
   user2: NewUserInput;
   building: NewBuildingInput;
   buildingId: string;
+  parkingFlatCount: number;
   residentialFlatCount: number;
   assignToUser1: string[];
   assignToUser2: string[];
@@ -71,8 +74,13 @@ export function createPlatformFlowState(): PlatformFlowState {
       name: `E2E Flow Tower ${stamp}`,
       city: 'Mumbai',
       address: `E2E Flow Address, Andheri ${stamp}`,
+      totalFloors: 8,
+      parkingFloors: 3,
+      flatsPerFloor: 4,
+      twoBhkPerFloor: 4,
     },
     buildingId: '',
+    parkingFlatCount: 0,
     residentialFlatCount: 0,
     assignToUser1: [],
     assignToUser2: [],
@@ -109,6 +117,11 @@ export async function adminCreateBuilding(page: Page, flow: PlatformFlowState) {
     throw new Error(`Could not parse building id from ${page.url()}`);
   }
   flow.buildingId = buildingId;
+  flow.parkingFlatCount = expectedParkingFlatCount(flow.building);
+  flow.residentialFlatCount = expectedResidentialFlatCount(flow.building);
+
+  const residential = page.locator('#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"]');
+  await expect(residential).toHaveCount(flow.residentialFlatCount);
 
   const list = await openAllBuildingsList(page);
   const row = buildingRow(list, flow.building.name);
