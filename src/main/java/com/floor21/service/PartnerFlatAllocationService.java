@@ -169,6 +169,11 @@ public class PartnerFlatAllocationService {
         return partner.getFullName();
     }
 
+    @Transactional
+    public void clearAssignmentForFlat(UUID flatId) {
+        assignmentRepository.findByFlat_Id(flatId).ifPresent(assignmentRepository::delete);
+    }
+
     /**
      * Saves partner ownership per residential flat. Map keys are flat IDs; values are partner user IDs or
      * blank/null for unassigned.

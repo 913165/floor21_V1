@@ -368,7 +368,7 @@
       if (mergeRow) {
         mergeRow.classList.toggle("d-none", nonBookable || isDuplexLinked || isMergeLinked);
       }
-      ["admin-partner", "admin-partner-save", "admin-delete-btn"].forEach(function (id) {
+      ["admin-partner", "admin-partner-save", "admin-delete-btn", "admin-remove-flat-btn"].forEach(function (id) {
         var el = document.getElementById(id);
         if (!el) return;
         var row = el.closest(".row");
@@ -384,9 +384,17 @@
       var adminDelete = document.getElementById("admin-delete-btn");
       if (adminDelete) {
         var isInactive = cardEl.dataset.status === "CANCELLED";
+        var isBooked = cardEl.dataset.status === "BOOKED";
         adminDelete.textContent = isInactive ? "Activate this flat" : "Deactivate this flat";
         adminDelete.classList.toggle("btn-outline-danger", !isInactive);
         adminDelete.classList.toggle("btn-outline-success", isInactive);
+        adminDelete.classList.toggle("d-none", isBooked);
+      }
+      var adminRemove = document.getElementById("admin-remove-flat-btn");
+      if (adminRemove) {
+        var canRemove = cardEl.dataset.status !== "BOOKED";
+        adminRemove.classList.toggle("d-none", !canRemove);
+        adminRemove.disabled = !canRemove;
       }
       if (selectedFlatId) loadMergeCandidates(selectedFlatId);
       return;
@@ -1242,6 +1250,42 @@
         if (updated) {
           window.floor21SelectFlat(updated, false);
         }
+      });
+    }
+
+    var adminRemove = document.getElementById("admin-remove-flat-btn");
+    if (adminRemove) {
+      adminRemove.addEventListener("click", async function () {
+        if (!selectedFlatId) return;
+        var card = document.getElementById("flat-" + selectedFlatId);
+        if (card && card.dataset.status === "BOOKED") {
+          showAdminError("Cannot delete a booked flat. Cancel the booking first.");
+          return;
+        }
+        var label = card && card.querySelector(".flat-number") ? card.querySelector(".flat-number").textContent : selectedFlatId;
+        if (
+          !window.confirm(
+            "Permanently delete flat " + label + "? This removes the unit from the grid and cannot be undone."
+          )
+        ) {
+          return;
+        }
+        showAdminError("");
+        var headers = Object.assign({}, csrfHeaders());
+        var res = await fetch(appRoot() + "/flats/" + selectedFlatId, {
+          method: "DELETE",
+          headers: headers,
+        });
+        if (!res.ok) {
+          showAdminError(await parseErrorResponse(res));
+          return;
+        }
+        var modalEl = document.getElementById("flat-details-modal");
+        if (modalEl && window.bootstrap && bootstrap.Modal) {
+          bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        }
+        selectedFlatId = null;
+        await refreshGrid();
       });
     }
 

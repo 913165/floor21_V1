@@ -725,13 +725,13 @@ public class FlatService {
     @Transactional
     public void deleteFlatAsPlatformAdmin(UUID flatId) {
         Flat flat = requireResidentialFlatForAdmin(flatId);
-        if (FlatUnitTypes.isMergePrimary(flat)) {
-            throw new IllegalArgumentException("Restore the merged unit before removing this flat.");
-        }
+        assertNotInDuplex(flat);
+        assertNotMerged(flat);
         assertNoActiveBooking(flatId, "Cannot remove a flat that has an active booking.");
         if ("BOOKED".equals(flat.getStatus())) {
             throw new IllegalArgumentException("Cannot remove a booked flat. Cancel the booking first.");
         }
+        partnerFlatAllocationService.clearAssignmentForFlat(flatId);
         flatRepository.delete(flat);
     }
 

@@ -439,8 +439,9 @@
               </div>
             </div>
             <div class="row g-2 align-items-end">
-              <div class="col-md-9 d-flex align-items-end">
+              <div class="col-md-9 d-flex align-items-end flex-wrap gap-2">
                 <button type="button" class="btn btn-sm btn-outline-danger" id="admin-delete-btn">Deactivate this flat</button>
+                <button type="button" class="btn btn-sm btn-danger" id="admin-remove-flat-btn">Delete flat</button>
               </div>
             </div>
             <p class="text-danger small mb-0 d-none" id="admin-error"></p>
@@ -463,7 +464,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=merge-visual)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=flat-delete)}"></script>
 </div>
 </body>
 </html>
