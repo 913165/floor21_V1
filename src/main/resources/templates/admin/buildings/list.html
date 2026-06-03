@@ -91,6 +91,22 @@
                         th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
         </th>
+        <th>
+          <a class="floor21-sort-th"
+             th:classappend="${sort == 'createdAt'} ? 'floor21-sort-th--active' : ''"
+             th:href="@{/admin/buildings(page=0, size=${pageSize}, sort='createdAt', dir=${sort == 'createdAt' and dir == 'desc' ? 'asc' : 'desc'}, projectId=${filterProjectId})}">
+            Created<span class="floor21-sort-th__icon" th:if="${sort == 'createdAt'}"
+                          th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
+          </a>
+        </th>
+        <th>
+          <a class="floor21-sort-th"
+             th:classappend="${sort == 'updatedAt'} ? 'floor21-sort-th--active' : ''"
+             th:href="@{/admin/buildings(page=0, size=${pageSize}, sort='updatedAt', dir=${sort == 'updatedAt' and dir == 'desc' ? 'asc' : 'desc'}, projectId=${filterProjectId})}">
+            Updated<span class="floor21-sort-th__icon" th:if="${sort == 'updatedAt'}"
+                          th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
+          </a>
+        </th>
         <th></th>
       </tr>
       </thead>
@@ -104,7 +120,14 @@
         <td th:text="${b.buildingName}"></td>
         <td th:text="${b.city}"></td>
         <td th:text="${b.totalFloors}"></td>
-        <td th:text="${b.active}"></td>
+        <td>
+          <span class="badge" th:classappend="${b.active} ? 'text-bg-success' : 'text-bg-secondary'"
+                th:text="${b.active} ? 'Yes' : 'No'">?</span>
+        </td>
+        <td class="text-nowrap small text-muted"
+            th:text="${b.createdAt != null ? #temporals.format(b.createdAt, 'dd MMM yyyy HH:mm') : '—'}">—</td>
+        <td class="text-nowrap small text-muted"
+            th:text="${b.updatedAt != null ? #temporals.format(b.updatedAt, 'dd MMM yyyy HH:mm') : '—'}">—</td>
         <td class="text-end text-nowrap">
           <a class="btn btn-sm btn-outline-primary" th:href="@{/buildings/{id}/flats(id=${b.id})}">Flats</a>
           <form class="d-inline"
@@ -120,7 +143,7 @@
         </td>
       </tr>
       <tr th:if="${#lists.isEmpty(buildings)}">
-        <td colspan="7" class="text-muted text-center py-4">
+        <td colspan="9" class="text-muted text-center py-4">
           No buildings found.
           <a th:href="@{/admin/buildings/new(builderId=${filterProjectId})}">Add a building</a>
         </td>

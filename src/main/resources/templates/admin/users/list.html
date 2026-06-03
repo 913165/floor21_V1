@@ -116,8 +116,8 @@
                 th:text="${u.active() != false} ? 'Yes' : 'No'">—</span>
         </td>
         <td class="text-nowrap small text-muted"
-            th:text="${u.createdAt() != null ? #temporals.format(u.createdAt(), 'dd MMM yyyy') : '—'}">—</td>
-        <td class="text-nowrap small"
+            th:text="${u.createdAt() != null ? #temporals.format(u.createdAt(), 'dd MMM yyyy HH:mm') : '—'}">—</td>
+        <td class="text-nowrap small text-muted"
             th:text="${u.lastLoginAt() != null ? #temporals.format(u.lastLoginAt(), 'dd MMM yyyy HH:mm') : '—'}">—</td>
         <td class="text-end text-nowrap">
           <a class="btn btn-sm btn-outline-secondary"

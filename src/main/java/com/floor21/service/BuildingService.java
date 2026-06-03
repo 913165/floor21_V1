@@ -34,7 +34,7 @@ public class BuildingService {
     public static final int BUILDINGS_MAX_PAGE_SIZE = 100;
 
     private static final Set<String> BUILDINGS_SORT_FIELDS =
-            Set.of("project", "buildingName", "city", "totalFloors", "active", "createdAt");
+            Set.of("project", "buildingName", "city", "totalFloors", "active", "createdAt", "updatedAt");
 
     private final BuildingRepository buildingRepository;
     private final BuilderRepository builderRepository;
@@ -176,6 +176,10 @@ public class BuildingService {
                             Comparator.comparing(
                                     Building::getCreatedAt,
                                     Comparator.nullsLast(Comparator.naturalOrder()));
+                    case "updatedAt" ->
+                            Comparator.comparing(
+                                    Building::getUpdatedAt,
+                                    Comparator.nullsLast(Comparator.naturalOrder()));
                     default ->
                             Comparator.comparing(
                                     b ->
@@ -266,8 +270,10 @@ public class BuildingService {
             throw new IllegalArgumentException("Cannot attach buildings to the platform admin account.");
         }
         validateBuildingForm(form);
+        Instant now = Instant.now();
         Building entity = new Building();
-        entity.setCreatedAt(Instant.now());
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
         applyFormFields(entity, builder, form, null, null, null);
         return buildingRepository.save(entity);
     }
@@ -288,6 +294,7 @@ public class BuildingService {
         String preserveFp2 = entity.getFloorPlan2Bhk();
         String preserveFp3 = entity.getFloorPlan3Bhk();
         applyFormFields(entity, builder, form, preserveFp1, preserveFp2, preserveFp3);
+        entity.setUpdatedAt(Instant.now());
         return buildingRepository.save(entity);
     }
 

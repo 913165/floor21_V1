@@ -99,9 +99,9 @@
                 th:text="${b.active()} ? 'Yes' : 'No'">?</span>
         </td>
         <td class="text-nowrap small text-muted"
-            th:text="${b.createdAt() != null ? #temporals.format(b.createdAt(), 'dd MMM yyyy') : '?'}">?</td>
+            th:text="${b.createdAt() != null ? #temporals.format(b.createdAt(), 'dd MMM yyyy HH:mm') : '?'}">?</td>
         <td class="text-nowrap small text-muted"
-            th:text="${b.updatedAt() != null ? #temporals.format(b.updatedAt(), 'dd MMM yyyy') : '?'}">?</td>
+            th:text="${b.updatedAt() != null ? #temporals.format(b.updatedAt(), 'dd MMM yyyy HH:mm') : '?'}">?</td>
         <td class="text-nowrap small"
             th:text="${b.lastLoginAt() != null ? #temporals.format(b.lastLoginAt(), 'dd MMM yyyy') : '?'}">?</td>
         <td class="text-end text-nowrap">

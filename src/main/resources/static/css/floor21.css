@@ -892,7 +892,7 @@ body.modal-open .modal-backdrop {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: #6366f1;
+  color: #b45309;
   margin: 0 0.35rem 0 0;
 }
 
@@ -976,15 +976,15 @@ body.modal-open .modal-backdrop {
   letter-spacing: 0.01em;
   white-space: normal;
   text-align: left;
-  color: #0f172a;
-  background: linear-gradient(155deg, #eef2ff 0%, #e0f2fe 42%, #fae8ff 100%);
-  border: 1px solid rgba(99, 102, 241, 0.35);
-  border-left: 4px solid #6366f1;
+  color: #1c1917;
+  background: linear-gradient(155deg, #fffbeb 0%, #fef3c7 48%, #fff7ed 100%);
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  border-left: 4px solid #d97706;
   border-radius: 12px;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.6) inset,
-    0 10px 28px -8px rgba(99, 102, 241, 0.35),
-    0 4px 12px rgba(15, 23, 42, 0.1);
+    0 0 0 1px rgba(255, 255, 255, 0.85) inset,
+    0 10px 28px -8px rgba(180, 83, 9, 0.28),
+    0 4px 14px rgba(15, 23, 42, 0.14);
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
@@ -1002,8 +1002,8 @@ body.modal-open .modal-backdrop {
   transform: translateX(-50%);
   border-style: solid;
   border-width: 7px 8px 0 8px;
-  border-color: #dbeafe transparent transparent transparent;
-  filter: drop-shadow(0 2px 2px rgba(99, 102, 241, 0.2));
+  border-color: #fef3c7 transparent transparent transparent;
+  filter: drop-shadow(0 2px 2px rgba(180, 83, 9, 0.18));
 }
 
 .flat-card--has-buyer:hover .flat-card-buyertip {
@@ -1311,35 +1311,36 @@ body.modal-open .modal-backdrop {
 }
 
 [data-bs-theme="dark"] .flat-card-buyertip__title {
-  color: #c4b5fd;
+  color: #fbbf24;
 }
 
 [data-bs-theme="dark"] .flat-card-buyertip__name {
-  color: #f8fafc;
+  color: #fafaf9;
 }
 
 [data-bs-theme="dark"] .flat-card-buyertip__row {
-  color: #cbd5e1;
+  color: #d6d3d1;
 }
 
 [data-bs-theme="dark"] .flat-card-buyertip__row span:first-child {
-  color: #a5b4fc;
+  color: #fcd34d;
 }
 
 [data-bs-theme="dark"] .flat-card-buyertip {
-  color: #f1f5f9;
-  background: linear-gradient(155deg, rgba(67, 56, 202, 0.95) 0%, rgba(30, 64, 175, 0.92) 48%, rgba(107, 33, 168, 0.9) 100%);
-  border-color: rgba(165, 180, 252, 0.45);
-  border-left-color: #c4b5fd;
+  color: #fafaf9;
+  background: linear-gradient(160deg, #44403c 0%, #292524 52%, #1c1917 100%);
+  border-color: rgba(251, 191, 36, 0.45);
+  border-left-color: #fbbf24;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
-    0 12px 36px -6px rgba(99, 102, 241, 0.5),
-    0 4px 16px rgba(0, 0, 0, 0.4);
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+    0 0 0 2px rgba(0, 0, 0, 0.55),
+    0 14px 40px -6px rgba(0, 0, 0, 0.65),
+    0 0 24px rgba(251, 191, 36, 0.15);
 }
 
 [data-bs-theme="dark"] .flat-card-buyertip::after {
-  border-top-color: rgba(30, 64, 175, 0.98);
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+  border-top-color: #292524;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
 }
 
 .floor-label {
