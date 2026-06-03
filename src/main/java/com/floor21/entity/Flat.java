@@ -73,6 +73,10 @@ public class Flat {
     @Column(name = "merged_absorbed_flat_id")
     private UUID mergedAbsorbedFlatId;
 
+    /** When set, this parking slot is assigned to a residential flat (many slots may share one flat). */
+    @Column(name = "linked_residential_flat_id")
+    private UUID linkedResidentialFlatId;
+
     @Column(name = "pre_merge_bhk_type", length = 20)
     private String preMergeBhkType;
 

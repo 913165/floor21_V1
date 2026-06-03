@@ -17,6 +17,10 @@
   var selectedParkingSection = false;
   var selectedParkingFloorNumber = null;
   var parkingConfigFloorNumber = null;
+  var parkingLinkParkingFlatId = null;
+  var parkingLinkFloorNumber = null;
+  var parkingResidentialCache = null;
+  var parkingSlotsCache = null;
 
   /** Bootstrap backdrop is on body; modals must be too or backdrop blocks clicks. */
   function mountModalsOnBody() {
@@ -25,6 +29,7 @@
       "floor-plan-modal",
       "flat-add-modal",
       "parking-config-modal",
+      "parking-link-modal",
     ].forEach(function (id) {
       var el = document.getElementById(id);
       if (el && el.parentElement !== document.body) {
@@ -76,16 +81,26 @@
     });
   }
 
+  function isResidentialFlatForParkingLinks(cardEl) {
+    if (!cardEl) return false;
+    if (cardEl.dataset.duplexPrimary === "true" || cardEl.dataset.mergePrimary === "true") {
+      return true;
+    }
+    return !isNonBookableUnit(cardEl);
+  }
+
   function setParkingSectionMode(on) {
     var modal = document.getElementById("flat-details-modal");
     if (modal) modal.classList.toggle("modal--parking-section", on);
     var note = document.getElementById("panel-parking-note");
     var actions = document.getElementById("panel-booking-actions");
+    var parkingLinks = document.getElementById("panel-parking-links");
     var adminPanel = document.getElementById("flat-admin-panel");
     var saveRow = document.getElementById("admin-save-row");
     var saveBtn = document.getElementById("admin-save-btn");
     if (note) note.classList.toggle("d-none", !on);
     if (actions) actions.classList.toggle("d-none", on);
+    if (parkingLinks) parkingLinks.classList.toggle("d-none", on);
     if (adminPanel) adminPanel.classList.toggle("d-none", on);
     if (saveRow) {
       saveRow.classList.toggle("d-none", !on || !isPlatformAdminEdit());
@@ -906,14 +921,26 @@
     ].join("|");
   }
 
-  function showParkingPlanInSection(plan) {
+  function parkingPlanLinkSignature(plan) {
+    if (!plan || !plan.slots) return "";
+    return plan.slots
+      .map(function (s) {
+        return s.slotNumber + ":" + (s.linkedResidentialFlatId || "");
+      })
+      .join("|");
+  }
+
+  function showParkingPlanInSection(plan, force) {
     if (!plan) return;
     var section = parkingSectionForFloor(plan.floorNumber);
     if (!section) return;
     var root = parkingPlanRootForSection(section);
+    var linkSig = parkingPlanLinkSignature(plan);
     if (
+      !force &&
       root &&
       root.dataset.loadedSlots === String(plan.slotCount) &&
+      root.dataset.loadedLinks === linkSig &&
       root.querySelector(".parking-plan__sheet")
     ) {
       section.classList.add("flat-parking-section--split");
@@ -922,7 +949,10 @@
       return;
     }
     renderParkingPlan(plan, root);
-    if (root) root.dataset.loadedSlots = String(plan.slotCount);
+    if (root) {
+      root.dataset.loadedSlots = String(plan.slotCount);
+      root.dataset.loadedLinks = linkSig;
+    }
     section.classList.add("flat-parking-section--split");
     var planPane = section.querySelector(".flat-parking-section__plan");
     if (planPane) planPane.setAttribute("aria-hidden", "false");
@@ -963,6 +993,14 @@
     el.classList.remove("d-none");
   }
 
+  function findPlanSlot(plan, slotNumber) {
+    if (!plan || !plan.slots) return null;
+    for (var i = 0; i < plan.slots.length; i++) {
+      if (plan.slots[i].slotNumber === slotNumber) return plan.slots[i];
+    }
+    return null;
+  }
+
   function slotFlatNumber(plan, slotNumber) {
     if (!plan || !plan.slots) return "";
     for (var i = 0; i < plan.slots.length; i++) {
@@ -973,29 +1011,75 @@
     return "";
   }
 
-  function renderParkingPlanSlot(slotNumber, flatNumber) {
+  function renderParkingCarSvg() {
     return (
-      '<div class="parking-plan__slot" title="' +
-      (flatNumber ? "Unit " + flatNumber : "Slot " + slotNumber) +
-      '">' +
+      '<svg class="parking-plan__car-svg" viewBox="0 0 48 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<line class="parking-plan__bay-line" x1="2.5" y1="1" x2="2.5" y2="95"/>' +
+      '<line class="parking-plan__bay-line" x1="45.5" y1="1" x2="45.5" y2="95"/>' +
+      '<path class="parking-plan__car-body" d="M24 6 C18.5 6 14.5 9.5 13 15 L11.5 20 10 26 9 32 Q8.5 37 9 42 L9.5 48 Q9 53 9.5 58 L10.5 64 11.5 70 12.5 75 C13.5 80 16 84 19.5 86 L24 88 C25 88.8 27 88.8 28 88 L32.5 86 C36 84 38.5 80 39.5 75 L40.5 70 41.5 64 42.5 58 Q43 53 42.5 48 L43 42 Q42.5 37 43 32 L42 26 40.5 20 39 15 C37.5 9.5 33.5 6 28 6 Z"/>' +
+      '<path class="parking-plan__car-glass" d="M15 26 L33 26 L31.5 41 L16.5 41 Z"/>' +
+      '<path class="parking-plan__car-glass" d="M16 54 L32 54 L30.5 68 L17.5 68 Z"/>' +
+      '<path class="parking-plan__car-detail" d="M14 18 Q24 20 34 18"/>' +
+      '<path class="parking-plan__car-detail" d="M15 74 Q24 76 33 74"/>' +
+      '<ellipse class="parking-plan__car-mirror" cx="6" cy="36" rx="2.4" ry="3.4"/>' +
+      '<ellipse class="parking-plan__car-mirror" cx="42" cy="36" rx="2.4" ry="3.4"/>' +
+      "</svg>"
+    );
+  }
+
+  function renderParkingPlanSlot(slot, canLink) {
+    if (!slot) return "";
+    var slotNumber = slot.slotNumber;
+    var flatNumber = slot.flatNumber || "";
+    var linked = slot.linkedResidentialFlatNumber || "";
+    var linkedClass = linked ? " parking-plan__slot--linked" : "";
+    var clickable = canLink ? " parking-plan__slot--clickable" : "";
+    var title = linked
+      ? "Slot " + slotNumber + " — linked to flat " + linked
+      : canLink
+        ? "Slot " + slotNumber + " — click to link to a flat"
+        : flatNumber
+          ? "Unit " + flatNumber
+          : "Slot " + slotNumber;
+    return (
+      '<div class="parking-plan__slot' +
+      linkedClass +
+      clickable +
+      '" data-parking-flat-id="' +
+      (slot.flatId || "") +
+      '" data-slot-number="' +
+      slotNumber +
+      '"' +
+      (slot.linkedResidentialFlatId
+        ? ' data-linked-flat-id="' + slot.linkedResidentialFlatId + '"'
+        : "") +
+      ' title="' +
+      title.replace(/"/g, "&quot;") +
+      '"' +
+      (canLink ? ' role="button" tabindex="0"' : "") +
+      ">" +
+      '<div class="parking-plan__bay">' +
+      renderParkingCarSvg() +
       '<span class="parking-plan__slot-no">' +
       slotNumber +
       "</span>" +
-      '<span class="parking-plan__car" aria-hidden="true"></span>' +
+      (linked ? '<span class="parking-plan__slot-flat">' + linked + "</span>" : "") +
+      "</div>" +
       "</div>"
     );
   }
 
   function renderParkingPlan(plan, rootEl) {
     if (!rootEl || !plan) return;
+    var canLink = isPlatformAdminEdit();
     var topHtml = (plan.topRow || [])
       .map(function (n) {
-        return renderParkingPlanSlot(n, slotFlatNumber(plan, n));
+        return renderParkingPlanSlot(findPlanSlot(plan, n), canLink);
       })
       .join("");
     var bottomHtml = (plan.bottomRow || [])
       .map(function (n) {
-        return renderParkingPlanSlot(n, slotFlatNumber(plan, n));
+        return renderParkingPlanSlot(findPlanSlot(plan, n), canLink);
       })
       .join("");
     rootEl.innerHTML =
@@ -1083,6 +1167,292 @@
       bootstrap.Modal.getInstance(configModal).hide();
     }
     await refreshGrid();
+  }
+
+  function showParkingLinkError(message) {
+    var el = document.getElementById("parking-link-error");
+    if (!el) return;
+    if (!message) {
+      el.textContent = "";
+      el.classList.add("d-none");
+      return;
+    }
+    el.textContent = message;
+    el.classList.remove("d-none");
+  }
+
+  function invalidateParkingPlanCache(floorNumber) {
+    var section = parkingSectionForFloor(floorNumber);
+    if (!section) return;
+    var root = parkingPlanRootForSection(section);
+    if (!root) return;
+    delete root.dataset.loadedSlots;
+    delete root.dataset.loadedLinks;
+  }
+
+  async function loadResidentialFlatOptions(force) {
+    if (parkingResidentialCache && !force) return parkingResidentialCache;
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    if (!buildingId) return [];
+    var res = await fetch(
+      appRoot() + "/buildings/" + buildingId + "/flats/residential-for-parking-link",
+      { headers: { Accept: "application/json" } }
+    );
+    if (!res.ok) return [];
+    parkingResidentialCache = await res.json();
+    return parkingResidentialCache;
+  }
+
+  async function openParkingLinkModal(slotEl) {
+    if (!slotEl || !isPlatformAdminEdit()) return;
+    mountModalsOnBody();
+    parkingLinkParkingFlatId = slotEl.getAttribute("data-parking-flat-id");
+    var section = slotEl.closest(".flat-parking-section");
+    parkingLinkFloorNumber = section ? section.dataset.floorNumber : null;
+    var slotNumber = slotEl.getAttribute("data-slot-number");
+    var linkedId = slotEl.getAttribute("data-linked-flat-id") || "";
+    var modalEl = document.getElementById("parking-link-modal");
+    var label = document.getElementById("parking-link-slot-label");
+    var select = document.getElementById("parking-link-flat");
+    if (!modalEl || !parkingLinkParkingFlatId || typeof bootstrap === "undefined" || !bootstrap.Modal) {
+      return;
+    }
+    if (label) {
+      label.textContent =
+        "Parking slot " +
+        (slotNumber || "") +
+        (parkingLinkFloorNumber ? " · Floor " + parkingLinkFloorNumber : "");
+    }
+    showParkingLinkError("");
+    if (select) {
+      select.innerHTML = '<option value="">— Not linked —</option>';
+      select.disabled = true;
+    }
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    var options = await loadResidentialFlatOptions(false);
+    if (!select) return;
+    options.forEach(function (opt) {
+      var o = document.createElement("option");
+      o.value = opt.id;
+      o.textContent =
+        opt.flatNumber + " (Floor " + opt.floorNumber + ", " + opt.bhkType + ")";
+      if (linkedId && opt.id === linkedId) o.selected = true;
+      select.appendChild(o);
+    });
+    select.disabled = false;
+  }
+
+  async function postParkingLink(parkingFlatId, residentialFlatId) {
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    return fetch(appRoot() + "/flats/" + parkingFlatId + "/parking-link", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({ residentialFlatId: residentialFlatId }),
+    });
+  }
+
+  function refreshParkingPlansForFloors(floorNumbers) {
+    var seen = {};
+    (floorNumbers || []).forEach(function (fn) {
+      if (!fn || seen[fn]) return;
+      seen[fn] = true;
+      invalidateParkingPlanCache(fn);
+      fetchParkingPlan(fn).then(function (plan) {
+        if (plan) showParkingPlanInSection(plan, true);
+      });
+    });
+  }
+
+  async function afterParkingLinkChanged(affectedFloors) {
+    parkingSlotsCache = null;
+    refreshParkingPlansForFloors(affectedFloors);
+    if (selectedFlatId && !selectedParkingSection) {
+      await loadFlatParkingLinks(selectedFlatId);
+    }
+  }
+
+  function showFlatParkingLinksError(message) {
+    var el = document.getElementById("panel-parking-links-error");
+    if (!el) return;
+    if (!message) {
+      el.textContent = "";
+      el.classList.add("d-none");
+      return;
+    }
+    el.textContent = message;
+    el.classList.remove("d-none");
+  }
+
+  function renderFlatParkingLinksList(slots, canEdit) {
+    var list = document.getElementById("panel-parking-links-list");
+    var empty = document.getElementById("panel-parking-links-empty");
+    if (!list) return;
+    list.innerHTML = "";
+    if (!slots || !slots.length) {
+      if (empty) empty.classList.remove("d-none");
+      return;
+    }
+    if (empty) empty.classList.add("d-none");
+    slots.forEach(function (slot) {
+      var li = document.createElement("li");
+      li.className = "flat-parking-links-list__item";
+      var label = document.createElement("span");
+      label.textContent =
+        "Floor " +
+        slot.floorNumber +
+        " · Slot " +
+        slot.slotNumber +
+        " (" +
+        slot.flatNumber +
+        ")";
+      li.appendChild(label);
+      if (canEdit) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn-link btn-sm text-danger px-1 py-0 flat-parking-links-unlink";
+        btn.setAttribute("data-parking-flat-id", slot.parkingFlatId);
+        btn.setAttribute("data-floor-number", String(slot.floorNumber));
+        btn.textContent = "Remove";
+        li.appendChild(btn);
+      }
+      list.appendChild(li);
+    });
+  }
+
+  async function loadFlatParkingLinks(flatId) {
+    if (!flatId) return;
+    showFlatParkingLinksError("");
+    var res = await fetch(appRoot() + "/flats/" + flatId + "/linked-parking", {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      showFlatParkingLinksError(await parseErrorResponse(res));
+      renderFlatParkingLinksList([], false);
+      return;
+    }
+    var slots = await res.json();
+    renderFlatParkingLinksList(slots, isPlatformAdminEdit());
+    if (isPlatformAdminEdit()) {
+      await populateParkingSlotAddSelect(flatId, slots);
+    }
+  }
+
+  async function loadParkingSlotOptions(force) {
+    if (parkingSlotsCache && !force) return parkingSlotsCache;
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    if (!buildingId) return [];
+    var res = await fetch(appRoot() + "/buildings/" + buildingId + "/parking-slots-for-link", {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return [];
+    parkingSlotsCache = await res.json();
+    return parkingSlotsCache;
+  }
+
+  async function populateParkingSlotAddSelect(residentialFlatId, linkedSlots) {
+    var select = document.getElementById("panel-parking-add");
+    if (!select) return;
+    var linkedIds = {};
+    (linkedSlots || []).forEach(function (s) {
+      linkedIds[s.parkingFlatId] = true;
+    });
+    select.innerHTML = '<option value="">— Select slot —</option>';
+    select.disabled = true;
+    var options = await loadParkingSlotOptions(false);
+    options.forEach(function (opt) {
+      if (opt.linkedResidentialFlatId && opt.linkedResidentialFlatId !== residentialFlatId) {
+        return;
+      }
+      if (linkedIds[opt.id]) {
+        return;
+      }
+      var o = document.createElement("option");
+      o.value = opt.id;
+      o.textContent =
+        "Floor " +
+        opt.floorNumber +
+        " · Slot " +
+        opt.slotNumber +
+        " (" +
+        opt.flatNumber +
+        ")";
+      select.appendChild(o);
+    });
+    select.disabled = false;
+  }
+
+  function syncFlatParkingLinksPanel(cardEl) {
+    var section = document.getElementById("panel-parking-links");
+    var admin = document.getElementById("panel-parking-links-admin");
+    if (!section) return;
+    var show = isResidentialFlatForParkingLinks(cardEl);
+    section.classList.toggle("d-none", !show);
+    if (!show) {
+      showFlatParkingLinksError("");
+      return;
+    }
+    if (admin) {
+      admin.classList.toggle("d-none", !isPlatformAdminEdit());
+    }
+    if (cardEl.dataset.flatId) {
+      loadFlatParkingLinks(cardEl.dataset.flatId);
+    }
+  }
+
+  async function linkParkingFromFlatPanel() {
+    if (!selectedFlatId || !isPlatformAdminEdit()) return;
+    var select = document.getElementById("panel-parking-add");
+    if (!select || !select.value) {
+      showFlatParkingLinksError("Select a parking slot to link.");
+      return;
+    }
+    showFlatParkingLinksError("");
+    var parkingFlatId = select.value;
+    var floorNumber = null;
+    var options = await loadParkingSlotOptions(false);
+    options.forEach(function (opt) {
+      if (opt.id === parkingFlatId) floorNumber = opt.floorNumber;
+    });
+    var res = await postParkingLink(parkingFlatId, selectedFlatId);
+    if (!res.ok) {
+      showFlatParkingLinksError(await parseErrorResponse(res));
+      return;
+    }
+    select.value = "";
+    await afterParkingLinkChanged(floorNumber != null ? [floorNumber] : []);
+  }
+
+  async function unlinkParkingFromFlatPanel(parkingFlatId, floorNumber) {
+    if (!parkingFlatId || !isPlatformAdminEdit()) return;
+    showFlatParkingLinksError("");
+    var res = await postParkingLink(parkingFlatId, null);
+    if (!res.ok) {
+      showFlatParkingLinksError(await parseErrorResponse(res));
+      return;
+    }
+    await afterParkingLinkChanged(floorNumber != null ? [floorNumber] : []);
+  }
+
+  async function saveParkingLink() {
+    if (!parkingLinkParkingFlatId) return;
+    var select = document.getElementById("parking-link-flat");
+    if (!select) return;
+    showParkingLinkError("");
+    var residentialFlatId = select.value || null;
+    var res = await postParkingLink(parkingLinkParkingFlatId, residentialFlatId);
+    if (!res.ok) {
+      showParkingLinkError(await parseErrorResponse(res));
+      return;
+    }
+    var linkModal = document.getElementById("parking-link-modal");
+    if (linkModal && bootstrap.Modal.getInstance(linkModal)) {
+      bootstrap.Modal.getInstance(linkModal).hide();
+    }
+    await afterParkingLinkChanged(
+      parkingLinkFloorNumber ? [parkingLinkFloorNumber] : []
+    );
   }
 
   function updateParkingSectionElement(el, floor) {
@@ -1201,6 +1571,8 @@
   async function refreshGrid() {
     var grid = document.getElementById("flat-grid");
     if (!grid) return;
+    parkingResidentialCache = null;
+    parkingSlotsCache = null;
     var buildingId = grid.getAttribute("data-building-id");
     if (!buildingId) return;
     var res = await fetch(appRoot() + "/buildings/" + buildingId + "/flats/data", {
@@ -1471,6 +1843,7 @@
     applyBookingSelectionHighlight();
     syncActionButtons(el);
     syncAdminPanel(el);
+    syncFlatParkingLinksPanel(el);
     if (showModal !== false) {
       openFlatDetailsModal();
     }
@@ -1540,6 +1913,30 @@
     if (parkingConfigSave) {
       parkingConfigSave.addEventListener("click", function () {
         saveParkingConfig();
+      });
+    }
+    var parkingLinkSave = document.getElementById("parking-link-save");
+    if (parkingLinkSave) {
+      parkingLinkSave.addEventListener("click", function () {
+        saveParkingLink();
+      });
+    }
+    var parkingAddBtn = document.getElementById("panel-parking-add-btn");
+    if (parkingAddBtn) {
+      parkingAddBtn.addEventListener("click", function () {
+        linkParkingFromFlatPanel();
+      });
+    }
+    var parkingLinksList = document.getElementById("panel-parking-links-list");
+    if (parkingLinksList) {
+      parkingLinksList.addEventListener("click", function (e) {
+        var unlink = e.target.closest(".flat-parking-links-unlink");
+        if (!unlink) return;
+        e.preventDefault();
+        unlinkParkingFromFlatPanel(
+          unlink.getAttribute("data-parking-flat-id"),
+          unlink.getAttribute("data-floor-number")
+        );
       });
     }
     var panelFp = document.getElementById("panel-floor-plan-btn");
@@ -2001,6 +2398,13 @@
             if (cardFromQuick && canOpenFlatPanel(cardFromQuick)) {
               window.floor21SelectFlat(cardFromQuick);
             }
+            return;
+          }
+          var parkingSlot = e.target.closest(".parking-plan__slot--clickable");
+          if (parkingSlot) {
+            e.preventDefault();
+            e.stopPropagation();
+            openParkingLinkModal(parkingSlot);
             return;
           }
           var parkingConfigure = e.target.closest(".flat-parking-configure-link");

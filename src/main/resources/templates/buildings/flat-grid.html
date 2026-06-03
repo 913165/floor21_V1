@@ -442,6 +442,25 @@
             <a id="book-btn" href="#" class="btn btn-success">Book this flat</a>
             <a id="client-info-btn" href="#" class="btn btn-outline-primary d-none">Client info</a>
           </div>
+          <div id="panel-parking-links" class="border-top pt-3 mt-3 d-none">
+            <h6 class="mb-2">Linked parking</h6>
+            <ul id="panel-parking-links-list" class="flat-parking-links-list list-unstyled mb-2"></ul>
+            <p class="text-muted small mb-2 d-none" id="panel-parking-links-empty">No parking slots linked to this flat.</p>
+            <div id="panel-parking-links-admin" class="d-none" sec:authorize="hasRole('SUPER_ADMIN')">
+              <div class="row g-2 align-items-end">
+                <div class="col-md-8">
+                  <label class="form-label small mb-0" for="panel-parking-add">Add parking slot</label>
+                  <select class="form-select form-select-sm" id="panel-parking-add">
+                    <option value="">— Select slot —</option>
+                  </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                  <button type="button" class="btn btn-sm btn-outline-primary w-100" id="panel-parking-add-btn">Link slot</button>
+                </div>
+              </div>
+            </div>
+            <p class="text-danger small mb-0 d-none" id="panel-parking-links-error"></p>
+          </div>
           <div id="flat-admin-panel" class="border-top pt-3 mt-3 d-none" sec:authorize="hasRole('SUPER_ADMIN')">
             <h6 class="text-primary mb-2">Platform admin — layout tools</h6>
             <p class="text-muted small mb-2">
@@ -524,6 +543,30 @@
     </div>
   </div>
 
+  <div class="modal fade" id="parking-link-modal" tabindex="-1" aria-labelledby="parking-link-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content shadow">
+        <div class="modal-header py-2 px-3">
+          <h6 class="modal-title mb-0" id="parking-link-modal-title">Link parking slot</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body pt-2 pb-3">
+          <p class="text-muted small mb-2" id="parking-link-slot-label">Slot</p>
+          <label class="form-label small mb-1" for="parking-link-flat">Residential flat</label>
+          <select class="form-select form-select-sm" id="parking-link-flat">
+            <option value="">— Not linked —</option>
+          </select>
+          <p class="text-muted small mt-2 mb-0">One flat can have multiple parking slots. Choose a flat or clear the link.</p>
+          <p class="text-danger small mb-0 mt-2 d-none" id="parking-link-error"></p>
+        </div>
+        <div class="modal-footer py-2 px-3">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-sm btn-primary" id="parking-link-save">Save link</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal fade" id="floor-plan-modal" tabindex="-1" aria-labelledby="floor-plan-modal-title" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable floor-plan-modal-dialog">
       <div class="modal-content shadow">
@@ -570,7 +613,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=no-grid-poll)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=parking-car-svg)}"></script>
 </div>
 </body>
 </html>

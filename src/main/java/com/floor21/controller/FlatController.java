@@ -5,6 +5,7 @@ import com.floor21.dto.FlatMergeCandidateDto;
 import com.floor21.dto.FlatMergeDto;
 import com.floor21.dto.FloorMergeSplitResult;
 import com.floor21.dto.FlatPartnerAssignDto;
+import com.floor21.dto.ParkingLinkDto;
 import com.floor21.entity.Flat;
 import com.floor21.service.FlatService;
 import com.floor21.service.PartnerFlatAllocationService;
@@ -96,6 +97,28 @@ public class FlatController {
                             "ok", true,
                             "status", flat.getStatus(),
                             "active", !"CANCELLED".equals(flat.getStatus())));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/flats/{id}/linked-parking")
+    @ResponseBody
+    public ResponseEntity<?> linkedParking(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(flatService.listLinkedParkingForResidentialFlat(id));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(value = "/flats/{id}/parking-link", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> linkParkingToResidential(
+            @PathVariable UUID id, @RequestBody ParkingLinkDto body) {
+        try {
+            return ResponseEntity.ok(flatService.linkParkingToResidential(id, body));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }

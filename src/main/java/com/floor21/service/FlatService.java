@@ -8,8 +8,12 @@ import com.floor21.dto.FlatGridFloorDto;
 import com.floor21.dto.FlatMergeCandidateDto;
 import com.floor21.dto.FlatMergeDto;
 import com.floor21.dto.FloorMergeSplitResult;
+import com.floor21.dto.LinkedParkingSlotDto;
 import com.floor21.dto.ParkingFloorConfigDto;
+import com.floor21.dto.ParkingLinkDto;
 import com.floor21.dto.ParkingPlanDto;
+import com.floor21.dto.ParkingResidentialOptionDto;
+import com.floor21.dto.ParkingSlotOptionDto;
 import com.floor21.entity.Booking;
 import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
@@ -184,7 +188,170 @@ public class FlatService {
         return buildParkingPlan(floorNumber, existing);
     }
 
-    private static ParkingPlanDto buildParkingPlan(int floorNumber, List<Flat> flats) {
+    @Transactional(readOnly = true)
+    public List<ParkingResidentialOptionDto> listResidentialFlatsForParkingLink(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        return flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
+                        buildingId, builderId)
+                .stream()
+                .filter(this::isLinkableResidentialFlat)
+                .sorted(
+                        Comparator.comparing(Flat::getFloorNumber)
+                                .thenComparing(Flat::getUnitNumber))
+                .map(
+                        f ->
+                                new ParkingResidentialOptionDto(
+                                        f.getId(),
+                                        f.getFlatNumber(),
+                                        f.getFloorNumber(),
+                                        f.getBhkType()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<LinkedParkingSlotDto> listLinkedParkingForResidentialFlat(UUID residentialFlatId) {
+        Flat residential =
+                flatRepository
+                        .findByIdWithBuilding(residentialFlatId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
+        buildingService.resolveForAccess(residential.getBuilding().getId());
+        if (FlatUnitTypes.isParkingCode(residential.getBhkType())
+                || Boolean.TRUE.equals(residential.getParking())) {
+            return List.of();
+        }
+        UUID buildingId = residential.getBuilding().getId();
+        UUID builderId = residential.getBuilding().getBuilder().getId();
+        return flatRepository
+                .findLinkedParkingByResidentialFlatId(buildingId, builderId, residentialFlatId)
+                .stream()
+                .map(
+                        f ->
+                                new LinkedParkingSlotDto(
+                                        f.getId(),
+                                        f.getFlatNumber(),
+                                        f.getFloorNumber(),
+                                        f.getUnitNumber() != null ? f.getUnitNumber() : 0))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ParkingSlotOptionDto> listParkingSlotsForLink(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        int parkingFloors = building.getParkingFloors() != null ? building.getParkingFloors() : 0;
+        List<Flat> parkingFlats = new ArrayList<>();
+        for (int floor = 1; floor <= parkingFloors; floor++) {
+            if (!ParkingFloorConfigUtil.isConfigured(building, floor)) {
+                continue;
+            }
+            List<Flat> flats =
+                    flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                            buildingId, builderId, floor);
+            for (Flat flat : flats) {
+                if (FlatUnitTypes.isParkingCode(flat.getBhkType())
+                        || Boolean.TRUE.equals(flat.getParking())) {
+                    parkingFlats.add(flat);
+                }
+            }
+        }
+        java.util.Set<UUID> linkedIds =
+                parkingFlats.stream()
+                        .map(Flat::getLinkedResidentialFlatId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+        Map<UUID, Flat> linkedById =
+                linkedIds.isEmpty()
+                        ? Map.of()
+                        : flatRepository.findAllById(linkedIds).stream()
+                                .collect(Collectors.toMap(Flat::getId, f -> f));
+        return parkingFlats.stream()
+                .sorted(
+                        Comparator.comparing(Flat::getFloorNumber)
+                                .thenComparing(Flat::getUnitNumber))
+                .map(
+                        p -> {
+                            UUID linkedId = p.getLinkedResidentialFlatId();
+                            String linkedNumber = null;
+                            if (linkedId != null) {
+                                Flat linked = linkedById.get(linkedId);
+                                if (linked != null) {
+                                    linkedNumber = linked.getFlatNumber();
+                                }
+                            }
+                            return new ParkingSlotOptionDto(
+                                    p.getId(),
+                                    p.getFlatNumber(),
+                                    p.getFloorNumber(),
+                                    p.getUnitNumber() != null ? p.getUnitNumber() : 0,
+                                    linkedId,
+                                    linkedNumber);
+                        })
+                .toList();
+    }
+
+    @Transactional
+    public ParkingPlanDto.ParkingPlanSlotDto linkParkingToResidential(
+            UUID parkingFlatId, ParkingLinkDto dto) {
+        Flat parking = requireFlatForAdmin(parkingFlatId);
+        if (!FlatUnitTypes.isParkingCode(parking.getBhkType())
+                && !Boolean.TRUE.equals(parking.getParking())) {
+            throw new IllegalArgumentException("Only parking slots can be linked to a flat.");
+        }
+        UUID residentialId = dto != null ? dto.residentialFlatId() : null;
+        String linkedNumber = null;
+        if (residentialId == null) {
+            parking.setLinkedResidentialFlatId(null);
+        } else {
+            Flat residential = requireLinkableResidentialFlat(residentialId);
+            if (!residential.getBuilding().getId().equals(parking.getBuilding().getId())) {
+                throw new IllegalArgumentException("Residential flat must be in the same building.");
+            }
+            parking.setLinkedResidentialFlatId(residentialId);
+            linkedNumber = residential.getFlatNumber();
+        }
+        flatRepository.save(parking);
+        int slotNumber =
+                parking.getUnitNumber() != null && parking.getUnitNumber() > 0
+                        ? parking.getUnitNumber()
+                        : 0;
+        return new ParkingPlanDto.ParkingPlanSlotDto(
+                slotNumber,
+                parking.getId(),
+                parking.getFlatNumber(),
+                residentialId,
+                linkedNumber);
+    }
+
+    private boolean isLinkableResidentialFlat(Flat flat) {
+        if (flat == null) {
+            return false;
+        }
+        if (FlatUnitTypes.isParkingCode(flat.getBhkType())
+                || Boolean.TRUE.equals(flat.getParking())) {
+            return false;
+        }
+        if (FlatUnitTypes.isAmenityCode(flat.getBhkType())) {
+            return false;
+        }
+        if (FlatUnitTypes.isMergeAbsorbed(flat)) {
+            return false;
+        }
+        if (FlatUnitTypes.isDuplexSecondary(flat)) {
+            return false;
+        }
+        return true;
+    }
+
+    private Flat requireLinkableResidentialFlat(UUID flatId) {
+        Flat flat = requireFlatForAdmin(flatId);
+        if (!isLinkableResidentialFlat(flat)) {
+            throw new IllegalArgumentException("Choose a residential flat to link parking.");
+        }
+        return flat;
+    }
+
+    private ParkingPlanDto buildParkingPlan(int floorNumber, List<Flat> flats) {
         int n = flats.size();
         int bottomCount = (int) Math.ceil(n / 2.0);
         List<Integer> bottomRow = new ArrayList<>();
@@ -196,8 +363,33 @@ public class FlatService {
             topRow.add(slot);
         }
         List<ParkingPlanDto.ParkingPlanSlotDto> slots = new ArrayList<>();
+        java.util.Set<UUID> linkedIds =
+                flats.stream()
+                        .map(Flat::getLinkedResidentialFlatId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+        Map<UUID, Flat> linkedById =
+                linkedIds.isEmpty()
+                        ? Map.of()
+                        : flatRepository.findAllById(linkedIds).stream()
+                                .collect(Collectors.toMap(Flat::getId, f -> f));
         for (int i = 0; i < flats.size(); i++) {
-            slots.add(new ParkingPlanDto.ParkingPlanSlotDto(i + 1, flats.get(i).getFlatNumber()));
+            Flat parking = flats.get(i);
+            UUID linkedId = parking.getLinkedResidentialFlatId();
+            String linkedNumber = null;
+            if (linkedId != null) {
+                Flat linked = linkedById.get(linkedId);
+                if (linked != null) {
+                    linkedNumber = linked.getFlatNumber();
+                }
+            }
+            slots.add(
+                    new ParkingPlanDto.ParkingPlanSlotDto(
+                            i + 1,
+                            parking.getId(),
+                            parking.getFlatNumber(),
+                            linkedId,
+                            linkedNumber));
         }
         return new ParkingPlanDto(floorNumber, n, topRow, bottomRow, slots);
     }

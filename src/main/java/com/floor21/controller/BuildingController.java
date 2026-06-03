@@ -307,6 +307,27 @@ public class BuildingController {
         }
     }
 
+    @GetMapping("/{id}/flats/residential-for-parking-link")
+    @ResponseBody
+    public ResponseEntity<?> residentialFlatsForParkingLink(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(flatService.listResidentialFlatsForParkingLink(id));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/parking-slots-for-link")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> parkingSlotsForLink(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(flatService.listParkingSlotsForLink(id));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     @PostMapping("/{id}/flats/generate")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public String generate(

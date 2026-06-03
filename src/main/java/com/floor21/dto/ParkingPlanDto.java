@@ -1,6 +1,7 @@
 package com.floor21.dto;
 
 import java.util.List;
+import java.util.UUID;
 
 public record ParkingPlanDto(
         int floorNumber,
@@ -9,5 +10,10 @@ public record ParkingPlanDto(
         List<Integer> bottomRow,
         List<ParkingPlanSlotDto> slots) {
 
-    public record ParkingPlanSlotDto(int slotNumber, String flatNumber) {}
+    public record ParkingPlanSlotDto(
+            int slotNumber,
+            UUID flatId,
+            String flatNumber,
+            UUID linkedResidentialFlatId,
+            String linkedResidentialFlatNumber) {}
 }
