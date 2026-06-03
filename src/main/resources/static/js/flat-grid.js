@@ -893,12 +893,36 @@
     return sectionEl.querySelector(".flat-parking-section__plan-root");
   }
 
+  function parkingFloorSnapshot(floor) {
+    var first = floor.flats && floor.flats[0];
+    return [
+      floor.floorNumber,
+      floor.parkingSlotCount || 0,
+      floor.parkingRangeLabel || "",
+      parkingSectionConfigured(floor) ? "1" : "0",
+      first ? first.id : "",
+      first && first.areaSqft != null ? first.areaSqft : "",
+      first && first.basePrice != null ? first.basePrice : "",
+    ].join("|");
+  }
+
   function showParkingPlanInSection(plan) {
     if (!plan) return;
     var section = parkingSectionForFloor(plan.floorNumber);
     if (!section) return;
     var root = parkingPlanRootForSection(section);
+    if (
+      root &&
+      root.dataset.loadedSlots === String(plan.slotCount) &&
+      root.querySelector(".parking-plan__sheet")
+    ) {
+      section.classList.add("flat-parking-section--split");
+      var planPane = section.querySelector(".flat-parking-section__plan");
+      if (planPane) planPane.setAttribute("aria-hidden", "false");
+      return;
+    }
     renderParkingPlan(plan, root);
+    if (root) root.dataset.loadedSlots = String(plan.slotCount);
     section.classList.add("flat-parking-section--split");
     var planPane = section.querySelector(".flat-parking-section__plan");
     if (planPane) planPane.setAttribute("aria-hidden", "false");
@@ -910,6 +934,14 @@
     sections.forEach(function (section) {
       var fn = section.dataset.floorNumber;
       if (!fn) return;
+      var root = parkingPlanRootForSection(section);
+      if (
+        root &&
+        root.dataset.loadedSlots === section.dataset.slotCount &&
+        root.querySelector(".parking-plan__sheet")
+      ) {
+        return;
+      }
       tasks.push(
         fetchParkingPlan(fn).then(function (plan) {
           if (plan) showParkingPlanInSection(plan);
@@ -1057,6 +1089,8 @@
     if (!el || !floor) return;
     var first = floor.flats && floor.flats[0];
     var configured = parkingSectionConfigured(floor);
+    var snapshot = parkingFloorSnapshot(floor);
+    var unchanged = el.dataset.parkingSnapshot === snapshot;
     el.setAttribute("data-slot-count", String(floor.parkingSlotCount || 0));
     el.setAttribute("data-range-label", floor.parkingRangeLabel || "");
     el.setAttribute("data-configured", configured ? "true" : "false");
@@ -1067,6 +1101,10 @@
       el.setAttribute("data-first-flat-id", String(first.id));
       el.setAttribute("data-area", first.areaSqft != null ? String(first.areaSqft) : "");
       el.setAttribute("data-price", first.basePrice != null ? String(first.basePrice) : "");
+    }
+    el.dataset.parkingSnapshot = snapshot;
+    if (unchanged) {
+      return;
     }
     el.innerHTML = buildParkingSectionInnerHtml(floor);
     var planPane = el.querySelector(".flat-parking-section__plan");
@@ -1993,7 +2031,6 @@
           window.floor21SelectFlat(card);
         }
       );
-      setInterval(refreshGrid, 20000);
       var focusId = grid.getAttribute("data-focus-flat-id");
       if (focusId) {
         var card = document.getElementById("flat-" + focusId);
