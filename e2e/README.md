@@ -26,42 +26,35 @@ $env:JAVA_HOME = "C:\Program Files\Java\jdk-25"
 .\mvnw.cmd spring-boot:run
 ```
 
-Terminal 2 — run Playwright:
+Terminal 2 — run the full flow test:
 
 ```powershell
 cd C:\work_floor21\floor21\e2e
 npm test
 ```
 
+Or open the Playwright UI (pick and run steps):
+
+```powershell
+npm run test:ui
+```
+
+Same as:
+
+```powershell
+npx playwright test --ui tests/floor21-full-flow.spec.ts --workers=1
+```
+
 Other commands:
 
 | Command | Purpose |
 |---------|---------|
-| `npm run test:ui` | Interactive UI mode |
-| `npm run test:headed` | See the browser (one test at a time) |
-| `npm run test:headed:slow` | Headed, ~2.5s pause between each action |
-| `npm run test:headed:slower` | Headed, ~5s pause between each action |
-| `npm run test:headed:watch` | Headed, ~8s pause — easiest to follow step by step |
+| `npm run test:ui` | Interactive UI — only `floor21-full-flow.spec.ts` |
+| `npm run test:headed` | Headed run, one worker |
 | `npm run test:debug` | Step-through debugger |
-| `npm run codegen` | Record steps (`npm run codegen -- http://localhost/floor21/login`) |
 | `npm run report` | Open last HTML report |
 
-### Watch tests slowly (headed)
-
-`test:headed` runs fast by default. Use a slower script or pick one test:
-
-```powershell
-npm run test:headed:watch
-# or:
-npm run test:headed:slower
-npm run test:headed:slow
-# one test only:
-npx playwright test tests/login.spec.ts --headed --config=playwright.watch.config.ts
-```
-
-Edit `slowMo` in `playwright.watch.config.ts` (milliseconds) if you want it even slower.
-
-For full manual control (pause, step, rerun), prefer **`npm run test:ui`** — click a test, then use the pause button on the timeline.
+For full manual control (pause, step, rerun), use **`npm run test:ui`**.
 
 ## Optional: let Playwright start Spring Boot
 
@@ -84,29 +77,21 @@ This runs `mvnw spring-boot:run` from the repo root (slow first boot; Flyway + s
 ```
 e2e/
 ├── playwright.config.ts
-├── helpers/auth.ts      # login helpers, turbo frame locator
-├── helpers/projects.ts  # project list/form helpers
-├── helpers/users.ts     # user list/form helpers
-├── helpers/buildings.ts # All buildings create helpers
+├── helpers/             # shared by floor21-full-flow
 ├── tests/
-│   ├── login.spec.ts
-│   ├── admin-users.spec.ts
-│   ├── admin-users-create.spec.ts
-│   ├── admin-projects.spec.ts
-│   ├── admin-buildings-create.spec.ts
 │   └── floor21-full-flow.spec.ts
 └── package.json
 ```
 
 Seeded login: `super@floor21.com` / `super123` (platform super admin only).
 
-**DB note:** `floor21-full-flow.spec.ts` inserts a full tenant + booking per run (use `--workers=1`). Other specs insert their own test data. None delete rows afterward.
+**DB note:** `floor21-full-flow.spec.ts` inserts a full tenant run: ~**90%** of residential flats split between two partners; **each partner** creates clients and bookings for at least **50%** of their own assigned flats. Always use **`--workers=1`**. Test data is not deleted after the run. Allow up to **10 minutes** (large flat assignment + multiple bookings).
 
 ### Full flow in Playwright UI (admin + partner, step by step)
 
 ```powershell
 cd C:\work_floor21\floor21\e2e
-npm run test:ui -- tests/floor21-full-flow.spec.ts --workers=1
+npm run test:ui
 ```
 
 Expand **Floor21 — full flow (admin + partner)**, then click ▶ on each step in order.

@@ -6,9 +6,30 @@ import {
   sampleBuildingData,
   type NewBuildingInput,
 } from './buildings';
+import { createBookingForFlat } from './bookings';
+import { createClient, sampleClientData, type NewClientInput } from './clients';
 import { createProject, uniqueProjectName, waitForMainPanel } from './projects';
 import { createUser, sampleUserData, type NewUserInput } from './users';
-import { loginAsSuperAdmin } from './auth';
+import { login, loginAsSuperAdmin } from './auth';
+
+/** Share of residential flats assigned to partners (remainder stays unassigned). */
+export const FLAT_ASSIGN_PERCENT = 0.9;
+/** Minimum share of partner-assigned flats that get a client + booking in E2E. */
+export const CLIENT_BOOKING_PERCENT = 0.5;
+
+export type FlowClientRecord = {
+  partnerEmail: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
+};
+
+export type FlowBookingRecord = {
+  partnerEmail: string;
+  flatId: string;
+  clientDisplayName: string;
+  bookingCode: string;
+};
 
 export type PlatformFlowState = {
   stamp: number;
@@ -18,8 +39,11 @@ export type PlatformFlowState = {
   user2: NewUserInput;
   building: NewBuildingInput;
   buildingId: string;
+  residentialFlatCount: number;
   assignToUser1: string[];
   assignToUser2: string[];
+  clients: FlowClientRecord[];
+  bookings: FlowBookingRecord[];
   clientFirstName: string;
   clientLastName: string;
   clientDisplayName: string;
@@ -49,8 +73,11 @@ export function createPlatformFlowState(): PlatformFlowState {
       address: `E2E Flow Address, Andheri ${stamp}`,
     },
     buildingId: '',
+    residentialFlatCount: 0,
     assignToUser1: [],
     assignToUser2: [],
+    clients: [],
+    bookings: [],
     clientFirstName: `E2E Client ${stamp}`,
     clientLastName: 'Buyer',
     clientDisplayName: '',
@@ -106,15 +133,20 @@ export async function adminAssignFlats(page: Page, flow: PlatformFlowState) {
   );
   const candidateCount = await candidateFlats.count();
   expect(candidateCount).toBeGreaterThanOrEqual(4);
+  flow.residentialFlatCount = candidateCount;
 
   const flatIds: string[] = [];
   for (let i = 0; i < candidateCount; i++) {
     const id = await candidateFlats.nth(i).getAttribute('data-flat-id');
     if (id) flatIds.push(id);
   }
+
+  const assignCount = Math.max(2, Math.ceil(flatIds.length * FLAT_ASSIGN_PERCENT));
   const shuffled = shuffle(flatIds);
-  flow.assignToUser1 = shuffled.slice(0, 2);
-  flow.assignToUser2 = shuffled.slice(2, 4);
+  const toAssign = shuffled.slice(0, assignCount);
+  const splitAt = Math.ceil(toAssign.length / 2);
+  flow.assignToUser1 = toAssign.slice(0, splitAt);
+  flow.assignToUser2 = toAssign.slice(splitAt);
 
   for (const flatId of flow.assignToUser1) {
     await assignFlatToPartner(page, flatId, flow.user1.fullName);
@@ -122,6 +154,111 @@ export async function adminAssignFlats(page: Page, flow: PlatformFlowState) {
   for (const flatId of flow.assignToUser2) {
     await assignFlatToPartner(page, flatId, flow.user2.fullName);
   }
+
+  const assignedTotal = flow.assignToUser1.length + flow.assignToUser2.length;
+  expect(assignedTotal).toBeGreaterThanOrEqual(Math.ceil(flatIds.length * FLAT_ASSIGN_PERCENT));
+}
+
+export function targetClientBookingCount(assignedFlatCount: number): number {
+  return Math.max(1, Math.ceil(assignedFlatCount * CLIENT_BOOKING_PERCENT));
+}
+
+/** Create clients + bookings for ≥50% of flats assigned to one partner. Caller must be logged in as that partner. */
+export async function partnerCreateClientsAndBookings(
+  page: Page,
+  flow: PlatformFlowState,
+  partner: NewUserInput,
+  assignedFlatIds: string[],
+  clientIdPrefix: string,
+): Promise<{ clients: FlowClientRecord[]; bookings: FlowBookingRecord[] }> {
+  const target = targetClientBookingCount(assignedFlatIds.length);
+  const clients: FlowClientRecord[] = [];
+  const bookings: FlowBookingRecord[] = [];
+  const clientIndexOffset = partner.email === flow.user2.email ? 100 : 0;
+
+  for (let i = 0; i < target; i++) {
+    const client: NewClientInput = {
+      ...sampleClientData(flow.stamp, clientIndexOffset + i + 1),
+      firstName: `${clientIdPrefix} C${i + 1}`,
+      lastName: 'Buyer',
+    };
+    await createClient(page, client);
+    const displayName = `${client.firstName} ${client.lastName}`.trim();
+    clients.push({
+      partnerEmail: partner.email,
+      firstName: client.firstName,
+      lastName: client.lastName,
+      displayName,
+    });
+
+    const flatId = assignedFlatIds[i];
+    await createBookingForFlat(page, flatId, displayName);
+
+    const bookingHeading = page.getByRole('heading', { name: /^Booking / });
+    await expect(bookingHeading).toBeVisible();
+    const bookingCode =
+      (await bookingHeading.textContent())?.replace(/^Booking\s+/, '').trim() ?? '';
+    expect(bookingCode.length).toBeGreaterThan(0);
+    bookings.push({
+      partnerEmail: partner.email,
+      flatId,
+      clientDisplayName: displayName,
+      bookingCode,
+    });
+  }
+
+  return { clients, bookings };
+}
+
+/** Both partners each book ≥50% of their own assigned flats. */
+export async function allPartnersCreateClientsAndBookings(page: Page, flow: PlatformFlowState) {
+  flow.clients = [];
+  flow.bookings = [];
+
+  await login(page, flow.user1.email, flow.user1.password);
+  await expect(page).toHaveURL(/\/dashboard/);
+  const p1 = await partnerCreateClientsAndBookings(
+    page,
+    flow,
+    flow.user1,
+    flow.assignToUser1,
+    `E2E ${flow.stamp} P1`,
+  );
+  flow.clients.push(...p1.clients);
+  flow.bookings.push(...p1.bookings);
+
+  await login(page, flow.user2.email, flow.user2.password);
+  await expect(page).toHaveURL(/\/dashboard/);
+  const p2 = await partnerCreateClientsAndBookings(
+    page,
+    flow,
+    flow.user2,
+    flow.assignToUser2,
+    `E2E ${flow.stamp} P2`,
+  );
+  flow.clients.push(...p2.clients);
+  flow.bookings.push(...p2.bookings);
+
+  if (flow.clients.length > 0) {
+    flow.clientFirstName = flow.clients[0].firstName;
+    flow.clientLastName = flow.clients[0].lastName;
+    flow.clientDisplayName = flow.clients[0].displayName;
+    flow.bookingCode = flow.bookings[flow.bookings.length - 1]?.bookingCode ?? '';
+  }
+}
+
+export async function expectPartnerBookableFlatCount(
+  page: Page,
+  buildingId: string,
+  expectedBookable: number,
+) {
+  await page.goto(`buildings/${buildingId}/flats`, { waitUntil: 'commit' });
+  const grid = await waitForMainPanel(page);
+  await expect(grid.locator('#flat-grid')).toBeVisible();
+  const bookable = grid.locator(
+    '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"][data-bookable="true"]',
+  );
+  await expect(bookable).toHaveCount(expectedBookable);
 }
 
 export async function assignFlatToPartner(page: Page, flatId: string, partnerName: string) {

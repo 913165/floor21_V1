@@ -22,9 +22,9 @@ export function formatFlowCredentials(flow: PlatformFlowState): string {
     `    Email:    ${flow.user2.email}`,
     `    Password: ${flow.user2.password}`,
     '',
-    'Partner login (Partner steps 1–5):',
-    `  Email:    ${flow.user1.email}`,
-    `  Password: ${flow.user1.password}`,
+    'Partner logins (Partner steps — both users book flats):',
+    `  Partner 1: ${flow.user1.email} / ${flow.user1.password}`,
+    `  Partner 2: ${flow.user2.email} / ${flow.user2.password}`,
     '',
     'Flow context:',
     `  Project:     ${flow.projectName || '(not created yet)'}`,
@@ -33,11 +33,23 @@ export function formatFlowCredentials(flow: PlatformFlowState): string {
     `  Building ID: ${flow.buildingId || '(not created yet)'}`,
   ];
 
-  if (flow.assignToUser1.length > 0) {
-    lines.push(`  Flats for user 1: ${flow.assignToUser1.join(', ')}`);
+  if (flow.residentialFlatCount > 0) {
+    const assigned = flow.assignToUser1.length + flow.assignToUser2.length;
+    lines.push(
+      `  Flats assigned: ${assigned} / ${flow.residentialFlatCount} (~90% target)`,
+    );
+    lines.push(`  User 1 flats (${flow.assignToUser1.length}): ${flow.assignToUser1.join(', ')}`);
+    lines.push(`  User 2 flats (${flow.assignToUser2.length}): ${flow.assignToUser2.join(', ')}`);
   }
-  if (flow.bookingCode) {
-    lines.push(`  Booking code: ${flow.bookingCode}`);
+  if (flow.clients.length > 0) {
+    lines.push(`  Clients created: ${flow.clients.length}`);
+  }
+  if (flow.bookings.length > 0) {
+    const byPartner = (email: string) => flow.bookings.filter((b) => b.partnerEmail === email).length;
+    lines.push(`  Bookings created: ${flow.bookings.length} total`);
+    lines.push(`    Partner 1: ${byPartner(flow.user1.email)}`);
+    lines.push(`    Partner 2: ${byPartner(flow.user2.email)}`);
+    lines.push(`  Latest booking: ${flow.bookingCode}`);
   }
 
   return lines.join('\n');

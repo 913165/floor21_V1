@@ -4,7 +4,7 @@
 <aside th:fragment="sidebar"
        id="floor21-sidebar"
        class="floor21-sidebar d-none d-md-flex flex-column flex-shrink-0"
-       th:with="path=${navServletPath}">
+       th:with="path=${navServletPath != null ? navServletPath : ''}">
   <nav class="floor21-nav flex-grow-1" aria-label="Main">
     <p class="floor21-nav__section">Overview</p>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main"

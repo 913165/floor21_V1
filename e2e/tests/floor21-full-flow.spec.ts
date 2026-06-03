@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
-import { createBookingForFlat, expectBookingInList } from '../helpers/bookings';
-import { createClient, sampleClientData } from '../helpers/clients';
+import { expectBookingInList } from '../helpers/bookings';
 import { emitFlowCredentials } from '../helpers/flow-credentials';
 import { readFlowStateFile, requireFlowState, writeFlowStateFile } from '../helpers/flow-state-file';
 import {
@@ -10,16 +9,19 @@ import {
   adminCreateBuilding,
   adminCreateProject,
   adminCreateUsers,
+  allPartnersCreateClientsAndBookings,
+  CLIENT_BOOKING_PERCENT,
   createPlatformFlowState,
+  expectPartnerBookableFlatCount,
+  FLAT_ASSIGN_PERCENT,
+  targetClientBookingCount,
   type PlatformFlowState,
 } from '../helpers/platform-flow';
-import { waitForMainPanel } from '../helpers/projects';
 
 /**
- * Full Floor21 flow — admin setup then partner user journey.
- * Credentials are printed to the console / Playwright Log tab and saved to e2e/.flow-credentials.txt.
+ * Full Floor21 flow — admin setup then both partners book ≥50% of their assigned flats.
  *
- *   npm run test:ui -- tests/floor21-full-flow.spec.ts --workers=1
+ *   npm run test:ui
  */
 const flow = {} as PlatformFlowState;
 
@@ -33,14 +35,18 @@ function loadFlow() {
   const saved = readFlowStateFile();
   if (saved) {
     Object.assign(flow, saved);
-    if (!flow.clientDisplayName) {
+    flow.clients = flow.clients ?? [];
+    flow.bookings = flow.bookings ?? [];
+    if (!flow.clientDisplayName && flow.clients.length > 0) {
+      flow.clientDisplayName = flow.clients[0].displayName;
+    } else if (!flow.clientDisplayName) {
       flow.clientDisplayName = `${flow.clientFirstName} ${flow.clientLastName}`.trim();
     }
   }
 }
 
 test.describe.serial('Floor21 — full flow (admin + partner)', () => {
-  test.describe.configure({ timeout: 180_000 });
+  test.describe.configure({ timeout: 600_000 });
 
   test('Admin — 1. Create project', async ({ page }, testInfo) => {
     initFreshFlow();
@@ -70,69 +76,62 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     emitFlowCredentials(flow, testInfo, 'credentials-partners-added');
   });
 
-  test('Admin — 5. Assign flats', async ({ page }, testInfo) => {
+  test('Admin — 5. Assign ~90% flats between partners', async ({ page }, testInfo) => {
     loadFlow();
     await adminAssignFlats(page, flow);
+
+    const assigned = flow.assignToUser1.length + flow.assignToUser2.length;
+    expect(assigned).toBeGreaterThanOrEqual(Math.ceil(flow.residentialFlatCount * FLAT_ASSIGN_PERCENT));
     expect(flow.assignToUser1.length).toBeGreaterThan(0);
+    expect(flow.assignToUser2.length).toBeGreaterThan(0);
+
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-admin-complete');
   });
 
-  test('Partner — 1. Partner login', async ({ page }, testInfo) => {
+  test('Partner — 1. Partner 1 sees assigned flats on grid', async ({ page }) => {
     requireFlowState(flow);
-    emitFlowCredentials(flow, testInfo, 'credentials-partner-login');
     await login(page, flow.user1.email, flow.user1.password);
-    await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.locator('#floor21-sidebar')).toBeVisible();
+    await expectPartnerBookableFlatCount(page, flow.buildingId, flow.assignToUser1.length);
   });
 
-  test('Partner — 2. See assigned flats on grid', async ({ page }) => {
+  test('Partner — 2. Partner 2 sees assigned flats on grid', async ({ page }) => {
     requireFlowState(flow);
-    await login(page, flow.user1.email, flow.user1.password);
-    await page.goto(`buildings/${flow.buildingId}/flats`, { waitUntil: 'commit' });
-    const grid = await waitForMainPanel(page);
-    await expect(grid.locator('#flat-grid')).toBeVisible();
-
-    const bookable = grid.locator(
-      '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"][data-bookable="true"]',
-    );
-    await expect(bookable).toHaveCount(flow.assignToUser1.length);
-
-    const otherPartner = grid.locator(
-      '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"][data-bookable="false"]',
-    );
-    expect(await otherPartner.count()).toBeGreaterThan(0);
+    await login(page, flow.user2.email, flow.user2.password);
+    await expectPartnerBookableFlatCount(page, flow.buildingId, flow.assignToUser2.length);
   });
 
-  test('Partner — 3. Create client', async ({ page }) => {
+  test('Partner — 3. Both partners create clients and book ≥50% of their flats', async ({ page }, testInfo) => {
     requireFlowState(flow);
-    await login(page, flow.user1.email, flow.user1.password);
-    const client = sampleClientData(flow.stamp);
-    client.firstName = flow.clientFirstName;
-    client.lastName = flow.clientLastName;
-    await createClient(page, client);
+    const target1 = targetClientBookingCount(flow.assignToUser1.length);
+    const target2 = targetClientBookingCount(flow.assignToUser2.length);
 
-    await page.goto('clients', { waitUntil: 'commit' });
-    const list = await waitForMainPanel(page);
-    await expect(list.locator('tbody tr').filter({ hasText: flow.clientDisplayName }).first()).toBeVisible();
-  });
+    await allPartnersCreateClientsAndBookings(page, flow);
 
-  test('Partner — 4. Book assigned flat', async ({ page }, testInfo) => {
-    requireFlowState(flow);
-    await login(page, flow.user1.email, flow.user1.password);
-    await createBookingForFlat(page, flow.assignToUser1[0], flow.clientDisplayName);
+    const user1Bookings = flow.bookings.filter((b) => b.partnerEmail === flow.user1.email);
+    const user2Bookings = flow.bookings.filter((b) => b.partnerEmail === flow.user2.email);
 
-    const bookingHeading = page.getByRole('heading', { name: /^Booking / });
-    await expect(bookingHeading).toBeVisible();
-    flow.bookingCode = (await bookingHeading.textContent())?.replace(/^Booking\s+/, '').trim() ?? '';
-    expect(flow.bookingCode.length).toBeGreaterThan(0);
+    expect(user1Bookings.length).toBe(target1);
+    expect(user2Bookings.length).toBe(target2);
+    expect(flow.clients.length).toBe(target1 + target2);
+
     writeFlowStateFile(flow);
-    emitFlowCredentials(flow, testInfo, 'credentials-after-booking');
+    emitFlowCredentials(flow, testInfo, 'credentials-after-bookings');
   });
 
-  test('Partner — 5. Booking appears in list', async ({ page }) => {
+  test('Partner — 4. All bookings appear in list (partner 1)', async ({ page }) => {
     requireFlowState(flow);
     await login(page, flow.user1.email, flow.user1.password);
-    await expectBookingInList(page, flow.clientDisplayName);
+    for (const booking of flow.bookings) {
+      await expectBookingInList(page, booking.clientDisplayName);
+    }
+  });
+
+  test('Partner — 5. All bookings appear in list (partner 2)', async ({ page }) => {
+    requireFlowState(flow);
+    await login(page, flow.user2.email, flow.user2.password);
+    for (const booking of flow.bookings) {
+      await expectBookingInList(page, booking.clientDisplayName);
+    }
   });
 });
