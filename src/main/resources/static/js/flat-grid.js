@@ -917,6 +917,7 @@
       floor.parkingRangeLabel || "",
       parkingSectionConfigured(floor) ? "1" : "0",
       floor.parkingCarSizePercent != null ? floor.parkingCarSizePercent : 100,
+      floor.parkingGridRows != null ? floor.parkingGridRows : parkingMinGridRowsForSlotCount(floor.parkingSlotCount || 1),
       first ? first.id : "",
       first && first.areaSqft != null ? first.areaSqft : "",
       first && first.basePrice != null ? first.basePrice : "",
@@ -965,6 +966,7 @@
       gridRows: plan.gridRows,
       gridLayout: plan.gridLayout,
       carSizePercent: plan.carSizePercent != null ? plan.carSizePercent : 100,
+      minGridRows: plan.minGridRows != null ? plan.minGridRows : parkingMinGridRowsForSlotCount(plan.slotCount || 0),
       placements: (plan.placements || []).map(function (p) {
         return {
           slotNumber: p.slotNumber,
@@ -991,7 +993,7 @@
     var title = linked
       ? "Slot " + slotNumber + " — linked to flat " + linked
       : canLink
-        ? "Slot " + slotNumber + " — click to link or rotate"
+        ? "Slot " + slotNumber + " — click to link or rotate bay"
         : flatNumber
           ? "Unit " + flatNumber
           : "Slot " + slotNumber;
@@ -1035,7 +1037,7 @@
 
   function parkingCarScale(plan) {
     var pct = plan && plan.carSizePercent != null ? plan.carSizePercent : 100;
-    return Math.max(0.5, Math.min(1.5, pct / 100));
+    return Math.max(0.5, Math.min(2, pct / 100));
   }
 
   function renderParkingPlanGrid(plan, rootEl, canEdit) {
@@ -1070,7 +1072,7 @@
         '<button type="button" class="btn btn-sm btn-primary parking-plan__save-layout" data-floor-number="' +
         plan.floorNumber +
         '">Save layout</button>' +
-        '<span class="text-muted small parking-plan__layout-hint">Drag cars to grid cells. Click a car to link or rotate.</span>' +
+        '<span class="text-muted small parking-plan__layout-hint">Drag cars to grid cells. Click a car to link or rotate its bay.</span>' +
         '<span class="text-danger small parking-plan__layout-error d-none"></span>' +
         "</div>"
       : "";
@@ -1347,6 +1349,10 @@
       root.dataset.loadedLinks = linkSig;
     }
     section.dataset.carSizePercent = String(plan.carSizePercent != null ? plan.carSizePercent : 100);
+    section.dataset.gridRows = String(plan.gridRows != null ? plan.gridRows : parkingMinGridRowsForSlotCount(plan.slotCount || 0));
+    section.dataset.minGridRows = String(
+      plan.minGridRows != null ? plan.minGridRows : parkingMinGridRowsForSlotCount(plan.slotCount || 0)
+    );
     section.classList.add("flat-parking-section--split");
     var planPane = section.querySelector(".flat-parking-section__plan");
     if (planPane) planPane.setAttribute("aria-hidden", "false");
@@ -1440,6 +1446,42 @@
     return res.json();
   }
 
+  function parkingMinGridRowsForSlotCount(slotCount) {
+    slotCount = Number(slotCount) || 0;
+    if (slotCount <= 0) return 1;
+    var bottomCount = Math.ceil(slotCount / 2);
+    var topCount = slotCount - bottomCount;
+    if (topCount > 0 && bottomCount > 0) return 3;
+    return 1;
+  }
+
+  function syncParkingConfigGridRowsLimits(slotCount, preferredRows) {
+    var minRows = parkingMinGridRowsForSlotCount(slotCount);
+    var rowsEl = document.getElementById("parking-config-grid-rows");
+    var hintEl = document.getElementById("parking-config-grid-rows-hint");
+    var rowsValue =
+      preferredRows != null && preferredRows !== ""
+        ? Number(preferredRows)
+        : rowsEl
+          ? Number(rowsEl.value)
+          : minRows;
+    if (!rowsValue || rowsValue < minRows) rowsValue = minRows;
+    if (rowsEl) {
+      rowsEl.min = String(minRows);
+      rowsEl.max = "24";
+      rowsEl.value = String(rowsValue);
+    }
+    if (hintEl) {
+      hintEl.textContent =
+        minRows === 3
+          ? "Minimum " +
+            minRows +
+            " rows for two car rows (top row, gap row, bottom row). You can add more rows for spacing."
+          : "Minimum " + minRows + " row for a single car row. You can add more rows for spacing.";
+    }
+    return rowsValue;
+  }
+
   function syncParkingConfigCarSizeLabel(value) {
     var label = document.getElementById("parking-config-car-size-value");
     if (label) label.textContent = String(value);
@@ -1455,10 +1497,14 @@
     var carSize = document.getElementById("parking-config-car-size");
     if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) return;
     if (label) label.textContent = "Floor " + parkingConfigFloorNumber;
+    var slotValue = sectionEl.dataset.slotCount || "4";
     if (slots) {
-      var current = sectionEl.dataset.slotCount || "4";
-      slots.value = current;
+      slots.value = slotValue;
     }
+    syncParkingConfigGridRowsLimits(
+      slotValue,
+      sectionEl.dataset.gridRows || sectionEl.dataset.minGridRows || parkingMinGridRowsForSlotCount(slotValue)
+    );
     if (carSize) {
       var sizeValue = sectionEl.dataset.carSizePercent || "100";
       carSize.value = sizeValue;
@@ -1472,6 +1518,7 @@
     var grid = document.getElementById("flat-grid");
     var buildingId = grid ? grid.getAttribute("data-building-id") : null;
     var slotsEl = document.getElementById("parking-config-slots");
+    var gridRowsEl = document.getElementById("parking-config-grid-rows");
     var carSizeEl = document.getElementById("parking-config-car-size");
     if (!buildingId || !parkingConfigFloorNumber || !slotsEl) return;
     var slotCount = Number(slotsEl.value);
@@ -1479,9 +1526,17 @@
       showParkingConfigError("Enter a slot count between 1 and 200.");
       return;
     }
+    var minGridRows = parkingMinGridRowsForSlotCount(slotCount);
+    var gridRows = gridRowsEl ? Number(gridRowsEl.value) : minGridRows;
+    if (!gridRows || gridRows < minGridRows || gridRows > 24) {
+      showParkingConfigError(
+        "Grid rows must be between " + minGridRows + " and 24 for this slot count."
+      );
+      return;
+    }
     var carSizePercent = carSizeEl ? Number(carSizeEl.value) : 100;
-    if (!carSizePercent || carSizePercent < 50 || carSizePercent > 150) {
-      showParkingConfigError("Car size must be between 50% and 150%.");
+    if (!carSizePercent || carSizePercent < 50 || carSizePercent > 200) {
+      showParkingConfigError("Car size must be between 50% and 200%.");
       return;
     }
     showParkingConfigError("");
@@ -1496,7 +1551,11 @@
       {
         method: "POST",
         headers: headers,
-        body: JSON.stringify({ slotCount: slotCount, carSizePercent: carSizePercent }),
+        body: JSON.stringify({
+          slotCount: slotCount,
+          carSizePercent: carSizePercent,
+          gridRows: gridRows,
+        }),
       }
     );
     if (!res.ok) {
@@ -1843,6 +1902,22 @@
     el.setAttribute(
       "data-car-size-percent",
       String(floor.parkingCarSizePercent != null ? floor.parkingCarSizePercent : 100)
+    );
+    el.setAttribute(
+      "data-grid-rows",
+      String(
+        floor.parkingGridRows != null
+          ? floor.parkingGridRows
+          : parkingMinGridRowsForSlotCount(floor.parkingSlotCount || 1)
+      )
+    );
+    el.setAttribute(
+      "data-min-grid-rows",
+      String(
+        floor.parkingMinGridRows != null
+          ? floor.parkingMinGridRows
+          : parkingMinGridRowsForSlotCount(floor.parkingSlotCount || 1)
+      )
     );
     el.setAttribute("data-range-label", floor.parkingRangeLabel || "");
     el.setAttribute("data-configured", configured ? "true" : "false");
@@ -2302,6 +2377,12 @@
     if (parkingConfigCarSize) {
       parkingConfigCarSize.addEventListener("input", function () {
         syncParkingConfigCarSizeLabel(parkingConfigCarSize.value);
+      });
+    }
+    var parkingConfigSlots = document.getElementById("parking-config-slots");
+    if (parkingConfigSlots) {
+      parkingConfigSlots.addEventListener("input", function () {
+        syncParkingConfigGridRowsLimits(parkingConfigSlots.value);
       });
     }
     var parkingLinkSave = document.getElementById("parking-link-save");

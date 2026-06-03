@@ -113,6 +113,17 @@ public class FlatService {
                             ? ParkingFloorConfigUtil.resolveCarSizePercent(
                                     ParkingFloorConfigUtil.forFloor(building, floor))
                             : ParkingFloorConfigUtil.DEFAULT_CAR_SIZE_PERCENT;
+            int slotCountForMin = parkingSlotCount > 0 ? parkingSlotCount : 1;
+            int parkingMinGridRows =
+                    ParkingFloorConfigUtil.minGridRowsForSlotCount(slotCountForMin);
+            ParkingFloorConfigUtil.FloorConfig parkingConfig =
+                    ParkingFloorConfigUtil.forFloor(building, floor);
+            int parkingGridRows =
+                    parkingConfigured
+                            ? (parkingConfig.gridRows() != null
+                                    ? parkingConfig.gridRows()
+                                    : parkingMinGridRows)
+                            : parkingMinGridRows;
             rows.add(
                     new FlatGridFloorDto(
                             floor,
@@ -122,7 +133,9 @@ public class FlatService {
                             parkingSlotCount,
                             parkingRangeLabel,
                             parkingConfigured,
-                            parkingCarSizePercent));
+                            parkingCarSizePercent,
+                            parkingGridRows,
+                            parkingMinGridRows));
         }
         return rows;
     }
@@ -224,7 +237,7 @@ public class FlatService {
         int carSizePercent =
                 ParkingFloorConfigUtil.normalizeCarSizePercent(dto.carSizePercent());
         ParkingFloorConfigUtil.markConfigured(
-                building, floorNumber, slotCount, carSizePercent);
+                building, floorNumber, slotCount, carSizePercent, dto.gridRows());
         buildingRepository.save(building);
         return buildParkingPlan(building, floorNumber, existing);
     }
@@ -409,10 +422,12 @@ public class FlatService {
                 config.gridCols() != null
                         ? config.gridCols()
                         : ParkingFloorConfigUtil.DEFAULT_GRID_COLS;
+        int minGridRows = ParkingFloorConfigUtil.minGridRowsForSlotCount(n);
         int gridRows =
-                config.gridRows() != null
-                        ? config.gridRows()
-                        : ParkingFloorConfigUtil.DEFAULT_GRID_ROWS;
+                config.gridRows() != null ? config.gridRows() : minGridRows;
+        if (gridRows < minGridRows) {
+            gridRows = minGridRows;
+        }
         List<ParkingGridPlacementDto> placements =
                 resolveGridPlacements(config, n, gridCols, gridRows);
         List<ParkingPlanDto.ParkingPlanSlotDto> slots = new ArrayList<>();
@@ -455,7 +470,8 @@ public class FlatService {
                 gridRows,
                 placements,
                 true,
-                carSizePercent);
+                carSizePercent,
+                minGridRows);
     }
 
     private static List<ParkingGridPlacementDto> resolveGridPlacements(

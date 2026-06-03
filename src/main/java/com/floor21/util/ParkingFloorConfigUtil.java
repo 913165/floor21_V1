@@ -14,7 +14,9 @@ public final class ParkingFloorConfigUtil {
 
     public static final int DEFAULT_GRID_COLS = 14;
     public static final int DEFAULT_GRID_ROWS = 8;
+    public static final int MAX_GRID_ROWS = 24;
     public static final int DEFAULT_CAR_SIZE_PERCENT = 100;
+    public static final int MAX_CAR_SIZE_PERCENT = 200;
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -35,11 +37,41 @@ public final class ParkingFloorConfigUtil {
 
     private ParkingFloorConfigUtil() {}
 
+    public static int minGridRowsForSlotCount(int slotCount) {
+        if (slotCount <= 0) {
+            return 1;
+        }
+        int bottomCount = (int) Math.ceil(slotCount / 2.0);
+        int topCount = slotCount - bottomCount;
+        if (topCount > 0 && bottomCount > 0) {
+            return 3;
+        }
+        return 1;
+    }
+
+    public static int normalizeGridRows(int slotCount, Integer gridRows) {
+        int min = minGridRowsForSlotCount(slotCount);
+        int value = gridRows != null ? gridRows : min;
+        if (value < min) {
+            throw new IllegalArgumentException(
+                    "Grid needs at least "
+                            + min
+                            + " rows for "
+                            + slotCount
+                            + " parking slots.");
+        }
+        if (value > MAX_GRID_ROWS) {
+            throw new IllegalArgumentException(
+                    "Grid can have at most " + MAX_GRID_ROWS + " rows.");
+        }
+        return value;
+    }
+
     public static int normalizeCarSizePercent(Integer value) {
         if (value == null) {
             return DEFAULT_CAR_SIZE_PERCENT;
         }
-        return Math.max(50, Math.min(150, value));
+        return Math.max(50, Math.min(MAX_CAR_SIZE_PERCENT, value));
     }
 
     public static int resolveCarSizePercent(FloorConfig config) {
@@ -78,39 +110,56 @@ public final class ParkingFloorConfigUtil {
         int bottomCount = (int) Math.ceil(slotCount / 2.0);
         int topCount = slotCount - bottomCount;
         int topRowIdx = 0;
-        int bottomRowIdx = Math.min(gridRows - 1, 6);
-        if (bottomRowIdx <= topRowIdx + 2) {
-            bottomRowIdx = Math.min(gridRows - 1, topRowIdx + 3);
+        int bottomRowIdx;
+        if (topCount > 0 && bottomCount > 0) {
+            bottomRowIdx = Math.min(gridRows - 1, 2);
+            if (gridRows >= 3 && bottomRowIdx < 2) {
+                bottomRowIdx = 2;
+            } else if (bottomRowIdx <= topRowIdx) {
+                bottomRowIdx = Math.min(gridRows - 1, topRowIdx + 2);
+            }
+        } else {
+            bottomRowIdx = 0;
+            topRowIdx = 0;
         }
         List<GridPlacement> out = new ArrayList<>();
         for (int slot = 1; slot <= bottomCount; slot++) {
-            out.add(new GridPlacement(slot, Math.min(slot - 1, gridCols - 1), bottomRowIdx, "vertical"));
+            out.add(
+                    new GridPlacement(
+                            slot, Math.min(slot - 1, gridCols - 1), bottomRowIdx, "vertical"));
         }
         for (int i = 0; i < topCount; i++) {
             int slotNum = bottomCount + topCount - i;
-            out.add(new GridPlacement(slotNum, Math.min(i, gridCols - 1), topRowIdx, "vertical"));
+            out.add(
+                    new GridPlacement(
+                            slotNum, Math.min(i, gridCols - 1), topRowIdx, "vertical"));
         }
         return out;
     }
 
     public static void markConfigured(
-            Building building, int floorNumber, int slotCount, int carSizePercent) {
+            Building building,
+            int floorNumber,
+            int slotCount,
+            int carSizePercent,
+            Integer gridRowsParam) {
         Map<Integer, FloorConfig> map = new LinkedHashMap<>(read(building));
         FloorConfig existing = map.get(floorNumber);
         int gridCols =
                 existing != null && existing.gridCols() != null
                         ? existing.gridCols()
                         : DEFAULT_GRID_COLS;
-        int gridRows =
-                existing != null && existing.gridRows() != null
-                        ? existing.gridRows()
-                        : DEFAULT_GRID_ROWS;
+        int gridRows = normalizeGridRows(slotCount, gridRowsParam);
+        if (gridRowsParam == null && existing != null && existing.gridRows() != null) {
+            gridRows = normalizeGridRows(slotCount, Math.max(gridRows, existing.gridRows()));
+        }
         List<GridPlacement> placements;
         if (existing != null
                 && existing.configured()
                 && existing.slotCount() == slotCount
                 && existing.placements() != null
-                && !existing.placements().isEmpty()) {
+                && !existing.placements().isEmpty()
+                && placementsFit(existing.placements(), gridRows, gridCols)) {
             placements = existing.placements();
         } else {
             placements = defaultGridPlacements(slotCount, gridCols, gridRows);
@@ -135,13 +184,17 @@ public final class ParkingFloorConfigUtil {
             List<GridPlacement> placements) {
         Map<Integer, FloorConfig> map = new LinkedHashMap<>(read(building));
         FloorConfig existing = map.getOrDefault(floorNumber, new FloorConfig(0, false));
+        int normalizedRows = normalizeGridRows(existing.slotCount(), gridRows);
+        if (!placementsFit(placements, normalizedRows, gridCols)) {
+            throw new IllegalArgumentException("One or more cars are outside the grid.");
+        }
         map.put(
                 floorNumber,
                 new FloorConfig(
                         existing.slotCount(),
                         true,
                         gridCols,
-                        gridRows,
+                        normalizedRows,
                         List.copyOf(placements),
                         resolveCarSizePercent(existing)));
         building.setParkingFloorConfig(toJson(map));
@@ -149,6 +202,22 @@ public final class ParkingFloorConfigUtil {
 
     public static void clearAll(Building building) {
         building.setParkingFloorConfig(null);
+    }
+
+    private static boolean placementsFit(
+            List<GridPlacement> placements, int gridRows, int gridCols) {
+        if (placements == null) {
+            return true;
+        }
+        for (GridPlacement placement : placements) {
+            if (placement.row() < 0 || placement.row() >= gridRows) {
+                return false;
+            }
+            if (placement.col() < 0 || placement.col() >= gridCols) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static String toJson(Map<Integer, FloorConfig> map) {

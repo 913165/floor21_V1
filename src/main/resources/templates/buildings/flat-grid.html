@@ -277,6 +277,8 @@
              th:attr="data-floor-number=${floor.floorNumber()},
                       data-slot-count=${floor.parkingSlotCount()},
                       data-car-size-percent=${floor.parkingCarSizePercent()},
+                      data-grid-rows=${floor.parkingGridRows()},
+                      data-min-grid-rows=${floor.parkingMinGridRows()},
                       data-range-label=${floor.parkingRangeLabel()},
                       data-configured=${floor.parkingConfigured()},
                       data-first-flat-id=${floor.flats()[0].id()},
@@ -533,11 +535,14 @@
           <p class="text-muted small mb-2" id="parking-config-floor-label">Floor</p>
           <label class="form-label small mb-1" for="parking-config-slots">Number of parking slots</label>
           <input class="form-control form-control-sm" type="number" id="parking-config-slots" min="1" max="200" step="1" value="4"/>
+          <label class="form-label small mb-1 mt-3" for="parking-config-grid-rows">Vertical grid rows</label>
+          <input class="form-control form-control-sm" type="number" id="parking-config-grid-rows" min="1" max="24" step="1" value="3"/>
+          <p class="text-muted small mb-0" id="parking-config-grid-rows-hint">Minimum 3 rows for two car rows (top, gap, bottom).</p>
           <label class="form-label small mb-1 mt-3" for="parking-config-car-size">
             Car size <span id="parking-config-car-size-value">100</span>%
           </label>
-          <input class="form-range" type="range" id="parking-config-car-size" min="50" max="150" step="5" value="100"/>
-          <p class="text-muted small mt-2 mb-0">Adjust how large each car appears in the parking grid.</p>
+          <input class="form-range" type="range" id="parking-config-car-size" min="50" max="200" step="5" value="100"/>
+          <p class="text-muted small mt-2 mb-0">Scales grid cells and cars together (50–200%).</p>
           <p class="text-danger small mb-0 mt-2 d-none" id="parking-config-error"></p>
         </div>
         <div class="modal-footer py-2 px-3">
@@ -566,7 +571,7 @@
               <div class="text-muted small">Orientation</div>
               <div class="small fw-semibold" id="parking-link-orientation-value">Vertical</div>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-secondary" id="parking-link-rotate">Rotate slot</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="parking-link-rotate">Rotate bay</button>
           </div>
           <p class="text-muted small mt-2 mb-0">One flat can have multiple parking slots. Choose a flat or clear the link.</p>
           <p class="text-danger small mb-0 mt-2 d-none" id="parking-link-error"></p>

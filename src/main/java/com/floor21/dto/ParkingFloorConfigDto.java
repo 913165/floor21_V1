@@ -6,4 +6,5 @@ import jakarta.validation.constraints.NotNull;
 
 public record ParkingFloorConfigDto(
         @NotNull @Min(1) @Max(200) Integer slotCount,
-        @Min(50) @Max(150) Integer carSizePercent) {}
+        @Min(50) @Max(200) Integer carSizePercent,
+        @Min(1) @Max(24) Integer gridRows) {}
