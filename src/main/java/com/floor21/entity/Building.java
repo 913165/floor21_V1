@@ -56,6 +56,10 @@ public class Building {
     @Column(name = "bhk_mix_per_floor", columnDefinition = "TEXT")
     private String bhkMixPerFloor;
 
+    /** JSON map of floor number → parking slot count / configured flag. */
+    @Column(name = "parking_floor_config", columnDefinition = "TEXT")
+    private String parkingFloorConfig;
+
     /** Bound from add/edit building form; not persisted directly. */
     @Transient
     private Map<String, Integer> bhkPerFloor = new LinkedHashMap<>();

@@ -3,6 +3,7 @@ package com.floor21.controller;
 import com.floor21.dto.BuildingConfigDto;
 import com.floor21.dto.FlatAddToFloorDto;
 import com.floor21.dto.FlatAdminUpdateDto;
+import com.floor21.dto.ParkingFloorConfigDto;
 import com.floor21.entity.Building;
 import com.floor21.entity.Flat;
 import com.floor21.security.Floor21UserPrincipal;
@@ -275,6 +276,32 @@ public class BuildingController {
         try {
             int updated = flatService.updateFloorAsPlatformAdmin(id, floorNumber, body).size();
             return ResponseEntity.ok(Map.of("ok", true, "floorNumber", floorNumber, "updatedCount", updated));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/flats/floor/{floorNumber}/parking-plan")
+    @ResponseBody
+    public ResponseEntity<?> parkingPlan(@PathVariable UUID id, @PathVariable int floorNumber) {
+        try {
+            return ResponseEntity.ok(flatService.getParkingPlan(id, floorNumber));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/{id}/flats/floor/{floorNumber}/parking-config",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> configureParkingFloor(
+            @PathVariable UUID id,
+            @PathVariable int floorNumber,
+            @Valid @RequestBody ParkingFloorConfigDto body) {
+        try {
+            return ResponseEntity.ok(flatService.configureParkingFloor(id, floorNumber, body));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }

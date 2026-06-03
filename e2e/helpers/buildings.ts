@@ -77,6 +77,27 @@ export async function submitNewBuildingForm(main: Locator, page: Page) {
   ]);
 }
 
+export async function configureParkingFloors(
+  page: Page,
+  parkingFloors: number,
+  slotsPerFloor: number,
+): Promise<void> {
+  for (let floor = 1; floor <= parkingFloors; floor++) {
+    const section = page.locator(`.flat-parking-section[data-floor-number="${floor}"]`);
+    await expect(section).toBeVisible();
+    await section.getByRole('button', { name: 'Configure' }).click();
+    await expect(page.locator('#parking-config-modal')).toBeVisible();
+    await page.locator('#parking-config-slots').fill(String(slotsPerFloor));
+    await page.locator('#parking-config-save').click();
+    await expect(page.locator('#parking-config-modal')).not.toBeVisible({ timeout: 30_000 });
+    await expect(section).toHaveClass(/flat-parking-section--split/);
+    await expect(section.locator('.flat-parking-section__plan-root .parking-plan__slot')).toHaveCount(
+      slotsPerFloor,
+    );
+    await expect(section).toHaveAttribute('data-configured', 'true');
+  }
+}
+
 export async function createBuilding(page: Page, data: NewBuildingInput, projectId: string): Promise<void> {
   const form = await openNewBuildingForm(page, projectId);
   await fillNewBuildingForm(form, data);
@@ -84,9 +105,15 @@ export async function createBuilding(page: Page, data: NewBuildingInput, project
   await expect(page.locator('#flat-grid')).toBeVisible({ timeout: 30_000 });
 
   const parkingCount = expectedParkingFlatCount(data);
+  const parkingFloors = data.parkingFloors ?? 0;
   if (parkingCount > 0) {
-    const parking = page.locator('#flat-grid [data-flat-id][data-parking="true"]');
-    await expect(parking).toHaveCount(parkingCount);
+    const sections = page.locator('#flat-grid .flat-parking-section');
+    await expect(sections).toHaveCount(parkingFloors);
+    await configureParkingFloors(page, parkingFloors, data.flatsPerFloor ?? 4);
+    const totalSlots = await sections.evaluateAll((els) =>
+      els.reduce((sum, el) => sum + parseInt(el.getAttribute('data-slot-count') || '0', 10), 0),
+    );
+    expect(totalSlots).toBe(parkingCount);
   }
 }
 

@@ -8,6 +8,8 @@ import com.floor21.dto.FlatGridFloorDto;
 import com.floor21.dto.FlatMergeCandidateDto;
 import com.floor21.dto.FlatMergeDto;
 import com.floor21.dto.FloorMergeSplitResult;
+import com.floor21.dto.ParkingFloorConfigDto;
+import com.floor21.dto.ParkingPlanDto;
 import com.floor21.entity.Booking;
 import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
@@ -20,6 +22,7 @@ import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.security.TenantContext;
 import com.floor21.util.FlatUnitTypes;
+import com.floor21.util.ParkingFloorConfigUtil;
 import com.floor21.util.ResidentialBhkTypes;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -93,9 +96,119 @@ public class FlatService {
                                                     partnerIds,
                                                     partnerLabels))
                             .toList();
-            rows.add(new FlatGridFloorDto(floor, "Floor " + floor, cells));
+            boolean parkingSection =
+                    !cells.isEmpty() && cells.stream().allMatch(FlatGridFlatDto::parking);
+            int parkingSlotCount = parkingSection ? cells.size() : 0;
+            String parkingRangeLabel = parkingSection ? parkingRangeLabel(cells) : null;
+            boolean parkingConfigured =
+                    parkingSection && ParkingFloorConfigUtil.isConfigured(building, floor);
+            rows.add(
+                    new FlatGridFloorDto(
+                            floor,
+                            "Floor " + floor,
+                            cells,
+                            parkingSection,
+                            parkingSlotCount,
+                            parkingRangeLabel,
+                            parkingConfigured));
         }
         return rows;
+    }
+
+    @Transactional(readOnly = true)
+    public ParkingPlanDto getParkingPlan(UUID buildingId, int floorNumber) {
+        if (floorNumber < 1) {
+            throw new IllegalArgumentException("Invalid floor number.");
+        }
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!ParkingFloorConfigUtil.isConfigured(building, floorNumber)) {
+            throw new IllegalArgumentException(
+                    "Parking is not configured for floor " + floorNumber + " yet.");
+        }
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> flats =
+                flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                        buildingId, builderId, floorNumber);
+        if (flats.isEmpty()
+                || flats.stream().anyMatch(f -> !FlatUnitTypes.isParkingCode(f.getBhkType()))) {
+            throw new IllegalArgumentException("No parking layout on floor " + floorNumber + ".");
+        }
+        return buildParkingPlan(floorNumber, flats);
+    }
+
+    @Transactional
+    public ParkingPlanDto configureParkingFloor(
+            UUID buildingId, int floorNumber, ParkingFloorConfigDto dto) {
+        if (floorNumber < 1) {
+            throw new IllegalArgumentException("Invalid floor number.");
+        }
+        int slotCount = dto.slotCount();
+        Building building = buildingService.resolveForAccess(buildingId);
+        int parkingFloors = building.getParkingFloors() != null ? building.getParkingFloors() : 0;
+        if (floorNumber > parkingFloors) {
+            throw new IllegalArgumentException("Floor " + floorNumber + " is not a parking floor.");
+        }
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> existing =
+                new ArrayList<>(
+                        flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                buildingId, builderId, floorNumber));
+        if (existing.stream()
+                .anyMatch(
+                        f ->
+                                !FlatUnitTypes.isParkingCode(f.getBhkType())
+                                        && !Boolean.TRUE.equals(f.getParking()))) {
+            throw new IllegalArgumentException("Floor " + floorNumber + " contains non-parking units.");
+        }
+        Builder builder = building.getBuilder();
+        Instant now = Instant.now();
+        while (existing.size() > slotCount) {
+            Flat last = existing.remove(existing.size() - 1);
+            flatRepository.delete(last);
+        }
+        flatRepository.flush();
+        while (existing.size() < slotCount) {
+            int unit = existing.size() + 1;
+            Flat created = parkingFlat(builder, building, floorNumber, unit, now);
+            existing.add(flatRepository.save(created));
+        }
+        for (int i = 0; i < existing.size(); i++) {
+            Flat flat = existing.get(i);
+            int unit = i + 1;
+            flat.setUnitNumber(unit);
+            flat.setFlatNumber(String.format("%02d%02d", floorNumber, unit));
+            flatRepository.save(flat);
+        }
+        ParkingFloorConfigUtil.markConfigured(building, floorNumber, slotCount);
+        buildingRepository.save(building);
+        return buildParkingPlan(floorNumber, existing);
+    }
+
+    private static ParkingPlanDto buildParkingPlan(int floorNumber, List<Flat> flats) {
+        int n = flats.size();
+        int bottomCount = (int) Math.ceil(n / 2.0);
+        List<Integer> bottomRow = new ArrayList<>();
+        for (int slot = 1; slot <= bottomCount; slot++) {
+            bottomRow.add(slot);
+        }
+        List<Integer> topRow = new ArrayList<>();
+        for (int slot = n; slot > bottomCount; slot--) {
+            topRow.add(slot);
+        }
+        List<ParkingPlanDto.ParkingPlanSlotDto> slots = new ArrayList<>();
+        for (int i = 0; i < flats.size(); i++) {
+            slots.add(new ParkingPlanDto.ParkingPlanSlotDto(i + 1, flats.get(i).getFlatNumber()));
+        }
+        return new ParkingPlanDto(floorNumber, n, topRow, bottomRow, slots);
+    }
+
+    private static String parkingRangeLabel(List<FlatGridFlatDto> cells) {
+        if (cells.isEmpty()) {
+            return "";
+        }
+        String first = cells.get(0).flatNumber();
+        String last = cells.get(cells.size() - 1).flatNumber();
+        return cells.size() == 1 ? first : first + "–" + last;
     }
 
     private Map<UUID, Booking> activeBookingsByFlatId(UUID builderId, List<Flat> flats) {
@@ -348,6 +461,7 @@ public class FlatService {
         building.setParkingFloors(parking);
         building.setFlatsPerFloor(perFloor);
         ResidentialBhkTypes.persistMixOnBuilding(building, mix);
+        ParkingFloorConfigUtil.clearAll(building);
         buildingRepository.save(building);
 
         Instant now = Instant.now();

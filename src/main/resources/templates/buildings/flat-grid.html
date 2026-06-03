@@ -252,6 +252,10 @@
         <span class="flat-grid-legend__dot flat-grid-legend__dot--merge"></span>
         Merged pair
       </span>
+      <span class="flat-grid-legend__item">
+        <span class="flat-grid-legend__dot flat-grid-legend__dot--parking"></span>
+        Parking section
+      </span>
     </div>
     <p class="text-muted py-4 text-center border rounded bg-body-secondary"
        th:if="${#lists.isEmpty(floors)}">
@@ -263,10 +267,48 @@
         <span class="floor-label text-muted small text-nowrap" th:text="${floor.label()}">Floor</span>
         <button type="button" class="btn btn-sm btn-outline-secondary flat-add-unit-btn"
                 sec:authorize="hasRole('SUPER_ADMIN')"
+                th:classappend="${floor.parkingSection()} ? ' d-none' : ''"
                 th:attr="data-floor-number=${floor.floorNumber()}">+ Add unit</button>
       </div>
       <div class="flat-card-row flex-grow-1 min-w-0">
-        <div th:each="flat : ${floor.flats()}"
+        <div th:if="${floor.parkingSection()}"
+             class="flat-parking-section"
+             th:classappend="${floor.parkingConfigured()} ? ' flat-parking-section--configured flat-parking-section--split' : ' flat-parking-section--pending'"
+             th:attr="data-floor-number=${floor.floorNumber()},
+                      data-slot-count=${floor.parkingSlotCount()},
+                      data-range-label=${floor.parkingRangeLabel()},
+                      data-configured=${floor.parkingConfigured()},
+                      data-first-flat-id=${floor.flats()[0].id()},
+                      data-area=${floor.flats()[0].areaSqft()},
+                      data-price=${floor.flats()[0].basePrice()}">
+          <div class="flat-parking-section__layout">
+            <div class="flat-parking-section__summary">
+              <div class="flat-parking-section__head">
+                <span class="flat-parking-section__title">Parking</span>
+                <span class="flat-parking-section__meta"
+                      th:text="${floor.parkingConfigured()
+                        ? floor.parkingSlotCount() + ' slots · ' + floor.parkingRangeLabel()
+                        : 'Not configured'}">4 slots</span>
+              </div>
+              <p class="flat-parking-section__note small text-muted mb-0"
+                 th:if="${floor.parkingConfigured()}">
+                Shared section — allocated across flats, not booked individually.
+              </p>
+              <p class="flat-parking-section__note small text-muted mb-0"
+                 th:unless="${floor.parkingConfigured()}">
+                Set the number of parking slots for this floor.
+              </p>
+              <button type="button"
+                      class="flat-parking-configure-link btn btn-link btn-sm px-0"
+                      th:if="${platformAdminView}">Configure</button>
+            </div>
+            <div class="flat-parking-section__plan" th:attr="aria-hidden=${floor.parkingConfigured() ? 'false' : 'true'}">
+              <div class="parking-plan flat-parking-section__plan-root" th:attr="data-floor-number=${floor.floorNumber()}"></div>
+            </div>
+          </div>
+        </div>
+        <div th:unless="${floor.parkingSection()}"
+             th:each="flat : ${floor.flats()}"
              th:id="'flat-' + ${flat.id()}"
              th:with="fpSlot=${flat.parking() or T(com.floor21.util.FlatUnitTypes).isAmenityCode(flat.bhkType()) ? null : T(com.floor21.util.ResidentialBhkTypes).resolveFloorPlanSlot(flat.bhkType(), building)},
                       isAmenity=${T(com.floor21.util.FlatUnitTypes).isAmenityCode(flat.bhkType())}"
@@ -391,7 +433,10 @@
               <span class="text-muted small ms-2">Platform admin only. Blocked while any unit on the floor has an active booking.</span>
             </div>
           </div>
-          <div class="d-flex flex-wrap gap-2 justify-content-center">
+          <div id="panel-parking-note" class="alert alert-secondary py-2 small d-none mb-3">
+            Shared parking section — slots are allocated across flats on partner assignment, not booked as individual units.
+          </div>
+          <div id="panel-booking-actions" class="d-flex flex-wrap gap-2 justify-content-center">
             <button type="button" id="panel-floor-plan-btn" class="btn btn-outline-secondary d-none">Floor plan</button>
             <button type="button" class="btn btn-outline-warning" id="hold-btn">Hold / Release</button>
             <a id="book-btn" href="#" class="btn btn-success">Book this flat</a>
@@ -457,6 +502,28 @@
     </div>
   </div>
 
+  <div class="modal fade" id="parking-config-modal" tabindex="-1" aria-labelledby="parking-config-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content shadow">
+        <div class="modal-header py-2 px-3">
+          <h6 class="modal-title mb-0" id="parking-config-modal-title">Configure parking</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body pt-2 pb-3">
+          <p class="text-muted small mb-2" id="parking-config-floor-label">Floor</p>
+          <label class="form-label small mb-1" for="parking-config-slots">Number of parking slots</label>
+          <input class="form-control form-control-sm" type="number" id="parking-config-slots" min="1" max="200" step="1" value="4"/>
+          <p class="text-muted small mt-2 mb-0">Slots are shown in a two-row plan with a central driveway, similar to a typical parking level drawing.</p>
+          <p class="text-danger small mb-0 mt-2 d-none" id="parking-config-error"></p>
+        </div>
+        <div class="modal-footer py-2 px-3">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-sm btn-primary" id="parking-config-save">Save layout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal fade" id="floor-plan-modal" tabindex="-1" aria-labelledby="floor-plan-modal-title" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable floor-plan-modal-dialog">
       <div class="modal-content shadow">
@@ -503,7 +570,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=flat-add-modal-fix)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=parking-plan-persist)}"></script>
 </div>
 </body>
 </html>

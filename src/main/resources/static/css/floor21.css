@@ -867,7 +867,8 @@ button.flat-floor-plan-link {
 /* Modals teleported to body in flat-grid.js; keep above shell (z-index 1) and backdrop */
 #flat-details-modal.modal,
 #floor-plan-modal.modal,
-#flat-add-modal.modal {
+#flat-add-modal.modal,
+#parking-config-modal.modal {
   z-index: 1060;
 }
 
@@ -1103,6 +1104,304 @@ body.modal-open .modal-backdrop {
   background: #e2e3e5;
   border-color: #6c757d;
   cursor: default;
+}
+
+.flat-parking-section {
+  width: 100%;
+  min-height: 5.5rem;
+  border: 1px solid #6c757d;
+  border-radius: 0.5rem;
+  background: #e2e3e5;
+  cursor: default;
+}
+
+.flat-parking-section--selected {
+  box-shadow: inset 0 0 0 2px rgba(13, 110, 253, 0.55);
+}
+
+.flat-parking-section--active {
+  box-shadow: inset 0 0 0 2px rgba(13, 110, 253, 0.65);
+}
+
+.flat-parking-section__layout {
+  display: block;
+  padding: 0.75rem 1rem;
+}
+
+.flat-parking-section--split .flat-parking-section__layout {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.flat-parking-section__summary {
+  min-width: 0;
+}
+
+.flat-parking-section--split .flat-parking-section__summary {
+  flex: 0 0 11rem;
+  max-width: 40%;
+}
+
+.flat-parking-section__plan {
+  display: none;
+  min-width: 0;
+}
+
+.flat-parking-section--split .flat-parking-section__plan {
+  display: block;
+  flex: 1 1 0;
+  overflow-x: auto;
+}
+
+.flat-parking-section__plan-root {
+  min-width: 16rem;
+}
+
+.flat-parking-section--split .parking-plan__slot {
+  min-width: 1.75rem;
+  max-width: 3rem;
+  font-size: 0.62rem;
+}
+
+.flat-parking-configure-link {
+  margin-top: 0.25rem;
+}
+
+.flat-parking-section__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 1rem;
+  height: 100%;
+}
+
+.flat-parking-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+}
+
+.flat-parking-section__title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.flat-parking-section__meta {
+  color: #495057;
+  font-size: 0.875rem;
+}
+
+.flat-parking-section__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.35rem;
+}
+
+.flat-parking-section--pending {
+  border-style: dashed;
+}
+
+.flat-parking-section__link {
+  text-decoration: none;
+}
+
+.flat-parking-section__link:hover {
+  text-decoration: underline;
+}
+
+.parking-plan__sheet {
+  border: 2px solid #333;
+  background: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 0.25rem;
+}
+
+.parking-plan__row {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 4.5rem;
+  padding: 0.35rem 0.25rem;
+}
+
+.parking-plan__row--top {
+  border-bottom: 1px dashed #adb5bd;
+}
+
+.parking-plan__slot {
+  flex: 1 1 0;
+  min-width: 2.5rem;
+  max-width: 4.5rem;
+  border: 1px solid #6c757d;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.2rem 0.15rem 0.25rem;
+  font-size: 0.7rem;
+}
+
+.parking-plan__slot-no {
+  font-weight: 700;
+  line-height: 1;
+}
+
+.parking-plan__car {
+  display: block;
+  width: 1.35rem;
+  height: 0.75rem;
+  margin-top: 0.15rem;
+  border: 1px solid #495057;
+  border-radius: 0.2rem 0.2rem 0.1rem 0.1rem;
+  background: linear-gradient(180deg, #dee2e6 0%, #adb5bd 100%);
+  position: relative;
+}
+
+.parking-plan__car::before {
+  content: "";
+  position: absolute;
+  top: -0.22rem;
+  left: 0.18rem;
+  right: 0.18rem;
+  height: 0.35rem;
+  border: 1px solid #495057;
+  border-radius: 0.15rem 0.15rem 0 0;
+  background: #ced4da;
+}
+
+.parking-plan__aisle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  background: repeating-linear-gradient(
+    90deg,
+    #e9ecef 0,
+    #e9ecef 0.5rem,
+    #dee2e6 0.5rem,
+    #dee2e6 1rem
+  );
+  border-block: 2px solid #495057;
+  margin: 0.15rem 0;
+}
+
+.parking-plan__aisle-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #495057;
+}
+
+.parking-plan__arrow {
+  display: inline-block;
+  width: 2rem;
+  height: 0.35rem;
+  background: #fff;
+  border: 1px solid #495057;
+  position: relative;
+}
+
+.parking-plan__arrow::after {
+  content: "";
+  position: absolute;
+  right: -0.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border-top: 0.35rem solid transparent;
+  border-bottom: 0.35rem solid transparent;
+  border-left: 0.45rem solid #495057;
+}
+
+.parking-plan__arrow--reverse {
+  transform: scaleX(-1);
+}
+
+.parking-plan__ramps {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  align-items: stretch;
+}
+
+.parking-plan__ramp {
+  border: 1px solid #495057;
+  background: repeating-linear-gradient(
+    -45deg,
+    #fff 0,
+    #fff 0.35rem,
+    #dee2e6 0.35rem,
+    #dee2e6 0.7rem
+  );
+  text-align: center;
+  padding: 0.35rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.parking-plan__ramp small {
+  display: block;
+  font-weight: 500;
+  font-size: 0.6rem;
+}
+
+.parking-plan__road {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #6c757d;
+  background: #ced4da;
+  font-size: 0.65rem;
+  color: #495057;
+  text-transform: uppercase;
+}
+
+[data-bs-theme="dark"] .parking-plan__sheet {
+  background: #2b3035;
+  border-color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .parking-plan__slot {
+  background: #343a40;
+  border-color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .parking-plan__aisle {
+  background: repeating-linear-gradient(
+    90deg,
+    #343a40 0,
+    #343a40 0.5rem,
+    #495057 0.5rem,
+    #495057 1rem
+  );
+}
+
+.flat-grid-legend__dot--parking {
+  background: #e2e3e5;
+  border: 1px solid #6c757d;
+}
+
+[data-bs-theme="dark"] .flat-parking-section {
+  background: #343a40;
+  border-color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .flat-parking-section__meta {
+  color: #ced4da;
+}
+
+[data-bs-theme="dark"] .flat-grid-legend__dot--parking {
+  background: #495057;
+  border-color: #adb5bd;
 }
 
 .flat-amenity {
