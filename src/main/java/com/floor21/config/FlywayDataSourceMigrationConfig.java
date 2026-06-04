@@ -48,6 +48,7 @@ public class FlywayDataSourceMigrationConfig {
                             result.migrationsExecuted);
                 }
                 ensureUsersCompanyNameColumn(dataSource);
+                ensureBuildingsUpdatedAtColumn(dataSource);
                 ensureParkingFloorConfigColumn(dataSource);
                 ensureFlatsLinkedResidentialColumn(dataSource);
                 return bean;
@@ -62,6 +63,22 @@ public class FlywayDataSourceMigrationConfig {
             statement.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)");
         } catch (Exception ex) {
             throw new IllegalStateException("Could not ensure users.company_name column exists", ex);
+        }
+    }
+
+    /** Idempotent guard when V4 is recorded in history but {@code updated_at} was never applied. */
+    private static void ensureBuildingsUpdatedAtColumn(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE buildings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP");
+            statement.execute(
+                    "UPDATE buildings SET updated_at = COALESCE(created_at, NOW()) WHERE updated_at IS NULL");
+            statement.execute("ALTER TABLE buildings ALTER COLUMN updated_at SET DEFAULT NOW()");
+            statement.execute("UPDATE buildings SET updated_at = NOW() WHERE updated_at IS NULL");
+            statement.execute("ALTER TABLE buildings ALTER COLUMN updated_at SET NOT NULL");
+        } catch (Exception ex) {
+            throw new IllegalStateException(
+                    "Could not ensure buildings.updated_at column exists", ex);
         }
     }
 

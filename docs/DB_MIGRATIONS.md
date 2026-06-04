@@ -71,6 +71,22 @@ INSERT INTO flyway_schema_history (
 
 (If version 2 is already in `flyway_schema_history`, only run the `ALTER TABLE` line.)
 
+## `missing column [updated_at] in table [buildings]`
+
+Same class of issue as `company_name` / `parking_floor_config`: prod DB predates `V4__buildings_updated_at.sql`, or Flyway history is ahead of the real schema.
+
+**Quick fix on the server:**
+
+```sql
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+UPDATE buildings SET updated_at = COALESCE(created_at, NOW()) WHERE updated_at IS NULL;
+ALTER TABLE buildings ALTER COLUMN updated_at SET DEFAULT NOW();
+UPDATE buildings SET updated_at = NOW() WHERE updated_at IS NULL;
+ALTER TABLE buildings ALTER COLUMN updated_at SET NOT NULL;
+```
+
+Then rebuild/restart after pulling the latest code (startup runs the same steps before Hibernate validate).
+
 ## `missing column [parking_floor_config] in table [buildings]`
 
 Hibernate validates before Flyway has applied `V5__parking_floor_config.sql`, or the DB history lists V5/V6 as applied without the column (common after deploys from an older branch).
