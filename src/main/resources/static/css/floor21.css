@@ -1620,6 +1620,71 @@ body.modal-open .modal-backdrop {
   margin-top: 0.5rem;
 }
 
+.parking-plan__fixture {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  min-height: 2.35rem;
+  border-radius: 0.35rem;
+  border: 2px solid transparent;
+  box-sizing: border-box;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.parking-plan__fixture--draggable {
+  cursor: grab;
+}
+
+.parking-plan__fixture--dragging {
+  opacity: 0.72;
+  cursor: grabbing;
+}
+
+.parking-plan__fixture--lift {
+  background: #e3f2fd;
+  border-color: #64b5f6;
+  color: #1565c0;
+}
+
+.parking-plan__fixture--gate {
+  background: #fff3e0;
+  border-color: #ffb74d;
+  color: #e65100;
+}
+
+.parking-plan__fixture-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.parking-plan__sheet--grid .parking-plan__fixture {
+  align-self: center;
+  justify-self: center;
+}
+
+.parking-plan__grid--dragging .parking-plan__fixture:not(.parking-plan__fixture--dragging) {
+  opacity: 0.55;
+}
+
+[data-bs-theme="dark"] .parking-plan__fixture--lift {
+  background: #1e3a5f;
+  border-color: #64b5f6;
+  color: #90caf9;
+}
+
+[data-bs-theme="dark"] .parking-plan__fixture--gate {
+  background: #3e2723;
+  border-color: #ffb74d;
+  color: #ffcc80;
+}
+
 [data-bs-theme="dark"] .parking-plan__cell {
   border-color: rgba(173, 181, 189, 0.28);
 }

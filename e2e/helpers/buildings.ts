@@ -107,6 +107,8 @@ export async function configureParkingFloors(
       slotsPerFloor,
     );
     await expect(section).toHaveAttribute('data-configured', 'true');
+    await expect(section.locator('.parking-plan__fixture--lift')).toHaveCount(1);
+    await expect(section.locator('.parking-plan__fixture--gate')).toHaveCount(1);
   }
 }
 

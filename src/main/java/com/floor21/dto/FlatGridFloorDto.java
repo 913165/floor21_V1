@@ -12,10 +12,12 @@ public record FlatGridFloorDto(
         boolean parkingConfigured,
         int parkingCarSizePercent,
         int parkingGridRows,
-        int parkingMinGridRows) {
+        int parkingMinGridRows,
+        int parkingLiftCount,
+        int parkingGateCount) {
 
     /** Residential or mixed floor row. */
     public FlatGridFloorDto(int floorNumber, String label, List<FlatGridFlatDto> flats) {
-        this(floorNumber, label, flats, false, 0, null, false, 100, 1, 1);
+        this(floorNumber, label, flats, false, 0, null, false, 100, 1, 1, 1, 1);
     }
 }

@@ -9,6 +9,7 @@ import com.floor21.dto.FlatMergeCandidateDto;
 import com.floor21.dto.FlatMergeDto;
 import com.floor21.dto.FloorMergeSplitResult;
 import com.floor21.dto.LinkedParkingSlotDto;
+import com.floor21.dto.ParkingFixturePlacementDto;
 import com.floor21.dto.ParkingFloorConfigDto;
 import com.floor21.dto.ParkingGridPlacementDto;
 import com.floor21.dto.ParkingGridColDto;
@@ -137,7 +138,9 @@ public class FlatService {
                             parkingConfigured,
                             parkingCarSizePercent,
                             parkingGridRows,
-                            parkingMinGridRows));
+                            parkingMinGridRows,
+                            parkingConfigured ? parkingConfig.resolvedLiftCount() : 0,
+                            parkingConfigured ? parkingConfig.resolvedGateCount() : 0));
         }
         return rows;
     }
@@ -176,7 +179,7 @@ public class FlatService {
         }
         ParkingFloorConfigUtil.FloorConfig config =
                 ParkingFloorConfigUtil.forFloor(building, floorNumber);
-        validateParkingLayout(dto, config.slotCount());
+        validateParkingLayout(dto, config.slotCount(), config);
         List<ParkingFloorConfigUtil.GridPlacement> placements =
                 dto.placements().stream()
                         .map(
@@ -187,8 +190,10 @@ public class FlatService {
                                                 p.row(),
                                                 normalizeParkingOrientation(p.orientation())))
                         .toList();
+        List<ParkingFloorConfigUtil.FixturePlacement> fixtures =
+                mapFixturePlacements(dto.fixtures(), config);
         ParkingFloorConfigUtil.saveLayout(
-                building, floorNumber, dto.gridCols(), dto.gridRows(), placements);
+                building, floorNumber, dto.gridCols(), dto.gridRows(), placements, fixtures);
         buildingRepository.save(building);
         return getParkingPlan(buildingId, floorNumber);
     }
@@ -219,15 +224,18 @@ public class FlatService {
                         ? config.placements()
                         : ParkingFloorConfigUtil.defaultGridPlacements(
                                 config.slotCount(), gridCols, gridRows);
+        List<ParkingFloorConfigUtil.FixturePlacement> fixtureSource =
+                config.fixtures() != null ? config.fixtures() : List.of();
         ParkingFloorConfigUtil.GridRowAdjustResult adjusted =
                 ParkingFloorConfigUtil.adjustGridRows(
-                        config.slotCount(), gridRows, source, dto.action());
+                        config.slotCount(), gridRows, source, fixtureSource, dto.action());
         ParkingFloorConfigUtil.saveLayout(
                 building,
                 floorNumber,
                 gridCols,
                 adjusted.gridRows(),
-                adjusted.placements());
+                adjusted.placements(),
+                adjusted.fixtures());
         buildingRepository.save(building);
         return getParkingPlan(buildingId, floorNumber);
     }
@@ -258,15 +266,18 @@ public class FlatService {
                         ? config.placements()
                         : ParkingFloorConfigUtil.defaultGridPlacements(
                                 config.slotCount(), gridCols, gridRows);
+        List<ParkingFloorConfigUtil.FixturePlacement> fixtureSource =
+                config.fixtures() != null ? config.fixtures() : List.of();
         ParkingFloorConfigUtil.GridColAdjustResult adjusted =
                 ParkingFloorConfigUtil.adjustGridCols(
-                        config.slotCount(), gridCols, source, dto.action());
+                        config.slotCount(), gridCols, source, fixtureSource, dto.action());
         ParkingFloorConfigUtil.saveLayout(
                 building,
                 floorNumber,
                 adjusted.gridCols(),
                 gridRows,
-                adjusted.placements());
+                adjusted.placements(),
+                adjusted.fixtures());
         buildingRepository.save(building);
         return getParkingPlan(buildingId, floorNumber);
     }
@@ -316,8 +327,12 @@ public class FlatService {
         }
         int carSizePercent =
                 ParkingFloorConfigUtil.normalizeCarSizePercent(dto.carSizePercent());
+        int liftCount =
+                ParkingFloorConfigUtil.resolveLiftCountFromDto(dto.liftCount(), dto.showLift());
+        int gateCount =
+                ParkingFloorConfigUtil.resolveGateCountFromDto(dto.gateCount(), dto.showGate());
         ParkingFloorConfigUtil.markConfigured(
-                building, floorNumber, slotCount, carSizePercent, null);
+                building, floorNumber, slotCount, carSizePercent, null, liftCount, gateCount);
         buildingRepository.save(building);
         return buildParkingPlan(building, floorNumber, existing);
     }
@@ -540,6 +555,7 @@ public class FlatService {
                             linkedNumber));
         }
         int carSizePercent = ParkingFloorConfigUtil.resolveCarSizePercent(config);
+        List<ParkingFixturePlacementDto> fixtureDtos = toFixtureDtos(config);
         return new ParkingPlanDto(
                 floorNumber,
                 n,
@@ -551,7 +567,54 @@ public class FlatService {
                 placements,
                 true,
                 carSizePercent,
-                minGridRows);
+                minGridRows,
+                config.resolvedLiftCount(),
+                config.resolvedGateCount(),
+                fixtureDtos);
+    }
+
+    private static List<ParkingFixturePlacementDto> toFixtureDtos(
+            ParkingFloorConfigUtil.FloorConfig config) {
+        if (config.fixtures() == null || config.fixtures().isEmpty()) {
+            return List.of();
+        }
+        List<ParkingFixturePlacementDto> out = new ArrayList<>();
+        for (ParkingFloorConfigUtil.FixturePlacement f : config.fixtures()) {
+            out.add(
+                    new ParkingFixturePlacementDto(
+                            ParkingFloorConfigUtil.normalizeFixtureKind(f.kind()),
+                            f.index(),
+                            f.col(),
+                            f.row(),
+                            normalizeParkingOrientation(f.orientation())));
+        }
+        return out;
+    }
+
+    private List<ParkingFloorConfigUtil.FixturePlacement> mapFixturePlacements(
+            List<ParkingFixturePlacementDto> fixtures, ParkingFloorConfigUtil.FloorConfig config) {
+        if (fixtures == null || fixtures.isEmpty()) {
+            int cols =
+                    config.gridCols() != null
+                            ? config.gridCols()
+                            : ParkingFloorConfigUtil.DEFAULT_GRID_COLS;
+            int rows =
+                    config.gridRows() != null
+                            ? config.gridRows()
+                            : ParkingFloorConfigUtil.minGridRowsForSlotCount(config.slotCount());
+            return ParkingFloorConfigUtil.defaultFixtures(
+                    config.resolvedLiftCount(), config.resolvedGateCount(), cols, rows);
+        }
+        return fixtures.stream()
+                .map(
+                        f ->
+                                new ParkingFloorConfigUtil.FixturePlacement(
+                                        ParkingFloorConfigUtil.normalizeFixtureKind(f.kind()),
+                                        f.index(),
+                                        f.col(),
+                                        f.row(),
+                                        normalizeParkingOrientation(f.orientation())))
+                .toList();
     }
 
     private static List<ParkingGridPlacementDto> resolveGridPlacements(
@@ -572,13 +635,13 @@ public class FlatService {
         return out;
     }
 
-    private static void validateParkingLayout(ParkingLayoutDto dto, int slotCount) {
+    private static void validateParkingLayout(
+            ParkingLayoutDto dto, int slotCount, ParkingFloorConfigUtil.FloorConfig config) {
         if (dto.placements().size() != slotCount) {
             throw new IllegalArgumentException(
                     "Layout must include exactly " + slotCount + " parking slots.");
         }
         java.util.Set<Integer> slotNumbers = new java.util.HashSet<>();
-        java.util.Set<String> cells = new java.util.HashSet<>();
         for (ParkingGridPlacementDto p : dto.placements()) {
             if (p.slotNumber() < 1 || p.slotNumber() > slotCount) {
                 throw new IllegalArgumentException("Invalid slot number: " + p.slotNumber());
@@ -586,18 +649,56 @@ public class FlatService {
             if (!slotNumbers.add(p.slotNumber())) {
                 throw new IllegalArgumentException("Duplicate slot number: " + p.slotNumber());
             }
-            if (p.col() < 0 || p.col() >= dto.gridCols()) {
-                throw new IllegalArgumentException("Column out of range for slot " + p.slotNumber());
-            }
-            if (p.row() < 0 || p.row() >= dto.gridRows()) {
-                throw new IllegalArgumentException("Row out of range for slot " + p.slotNumber());
-            }
-            String cell = p.col() + ":" + p.row();
-            if (!cells.add(cell)) {
-                throw new IllegalArgumentException("Two slots cannot occupy the same grid cell.");
-            }
             normalizeParkingOrientation(p.orientation());
         }
+        List<ParkingFixturePlacementDto> fixtures =
+                dto.fixtures() != null ? dto.fixtures() : List.of();
+        int liftSeen = 0;
+        int gateSeen = 0;
+        for (ParkingFixturePlacementDto f : fixtures) {
+            String kind = ParkingFloorConfigUtil.normalizeFixtureKind(f.kind());
+            if ("LIFT".equals(kind)) {
+                liftSeen++;
+            } else if ("GATE".equals(kind)) {
+                gateSeen++;
+            }
+        }
+        if (liftSeen != config.resolvedLiftCount()) {
+            throw new IllegalArgumentException(
+                    "Layout must include exactly "
+                            + config.resolvedLiftCount()
+                            + " lift(s).");
+        }
+        if (gateSeen != config.resolvedGateCount()) {
+            throw new IllegalArgumentException(
+                    "Layout must include exactly "
+                            + config.resolvedGateCount()
+                            + " gate(s).");
+        }
+        List<ParkingFloorConfigUtil.GridPlacement> placements =
+                dto.placements().stream()
+                        .map(
+                                p ->
+                                        new ParkingFloorConfigUtil.GridPlacement(
+                                                p.slotNumber(),
+                                                p.col(),
+                                                p.row(),
+                                                normalizeParkingOrientation(p.orientation())))
+                        .toList();
+        List<ParkingFloorConfigUtil.FixturePlacement> fixturePlacements =
+                fixtures.stream()
+                        .map(
+                                f ->
+                                        new ParkingFloorConfigUtil.FixturePlacement(
+                                                ParkingFloorConfigUtil.normalizeFixtureKind(
+                                                        f.kind()),
+                                                f.index(),
+                                                f.col(),
+                                                f.row(),
+                                                normalizeParkingOrientation(f.orientation())))
+                        .toList();
+        ParkingFloorConfigUtil.assertLayoutValid(
+                placements, fixturePlacements, dto.gridRows(), dto.gridCols(), slotCount);
     }
 
     private static String normalizeParkingOrientation(String orientation) {

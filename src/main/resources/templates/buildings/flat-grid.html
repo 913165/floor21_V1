@@ -281,6 +281,8 @@
                       data-min-grid-rows=${floor.parkingMinGridRows()},
                       data-range-label=${floor.parkingRangeLabel()},
                       data-configured=${floor.parkingConfigured()},
+                      data-lift-count=${floor.parkingLiftCount()},
+                      data-gate-count=${floor.parkingGateCount()},
                       data-first-flat-id=${floor.flats()[0].id()},
                       data-area=${floor.flats()[0].areaSqft()},
                       data-price=${floor.flats()[0].basePrice()}">
@@ -536,6 +538,11 @@
           </label>
           <input class="form-range" type="range" id="parking-config-car-size" min="50" max="200" step="5" value="100"/>
           <p class="text-muted small mt-2 mb-0">Scales grid cells and cars together (50–200%).</p>
+          <label class="form-label small mb-1 mt-3" for="parking-config-lift-count">Number of lifts</label>
+          <input class="form-control form-control-sm" type="number" id="parking-config-lift-count" min="0" max="8" step="1" value="1"/>
+          <label class="form-label small mb-1 mt-2" for="parking-config-gate-count">Number of gates</label>
+          <input class="form-control form-control-sm" type="number" id="parking-config-gate-count" min="0" max="8" step="1" value="1"/>
+          <p class="text-muted small mt-2 mb-0">Drag lifts and gates on the plan after saving (shared access, not bookable).</p>
           <p class="text-danger small mb-0 mt-2 d-none" id="parking-config-error"></p>
         </div>
         <div class="modal-footer py-2 px-3">
@@ -623,7 +630,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=parking-car-svg)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=parking-fixture-drag)}"></script>
 </div>
 </body>
 </html>

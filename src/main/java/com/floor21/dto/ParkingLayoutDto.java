@@ -9,4 +9,5 @@ import java.util.List;
 public record ParkingLayoutDto(
         @Min(1) @Max(40) int gridCols,
         @Min(1) @Max(24) int gridRows,
-        @NotNull @Valid List<ParkingGridPlacementDto> placements) {}
+        @NotNull @Valid List<ParkingGridPlacementDto> placements,
+        List<ParkingFixturePlacementDto> fixtures) {}

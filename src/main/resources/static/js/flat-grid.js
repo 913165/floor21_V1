@@ -860,10 +860,88 @@
     return floor.parkingConfigured === true || floor.parkingConfigured === "true";
   }
 
+  function parkingFixtureMetaSuffix(floor) {
+    if (!parkingSectionConfigured(floor)) return "";
+    var lifts = Number(floor.parkingLiftCount != null ? floor.parkingLiftCount : 0);
+    var gates = Number(floor.parkingGateCount != null ? floor.parkingGateCount : 0);
+    var parts = [];
+    if (lifts > 0) parts.push(lifts + (lifts === 1 ? " lift" : " lifts"));
+    if (gates > 0) parts.push(gates + (gates === 1 ? " gate" : " gates"));
+    return parts.length ? " · " + parts.join(" · ") : "";
+  }
+
   function parkingSectionMetaText(floor) {
     var count = floor.parkingSlotCount || (floor.flats ? floor.flats.length : 0);
     var range = floor.parkingRangeLabel || "";
-    return count + " slots" + (range ? " · " + range : "");
+    return count + " slots" + (range ? " · " + range : "") + parkingFixtureMetaSuffix(floor);
+  }
+
+  function parkingFixtureDragKey(kind, index) {
+    return "fixture:" + kind + ":" + index;
+  }
+
+  function parseParkingDragKey(raw) {
+    if (!raw) return null;
+    if (String(raw).indexOf("fixture:") === 0) {
+      var parts = String(raw).split(":");
+      return { type: "fixture", kind: parts[1], index: Number(parts[2]) };
+    }
+    var slotNumber = Number(raw);
+    if (!slotNumber) return null;
+    return { type: "slot", slotNumber: slotNumber };
+  }
+
+  function findFixturePlacement(plan, kind, index) {
+    if (!plan || !plan.fixtures) return null;
+    var i;
+    for (i = 0; i < plan.fixtures.length; i++) {
+      var f = plan.fixtures[i];
+      if (f.kind === kind && Number(f.index) === Number(index)) return f;
+    }
+    return null;
+  }
+
+  function renderParkingPlanFixture(placement, canEdit) {
+    if (!placement) return "";
+    var kind = placement.kind === "GATE" ? "GATE" : "LIFT";
+    var label = kind === "GATE" ? "G" : "L";
+    var orientClass =
+      placement.orientation === "horizontal"
+        ? " parking-plan__fixture--horizontal"
+        : " parking-plan__fixture--vertical";
+    var dragClass = canEdit ? " parking-plan__fixture--draggable" : "";
+    var kindClass = kind === "GATE" ? " parking-plan__fixture--gate" : " parking-plan__fixture--lift";
+    var gridStyle =
+      ' style="grid-column:' +
+      (placement.col + 1) +
+      ";grid-row:" +
+      (placement.row + 1) +
+      '"';
+    return (
+      '<div class="parking-plan__fixture' +
+      kindClass +
+      orientClass +
+      dragClass +
+      '" data-fixture-kind="' +
+      kind +
+      '" data-fixture-index="' +
+      placement.index +
+      '"' +
+      (canEdit ? ' draggable="true"' : "") +
+      ' title="' +
+      (kind === "GATE" ? "Gate" : "Lift") +
+      " " +
+      placement.index +
+      " (shared)" +
+      '"' +
+      gridStyle +
+      ">" +
+      '<span class="parking-plan__fixture-label">' +
+      label +
+      placement.index +
+      "</span>" +
+      "</div>"
+    );
   }
 
   function parkingSectionMetaDisplay(floor) {
@@ -915,6 +993,8 @@
       floor.parkingRangeLabel || "",
       parkingSectionConfigured(floor) ? "1" : "0",
       floor.parkingCarSizePercent != null ? floor.parkingCarSizePercent : 100,
+      String(floor.parkingLiftCount != null ? floor.parkingLiftCount : 0),
+      String(floor.parkingGateCount != null ? floor.parkingGateCount : 0),
       floor.parkingGridRows != null ? floor.parkingGridRows : parkingMinGridRowsForSlotCount(floor.parkingSlotCount || 1),
       first ? first.id : "",
       first && first.areaSqft != null ? first.areaSqft : "",
@@ -973,6 +1053,17 @@
           orientation: p.orientation || "vertical",
         };
       }),
+      fixtures: (plan.fixtures || []).map(function (f) {
+        return {
+          kind: f.kind,
+          index: f.index,
+          col: f.col,
+          row: f.row,
+          orientation: f.orientation || "vertical",
+        };
+      }),
+      liftCount: plan.liftCount != null ? plan.liftCount : 0,
+      gateCount: plan.gateCount != null ? plan.gateCount : 0,
     };
   }
 
@@ -1065,6 +1156,11 @@
         return renderParkingPlanSlot(findPlanSlot(plan, p.slotNumber), canEdit, p);
       })
       .join("");
+    var fixturesHtml = (plan.fixtures || [])
+      .map(function (f) {
+        return renderParkingPlanFixture(f, canEdit);
+      })
+      .join("");
     var toolbar = canEdit
       ? '<div class="parking-plan__layout-toolbar">' +
         '<div class="parking-plan__grid-toolbar">' +
@@ -1081,7 +1177,7 @@
         '<button type="button" class="btn btn-outline-secondary parking-plan__grid-btn" data-parking-col-action="REMOVE_RIGHT" title="Remove empty column from right">− Right</button>' +
         "</div>" +
         "</div>" +
-        '<span class="text-muted small parking-plan__layout-hint">Drag cars to grid cells. Click a car to link or rotate its bay. Only empty rows and columns can be removed.</span>' +
+        '<span class="text-muted small parking-plan__layout-hint">Drag cars, lifts, and gates to grid cells. Click a car to link or rotate its bay. Lifts and gates are shared (not bookable). Only empty rows and columns can be removed.</span>' +
         '<span class="text-danger small parking-plan__layout-error d-none"></span>' +
         "</div>"
       : "";
@@ -1097,6 +1193,7 @@
       '">' +
       cellsHtml +
       slotsHtml +
+      fixturesHtml +
       "</div></div>";
     rootEl._parkingLayoutState = {
       floorNumber: plan.floorNumber,
@@ -1108,6 +1205,15 @@
           col: p.col,
           row: p.row,
           orientation: p.orientation || "vertical",
+        };
+      }),
+      fixtures: (plan.fixtures || []).map(function (f) {
+        return {
+          kind: f.kind,
+          index: f.index,
+          col: f.col,
+          row: f.row,
+          orientation: f.orientation || "vertical",
         };
       }),
       saving: false,
@@ -1140,31 +1246,81 @@
         orientation: p.orientation || "vertical",
       };
     });
+    plan.fixtures = (state.fixtures || []).map(function (f) {
+      return {
+        kind: f.kind,
+        index: f.index,
+        col: f.col,
+        row: f.row,
+        orientation: f.orientation || "vertical",
+      };
+    });
     renderParkingPlanGrid(plan, rootEl, isPlatformAdminEdit());
   }
 
-  function moveParkingSlotOnGrid(state, slotNumber, toCol, toRow) {
-    slotNumber = Number(slotNumber);
-    toCol = Number(toCol);
-    toRow = Number(toRow);
-    var moving = null;
-    var occupant = null;
+  function findGridOccupant(state, col, row, excludeDrag) {
     var i;
+    excludeDrag = excludeDrag || {};
     for (i = 0; i < state.placements.length; i++) {
-      if (Number(state.placements[i].slotNumber) === slotNumber) moving = state.placements[i];
-      if (Number(state.placements[i].col) === toCol && Number(state.placements[i].row) === toRow) {
-        occupant = state.placements[i];
+      var p = state.placements[i];
+      if (Number(p.col) === col && Number(p.row) === row) {
+        if (excludeDrag.type === "slot" && Number(excludeDrag.slotNumber) === Number(p.slotNumber)) {
+          continue;
+        }
+        return { type: "slot", item: p };
       }
     }
-    if (!moving) return false;
+    var fixtures = state.fixtures || [];
+    for (i = 0; i < fixtures.length; i++) {
+      var f = fixtures[i];
+      if (Number(f.col) === col && Number(f.row) === row) {
+        if (
+          excludeDrag.type === "fixture" &&
+          excludeDrag.kind === f.kind &&
+          Number(excludeDrag.index) === Number(f.index)
+        ) {
+          continue;
+        }
+        return { type: "fixture", item: f };
+      }
+    }
+    return null;
+  }
+
+  function findMovingItem(state, drag) {
+    var i;
+    if (drag.type === "slot") {
+      for (i = 0; i < state.placements.length; i++) {
+        if (Number(state.placements[i].slotNumber) === Number(drag.slotNumber)) {
+          return { type: "slot", item: state.placements[i] };
+        }
+      }
+      return null;
+    }
+    var fixtures = state.fixtures || [];
+    for (i = 0; i < fixtures.length; i++) {
+      if (fixtures[i].kind === drag.kind && Number(fixtures[i].index) === Number(drag.index)) {
+        return { type: "fixture", item: fixtures[i] };
+      }
+    }
+    return null;
+  }
+
+  function moveParkingItemOnGrid(state, drag, toCol, toRow) {
+    toCol = Number(toCol);
+    toRow = Number(toRow);
+    var movingWrap = findMovingItem(state, drag);
+    if (!movingWrap) return false;
+    var moving = movingWrap.item;
     if (Number(moving.col) === toCol && Number(moving.row) === toRow) return false;
-    if (occupant && Number(occupant.slotNumber) !== slotNumber) {
+    var occupantWrap = findGridOccupant(state, toCol, toRow, drag);
+    if (occupantWrap) {
       var oldCol = moving.col;
       var oldRow = moving.row;
       moving.col = toCol;
       moving.row = toRow;
-      occupant.col = oldCol;
-      occupant.row = oldRow;
+      occupantWrap.item.col = oldCol;
+      occupantWrap.item.row = oldRow;
     } else {
       moving.col = toCol;
       moving.row = toRow;
@@ -1204,19 +1360,39 @@
       }
     }
     var slot = e.target.closest(".parking-plan__slot--draggable");
-    if (!slot) return null;
-    var root = slot.closest(".flat-parking-section__plan-root");
-    var state = root && root._parkingLayoutState;
-    if (!state) return null;
-    var targetSlot = Number(slot.getAttribute("data-slot-number"));
-    for (i = 0; i < state.placements.length; i++) {
-      if (Number(state.placements[i].slotNumber) === targetSlot) {
-        return {
-          root: root,
-          col: Number(state.placements[i].col),
-          row: Number(state.placements[i].row),
-          highlightEl: null,
-        };
+    if (slot) {
+      var rootSlot = slot.closest(".flat-parking-section__plan-root");
+      var stateSlot = rootSlot && rootSlot._parkingLayoutState;
+      if (!stateSlot) return null;
+      var targetSlot = Number(slot.getAttribute("data-slot-number"));
+      for (i = 0; i < stateSlot.placements.length; i++) {
+        if (Number(stateSlot.placements[i].slotNumber) === targetSlot) {
+          return {
+            root: rootSlot,
+            col: Number(stateSlot.placements[i].col),
+            row: Number(stateSlot.placements[i].row),
+            highlightEl: null,
+          };
+        }
+      }
+    }
+    var fixture = e.target.closest(".parking-plan__fixture--draggable");
+    if (fixture) {
+      var rootFx = fixture.closest(".flat-parking-section__plan-root");
+      var stateFx = rootFx && rootFx._parkingLayoutState;
+      if (!stateFx) return null;
+      var kind = fixture.getAttribute("data-fixture-kind");
+      var index = Number(fixture.getAttribute("data-fixture-index"));
+      var fixtures = stateFx.fixtures || [];
+      for (i = 0; i < fixtures.length; i++) {
+        if (fixtures[i].kind === kind && Number(fixtures[i].index) === index) {
+          return {
+            root: rootFx,
+            col: Number(fixtures[i].col),
+            row: Number(fixtures[i].row),
+            highlightEl: null,
+          };
+        }
       }
     }
     return null;
@@ -1280,6 +1456,7 @@
           gridCols: state.gridCols,
           gridRows: state.gridRows,
           placements: state.placements,
+          fixtures: state.fixtures || [],
         }),
       }
     );
@@ -1296,6 +1473,15 @@
         orientation: p.orientation || "vertical",
       };
     });
+    state.fixtures = (plan.fixtures || []).map(function (f) {
+      return {
+        kind: f.kind,
+        index: f.index,
+        col: f.col,
+        row: f.row,
+        orientation: f.orientation || "vertical",
+      };
+    });
     invalidateParkingPlanCache(state.floorNumber);
     updateParkingGridToolbar(rootEl);
     return { ok: true };
@@ -1307,18 +1493,33 @@
 
     document.addEventListener("dragstart", function (e) {
       var slot = e.target.closest(".parking-plan__slot--draggable");
-      if (!slot) return;
-      e.dataTransfer.setData("text/plain", slot.getAttribute("data-slot-number") || "");
+      var fixture = e.target.closest(".parking-plan__fixture--draggable");
+      var dragEl = slot || fixture;
+      if (!dragEl) return;
+      var payload = slot
+        ? slot.getAttribute("data-slot-number") || ""
+        : parkingFixtureDragKey(
+            fixture.getAttribute("data-fixture-kind"),
+            fixture.getAttribute("data-fixture-index")
+          );
+      e.dataTransfer.setData("text/plain", payload);
       e.dataTransfer.effectAllowed = "move";
-      slot.classList.add("parking-plan__slot--dragging");
-      setParkingGridDragActive(slot.closest(".flat-parking-section__plan-root"), true);
+      dragEl.classList.add(
+        slot ? "parking-plan__slot--dragging" : "parking-plan__fixture--dragging"
+      );
+      setParkingGridDragActive(dragEl.closest(".flat-parking-section__plan-root"), true);
     });
 
     document.addEventListener("dragend", function (e) {
       var slot = e.target.closest(".parking-plan__slot--draggable");
+      var fixture = e.target.closest(".parking-plan__fixture--draggable");
       if (slot) {
         slot.classList.remove("parking-plan__slot--dragging");
         setParkingGridDragActive(slot.closest(".flat-parking-section__plan-root"), false);
+      }
+      if (fixture) {
+        fixture.classList.remove("parking-plan__fixture--dragging");
+        setParkingGridDragActive(fixture.closest(".flat-parking-section__plan-root"), false);
       }
       clearParkingCellDragOver();
     });
@@ -1345,9 +1546,9 @@
       var root = target.root;
       var state = root && root._parkingLayoutState;
       if (!state) return;
-      var slotNumber = Number(e.dataTransfer.getData("text/plain"));
-      if (!slotNumber) return;
-      if (!moveParkingSlotOnGrid(state, slotNumber, target.col, target.row)) {
+      var drag = parseParkingDragKey(e.dataTransfer.getData("text/plain"));
+      if (!drag) return;
+      if (!moveParkingItemOnGrid(state, drag, target.col, target.row)) {
         return;
       }
       rerenderParkingPlanFromState(root);
@@ -1402,9 +1603,7 @@
       '<div class="parking-plan__aisle" aria-hidden="true"></div>' +
       '<div class="parking-plan__row parking-plan__row--bottom">' +
       bottomHtml +
-      "</div>" +
-      '<div class="parking-plan__ramps" aria-hidden="true"></div>' +
-      "</div>";
+      "</div></div>";
   }
 
   function showParkingPlanInSection(plan, force) {
@@ -1679,6 +1878,8 @@
     var label = document.getElementById("parking-config-floor-label");
     var slots = document.getElementById("parking-config-slots");
     var carSize = document.getElementById("parking-config-car-size");
+    var liftCount = document.getElementById("parking-config-lift-count");
+    var gateCount = document.getElementById("parking-config-gate-count");
     if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) return;
     if (label) label.textContent = "Floor " + parkingConfigFloorNumber;
     var slotValue = sectionEl.dataset.slotCount || "4";
@@ -1690,6 +1891,12 @@
       carSize.value = sizeValue;
       syncParkingConfigCarSizeLabel(sizeValue);
     }
+    if (liftCount) {
+      liftCount.value = sectionEl.dataset.liftCount != null ? sectionEl.dataset.liftCount : "1";
+    }
+    if (gateCount) {
+      gateCount.value = sectionEl.dataset.gateCount != null ? sectionEl.dataset.gateCount : "1";
+    }
     showParkingConfigError("");
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
@@ -1699,6 +1906,8 @@
     var buildingId = grid ? grid.getAttribute("data-building-id") : null;
     var slotsEl = document.getElementById("parking-config-slots");
     var carSizeEl = document.getElementById("parking-config-car-size");
+    var liftCountEl = document.getElementById("parking-config-lift-count");
+    var gateCountEl = document.getElementById("parking-config-gate-count");
     if (!buildingId || !parkingConfigFloorNumber || !slotsEl) return;
     var slotCount = Number(slotsEl.value);
     if (!slotCount || slotCount < 1 || slotCount > 200) {
@@ -1708,6 +1917,16 @@
     var carSizePercent = carSizeEl ? Number(carSizeEl.value) : 100;
     if (!carSizePercent || carSizePercent < 50 || carSizePercent > 200) {
       showParkingConfigError("Car size must be between 50% and 200%.");
+      return;
+    }
+    var lifts = liftCountEl ? Number(liftCountEl.value) : 1;
+    var gates = gateCountEl ? Number(gateCountEl.value) : 1;
+    if (isNaN(lifts) || lifts < 0 || lifts > 8) {
+      showParkingConfigError("Lift count must be between 0 and 8.");
+      return;
+    }
+    if (isNaN(gates) || gates < 0 || gates > 8) {
+      showParkingConfigError("Gate count must be between 0 and 8.");
       return;
     }
     showParkingConfigError("");
@@ -1725,6 +1944,8 @@
         body: JSON.stringify({
           slotCount: slotCount,
           carSizePercent: carSizePercent,
+          liftCount: lifts,
+          gateCount: gates,
         }),
       }
     );
@@ -2092,6 +2313,14 @@
     );
     el.setAttribute("data-range-label", floor.parkingRangeLabel || "");
     el.setAttribute("data-configured", configured ? "true" : "false");
+    el.setAttribute(
+      "data-lift-count",
+      String(floor.parkingLiftCount != null ? floor.parkingLiftCount : 0)
+    );
+    el.setAttribute(
+      "data-gate-count",
+      String(floor.parkingGateCount != null ? floor.parkingGateCount : 0)
+    );
     el.classList.toggle("flat-parking-section--configured", configured);
     el.classList.toggle("flat-parking-section--pending", !configured);
     el.classList.toggle("flat-parking-section--split", configured);

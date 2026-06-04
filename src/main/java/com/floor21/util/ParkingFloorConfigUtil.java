@@ -7,9 +7,12 @@ import com.floor21.dto.ParkingGridColDto;
 import com.floor21.dto.ParkingGridRowDto;
 import com.floor21.entity.Building;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /** Per-floor parking slot configuration stored as JSON on {@link Building}. */
 public final class ParkingFloorConfigUtil {
@@ -20,10 +23,13 @@ public final class ParkingFloorConfigUtil {
     public static final int MAX_GRID_COLS = 40;
     public static final int DEFAULT_CAR_SIZE_PERCENT = 100;
     public static final int MAX_CAR_SIZE_PERCENT = 200;
+    public static final int MAX_FIXTURES_PER_KIND = 8;
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
     public record GridPlacement(int slotNumber, int col, int row, String orientation) {}
+
+    public record FixturePlacement(String kind, int index, int col, int row, String orientation) {}
 
     public record FloorConfig(
             int slotCount,
@@ -31,14 +37,63 @@ public final class ParkingFloorConfigUtil {
             Integer gridCols,
             Integer gridRows,
             List<GridPlacement> placements,
-            Integer carSizePercent) {
+            Integer carSizePercent,
+            Integer liftCount,
+            Integer gateCount,
+            List<FixturePlacement> fixtures,
+            Boolean showLift,
+            Boolean showGate) {
 
         public FloorConfig(int slotCount, boolean configured) {
-            this(slotCount, configured, null, null, null, null);
+            this(slotCount, configured, null, null, null, null, null, null, null, null, null);
+        }
+
+        public int resolvedLiftCount() {
+            if (liftCount != null) {
+                return clampFixtureCount(liftCount);
+            }
+            if (showLift != null) {
+                return showLift ? 1 : 0;
+            }
+            return 1;
+        }
+
+        public int resolvedGateCount() {
+            if (gateCount != null) {
+                return clampFixtureCount(gateCount);
+            }
+            if (showGate != null) {
+                return showGate ? 1 : 0;
+            }
+            return 1;
         }
     }
 
     private ParkingFloorConfigUtil() {}
+
+    public static int clampFixtureCount(int value) {
+        return Math.max(0, Math.min(MAX_FIXTURES_PER_KIND, value));
+    }
+
+    public static int resolveLiftCountFromDto(Integer liftCount, Boolean showLift) {
+        if (liftCount != null) {
+            return clampFixtureCount(liftCount);
+        }
+        if (showLift != null) {
+            return showLift ? 1 : 0;
+        }
+        return 1;
+    }
+
+    public static int resolveGateCountFromDto(Integer gateCount, Boolean showGate) {
+        if (gateCount != null) {
+            return clampFixtureCount(gateCount);
+        }
+        if (showGate != null) {
+            return showGate ? 1 : 0;
+        }
+        return 1;
+    }
 
     public static int minGridRowsForSlotCount(int slotCount) {
         if (slotCount <= 0) {
@@ -149,12 +204,50 @@ public final class ParkingFloorConfigUtil {
         return out;
     }
 
+    public static List<FixturePlacement> defaultFixtures(
+            int liftCount, int gateCount, int gridCols, int gridRows) {
+        List<FixturePlacement> out = new ArrayList<>();
+        int safeCols = Math.max(1, gridCols);
+        int safeRows = Math.max(1, gridRows);
+        for (int i = 1; i <= liftCount; i++) {
+            int row = Math.min(i - 1, safeRows - 1);
+            out.add(new FixturePlacement("LIFT", i, 0, row, "vertical"));
+        }
+        for (int i = 1; i <= gateCount; i++) {
+            int row = Math.min(i - 1, safeRows - 1);
+            out.add(new FixturePlacement("GATE", i, Math.max(0, safeCols - 1), row, "vertical"));
+        }
+        return out;
+    }
+
+    private static List<FixturePlacement> resolveFixturesForFloor(
+            FloorConfig existing,
+            int liftCount,
+            int gateCount,
+            int gridCols,
+            int gridRows) {
+        if (liftCount == 0 && gateCount == 0) {
+            return List.of();
+        }
+        if (existing != null
+                && existing.fixtures() != null
+                && !existing.fixtures().isEmpty()
+                && existing.resolvedLiftCount() == liftCount
+                && existing.resolvedGateCount() == gateCount
+                && fixturesFit(existing.fixtures(), gridRows, gridCols)) {
+            return List.copyOf(existing.fixtures());
+        }
+        return defaultFixtures(liftCount, gateCount, gridCols, gridRows);
+    }
+
     public static void markConfigured(
             Building building,
             int floorNumber,
             int slotCount,
             int carSizePercent,
-            Integer gridRowsParam) {
+            Integer gridRowsParam,
+            int liftCount,
+            int gateCount) {
         Map<Integer, FloorConfig> map = new LinkedHashMap<>(read(building));
         FloorConfig existing = map.get(floorNumber);
         int gridCols =
@@ -176,6 +269,10 @@ public final class ParkingFloorConfigUtil {
         } else {
             placements = defaultGridPlacements(slotCount, gridCols, gridRows);
         }
+        int normalizedLift = clampFixtureCount(liftCount);
+        int normalizedGate = clampFixtureCount(gateCount);
+        List<FixturePlacement> fixtures =
+                resolveFixturesForFloor(existing, normalizedLift, normalizedGate, gridCols, gridRows);
         map.put(
                 floorNumber,
                 new FloorConfig(
@@ -184,7 +281,12 @@ public final class ParkingFloorConfigUtil {
                         gridCols,
                         gridRows,
                         placements,
-                        normalizeCarSizePercent(carSizePercent)));
+                        normalizeCarSizePercent(carSizePercent),
+                        normalizedLift,
+                        normalizedGate,
+                        fixtures,
+                        null,
+                        null));
         building.setParkingFloorConfig(toJson(map));
     }
 
@@ -193,13 +295,14 @@ public final class ParkingFloorConfigUtil {
             int floorNumber,
             int gridCols,
             int gridRows,
-            List<GridPlacement> placements) {
+            List<GridPlacement> placements,
+            List<FixturePlacement> fixtures) {
         Map<Integer, FloorConfig> map = new LinkedHashMap<>(read(building));
         FloorConfig existing = map.getOrDefault(floorNumber, new FloorConfig(0, false));
         int normalizedRows = normalizeGridRows(existing.slotCount(), gridRows);
-        if (!placementsFit(placements, normalizedRows, gridCols)) {
-            throw new IllegalArgumentException("One or more cars are outside the grid.");
-        }
+        List<FixturePlacement> fixtureList =
+                fixtures != null ? List.copyOf(fixtures) : List.of();
+        assertLayoutValid(placements, fixtureList, normalizedRows, gridCols, existing.slotCount());
         map.put(
                 floorNumber,
                 new FloorConfig(
@@ -208,23 +311,90 @@ public final class ParkingFloorConfigUtil {
                         gridCols,
                         normalizedRows,
                         List.copyOf(placements),
-                        resolveCarSizePercent(existing)));
+                        resolveCarSizePercent(existing),
+                        existing.liftCount(),
+                        existing.gateCount(),
+                        fixtureList,
+                        existing.showLift(),
+                        existing.showGate()));
         building.setParkingFloorConfig(toJson(map));
+    }
+
+    public static void assertLayoutValid(
+            List<GridPlacement> placements,
+            List<FixturePlacement> fixtures,
+            int gridRows,
+            int gridCols,
+            int slotCount) {
+        if (!placementsFit(placements, gridRows, gridCols)) {
+            throw new IllegalArgumentException("One or more cars are outside the grid.");
+        }
+        if (!fixturesFit(fixtures, gridRows, gridCols)) {
+            throw new IllegalArgumentException("One or more lifts or gates are outside the grid.");
+        }
+        Set<String> cells = new HashSet<>();
+        if (placements != null) {
+            for (GridPlacement p : placements) {
+                if (p.slotNumber() < 1 || p.slotNumber() > slotCount) {
+                    throw new IllegalArgumentException("Invalid slot number: " + p.slotNumber());
+                }
+                if (!cells.add(p.col() + ":" + p.row())) {
+                    throw new IllegalArgumentException("Two items cannot occupy the same grid cell.");
+                }
+            }
+        }
+        if (fixtures != null) {
+            Set<String> liftKeys = new HashSet<>();
+            Set<String> gateKeys = new HashSet<>();
+            for (FixturePlacement f : fixtures) {
+                String kind = normalizeFixtureKind(f.kind());
+                if (!cells.add(f.col() + ":" + f.row())) {
+                    throw new IllegalArgumentException("Two items cannot occupy the same grid cell.");
+                }
+                String key = kind + ":" + f.index();
+                if ("LIFT".equals(kind)) {
+                    if (!liftKeys.add(key)) {
+                        throw new IllegalArgumentException("Duplicate lift index: " + f.index());
+                    }
+                } else if ("GATE".equals(kind)) {
+                    if (!gateKeys.add(key)) {
+                        throw new IllegalArgumentException("Duplicate gate index: " + f.index());
+                    }
+                } else {
+                    throw new IllegalArgumentException("Unknown fixture kind: " + f.kind());
+                }
+            }
+        }
+    }
+
+    public static String normalizeFixtureKind(String kind) {
+        if (kind == null || kind.isBlank()) {
+            throw new IllegalArgumentException("Fixture kind is required.");
+        }
+        return kind.trim().toUpperCase(Locale.ROOT);
     }
 
     public static void clearAll(Building building) {
         building.setParkingFloorConfig(null);
     }
 
-    public record GridRowAdjustResult(int gridRows, List<GridPlacement> placements) {}
+    public record GridRowAdjustResult(
+            int gridRows, List<GridPlacement> placements, List<FixturePlacement> fixtures) {}
 
-    public static boolean rowHasPlacement(List<GridPlacement> placements, int row) {
-        if (placements == null) {
-            return false;
+    public static boolean rowHasAnyItem(
+            List<GridPlacement> placements, List<FixturePlacement> fixtures, int row) {
+        if (placements != null) {
+            for (GridPlacement placement : placements) {
+                if (placement.row() == row) {
+                    return true;
+                }
+            }
         }
-        for (GridPlacement placement : placements) {
-            if (placement.row() == row) {
-                return true;
+        if (fixtures != null) {
+            for (FixturePlacement fixture : fixtures) {
+                if (fixture.row() == row) {
+                    return true;
+                }
             }
         }
         return false;
@@ -234,33 +404,46 @@ public final class ParkingFloorConfigUtil {
             int slotCount,
             int gridRows,
             List<GridPlacement> placements,
+            List<FixturePlacement> fixtures,
             ParkingGridRowDto.Action action) {
         int minRows = minGridRowsForSlotCount(slotCount);
-        List<GridPlacement> current =
+        List<GridPlacement> currentPlacements =
                 placements != null ? new ArrayList<>(placements) : new ArrayList<>();
+        List<FixturePlacement> currentFixtures =
+                fixtures != null ? new ArrayList<>(fixtures) : new ArrayList<>();
         return switch (action) {
             case INSERT_TOP -> {
                 if (gridRows >= MAX_GRID_ROWS) {
                     throw new IllegalArgumentException(
                             "Grid can have at most " + MAX_GRID_ROWS + " rows.");
                 }
-                List<GridPlacement> shifted = new ArrayList<>();
-                for (GridPlacement placement : current) {
-                    shifted.add(
+                List<GridPlacement> shiftedPlacements = new ArrayList<>();
+                for (GridPlacement placement : currentPlacements) {
+                    shiftedPlacements.add(
                             new GridPlacement(
                                     placement.slotNumber(),
                                     placement.col(),
                                     placement.row() + 1,
                                     placement.orientation()));
                 }
-                yield new GridRowAdjustResult(gridRows + 1, shifted);
+                List<FixturePlacement> shiftedFixtures = new ArrayList<>();
+                for (FixturePlacement fixture : currentFixtures) {
+                    shiftedFixtures.add(
+                            new FixturePlacement(
+                                    fixture.kind(),
+                                    fixture.index(),
+                                    fixture.col(),
+                                    fixture.row() + 1,
+                                    fixture.orientation()));
+                }
+                yield new GridRowAdjustResult(gridRows + 1, shiftedPlacements, shiftedFixtures);
             }
             case INSERT_BOTTOM -> {
                 if (gridRows >= MAX_GRID_ROWS) {
                     throw new IllegalArgumentException(
                             "Grid can have at most " + MAX_GRID_ROWS + " rows.");
                 }
-                yield new GridRowAdjustResult(gridRows + 1, current);
+                yield new GridRowAdjustResult(gridRows + 1, currentPlacements, currentFixtures);
             }
             case REMOVE_TOP -> {
                 if (gridRows <= minRows) {
@@ -271,20 +454,30 @@ public final class ParkingFloorConfigUtil {
                                     + slotCount
                                     + " parking slots.");
                 }
-                if (rowHasPlacement(current, 0)) {
+                if (rowHasAnyItem(currentPlacements, currentFixtures, 0)) {
                     throw new IllegalArgumentException(
-                            "Only empty rows can be removed. Row 1 has parking slots.");
+                            "Only empty rows can be removed. Row 1 has items.");
                 }
-                List<GridPlacement> shifted = new ArrayList<>();
-                for (GridPlacement placement : current) {
-                    shifted.add(
+                List<GridPlacement> shiftedPlacements = new ArrayList<>();
+                for (GridPlacement placement : currentPlacements) {
+                    shiftedPlacements.add(
                             new GridPlacement(
                                     placement.slotNumber(),
                                     placement.col(),
                                     placement.row() - 1,
                                     placement.orientation()));
                 }
-                yield new GridRowAdjustResult(gridRows - 1, shifted);
+                List<FixturePlacement> shiftedFixtures = new ArrayList<>();
+                for (FixturePlacement fixture : currentFixtures) {
+                    shiftedFixtures.add(
+                            new FixturePlacement(
+                                    fixture.kind(),
+                                    fixture.index(),
+                                    fixture.col(),
+                                    fixture.row() - 1,
+                                    fixture.orientation()));
+                }
+                yield new GridRowAdjustResult(gridRows - 1, shiftedPlacements, shiftedFixtures);
             }
             case REMOVE_BOTTOM -> {
                 if (gridRows <= minRows) {
@@ -296,26 +489,34 @@ public final class ParkingFloorConfigUtil {
                                     + " parking slots.");
                 }
                 int lastRow = gridRows - 1;
-                if (rowHasPlacement(current, lastRow)) {
+                if (rowHasAnyItem(currentPlacements, currentFixtures, lastRow)) {
                     throw new IllegalArgumentException(
                             "Only empty rows can be removed. Row "
                                     + gridRows
-                                    + " has parking slots.");
+                                    + " has items.");
                 }
-                yield new GridRowAdjustResult(gridRows - 1, current);
+                yield new GridRowAdjustResult(gridRows - 1, currentPlacements, currentFixtures);
             }
         };
     }
 
-    public record GridColAdjustResult(int gridCols, List<GridPlacement> placements) {}
+    public record GridColAdjustResult(
+            int gridCols, List<GridPlacement> placements, List<FixturePlacement> fixtures) {}
 
-    public static boolean colHasPlacement(List<GridPlacement> placements, int col) {
-        if (placements == null) {
-            return false;
+    public static boolean colHasAnyItem(
+            List<GridPlacement> placements, List<FixturePlacement> fixtures, int col) {
+        if (placements != null) {
+            for (GridPlacement placement : placements) {
+                if (placement.col() == col) {
+                    return true;
+                }
+            }
         }
-        for (GridPlacement placement : placements) {
-            if (placement.col() == col) {
-                return true;
+        if (fixtures != null) {
+            for (FixturePlacement fixture : fixtures) {
+                if (fixture.col() == col) {
+                    return true;
+                }
             }
         }
         return false;
@@ -325,33 +526,46 @@ public final class ParkingFloorConfigUtil {
             int slotCount,
             int gridCols,
             List<GridPlacement> placements,
+            List<FixturePlacement> fixtures,
             ParkingGridColDto.Action action) {
         int minCols = minGridColsForSlotCount(slotCount);
-        List<GridPlacement> current =
+        List<GridPlacement> currentPlacements =
                 placements != null ? new ArrayList<>(placements) : new ArrayList<>();
+        List<FixturePlacement> currentFixtures =
+                fixtures != null ? new ArrayList<>(fixtures) : new ArrayList<>();
         return switch (action) {
             case INSERT_LEFT -> {
                 if (gridCols >= MAX_GRID_COLS) {
                     throw new IllegalArgumentException(
                             "Grid can have at most " + MAX_GRID_COLS + " columns.");
                 }
-                List<GridPlacement> shifted = new ArrayList<>();
-                for (GridPlacement placement : current) {
-                    shifted.add(
+                List<GridPlacement> shiftedPlacements = new ArrayList<>();
+                for (GridPlacement placement : currentPlacements) {
+                    shiftedPlacements.add(
                             new GridPlacement(
                                     placement.slotNumber(),
                                     placement.col() + 1,
                                     placement.row(),
                                     placement.orientation()));
                 }
-                yield new GridColAdjustResult(gridCols + 1, shifted);
+                List<FixturePlacement> shiftedFixtures = new ArrayList<>();
+                for (FixturePlacement fixture : currentFixtures) {
+                    shiftedFixtures.add(
+                            new FixturePlacement(
+                                    fixture.kind(),
+                                    fixture.index(),
+                                    fixture.col() + 1,
+                                    fixture.row(),
+                                    fixture.orientation()));
+                }
+                yield new GridColAdjustResult(gridCols + 1, shiftedPlacements, shiftedFixtures);
             }
             case INSERT_RIGHT -> {
                 if (gridCols >= MAX_GRID_COLS) {
                     throw new IllegalArgumentException(
                             "Grid can have at most " + MAX_GRID_COLS + " columns.");
                 }
-                yield new GridColAdjustResult(gridCols + 1, current);
+                yield new GridColAdjustResult(gridCols + 1, currentPlacements, currentFixtures);
             }
             case REMOVE_LEFT -> {
                 if (gridCols <= minCols) {
@@ -362,20 +576,30 @@ public final class ParkingFloorConfigUtil {
                                     + slotCount
                                     + " parking slots.");
                 }
-                if (colHasPlacement(current, 0)) {
+                if (colHasAnyItem(currentPlacements, currentFixtures, 0)) {
                     throw new IllegalArgumentException(
-                            "Only empty columns can be removed. Column 1 has parking slots.");
+                            "Only empty columns can be removed. Column 1 has items.");
                 }
-                List<GridPlacement> shifted = new ArrayList<>();
-                for (GridPlacement placement : current) {
-                    shifted.add(
+                List<GridPlacement> shiftedPlacements = new ArrayList<>();
+                for (GridPlacement placement : currentPlacements) {
+                    shiftedPlacements.add(
                             new GridPlacement(
                                     placement.slotNumber(),
                                     placement.col() - 1,
                                     placement.row(),
                                     placement.orientation()));
                 }
-                yield new GridColAdjustResult(gridCols - 1, shifted);
+                List<FixturePlacement> shiftedFixtures = new ArrayList<>();
+                for (FixturePlacement fixture : currentFixtures) {
+                    shiftedFixtures.add(
+                            new FixturePlacement(
+                                    fixture.kind(),
+                                    fixture.index(),
+                                    fixture.col() - 1,
+                                    fixture.row(),
+                                    fixture.orientation()));
+                }
+                yield new GridColAdjustResult(gridCols - 1, shiftedPlacements, shiftedFixtures);
             }
             case REMOVE_RIGHT -> {
                 if (gridCols <= minCols) {
@@ -387,13 +611,13 @@ public final class ParkingFloorConfigUtil {
                                     + " parking slots.");
                 }
                 int lastCol = gridCols - 1;
-                if (colHasPlacement(current, lastCol)) {
+                if (colHasAnyItem(currentPlacements, currentFixtures, lastCol)) {
                     throw new IllegalArgumentException(
                             "Only empty columns can be removed. Column "
                                     + gridCols
-                                    + " has parking slots.");
+                                    + " has items.");
                 }
-                yield new GridColAdjustResult(gridCols - 1, current);
+                yield new GridColAdjustResult(gridCols - 1, currentPlacements, currentFixtures);
             }
         };
     }
@@ -408,6 +632,22 @@ public final class ParkingFloorConfigUtil {
                 return false;
             }
             if (placement.col() < 0 || placement.col() >= gridCols) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean fixturesFit(
+            List<FixturePlacement> fixtures, int gridRows, int gridCols) {
+        if (fixtures == null || fixtures.isEmpty()) {
+            return true;
+        }
+        for (FixturePlacement fixture : fixtures) {
+            if (fixture.row() < 0 || fixture.row() >= gridRows) {
+                return false;
+            }
+            if (fixture.col() < 0 || fixture.col() >= gridCols) {
                 return false;
             }
         }
