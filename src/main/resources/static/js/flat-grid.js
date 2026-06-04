@@ -254,7 +254,7 @@
     if (inputValue === "" || inputValue == null) {
       return null;
     }
-    var num = Number(inputValue);
+    var num = Number(String(inputValue).trim());
     if (isNaN(num)) {
       return null;
     }
@@ -262,6 +262,63 @@
       return Math.round(num * SQFT_PER_SQM * 100) / 100;
     }
     return num;
+  }
+
+  function readAreaInputSqft(inputEl) {
+    if (!inputEl) return null;
+    var raw = inputEl.value.trim();
+    if (raw === "") return null;
+    return parseAreaInputToSqft(raw);
+  }
+
+  function convertAllAreaInputDisplays(fromUnit, toUnit) {
+    if (fromUnit === toUnit) return;
+    [
+      "admin-super-builder-area",
+      "admin-carpet-area",
+      "admin-balcony-area",
+      "flat-add-super-builder-area",
+      "flat-add-carpet-area",
+      "flat-add-balcony-area",
+    ].forEach(function (id) {
+      var input = document.getElementById(id);
+      if (!input) return;
+      var raw = input.value.trim();
+      if (raw === "") return;
+      var num = Number(raw);
+      if (isNaN(num)) return;
+      if (fromUnit === "sqm" && toUnit === "sqft") {
+        input.value = String(Math.round(num * SQFT_PER_SQM * 100) / 100);
+      } else if (fromUnit === "sqft" && toUnit === "sqm") {
+        input.value = (num / SQFT_PER_SQM).toFixed(2);
+      }
+    });
+  }
+
+  function refreshAreaPanelDisplayOnly() {
+    if (selectedParkingSection && selectedParkingFloorNumber) {
+      var section = document.querySelector(
+        '.flat-parking-section[data-floor-number="' + selectedParkingFloorNumber + '"]'
+      );
+      if (section) setAreaPanelFromDataset(section);
+      return;
+    }
+    if (selectedFlatId) {
+      var card = document.getElementById("flat-" + selectedFlatId);
+      if (card) setAreaPanelFromDataset(card);
+    }
+  }
+
+  function syncAdminAreaInputsFromFlat(flat) {
+    if (!flat) return;
+    var superBuilder = document.getElementById("admin-super-builder-area");
+    var carpet = document.getElementById("admin-carpet-area");
+    var balcony = document.getElementById("admin-balcony-area");
+    var price = document.getElementById("admin-price");
+    if (superBuilder) superBuilder.value = formatAreaForDisplay(flat.areaSqft);
+    if (carpet) carpet.value = formatAreaForDisplay(flat.carpetAreaSqft);
+    if (balcony) balcony.value = formatAreaForDisplay(flat.balconyAreaSqft);
+    if (price) price.value = flat.basePrice != null ? String(flat.basePrice) : "";
   }
 
   function updateAreaUnitLabels() {
@@ -322,15 +379,26 @@
     if (panelSel) {
       panelSel.value = unit;
       panelSel.addEventListener("change", function () {
-        setAreaUnit(panelSel.value);
-        refreshAreaPanelForCurrentSelection();
+        var nextUnit = panelSel.value === "sqm" ? "sqm" : "sqft";
+        var prevUnit = nextUnit === "sqm" ? "sqft" : "sqm";
+        convertAllAreaInputDisplays(prevUnit, nextUnit);
+        setAreaUnit(nextUnit);
+        refreshAreaPanelDisplayOnly();
       });
     }
     var addSel = document.getElementById("flat-add-area-unit");
     if (addSel) {
       addSel.value = unit;
       addSel.addEventListener("change", function () {
-        setAreaUnit(addSel.value);
+        var nextUnit = addSel.value === "sqm" ? "sqm" : "sqft";
+        var prevUnit = nextUnit === "sqm" ? "sqft" : "sqm";
+        convertAllAreaInputDisplays(prevUnit, nextUnit);
+        setAreaUnit(nextUnit);
+        var panelSelSync = document.getElementById("panel-area-unit");
+        if (panelSelSync && panelSelSync.value !== nextUnit) {
+          panelSelSync.value = nextUnit;
+        }
+        refreshAreaPanelDisplayOnly();
       });
     }
     updateAreaUnitLabels();
@@ -370,11 +438,10 @@
     var price = document.getElementById("admin-price");
     return {
       bhkType: bhk ? bhk.value : "",
-      areaSqft:
-        superBuilder && superBuilder.value !== "" ? parseAreaInputToSqft(superBuilder.value) : null,
-      carpetAreaSqft: carpet && carpet.value !== "" ? parseAreaInputToSqft(carpet.value) : null,
-      balconyAreaSqft: balcony && balcony.value !== "" ? parseAreaInputToSqft(balcony.value) : null,
-      basePrice: price && price.value !== "" ? Number(price.value) : null,
+      areaSqft: readAreaInputSqft(superBuilder),
+      carpetAreaSqft: readAreaInputSqft(carpet),
+      balconyAreaSqft: readAreaInputSqft(balcony),
+      basePrice: price && price.value.trim() !== "" ? Number(price.value.trim()) : null,
     };
   }
 
@@ -584,6 +651,39 @@
       if (balcony) balcony.value = formatAreaForDisplay(cardEl.dataset.balconyArea);
       if (price) price.value = cardEl.dataset.price || "";
       if (partner) partner.value = cardEl.dataset.partnerId || "";
+      var isBooked = cardEl.dataset.status === "BOOKED";
+      if (bhk) {
+        bhk.disabled = isBooked;
+        if (isBooked) {
+          bhk.title = "Unit type cannot change while this flat is booked";
+        } else {
+          bhk.removeAttribute("title");
+        }
+      }
+      [superBuilder, carpet, balcony, price].forEach(function (input) {
+        if (input) input.disabled = false;
+      });
+      var adminApplyFloor = document.getElementById("admin-apply-floor-btn");
+      if (adminApplyFloor) {
+        adminApplyFloor.disabled = isBooked;
+        if (isBooked) {
+          adminApplyFloor.title = "Cannot apply floor-wide changes while this flat is booked";
+        } else {
+          adminApplyFloor.removeAttribute("title");
+        }
+      }
+      var adminSaveBtn = document.getElementById("admin-save-btn");
+      if (adminSaveBtn) {
+        adminSaveBtn.textContent = isBooked
+          ? "Save areas / price"
+          : "Save unit type / area / price";
+      }
+      var saveHint = document.getElementById("admin-save-hint");
+      if (saveHint) {
+        saveHint.textContent = isBooked
+          ? "Booked flat — unit type and floor-wide apply are locked; areas and price can still be corrected."
+          : "Platform admin only. Apply to whole floor is blocked while any unit on the floor has an active booking.";
+      }
       var nonBookable = isNonBookableUnit(cardEl);
       var isDuplexLinked =
         cardEl.dataset.duplexPrimary === "true" || cardEl.dataset.duplexSecondary === "true";
@@ -3141,6 +3241,7 @@
         applyFlatDataToCard(card, flat);
         document.getElementById("panel-type").textContent = flat.bhkType || "";
         setAreaPanelFromFlat(flat);
+        syncAdminAreaInputsFromFlat(flat);
         document.getElementById("panel-price").textContent = flat.basePrice != null ? String(flat.basePrice) : "";
         if (card) {
           syncAdminPanel(card);

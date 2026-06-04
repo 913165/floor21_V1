@@ -1332,10 +1332,22 @@ public class FlatService {
         if (FlatUnitTypes.isMergeAbsorbed(flat)) {
             throw new IllegalArgumentException("Restore the floor merge before editing the linked unit.");
         }
-        assertNoActiveBooking(flatId, "Cannot edit flat details while an active booking exists.");
-        FlatUnitTypes.applyToFlat(
-                flat, dto.bhkType(), dto.areaSqft(), dto.carpetAreaSqft(), dto.balconyAreaSqft(), dto.basePrice());
-        return flatRepository.save(flat);
+        if (hasActiveBooking(flatId)) {
+            if (dto.bhkType() != null && !dto.bhkType().isBlank()) {
+                String requested = FlatUnitTypes.normalize(dto.bhkType());
+                if (!requested.equals(flat.getBhkType())) {
+                    throw new IllegalArgumentException(
+                            "Cannot change unit type while an active booking exists. You can still update areas and price.");
+                }
+            }
+            FlatUnitTypes.applyBookedFlatAdjustments(
+                    flat, dto.areaSqft(), dto.carpetAreaSqft(), dto.balconyAreaSqft(), dto.basePrice());
+        } else {
+            FlatUnitTypes.applyToFlat(
+                    flat, dto.bhkType(), dto.areaSqft(), dto.carpetAreaSqft(), dto.balconyAreaSqft(), dto.basePrice());
+        }
+        flat = flatRepository.saveAndFlush(flat);
+        return flat;
     }
 
     @Transactional
@@ -1974,8 +1986,12 @@ public class FlatService {
         return flat;
     }
 
+    private boolean hasActiveBooking(UUID flatId) {
+        return bookingRepository.countActiveByFlatId(flatId) > 0;
+    }
+
     private void assertNoActiveBooking(UUID flatId, String message) {
-        if (bookingRepository.countActiveByFlatId(flatId) > 0) {
+        if (hasActiveBooking(flatId)) {
             throw new IllegalArgumentException(message);
         }
     }

@@ -403,21 +403,46 @@
         <div class="modal-body pt-2 pb-3">
           <div class="row mb-3">
             <div class="col-md-6">
-              <div class="text-muted small">Type (BHK / unit)</div>
-              <p id="panel-type" class="mb-2"></p>
-              <th:block sec:authorize="hasRole('SUPER_ADMIN')">
-                <select class="form-select form-select-sm mb-2 d-none admin-edit-field" id="admin-bhk" aria-label="Unit type">
-                  <optgroup label="Residential">
-                    <option th:each="t : ${residentialBhkTypes}" th:value="${t}" th:text="${t}">2BHK</option>
-                  </optgroup>
-                  <optgroup label="Parking &amp; amenities">
-                    <option value="PKG">PKG (Parking)</option>
-                    <option th:each="t : ${flatAmenityTypes}" th:value="${t}" th:text="${t}">GYM</option>
-                  </optgroup>
-                </select>
-              </th:block>
-              <div class="text-muted small">Floor</div>
-              <p id="panel-floor" class="mb-0"></p>
+              <div class="row g-2 mb-2 flat-details-type-floor">
+                <div class="col-6">
+                  <div class="text-muted small">Type (BHK / unit)</div>
+                  <p id="panel-type" class="mb-0 flat-details-type-floor__value"></p>
+                  <th:block sec:authorize="hasRole('SUPER_ADMIN')">
+                    <select class="form-select form-select-sm d-none admin-edit-field" id="admin-bhk" aria-label="Unit type">
+                      <optgroup label="Residential">
+                        <option th:each="t : ${residentialBhkTypes}" th:value="${t}" th:text="${t}">2BHK</option>
+                      </optgroup>
+                      <optgroup label="Parking &amp; amenities">
+                        <option value="PKG">PKG (Parking)</option>
+                        <option th:each="t : ${flatAmenityTypes}" th:value="${t}" th:text="${t}">GYM</option>
+                      </optgroup>
+                    </select>
+                  </th:block>
+                </div>
+                <div class="col-6">
+                  <div class="text-muted small">Floor</div>
+                  <p id="panel-floor" class="mb-0 flat-details-type-floor__value"></p>
+                </div>
+              </div>
+              <div id="panel-parking-links" class="flat-details-parking-links mt-3 d-none">
+                <h6 class="mb-2">Linked parking</h6>
+                <ul id="panel-parking-links-list" class="flat-parking-links-list list-unstyled mb-2"></ul>
+                <p class="text-muted small mb-2 d-none" id="panel-parking-links-empty">No parking slots linked to this flat.</p>
+                <div id="panel-parking-links-admin" class="d-none" sec:authorize="hasRole('SUPER_ADMIN')">
+                  <div class="row g-2">
+                    <div class="col-12">
+                      <label class="form-label small mb-0" for="panel-parking-add">Add parking slot</label>
+                      <select class="form-select form-select-sm" id="panel-parking-add">
+                        <option value="">— Select slot —</option>
+                      </select>
+                    </div>
+                    <div class="col-12">
+                      <button type="button" class="btn btn-sm btn-outline-primary w-100" id="panel-parking-add-btn">Link slot</button>
+                    </div>
+                  </div>
+                </div>
+                <p class="text-danger small mb-0 d-none" id="panel-parking-links-error"></p>
+              </div>
             </div>
             <div class="col-md-6">
               <div class="flat-details-area-unit d-flex align-items-center justify-content-between gap-2 mb-2">
@@ -448,10 +473,10 @@
                 <input class="form-control form-control-sm d-none admin-edit-field" type="number" id="admin-price" min="0" step="1" aria-label="Base price"/>
               </th:block>
             </div>
-            <div class="col-12 d-none admin-edit-field" id="admin-save-row" sec:authorize="hasRole('SUPER_ADMIN')">
+            <div class="col-12 d-none admin-edit-field mt-2 pt-1" id="admin-save-row" sec:authorize="hasRole('SUPER_ADMIN')">
               <button type="button" class="btn btn-sm btn-primary" id="admin-save-btn">Save unit type / area / price</button>
               <button type="button" class="btn btn-sm btn-outline-secondary" id="admin-apply-floor-btn">Apply to whole floor</button>
-              <span class="text-muted small ms-2">Platform admin only. Blocked while any unit on the floor has an active booking.</span>
+              <span class="text-muted small ms-2" id="admin-save-hint">Platform admin only. Apply to whole floor is blocked while any unit on the floor has an active booking.</span>
             </div>
           </div>
           <div id="panel-parking-note" class="alert alert-secondary py-2 small d-none mb-3">
@@ -462,25 +487,6 @@
             <button type="button" class="btn btn-outline-warning" id="hold-btn">Hold / Release</button>
             <a id="book-btn" href="#" class="btn btn-success">Book this flat</a>
             <a id="client-info-btn" href="#" class="btn btn-outline-primary d-none">Client info</a>
-          </div>
-          <div id="panel-parking-links" class="border-top pt-3 mt-3 d-none">
-            <h6 class="mb-2">Linked parking</h6>
-            <ul id="panel-parking-links-list" class="flat-parking-links-list list-unstyled mb-2"></ul>
-            <p class="text-muted small mb-2 d-none" id="panel-parking-links-empty">No parking slots linked to this flat.</p>
-            <div id="panel-parking-links-admin" class="d-none" sec:authorize="hasRole('SUPER_ADMIN')">
-              <div class="row g-2 align-items-end">
-                <div class="col-md-8">
-                  <label class="form-label small mb-0" for="panel-parking-add">Add parking slot</label>
-                  <select class="form-select form-select-sm" id="panel-parking-add">
-                    <option value="">— Select slot —</option>
-                  </select>
-                </div>
-                <div class="col-md-4 d-flex align-items-end">
-                  <button type="button" class="btn btn-sm btn-outline-primary w-100" id="panel-parking-add-btn">Link slot</button>
-                </div>
-              </div>
-            </div>
-            <p class="text-danger small mb-0 d-none" id="panel-parking-links-error"></p>
           </div>
           <div id="flat-admin-panel" class="border-top pt-3 mt-3 d-none" sec:authorize="hasRole('SUPER_ADMIN')">
             <h6 class="text-primary mb-2">Platform admin — layout tools</h6>
@@ -664,7 +670,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=area-unit)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=area-unit-convert-fix)}"></script>
 </div>
 </body>
 </html>

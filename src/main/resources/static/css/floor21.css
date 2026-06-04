@@ -910,6 +910,26 @@ button.flat-floor-plan-link {
   white-space: nowrap;
 }
 
+.flat-details-parking-links h6 {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.flat-details-type-floor__value {
+  min-height: calc(1.5em + 0.5rem + 2px);
+  display: flex;
+  align-items: center;
+  line-height: 1.3;
+}
+
+.flat-details-type-floor .admin-edit-field.form-select {
+  margin-top: 0;
+}
+
+.flat-details-parking-links .flat-parking-links-list__item {
+  font-size: 0.875rem;
+}
+
 .flat-details-modal-dialog {
   max-width: min(94vw, 680px);
 }

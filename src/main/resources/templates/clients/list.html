@@ -1,13 +1,58 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0" th:text="${pageTitle}">Clients</h1>
-    <a class="btn btn-primary" th:href="@{/clients/new}">New client</a>
+  <div class="alert alert-info py-2" sec:authorize="hasRole('SUPER_ADMIN')">
+    Read-only for platform admin. Filter by project or search across all clients.
   </div>
-  <form class="row g-2 mb-3" method="get" th:action="@{/clients}">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Clients</h1>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <form class="d-flex align-items-center gap-2" method="get" th:action="@{/clients}">
+        <input type="hidden" name="page" value="0"/>
+        <input type="hidden" name="q" th:if="${q != null and !#strings.isEmpty(q)}" th:value="${q}"/>
+        <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+        <label class="form-label small text-muted mb-0" for="clients-page-size">Per page</label>
+        <select class="form-select form-select-sm" id="clients-page-size" name="size"
+                style="width: auto" onchange="this.form.submit()">
+          <option th:each="opt : ${pageSizeOptions}"
+                  th:value="${opt}"
+                  th:text="${opt}"
+                  th:selected="${pageSize == opt}">25</option>
+        </select>
+      </form>
+      <a class="btn btn-primary" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')" th:href="@{/clients/new}">New client</a>
+    </div>
+  </div>
+
+  <form class="row g-2 align-items-end mb-3" method="get" th:action="@{/clients}" sec:authorize="hasRole('SUPER_ADMIN')">
+    <input type="hidden" name="page" value="0"/>
+    <input type="hidden" name="size" th:value="${pageSize}"/>
+    <div class="col-md-4 col-lg-3">
+      <label class="form-label small mb-1" for="filterProject">Project</label>
+      <select class="form-select form-select-sm" id="filterProject" name="projectId" onchange="this.form.submit()">
+        <option value="">All projects</option>
+        <option th:each="p : ${projects}"
+                th:value="${p.id}"
+                th:text="${p.companyName}"
+                th:selected="${filterProjectId != null and filterProjectId == p.id}"></option>
+      </select>
+    </div>
+    <div class="col-md-5 col-lg-4">
+      <label class="form-label small mb-1" for="client-search-q">Search</label>
+      <input class="form-control form-control-sm" id="client-search-q" name="q" th:value="${q}" placeholder="Name, phone, email"/>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-outline-secondary btn-sm" type="submit">Search</button>
+      <a class="btn btn-link btn-sm" th:href="@{/clients(size=${pageSize})}" th:if="${filterProjectId != null or (q != null and !#strings.isEmpty(q))}">Clear</a>
+    </div>
+  </form>
+
+  <form class="row g-2 mb-3" method="get" th:action="@{/clients}" sec:authorize="!hasRole('SUPER_ADMIN')">
+    <input type="hidden" name="page" value="0"/>
+    <input type="hidden" name="size" th:value="${pageSize}"/>
     <div class="col-auto flex-grow-1">
       <input class="form-control" name="q" th:value="${q}" placeholder="Search name, phone, email"/>
     </div>
@@ -15,22 +60,67 @@
       <button class="btn btn-outline-secondary" type="submit">Search</button>
     </div>
   </form>
+
   <div class="table-responsive card shadow-sm">
     <table class="table table-hover mb-0">
-      <thead><tr><th>Name</th><th>City</th><th>Mobile</th><th></th></tr></thead>
+      <thead>
+      <tr>
+        <th th:if="${platformAdminView != null and platformAdminView and filterProjectId == null}">Project</th>
+        <th>Name</th>
+        <th>City</th>
+        <th>Mobile</th>
+        <th></th>
+      </tr>
+      </thead>
       <tbody th:fragment="clientRows">
       <tr th:each="c : ${clients}">
+        <td th:if="${platformAdminView != null and platformAdminView and filterProjectId == null}"
+            th:text="${c.builder != null ? c.builder.companyName : '—'}"></td>
         <td th:text="${c.displayName()}"></td>
         <td th:text="${c.city}"></td>
         <td th:text="${c.mobile1}"></td>
         <td class="text-end">
           <a class="btn btn-sm btn-outline-primary" th:href="@{/clients/{id}(id=${c.id})}">View</a>
-          <a class="btn btn-sm btn-outline-secondary" th:href="@{/clients/{id}/edit(id=${c.id})}">Edit</a>
+          <a class="btn btn-sm btn-outline-secondary" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')" th:href="@{/clients/{id}/edit(id=${c.id})}">Edit</a>
         </td>
+      </tr>
+      <tr th:if="${#lists.isEmpty(clients)}">
+        <td th:colspan="${platformAdminView != null and platformAdminView and filterProjectId == null ? 5 : 4}"
+            class="text-muted text-center py-4">No clients found.</td>
       </tr>
       </tbody>
     </table>
   </div>
+
+  <nav class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3"
+       th:if="${clientPage != null and clientPage.totalElements > 0}"
+       aria-label="Clients pagination">
+    <p class="text-muted small mb-0">
+      Showing
+      <strong th:text="${clientPage.number * clientPage.size + 1}">1</strong>
+      to
+      <strong th:text="${clientPage.number * clientPage.size + clientPage.numberOfElements}">25</strong>
+      of <strong th:text="${clientPage.totalElements}">0</strong>
+    </p>
+    <ul class="pagination pagination-sm mb-0" th:if="${clientPage.totalPages > 1}">
+      <li class="page-item" th:classappend="${!clientPage.hasPrevious()} ? 'disabled'">
+        <a class="page-link"
+           th:if="${clientPage.hasPrevious()}"
+           th:href="@{/clients(page=${clientPage.number - 1}, size=${pageSize}, q=${q}, projectId=${filterProjectId})}">Previous</a>
+        <span class="page-link" th:unless="${clientPage.hasPrevious()}">Previous</span>
+      </li>
+      <li class="page-item disabled">
+        <span class="page-link"
+              th:text="|Page ${clientPage.number + 1} of ${clientPage.totalPages}|">Page 1 of 1</span>
+      </li>
+      <li class="page-item" th:classappend="${!clientPage.hasNext()} ? 'disabled'">
+        <a class="page-link"
+           th:if="${clientPage.hasNext()}"
+           th:href="@{/clients(page=${clientPage.number + 1}, size=${pageSize}, q=${q}, projectId=${filterProjectId})}">Next</a>
+        <span class="page-link" th:unless="${clientPage.hasNext()}">Next</span>
+      </li>
+    </ul>
+  </nav>
 </div>
 </body>
 </html>

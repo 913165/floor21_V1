@@ -16,6 +16,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,27 +27,73 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ClientService {
 
+    public static final int CLIENTS_DEFAULT_PAGE_SIZE = 25;
+    public static final int CLIENTS_MAX_PAGE_SIZE = 100;
+
     private final ClientRepository clientRepository;
     private final BuilderRepository builderRepository;
     private final BookingRepository bookingRepository;
 
     @Transactional(readOnly = true)
-    public List<Client> list() {
-        return clientRepository.findByBuilder_IdOrderByFirstNameAscLastNameAsc(TenantContext.requireBuilderId());
+    public Page<Client> listPage(int page, int size, String q, UUID projectId) {
+        int safeSize = Math.min(Math.max(size, 5), CLIENTS_MAX_PAGE_SIZE);
+        int safePage = Math.max(page, 0);
+        String term = q != null && !q.isBlank() ? q.trim() : null;
+
+        UUID builderId = TenantContext.getBuilderIdOrNull();
+        if (builderId != null) {
+            Pageable pageable = PageRequest.of(safePage, safeSize, tenantSort());
+            if (term != null) {
+                return clientRepository.search(builderId, term, pageable);
+            }
+            return clientRepository.findByBuilder_IdOrderByFirstNameAscLastNameAsc(builderId, pageable);
+        }
+        if (projectId != null) {
+            requireTenantProject(projectId);
+            Pageable pageable = PageRequest.of(safePage, safeSize, tenantSort());
+            if (term != null) {
+                return clientRepository.search(projectId, term, pageable);
+            }
+            return clientRepository.findByBuilder_IdOrderByFirstNameAscLastNameAsc(projectId, pageable);
+        }
+        Pageable pageable = PageRequest.of(safePage, safeSize, platformSort());
+        if (term != null) {
+            return clientRepository.searchAllForPlatformAdmin(term, pageable);
+        }
+        return clientRepository.findAllForPlatformAdmin(pageable);
     }
 
+    /** Full tenant client list for dropdowns (e.g. booking form). */
     @Transactional(readOnly = true)
-    public List<Client> search(String q) {
-        if (q == null || q.isBlank()) {
-            return list();
-        }
-        return clientRepository.search(TenantContext.requireBuilderId(), q.trim());
+    public List<Client> list() {
+        UUID builderId = TenantContext.requireBuilderId();
+        return clientRepository
+                .findByBuilder_IdOrderByFirstNameAscLastNameAsc(builderId, Pageable.unpaged())
+                .getContent();
+    }
+
+    private static Sort tenantSort() {
+        return Sort.by(Sort.Order.asc("firstName"), Sort.Order.asc("lastName"));
+    }
+
+    private static Sort platformSort() {
+        return Sort.by(
+                Sort.Order.asc("builder.companyName").ignoreCase(),
+                Sort.Order.asc("firstName"),
+                Sort.Order.asc("lastName"));
     }
 
     @Transactional(readOnly = true)
     public Client get(UUID id) {
+        UUID tenantId = TenantContext.getBuilderIdOrNull();
+        if (tenantId != null) {
+            return clientRepository
+                    .findByIdAndBuilder_Id(id, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+        }
         return clientRepository
-                .findByIdAndBuilder_Id(id, TenantContext.requireBuilderId())
+                .findByIdWithBuilder(id)
+                .filter(c -> c.getBuilder() != null && !c.getBuilder().isPlatformAdmin())
                 .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
     }
 
@@ -53,7 +103,8 @@ public class ClientService {
      */
     @Transactional(readOnly = true)
     public List<ClientBuildingNavDto> listBuildingsForActiveBookings(UUID clientId) {
-        UUID builderId = TenantContext.requireBuilderId();
+        Client client = get(clientId);
+        UUID builderId = client.getBuilder().getId();
         List<Booking> bookings =
                 bookingRepository.findActiveByClientWithFlatAndBuilding(builderId, clientId);
         Map<UUID, ClientBuildingNavDto> byBuilding = new LinkedHashMap<>();
@@ -112,5 +163,12 @@ public class ClientService {
         entity.setParticulars(form.getParticulars());
         entity.setUpdatedAt(Instant.now());
         return clientRepository.save(entity);
+    }
+
+    private void requireTenantProject(UUID projectId) {
+        builderRepository
+                .findById(projectId)
+                .filter(b -> !b.isPlatformAdmin())
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
     }
 }

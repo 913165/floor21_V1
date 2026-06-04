@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content">
+  <div class="alert alert-secondary py-2 mb-3" sec:authorize="hasRole('SUPER_ADMIN')">
+    View only — platform admin cannot edit client records.
+  </div>
   <h1 class="h3 mb-4" th:text="${pageTitle}">Client</h1>
   <div class="card shadow-sm">
     <div class="card-body">
@@ -64,7 +68,7 @@
       </dl>
 
       <div class="mt-4 pt-3 border-top d-flex flex-wrap align-items-center gap-2">
-        <a class="btn btn-outline-secondary" th:href="@{/clients/{id}/edit(id=${client.id})}">Edit</a>
+        <a class="btn btn-outline-secondary" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')" th:href="@{/clients/{id}/edit(id=${client.id})}">Edit</a>
         <th:block th:if="${!#lists.isEmpty(clientBuildings)}">
           <a class="btn btn-primary btn-sm"
              th:each="nav : ${clientBuildings}"

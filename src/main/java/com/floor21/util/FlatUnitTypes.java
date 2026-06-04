@@ -124,6 +124,37 @@ public final class FlatUnitTypes {
             }
             return;
         }
+        applyResidentialAreaAndPrice(flat, areaSqft, carpetAreaSqft, balconyAreaSqft, basePrice);
+    }
+
+    /**
+     * Correct super built-up, carpet, balcony, or price on a booked residential flat without changing unit type
+     * or booking status.
+     */
+    public static void applyBookedFlatAdjustments(
+            Flat flat,
+            BigDecimal areaSqft,
+            BigDecimal carpetAreaSqft,
+            BigDecimal balconyAreaSqft,
+            BigDecimal basePrice) {
+        if (flat == null) {
+            throw new IllegalArgumentException("Flat not found.");
+        }
+        if (Boolean.TRUE.equals(flat.getParking()) || isParkingCode(flat.getBhkType())) {
+            throw new IllegalArgumentException("Use unit type edit for parking slots.");
+        }
+        if (isAmenityCode(flat.getBhkType())) {
+            throw new IllegalArgumentException("Use unit type edit for amenity units.");
+        }
+        applyResidentialAreaAndPrice(flat, areaSqft, carpetAreaSqft, balconyAreaSqft, basePrice);
+    }
+
+    private static void applyResidentialAreaAndPrice(
+            Flat flat,
+            BigDecimal areaSqft,
+            BigDecimal carpetAreaSqft,
+            BigDecimal balconyAreaSqft,
+            BigDecimal basePrice) {
         if (areaSqft != null) {
             if (areaSqft.signum() <= 0) {
                 throw new IllegalArgumentException("Super built-up area must be greater than zero.");

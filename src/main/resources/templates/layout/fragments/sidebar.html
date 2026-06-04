@@ -80,6 +80,10 @@
        data-nav-exact="true"
        th:classappend="${path == '/admin/buildings'} ? ' is-active' : ''">All buildings</a>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/clients}"
+       data-nav-prefix="/clients"
+       th:classappend="${#strings.startsWith(path, '/clients')} ? ' is-active' : ''">Clients</a>
+    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/builder-pricing-slabs}"
        data-nav-prefix="/admin/builder-pricing-slabs"
        th:classappend="${#strings.startsWith(path, '/admin/builder-pricing-slabs')} ? ' is-active' : ''">Rate slabs</a>
