@@ -10,4 +10,6 @@ public record FlatAddToFloorDto(
         @NotNull @Min(1) Integer floorNumber,
         @NotBlank String bhkType,
         BigDecimal areaSqft,
+        BigDecimal carpetAreaSqft,
+        BigDecimal balconyAreaSqft,
         BigDecimal basePrice) {}

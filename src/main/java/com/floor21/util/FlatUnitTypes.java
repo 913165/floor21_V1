@@ -93,12 +93,20 @@ public final class FlatUnitTypes {
         return ResidentialBhkTypes.normalize(trimmed);
     }
 
-    public static void applyToFlat(Flat flat, String unitType, BigDecimal areaSqft, BigDecimal basePrice) {
+    public static void applyToFlat(
+            Flat flat,
+            String unitType,
+            BigDecimal areaSqft,
+            BigDecimal carpetAreaSqft,
+            BigDecimal balconyAreaSqft,
+            BigDecimal basePrice) {
         String normalized = normalize(unitType);
         flat.setBhkType(normalized);
         if (isParkingCode(normalized)) {
             flat.setParking(true);
             flat.setAreaSqft(areaSqft != null ? areaSqft : BigDecimal.valueOf(150));
+            flat.setCarpetAreaSqft(null);
+            flat.setBalconyAreaSqft(null);
             flat.setBasePrice(basePrice != null ? basePrice : BigDecimal.ZERO);
             if (!"BOOKED".equals(flat.getStatus())) {
                 flat.setStatus("AVAILABLE");
@@ -108,6 +116,8 @@ public final class FlatUnitTypes {
         flat.setParking(false);
         if (isAmenityCode(normalized)) {
             flat.setAreaSqft(areaSqft != null ? areaSqft : defaultAmenityArea(normalized));
+            flat.setCarpetAreaSqft(null);
+            flat.setBalconyAreaSqft(null);
             flat.setBasePrice(basePrice != null ? basePrice : BigDecimal.ZERO);
             if (!"BOOKED".equals(flat.getStatus())) {
                 flat.setStatus("AVAILABLE");
@@ -116,9 +126,21 @@ public final class FlatUnitTypes {
         }
         if (areaSqft != null) {
             if (areaSqft.signum() <= 0) {
-                throw new IllegalArgumentException("Area must be greater than zero.");
+                throw new IllegalArgumentException("Super built-up area must be greater than zero.");
             }
             flat.setAreaSqft(areaSqft);
+        }
+        if (carpetAreaSqft != null) {
+            if (carpetAreaSqft.signum() <= 0) {
+                throw new IllegalArgumentException("Carpet area must be greater than zero.");
+            }
+            flat.setCarpetAreaSqft(carpetAreaSqft);
+        }
+        if (balconyAreaSqft != null) {
+            if (balconyAreaSqft.signum() < 0) {
+                throw new IllegalArgumentException("Balcony area cannot be negative.");
+            }
+            flat.setBalconyAreaSqft(balconyAreaSqft);
         }
         if (basePrice != null) {
             if (basePrice.signum() < 0) {

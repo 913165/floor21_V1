@@ -10,6 +10,8 @@ public record FlatGridFlatDto(
         String bhkType,
         BigDecimal basePrice,
         BigDecimal areaSqft,
+        BigDecimal carpetAreaSqft,
+        BigDecimal balconyAreaSqft,
         String status,
         boolean parking,
         /** Multiline hover text for booked flats (legacy / aria); empty otherwise. */

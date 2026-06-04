@@ -18,7 +18,12 @@ import {
   targetClientBookingCount,
   type PlatformFlowState,
 } from '../helpers/platform-flow';
-import { expectedParkingFlatCount, expectedResidentialFlatCount } from '../helpers/buildings';
+import {
+  DEFAULT_PARKING_FIXTURES,
+  expectedParkingFlatCount,
+  expectedResidentialFlatCount,
+  waitForFlatGridReady,
+} from '../helpers/buildings';
 
 /**
  * Full Floor21 flow — admin setup then both partners book ≥50% of their assigned flats.
@@ -73,6 +78,29 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     expect(flow.building.parkingFloors).toBe(3);
     expect(flow.residentialFlatCount).toBe(expectedResidentialFlatCount(flow.building));
     expect(flow.parkingFlatCount).toBe(expectedParkingFlatCount(flow.building));
+
+    await page.goto(`buildings/${flow.buildingId}/flats`, { waitUntil: 'commit' });
+    await waitForFlatGridReady(page);
+    for (let floor = 1; floor <= flow.building.parkingFloors!; floor++) {
+      const section = page.locator(`.flat-parking-section[data-floor-number="${floor}"]`);
+      await expect(section).toHaveAttribute(
+        'data-car-lift-count',
+        String(DEFAULT_PARKING_FIXTURES.carLiftCount),
+      );
+      await expect(section).toHaveAttribute(
+        'data-passenger-lift-count',
+        String(DEFAULT_PARKING_FIXTURES.passengerLiftCount),
+      );
+      await expect(section).toHaveAttribute('data-gate-count', '0');
+      await expect(section.locator('.parking-plan__fixture--car-lift')).toHaveCount(
+        DEFAULT_PARKING_FIXTURES.carLiftCount,
+      );
+      await expect(section.locator('.parking-plan__fixture--passenger-lift')).toHaveCount(
+        DEFAULT_PARKING_FIXTURES.passengerLiftCount,
+      );
+      await expect(section.locator('.parking-plan__fixture--gate')).toHaveCount(0);
+    }
+
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-after-building');
   });

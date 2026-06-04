@@ -1333,7 +1333,8 @@ public class FlatService {
             throw new IllegalArgumentException("Restore the floor merge before editing the linked unit.");
         }
         assertNoActiveBooking(flatId, "Cannot edit flat details while an active booking exists.");
-        FlatUnitTypes.applyToFlat(flat, dto.bhkType(), dto.areaSqft(), dto.basePrice());
+        FlatUnitTypes.applyToFlat(
+                flat, dto.bhkType(), dto.areaSqft(), dto.carpetAreaSqft(), dto.balconyAreaSqft(), dto.basePrice());
         return flatRepository.save(flat);
     }
 
@@ -1376,7 +1377,13 @@ public class FlatService {
             if (FlatUnitTypes.isMergeAbsorbed(flat)) {
                 continue;
             }
-            FlatUnitTypes.applyToFlat(flat, dto.bhkType(), dto.areaSqft(), dto.basePrice());
+            FlatUnitTypes.applyToFlat(
+                    flat,
+                    dto.bhkType(),
+                    dto.areaSqft(),
+                    dto.carpetAreaSqft(),
+                    dto.balconyAreaSqft(),
+                    dto.basePrice());
         }
         return flatRepository.saveAll(flats);
     }
@@ -1434,7 +1441,8 @@ public class FlatService {
         flat.setFlatNumber(String.format("%02d%02d", floorNumber, nextUnit));
         flat.setCreatedAt(now);
         flat.setStatus("AVAILABLE");
-        FlatUnitTypes.applyToFlat(flat, bhk, dto.areaSqft(), dto.basePrice());
+        FlatUnitTypes.applyToFlat(
+                flat, bhk, dto.areaSqft(), dto.carpetAreaSqft(), dto.balconyAreaSqft(), dto.basePrice());
         return flatRepository.save(flat);
     }
 
@@ -1513,6 +1521,12 @@ public class FlatService {
         if (keep.getPreMergeAreaSqft() != null) {
             keep.setAreaSqft(keep.getPreMergeAreaSqft());
         }
+        if (keep.getPreMergeCarpetAreaSqft() != null) {
+            keep.setCarpetAreaSqft(keep.getPreMergeCarpetAreaSqft());
+        }
+        if (keep.getPreMergeBalconyAreaSqft() != null) {
+            keep.setBalconyAreaSqft(keep.getPreMergeBalconyAreaSqft());
+        }
         if (keep.getPreMergeBasePrice() != null) {
             keep.setBasePrice(keep.getPreMergeBasePrice());
         }
@@ -1522,6 +1536,8 @@ public class FlatService {
         keep.setMergedAbsorbedFlatId(null);
         keep.setPreMergeBhkType(null);
         keep.setPreMergeAreaSqft(null);
+        keep.setPreMergeCarpetAreaSqft(null);
+        keep.setPreMergeBalconyAreaSqft(null);
         keep.setPreMergeBasePrice(null);
         keep.setPreMergeStatus(null);
         absorbed.setMergedIntoFlatId(null);
@@ -1537,12 +1553,14 @@ public class FlatService {
     private Flat mergeSameFloor(Flat keep, Flat remove, FlatMergeDto dto) {
         keep.setPreMergeBhkType(keep.getBhkType());
         keep.setPreMergeAreaSqft(keep.getAreaSqft());
+        keep.setPreMergeCarpetAreaSqft(keep.getCarpetAreaSqft());
+        keep.setPreMergeBalconyAreaSqft(keep.getBalconyAreaSqft());
         keep.setPreMergeBasePrice(keep.getBasePrice());
         keep.setPreMergeStatus(keep.getStatus());
         remove.setPreMergeStatus(remove.getStatus());
         keep.setMergedAbsorbedFlatId(remove.getId());
         remove.setMergedIntoFlatId(keep.getId());
-        applyMergedDetails(keep, dto, false, null, null);
+        applyMergedDetails(keep, dto, false, null, null, null, null);
         flatRepository.save(remove);
         return flatRepository.save(keep);
     }
@@ -1572,6 +1590,12 @@ public class FlatService {
         if (secondary.getAreaSqft() != null) {
             primary.setAreaSqft(secondary.getAreaSqft());
         }
+        if (secondary.getCarpetAreaSqft() != null) {
+            primary.setCarpetAreaSqft(secondary.getCarpetAreaSqft());
+        }
+        if (secondary.getBalconyAreaSqft() != null) {
+            primary.setBalconyAreaSqft(secondary.getBalconyAreaSqft());
+        }
         if (secondary.getBasePrice() != null) {
             primary.setBasePrice(secondary.getBasePrice());
         }
@@ -1595,8 +1619,10 @@ public class FlatService {
         Flat lower = keep.getFloorNumber() < remove.getFloorNumber() ? keep : remove;
         Flat upper = keep.getFloorNumber() < remove.getFloorNumber() ? remove : keep;
         BigDecimal defaultArea = sumNullable(lower.getAreaSqft(), upper.getAreaSqft());
+        BigDecimal defaultCarpet = sumNullable(lower.getCarpetAreaSqft(), upper.getCarpetAreaSqft());
+        BigDecimal defaultBalcony = sumNullable(lower.getBalconyAreaSqft(), upper.getBalconyAreaSqft());
         BigDecimal defaultPrice = sumNullable(lower.getBasePrice(), upper.getBasePrice());
-        applyMergedDetails(lower, dto, true, defaultArea, defaultPrice);
+        applyMergedDetails(lower, dto, true, defaultArea, defaultCarpet, defaultBalcony, defaultPrice);
         lower.setDuplexSecondaryFlatId(upper.getId());
         upper.setDuplexPrimaryFlatId(lower.getId());
         upper.setStatus("AVAILABLE");
@@ -1609,6 +1635,8 @@ public class FlatService {
             FlatMergeDto dto,
             boolean verticalDuplex,
             BigDecimal defaultArea,
+            BigDecimal defaultCarpet,
+            BigDecimal defaultBalcony,
             BigDecimal defaultPrice) {
         String bhk =
                 dto.bhkType() != null && !dto.bhkType().isBlank()
@@ -1618,9 +1646,23 @@ public class FlatService {
         BigDecimal area = dto.areaSqft() != null ? dto.areaSqft() : defaultArea;
         if (area != null) {
             if (area.signum() <= 0) {
-                throw new IllegalArgumentException("Area must be greater than zero.");
+                throw new IllegalArgumentException("Super built-up area must be greater than zero.");
             }
             target.setAreaSqft(area);
+        }
+        BigDecimal carpet = dto.carpetAreaSqft() != null ? dto.carpetAreaSqft() : defaultCarpet;
+        if (carpet != null) {
+            if (carpet.signum() <= 0) {
+                throw new IllegalArgumentException("Carpet area must be greater than zero.");
+            }
+            target.setCarpetAreaSqft(carpet);
+        }
+        BigDecimal balcony = dto.balconyAreaSqft() != null ? dto.balconyAreaSqft() : defaultBalcony;
+        if (balcony != null) {
+            if (balcony.signum() < 0) {
+                throw new IllegalArgumentException("Balcony area cannot be negative.");
+            }
+            target.setBalconyAreaSqft(balcony);
         }
         BigDecimal price = dto.basePrice() != null ? dto.basePrice() : defaultPrice;
         if (price != null) {
@@ -1723,6 +1765,8 @@ public class FlatService {
                 f.getBhkType(),
                 f.getBasePrice(),
                 f.getAreaSqft(),
+                f.getCarpetAreaSqft(),
+                f.getBalconyAreaSqft(),
                 f.getStatus(),
                 Boolean.TRUE.equals(f.getParking()),
                 bookable ? buildBuyerTooltip(f, b) : buildLinkedUnitTooltip(f, flatById, b),

@@ -18,6 +18,13 @@ export function expectedResidentialFlatCount(data: NewBuildingInput): number {
   return Math.max(0, totalFloors - parkingFloors) * flatsPerFloor;
 }
 
+/** Default parking fixtures configured on each parking floor during E2E building setup. */
+export const DEFAULT_PARKING_FIXTURES = {
+  carLiftCount: 2,
+  passengerLiftCount: 1,
+  gateCount: 0,
+} as const;
+
 /** Default parking slots per floor: one more than residential flats spread across parking floors. */
 export function defaultParkingSlotsPerFloor(data: NewBuildingInput): number {
   const parkingFloors = data.parkingFloors ?? 0;
@@ -89,6 +96,21 @@ export async function submitNewBuildingForm(main: Locator, page: Page) {
   ]);
 }
 
+/** flat-grid.js attaches click handlers after data-f21-init; Bootstrap modals need bootstrap.Modal. */
+export async function waitForFlatGridReady(page: Page): Promise<void> {
+  const grid = page.locator('#flat-grid');
+  await expect(grid).toBeVisible({ timeout: 30_000 });
+  await expect(grid).toHaveAttribute('data-f21-init', 'true', { timeout: 30_000 });
+  await expect(grid).toHaveAttribute('data-platform-admin-edit', 'true', { timeout: 5_000 });
+  await page.waitForFunction(
+    () =>
+      typeof (window as unknown as { bootstrap?: { Modal?: unknown } }).bootstrap?.Modal !==
+      'undefined',
+    undefined,
+    { timeout: 15_000 },
+  );
+}
+
 export async function configureParkingFloors(
   page: Page,
   parkingFloors: number,
@@ -99,16 +121,23 @@ export async function configureParkingFloors(
     gateCount?: number;
   },
 ): Promise<void> {
-  const carLiftCount = options?.carLiftCount ?? 1;
-  const passengerLiftCount = options?.passengerLiftCount ?? 0;
-  const gateCount = options?.gateCount ?? 1;
+  const carLiftCount = options?.carLiftCount ?? DEFAULT_PARKING_FIXTURES.carLiftCount;
+  const passengerLiftCount =
+    options?.passengerLiftCount ?? DEFAULT_PARKING_FIXTURES.passengerLiftCount;
+  const gateCount = options?.gateCount ?? DEFAULT_PARKING_FIXTURES.gateCount;
+
+  await waitForFlatGridReady(page);
 
   for (let floor = 1; floor <= parkingFloors; floor++) {
     const section = page.locator(`.flat-parking-section[data-floor-number="${floor}"]`);
     await expect(section).toBeVisible();
-    await section.getByRole('button', { name: 'Configure' }).click();
+    const configureBtn = section.locator('.flat-parking-configure-link');
+    await expect(configureBtn).toBeVisible();
+    await configureBtn.scrollIntoViewIfNeeded();
+    await configureBtn.click();
     const modal = page.locator('#parking-config-modal');
-    await expect(modal).toBeVisible();
+    await expect(modal).toHaveClass(/show/, { timeout: 15_000 });
+    await expect(modal.locator('#parking-config-slots')).toBeVisible();
     await page.locator('#parking-config-slots').fill(String(slotsPerFloor));
     await page.locator('#parking-config-car-lift-count').fill(String(carLiftCount));
     await page.locator('#parking-config-passenger-lift-count').fill(String(passengerLiftCount));
@@ -123,7 +152,7 @@ export async function configureParkingFloors(
     );
     await page.locator('#parking-config-save').click();
     await saveResponse;
-    await expect(modal).not.toBeVisible({ timeout: 30_000 });
+    await expect(modal).not.toHaveClass(/show/, { timeout: 30_000 });
 
     await expect(section).toHaveAttribute('data-configured', 'true', { timeout: 15_000 });
     await expect(section).toHaveClass(/flat-parking-section--split/);
@@ -154,7 +183,7 @@ export async function createBuilding(page: Page, data: NewBuildingInput, project
   const form = await openNewBuildingForm(page, projectId);
   await fillNewBuildingForm(form, data);
   await submitNewBuildingForm(form, page);
-  await expect(page.locator('#flat-grid')).toBeVisible({ timeout: 30_000 });
+  await waitForFlatGridReady(page);
 
   const parkingCount = expectedParkingFlatCount(data);
   const parkingFloors = data.parkingFloors ?? 0;
@@ -162,7 +191,7 @@ export async function createBuilding(page: Page, data: NewBuildingInput, project
     const slotsPerFloor = defaultParkingSlotsPerFloor(data);
     const sections = page.locator('#flat-grid .flat-parking-section');
     await expect(sections).toHaveCount(parkingFloors);
-    await configureParkingFloors(page, parkingFloors, slotsPerFloor);
+    await configureParkingFloors(page, parkingFloors, slotsPerFloor, DEFAULT_PARKING_FIXTURES);
     const totalSlots = await sections.evaluateAll((els) =>
       els.reduce((sum, el) => sum + parseInt(el.getAttribute('data-slot-count') || '0', 10), 0),
     );

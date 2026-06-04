@@ -114,10 +114,14 @@
 
   function syncParkingSectionAdminFields(sectionEl) {
     if (!sectionEl) return;
-    var area = document.getElementById("admin-area");
+    var superBuilder = document.getElementById("admin-super-builder-area");
+    var carpet = document.getElementById("admin-carpet-area");
+    var balcony = document.getElementById("admin-balcony-area");
     var price = document.getElementById("admin-price");
     var bhk = document.getElementById("admin-bhk");
-    if (area) area.value = sectionEl.dataset.area || "";
+    if (superBuilder) superBuilder.value = formatAreaForDisplay(sectionEl.dataset.area);
+    if (carpet) carpet.value = "";
+    if (balcony) balcony.value = "";
     if (price) price.value = sectionEl.dataset.price || "";
     if (bhk) bhk.value = "PKG";
     showAdminError("");
@@ -194,13 +198,182 @@
     el.classList.remove("d-none");
   }
 
+  var AREA_UNIT_STORAGE_KEY = "floor21.areaUnit";
+  var SQFT_PER_SQM = 10.763910416709722;
+
+  function getAreaUnit() {
+    var sel = document.getElementById("panel-area-unit");
+    if (sel) {
+      return sel.value === "sqm" ? "sqm" : "sqft";
+    }
+    try {
+      return localStorage.getItem(AREA_UNIT_STORAGE_KEY) === "sqm" ? "sqm" : "sqft";
+    } catch (e) {
+      return "sqft";
+    }
+  }
+
+  function setAreaUnit(unit) {
+    var normalized = unit === "sqm" ? "sqm" : "sqft";
+    try {
+      localStorage.setItem(AREA_UNIT_STORAGE_KEY, normalized);
+    } catch (e) {
+      /* ignore storage errors */
+    }
+    var panelSel = document.getElementById("panel-area-unit");
+    if (panelSel && panelSel.value !== normalized) {
+      panelSel.value = normalized;
+    }
+    var addSel = document.getElementById("flat-add-area-unit");
+    if (addSel && addSel.value !== normalized) {
+      addSel.value = normalized;
+    }
+    updateAreaUnitLabels();
+  }
+
+  function areaUnitSuffix() {
+    return getAreaUnit() === "sqm" ? "sq m" : "sq ft";
+  }
+
+  function formatAreaForDisplay(sqftValue) {
+    if (sqftValue == null || sqftValue === "") {
+      return "";
+    }
+    var num = Number(sqftValue);
+    if (isNaN(num)) {
+      return String(sqftValue);
+    }
+    if (getAreaUnit() === "sqm") {
+      return (num / SQFT_PER_SQM).toFixed(2);
+    }
+    var rounded = Math.round(num * 100) / 100;
+    return String(rounded);
+  }
+
+  function parseAreaInputToSqft(inputValue) {
+    if (inputValue === "" || inputValue == null) {
+      return null;
+    }
+    var num = Number(inputValue);
+    if (isNaN(num)) {
+      return null;
+    }
+    if (getAreaUnit() === "sqm") {
+      return Math.round(num * SQFT_PER_SQM * 100) / 100;
+    }
+    return num;
+  }
+
+  function updateAreaUnitLabels() {
+    var suffix = areaUnitSuffix();
+    document.querySelectorAll("[data-area-label-base]").forEach(function (label) {
+      label.textContent = label.getAttribute("data-area-label-base") + " (" + suffix + ")";
+    });
+    var step = getAreaUnit() === "sqm" ? "0.01" : "1";
+    document.querySelectorAll("[data-area-input]").forEach(function (input) {
+      input.step = step;
+      var base = input.getAttribute("aria-label") || input.id || "Area";
+      input.setAttribute("aria-label", base + " in " + suffix);
+    });
+  }
+
+  function syncAdminAreaInputsFromDataset(cardEl) {
+    if (!cardEl) return;
+    var superBuilder = document.getElementById("admin-super-builder-area");
+    var carpet = document.getElementById("admin-carpet-area");
+    var balcony = document.getElementById("admin-balcony-area");
+    if (superBuilder) superBuilder.value = formatAreaForDisplay(cardEl.dataset.area);
+    if (carpet) carpet.value = formatAreaForDisplay(cardEl.dataset.carpetArea);
+    if (balcony) balcony.value = formatAreaForDisplay(cardEl.dataset.balconyArea);
+  }
+
+  function refreshAreaPanelForCurrentSelection() {
+    if (selectedParkingSection && selectedParkingFloorNumber) {
+      var section = document.querySelector(
+        '.flat-parking-section[data-floor-number="' + selectedParkingFloorNumber + '"]'
+      );
+      if (section) {
+        setAreaPanelFromDataset(section);
+        if (isPlatformAdminEdit()) {
+          syncParkingSectionAdminFields(section);
+        }
+      }
+      return;
+    }
+    if (selectedFlatId) {
+      var card = document.getElementById("flat-" + selectedFlatId);
+      if (card) {
+        setAreaPanelFromDataset(card);
+        if (isPlatformAdminEdit()) {
+          syncAdminAreaInputsFromDataset(card);
+        }
+      }
+    }
+  }
+
+  function initAreaUnitSelector() {
+    var unit = "sqft";
+    try {
+      unit = localStorage.getItem(AREA_UNIT_STORAGE_KEY) === "sqm" ? "sqm" : "sqft";
+    } catch (e) {
+      unit = "sqft";
+    }
+    var panelSel = document.getElementById("panel-area-unit");
+    if (panelSel) {
+      panelSel.value = unit;
+      panelSel.addEventListener("change", function () {
+        setAreaUnit(panelSel.value);
+        refreshAreaPanelForCurrentSelection();
+      });
+    }
+    var addSel = document.getElementById("flat-add-area-unit");
+    if (addSel) {
+      addSel.value = unit;
+      addSel.addEventListener("change", function () {
+        setAreaUnit(addSel.value);
+      });
+    }
+    updateAreaUnitLabels();
+  }
+
+  function setAreaPanelFromDataset(el) {
+    if (!el) return;
+    var superBuilder = document.getElementById("panel-super-builder-area");
+    var carpet = document.getElementById("panel-carpet-area");
+    var balcony = document.getElementById("panel-balcony-area");
+    if (superBuilder) superBuilder.textContent = formatAreaForDisplay(el.dataset.area);
+    if (carpet) carpet.textContent = formatAreaForDisplay(el.dataset.carpetArea);
+    if (balcony) balcony.textContent = formatAreaForDisplay(el.dataset.balconyArea);
+  }
+
+  function setAreaPanelFromFlat(flat) {
+    if (!flat) return;
+    var superBuilder = document.getElementById("panel-super-builder-area");
+    var carpet = document.getElementById("panel-carpet-area");
+    var balcony = document.getElementById("panel-balcony-area");
+    if (superBuilder) {
+      superBuilder.textContent = formatAreaForDisplay(flat.areaSqft);
+    }
+    if (carpet) {
+      carpet.textContent = formatAreaForDisplay(flat.carpetAreaSqft);
+    }
+    if (balcony) {
+      balcony.textContent = formatAreaForDisplay(flat.balconyAreaSqft);
+    }
+  }
+
   function readAdminForm() {
     var bhk = document.getElementById("admin-bhk");
-    var area = document.getElementById("admin-area");
+    var superBuilder = document.getElementById("admin-super-builder-area");
+    var carpet = document.getElementById("admin-carpet-area");
+    var balcony = document.getElementById("admin-balcony-area");
     var price = document.getElementById("admin-price");
     return {
       bhkType: bhk ? bhk.value : "",
-      areaSqft: area && area.value !== "" ? Number(area.value) : null,
+      areaSqft:
+        superBuilder && superBuilder.value !== "" ? parseAreaInputToSqft(superBuilder.value) : null,
+      carpetAreaSqft: carpet && carpet.value !== "" ? parseAreaInputToSqft(carpet.value) : null,
+      balconyAreaSqft: balcony && balcony.value !== "" ? parseAreaInputToSqft(balcony.value) : null,
       basePrice: price && price.value !== "" ? Number(price.value) : null,
     };
   }
@@ -250,7 +423,7 @@
   }
 
   function setAdminEditModeVisible(show) {
-    ["panel-type", "panel-area", "panel-price"].forEach(function (id) {
+    ["panel-type", "panel-super-builder-area", "panel-carpet-area", "panel-balcony-area", "panel-price"].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.classList.toggle("d-none", show);
     });
@@ -265,6 +438,10 @@
     if (!cardEl || !flat) return;
     if (flat.bhkType != null) cardEl.dataset.type = flat.bhkType;
     if (flat.areaSqft != null) cardEl.dataset.area = String(flat.areaSqft);
+    if (flat.carpetAreaSqft != null) cardEl.dataset.carpetArea = String(flat.carpetAreaSqft);
+    else delete cardEl.dataset.carpetArea;
+    if (flat.balconyAreaSqft != null) cardEl.dataset.balconyArea = String(flat.balconyAreaSqft);
+    else delete cardEl.dataset.balconyArea;
     if (flat.basePrice != null) cardEl.dataset.price = String(flat.basePrice);
     if (flat.status != null) cardEl.dataset.status = flat.status;
     if (flat.floorNumber != null) cardEl.dataset.floor = String(flat.floorNumber);
@@ -395,12 +572,16 @@
       if (panel) panel.classList.remove("d-none");
       showAdminError("");
       var bhk = document.getElementById("admin-bhk");
-      var area = document.getElementById("admin-area");
+      var superBuilder = document.getElementById("admin-super-builder-area");
+      var carpet = document.getElementById("admin-carpet-area");
+      var balcony = document.getElementById("admin-balcony-area");
       var price = document.getElementById("admin-price");
       var partner = document.getElementById("admin-partner");
       var currentType = cardEl.dataset.type || "2BHK";
       if (bhk) ensureAdminBhkOption(bhk, currentType);
-      if (area) area.value = cardEl.dataset.area || "";
+      if (superBuilder) superBuilder.value = formatAreaForDisplay(cardEl.dataset.area);
+      if (carpet) carpet.value = formatAreaForDisplay(cardEl.dataset.carpetArea);
+      if (balcony) balcony.value = formatAreaForDisplay(cardEl.dataset.balconyArea);
       if (price) price.value = cardEl.dataset.price || "";
       if (partner) partner.value = cardEl.dataset.partnerId || "";
       var nonBookable = isNonBookableUnit(cardEl);
@@ -726,7 +907,9 @@
     el.dataset.type = flat.bhkType;
     el.dataset.floor = flat.floorNumber;
     el.dataset.price = flat.basePrice;
-    el.dataset.area = flat.areaSqft;
+    el.dataset.area = flat.areaSqft != null ? flat.areaSqft : "";
+    el.dataset.carpetArea = flat.carpetAreaSqft != null ? flat.carpetAreaSqft : "";
+    el.dataset.balconyArea = flat.balconyAreaSqft != null ? flat.balconyAreaSqft : "";
     el.dataset.parking = flat.parking;
     el.dataset.amenity = isAmenityType(flat.bhkType);
     el.dataset.duplexPrimary = flat.duplexPrimary ? "true" : "false";
@@ -2698,7 +2881,7 @@
       (range ? ": " + range : "") +
       ")";
     document.getElementById("panel-floor").textContent = el.dataset.floorNumber || "";
-    document.getElementById("panel-area").textContent = el.dataset.area || "";
+    setAreaPanelFromDataset(el);
     document.getElementById("panel-price").textContent = el.dataset.price || "";
     setParkingSectionMode(true);
     syncParkingSectionAdminFields(el);
@@ -2723,7 +2906,7 @@
     document.getElementById("panel-type").textContent =
       el.dataset.gridType || el.dataset.type || "";
     document.getElementById("panel-floor").textContent = el.dataset.floor || "";
-    document.getElementById("panel-area").textContent = el.dataset.area || "";
+    setAreaPanelFromDataset(el);
     document.getElementById("panel-price").textContent = el.dataset.price || "";
     var book = document.getElementById("book-btn");
     if (book) {
@@ -2835,6 +3018,7 @@
       window.addEventListener("resize", scheduleDuplexLinks);
     }
     loadSalesPartnersIntoSelect();
+    initAreaUnitSelector();
     var modalEl = document.getElementById("floor-plan-modal");
     if (modalEl) {
       modalEl.addEventListener("hidden.bs.modal", function () {
@@ -2956,7 +3140,7 @@
         var card = document.getElementById("flat-" + selectedFlatId);
         applyFlatDataToCard(card, flat);
         document.getElementById("panel-type").textContent = flat.bhkType || "";
-        document.getElementById("panel-area").textContent = flat.areaSqft != null ? String(flat.areaSqft) : "";
+        setAreaPanelFromFlat(flat);
         document.getElementById("panel-price").textContent = flat.basePrice != null ? String(flat.basePrice) : "";
         if (card) {
           syncAdminPanel(card);
@@ -3102,14 +3286,27 @@
         if (bhkSel) {
           bhkSel.value = "2BHK";
         }
-        var areaInput = document.getElementById("flat-add-area");
-        if (areaInput) {
-          areaInput.value = "";
+        var superBuilderInput = document.getElementById("flat-add-super-builder-area");
+        var carpetInput = document.getElementById("flat-add-carpet-area");
+        var balconyInput = document.getElementById("flat-add-balcony-area");
+        if (superBuilderInput) {
+          superBuilderInput.value = "";
+        }
+        if (carpetInput) {
+          carpetInput.value = "";
+        }
+        if (balconyInput) {
+          balconyInput.value = "";
         }
         var priceInput = document.getElementById("flat-add-price");
         if (priceInput) {
           priceInput.value = "";
         }
+        var addUnitSel = document.getElementById("flat-add-area-unit");
+        if (addUnitSel) {
+          addUnitSel.value = getAreaUnit();
+        }
+        updateAreaUnitLabels();
         var addModal = document.getElementById("flat-add-modal");
         if (addModal && window.bootstrap && bootstrap.Modal) {
           bootstrap.Modal.getOrCreateInstance(addModal).show();
@@ -3125,14 +3322,22 @@
         if (!buildingId) return;
         var err = document.getElementById("flat-add-error");
         var bhkSel = document.getElementById("flat-add-bhk");
-        var areaInput = document.getElementById("flat-add-area");
+        var superBuilderInput = document.getElementById("flat-add-super-builder-area");
+        var carpetInput = document.getElementById("flat-add-carpet-area");
+        var balconyInput = document.getElementById("flat-add-balcony-area");
         var priceInput = document.getElementById("flat-add-price");
         var payload = {
           floorNumber: parseInt(addFloorNumber, 10),
           bhkType: bhkSel ? bhkSel.value : "2BHK",
         };
-        if (areaInput && areaInput.value.trim()) {
-          payload.areaSqft = parseFloat(areaInput.value);
+        if (superBuilderInput && superBuilderInput.value.trim()) {
+          payload.areaSqft = parseAreaInputToSqft(superBuilderInput.value);
+        }
+        if (carpetInput && carpetInput.value.trim()) {
+          payload.carpetAreaSqft = parseAreaInputToSqft(carpetInput.value);
+        }
+        if (balconyInput && balconyInput.value.trim()) {
+          payload.balconyAreaSqft = parseAreaInputToSqft(balconyInput.value);
         }
         if (priceInput && priceInput.value.trim()) {
           payload.basePrice = parseFloat(priceInput.value);
@@ -3232,6 +3437,8 @@
           removeFlatId: removeId,
           bhkType: form.bhkType,
           areaSqft: form.areaSqft,
+          carpetAreaSqft: form.carpetAreaSqft,
+          balconyAreaSqft: form.balconyAreaSqft,
           basePrice: form.basePrice,
         };
         var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());

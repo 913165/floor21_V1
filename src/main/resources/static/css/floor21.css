@@ -880,7 +880,27 @@ button.flat-floor-plan-link {
 }
 
 .flat-details-modal-dialog {
-  max-width: min(92vw, 520px);
+  max-width: min(94vw, 680px);
+}
+
+#flat-details-modal .modal-body {
+  padding-top: 0.65rem;
+  padding-bottom: 0.85rem;
+}
+
+#flat-details-modal .modal-body > .row.mb-3 {
+  margin-bottom: 0.75rem !important;
+}
+
+#flat-details-modal #flat-admin-panel > p.text-muted.small {
+  line-height: 1.45;
+}
+
+.flat-details-area-unit__select {
+  width: auto;
+  min-width: 9.5rem;
+  max-width: 11.5rem;
+  flex: 0 1 auto;
 }
 
 /* Modals teleported to body in flat-grid.js; keep above shell (z-index 1) and backdrop */

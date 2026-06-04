@@ -181,6 +181,8 @@ public class FlatController {
         map.put("flatNumber", flat.getFlatNumber());
         map.put("bhkType", flat.getBhkType());
         map.put("areaSqft", flat.getAreaSqft());
+        map.put("carpetAreaSqft", flat.getCarpetAreaSqft());
+        map.put("balconyAreaSqft", flat.getBalconyAreaSqft());
         map.put("basePrice", flat.getBasePrice());
         map.put("status", flat.getStatus());
         map.put("floorNumber", flat.getFloorNumber());

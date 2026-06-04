@@ -48,7 +48,16 @@ public class FlatGridExportService {
             DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH);
 
     private static final String[] HEADERS = {
-        "Floor", "Flat", "BHK", "Status", "Area (sqft)", "Base price", "Partner", "Owner / detail"
+        "Floor",
+        "Flat",
+        "BHK",
+        "Status",
+        "Super built-up (sqft)",
+        "Carpet (sqft)",
+        "Balcony (sqft)",
+        "Base price",
+        "Partner",
+        "Owner / detail"
     };
 
     private final BuildingService buildingService;
@@ -98,6 +107,20 @@ public class FlatGridExportService {
                         table.addCell(
                                 dataCell(
                                         flat.areaSqft() != null ? flat.areaSqft().stripTrailingZeros().toPlainString() : "—",
+                                        bodyFont,
+                                        Element.ALIGN_RIGHT));
+                        table.addCell(
+                                dataCell(
+                                        flat.carpetAreaSqft() != null
+                                                ? flat.carpetAreaSqft().stripTrailingZeros().toPlainString()
+                                                : "—",
+                                        bodyFont,
+                                        Element.ALIGN_RIGHT));
+                        table.addCell(
+                                dataCell(
+                                        flat.balconyAreaSqft() != null
+                                                ? flat.balconyAreaSqft().stripTrailingZeros().toPlainString()
+                                                : "—",
                                         bodyFont,
                                         Element.ALIGN_RIGHT));
                         table.addCell(dataCell(formatMoney(flat.basePrice()), bodyFont, Element.ALIGN_RIGHT));
@@ -545,6 +568,8 @@ public class FlatGridExportService {
             nullToDash(flat.bhkType()),
             statusLabel(flat),
             flat.areaSqft() != null ? flat.areaSqft().doubleValue() : null,
+            flat.carpetAreaSqft() != null ? flat.carpetAreaSqft().doubleValue() : null,
+            flat.balconyAreaSqft() != null ? flat.balconyAreaSqft().doubleValue() : null,
             flat.basePrice() != null ? flat.basePrice().doubleValue() : null,
             nullToDash(flat.assignedPartnerName()),
             ownerDetailForExport(flat),

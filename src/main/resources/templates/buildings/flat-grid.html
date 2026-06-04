@@ -321,6 +321,8 @@
                       data-price=${flat.basePrice()},
                       data-status=${flat.status()},
                       data-area=${flat.areaSqft()},
+                      data-carpet-area=${flat.carpetAreaSqft()},
+                      data-balcony-area=${flat.balconyAreaSqft()},
                       data-parking=${flat.parking()},
                       data-amenity=${isAmenity},
                       data-duplex-primary=${flat.duplexPrimary()},
@@ -418,10 +420,27 @@
               <p id="panel-floor" class="mb-0"></p>
             </div>
             <div class="col-md-6">
-              <div class="text-muted small">Area (sqft)</div>
-              <p id="panel-area" class="mb-2"></p>
+              <div class="flat-details-area-unit d-flex align-items-center justify-content-between gap-2 mb-2">
+                <label class="form-label small mb-0 text-muted flex-shrink-0" for="panel-area-unit">Measurement unit</label>
+                <select class="form-select form-select-sm flat-details-area-unit__select" id="panel-area-unit" aria-label="Measurement unit">
+                  <option value="sqft">Square foot (sq ft)</option>
+                  <option value="sqm">Square meter (sq m)</option>
+                </select>
+              </div>
+              <div class="text-muted small" id="panel-super-builder-area-label" data-area-label-base="Super built-up area">Super built-up area (sq ft)</div>
+              <p id="panel-super-builder-area" class="mb-2"></p>
               <th:block sec:authorize="hasRole('SUPER_ADMIN')">
-                <input class="form-control form-control-sm mb-2 d-none admin-edit-field" type="number" id="admin-area" min="1" step="1" aria-label="Area in sqft"/>
+                <input class="form-control form-control-sm mb-2 d-none admin-edit-field" type="number" id="admin-super-builder-area" data-area-input="true" min="0" step="1" aria-label="Super built-up area"/>
+              </th:block>
+              <div class="text-muted small" id="panel-carpet-area-label" data-area-label-base="Carpet area">Carpet area (sq ft)</div>
+              <p id="panel-carpet-area" class="mb-2"></p>
+              <th:block sec:authorize="hasRole('SUPER_ADMIN')">
+                <input class="form-control form-control-sm mb-2 d-none admin-edit-field" type="number" id="admin-carpet-area" data-area-input="true" min="0" step="1" aria-label="Carpet area"/>
+              </th:block>
+              <div class="text-muted small" id="panel-balcony-area-label" data-area-label-base="Balcony area">Balcony area (sq ft)</div>
+              <p id="panel-balcony-area" class="mb-2"></p>
+              <th:block sec:authorize="hasRole('SUPER_ADMIN')">
+                <input class="form-control form-control-sm mb-2 d-none admin-edit-field" type="number" id="admin-balcony-area" data-area-input="true" min="0" step="1" aria-label="Balcony area"/>
               </th:block>
               <div class="text-muted small">Price</div>
               <p id="panel-price" class="mb-0"></p>
@@ -608,7 +627,6 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body pt-2 pb-3">
-          <label class="form-label small mb-1" for="flat-add-bhk">Unit type</label>
           <select class="form-select form-select-sm" id="flat-add-bhk" aria-label="Unit type">
             <optgroup label="Residential">
               <option th:each="t : ${residentialBhkTypes}" th:value="${t}" th:text="${t}">2BHK</option>
@@ -618,8 +636,21 @@
               <option th:each="t : ${flatAmenityTypes}" th:value="${t}" th:text="${t}">GYM</option>
             </optgroup>
           </select>
-          <label class="form-label small mb-1 mt-2" for="flat-add-area">Area (sqft)</label>
-          <input class="form-control form-control-sm" type="number" id="flat-add-area" min="1" step="1"
+          <div class="flat-details-area-unit d-flex align-items-center justify-content-between gap-2 mt-3 mb-1">
+            <label class="form-label small mb-0 text-muted flex-shrink-0" for="flat-add-area-unit">Measurement unit</label>
+            <select class="form-select form-select-sm flat-details-area-unit__select" id="flat-add-area-unit" aria-label="Measurement unit">
+              <option value="sqft">Square foot (sq ft)</option>
+              <option value="sqm">Square meter (sq m)</option>
+            </select>
+          </div>
+          <label class="form-label small mb-1" for="flat-add-super-builder-area" id="flat-add-super-builder-area-label" data-area-label-base="Super built-up area">Super built-up area (sq ft)</label>
+          <input class="form-control form-control-sm" type="number" id="flat-add-super-builder-area" data-area-input="true" min="0" step="1"
+                 placeholder="Leave blank for default"/>
+          <label class="form-label small mb-1 mt-2" for="flat-add-carpet-area" id="flat-add-carpet-area-label" data-area-label-base="Carpet area">Carpet area (sq ft)</label>
+          <input class="form-control form-control-sm" type="number" id="flat-add-carpet-area" data-area-input="true" min="0" step="1"
+                 placeholder="Leave blank for default"/>
+          <label class="form-label small mb-1 mt-2" for="flat-add-balcony-area" id="flat-add-balcony-area-label" data-area-label-base="Balcony area">Balcony area (sq ft)</label>
+          <input class="form-control form-control-sm" type="number" id="flat-add-balcony-area" data-area-input="true" min="0" step="1"
                  placeholder="Leave blank for default"/>
           <label class="form-label small mb-1 mt-2" for="flat-add-price">Base price</label>
           <input class="form-control form-control-sm" type="number" id="flat-add-price" min="0" step="1"
@@ -633,7 +664,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=parking-cl-pl-size)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=area-unit)}"></script>
 </div>
 </body>
 </html>

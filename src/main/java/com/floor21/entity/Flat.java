@@ -48,6 +48,12 @@ public class Flat {
     @Column(name = "area_sqft", precision = 10, scale = 2)
     private BigDecimal areaSqft;
 
+    @Column(name = "carpet_area_sqft", precision = 10, scale = 2)
+    private BigDecimal carpetAreaSqft;
+
+    @Column(name = "balcony_area_sqft", precision = 10, scale = 2)
+    private BigDecimal balconyAreaSqft;
+
     @Column(name = "base_price", precision = 15, scale = 2)
     private BigDecimal basePrice;
 
@@ -82,6 +88,12 @@ public class Flat {
 
     @Column(name = "pre_merge_area_sqft", precision = 10, scale = 2)
     private BigDecimal preMergeAreaSqft;
+
+    @Column(name = "pre_merge_carpet_area_sqft", precision = 10, scale = 2)
+    private BigDecimal preMergeCarpetAreaSqft;
+
+    @Column(name = "pre_merge_balcony_area_sqft", precision = 10, scale = 2)
+    private BigDecimal preMergeBalconyAreaSqft;
 
     @Column(name = "pre_merge_base_price", precision = 15, scale = 2)
     private BigDecimal preMergeBasePrice;
