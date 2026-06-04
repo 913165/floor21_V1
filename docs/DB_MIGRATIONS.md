@@ -4,6 +4,7 @@ The app uses a **single** Flyway script:
 
 - `src/main/resources/db/migration/V1__baseline.sql` — full schema, alters, and dev seed data (replaces the old `V1`–`V50` chain).
 - `src/main/resources/db/migration/V2__users_company_name.sql` — adds `users.company_name` for User Management.
+- `src/main/resources/db/migration/V7__flat_carpet_balcony_area.sql` — adds `flats.carpet_area_sqft`, `balcony_area_sqft`, and pre-merge counterparts.
 
 ## New install (empty database)
 
@@ -129,6 +130,29 @@ SELECT version, description, success FROM flyway_schema_history ORDER BY install
 ```
 
 If V5 is missing from history but the column exists, do not insert a fake row unless you know Flyway checksum rules; prefer `flyway repair` + restart after a clean deploy.
+
+## `missing column [balcony_area_sqft] in table [flats]` (or `carpet_area_sqft`)
+
+Hibernate validates before Flyway has applied `V7__flat_carpet_balcony_area.sql`, or the server JAR was built without a clean compile so V7 is missing from `target/classes`.
+
+1. Rebuild and redeploy (required after pulling migration changes):
+
+   ```bash
+   ./mvnw clean package -DskipTests
+   ```
+
+2. Restart the app. `FlywayDataSourceMigrationConfig` runs idempotent `ALTER TABLE ... IF NOT EXISTS` for all four V7 columns before JPA validates.
+
+**If startup still fails**, apply once in PostgreSQL on the server:
+
+```sql
+ALTER TABLE flats ADD COLUMN IF NOT EXISTS carpet_area_sqft DECIMAL(10, 2);
+ALTER TABLE flats ADD COLUMN IF NOT EXISTS balcony_area_sqft DECIMAL(10, 2);
+ALTER TABLE flats ADD COLUMN IF NOT EXISTS pre_merge_carpet_area_sqft DECIMAL(10, 2);
+ALTER TABLE flats ADD COLUMN IF NOT EXISTS pre_merge_balcony_area_sqft DECIMAL(10, 2);
+```
+
+Then restart the app.
 
 ## Flyway checksum mismatch on startup
 

@@ -51,6 +51,7 @@ public class FlywayDataSourceMigrationConfig {
                 ensureBuildingsUpdatedAtColumn(dataSource);
                 ensureParkingFloorConfigColumn(dataSource);
                 ensureFlatsLinkedResidentialColumn(dataSource);
+                ensureFlatsAreaBreakdownColumns(dataSource);
                 return bean;
             }
         };
@@ -118,6 +119,22 @@ public class FlywayDataSourceMigrationConfig {
         } catch (Exception ex) {
             throw new IllegalStateException(
                     "Could not ensure flats.linked_residential_flat_id column exists", ex);
+        }
+    }
+
+    /** Idempotent guard when V7 is recorded in history but area breakdown columns were never applied. */
+    private static void ensureFlatsAreaBreakdownColumns(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE flats ADD COLUMN IF NOT EXISTS carpet_area_sqft DECIMAL(10, 2)");
+            statement.execute("ALTER TABLE flats ADD COLUMN IF NOT EXISTS balcony_area_sqft DECIMAL(10, 2)");
+            statement.execute(
+                    "ALTER TABLE flats ADD COLUMN IF NOT EXISTS pre_merge_carpet_area_sqft DECIMAL(10, 2)");
+            statement.execute(
+                    "ALTER TABLE flats ADD COLUMN IF NOT EXISTS pre_merge_balcony_area_sqft DECIMAL(10, 2)");
+        } catch (Exception ex) {
+            throw new IllegalStateException(
+                    "Could not ensure flats carpet/balcony area columns exist", ex);
         }
     }
 }
