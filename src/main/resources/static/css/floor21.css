@@ -127,6 +127,15 @@
 
 .floor21-body {
   overflow-x: hidden;
+  --f21-page-heading-color: color-mix(in srgb, var(--f21-area-accent) 58%, #1a2332 42%);
+  --f21-section-heading-color: color-mix(in srgb, var(--f21-area-accent) 44%, var(--bs-secondary-color) 56%);
+  --f21-card-header-color: color-mix(in srgb, var(--f21-area-accent) 52%, var(--bs-body-color) 48%);
+}
+
+[data-bs-theme="dark"] .floor21-body {
+  --f21-page-heading-color: color-mix(in srgb, var(--f21-area-accent) 84%, #ffffff 16%);
+  --f21-section-heading-color: color-mix(in srgb, var(--f21-area-accent) 68%, var(--bs-secondary-color) 32%);
+  --f21-card-header-color: color-mix(in srgb, var(--f21-area-accent) 76%, #ffffff 24%);
 }
 
 .floor21-shell {
@@ -426,6 +435,28 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 .floor21-panel {
   min-width: 0;
   background-color: var(--bs-tertiary-bg);
+}
+
+/* Page + section headings: nav-area accent, contrast tuned for light/dark theme */
+.floor21-panel h1,
+.floor21-panel .h1,
+.floor21-panel h1.h3,
+.floor21-panel h1.h4,
+.modal .modal-title {
+  color: var(--f21-page-heading-color);
+}
+
+.floor21-panel h2.h6,
+.floor21-panel h3.h6,
+.floor21-panel .card-header:not([class*="text-bg-"]),
+.modal .modal-body h6:not(.small),
+.modal .modal-body h6.text-primary {
+  color: var(--f21-section-heading-color);
+}
+
+.floor21-panel .card-header:not([class*="text-bg-"]) {
+  color: var(--f21-card-header-color);
+  font-weight: 600;
 }
 
 @media (min-width: 768px) {
@@ -2621,7 +2652,7 @@ body.modal-open .modal-backdrop {
 
 [data-bs-theme="dark"] .floor21-panel .card-header {
   background-color: var(--bs-secondary-bg) !important;
-  color: var(--bs-body-color) !important;
+  color: var(--f21-card-header-color) !important;
   border-bottom-color: var(--bs-border-color) !important;
 }
 
