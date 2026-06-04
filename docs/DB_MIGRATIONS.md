@@ -71,6 +71,49 @@ INSERT INTO flyway_schema_history (
 
 (If version 2 is already in `flyway_schema_history`, only run the `ALTER TABLE` line.)
 
+## `missing column [parking_floor_config] in table [buildings]`
+
+Hibernate validates before Flyway has applied `V5__parking_floor_config.sql`, or the DB history lists V5/V6 as applied without the column (common after deploys from an older branch).
+
+1. Rebuild and redeploy so `V5` and `V6` are on the classpath:
+
+   ```bash
+   ./mvnw clean package -DskipTests
+   ```
+
+2. Restart the app. `FlywayDataSourceMigrationConfig` runs an idempotent `ALTER TABLE ... IF NOT EXISTS` before JPA validates.
+
+**If startup still fails**, apply once in PostgreSQL on the server:
+
+```sql
+ALTER TABLE buildings ADD COLUMN IF NOT EXISTS parking_floor_config TEXT;
+ALTER TABLE flats ADD COLUMN IF NOT EXISTS linked_residential_flat_id UUID;
+```
+
+If `linked_residential_flat_id` needs the foreign key (optional if the app starts after the column exists):
+
+```sql
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'flats_linked_residential_flat_id_fkey'
+  ) THEN
+    ALTER TABLE flats
+      ADD CONSTRAINT flats_linked_residential_flat_id_fkey
+      FOREIGN KEY (linked_residential_flat_id) REFERENCES flats (id) ON DELETE SET NULL;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_flats_linked_residential_flat_id ON flats (linked_residential_flat_id);
+```
+
+Check pending Flyway versions:
+
+```sql
+SELECT version, description, success FROM flyway_schema_history ORDER BY installed_rank;
+```
+
+If V5 is missing from history but the column exists, do not insert a fake row unless you know Flyway checksum rules; prefer `flyway repair` + restart after a clean deploy.
+
 ## Flyway checksum mismatch on startup
 
 Error example:

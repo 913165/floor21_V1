@@ -48,6 +48,8 @@ public class FlywayDataSourceMigrationConfig {
                             result.migrationsExecuted);
                 }
                 ensureUsersCompanyNameColumn(dataSource);
+                ensureParkingFloorConfigColumn(dataSource);
+                ensureFlatsLinkedResidentialColumn(dataSource);
                 return bean;
             }
         };
@@ -60,6 +62,45 @@ public class FlywayDataSourceMigrationConfig {
             statement.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)");
         } catch (Exception ex) {
             throw new IllegalStateException("Could not ensure users.company_name column exists", ex);
+        }
+    }
+
+    /** Idempotent guard when V5 is recorded in history but the column was never applied. */
+    private static void ensureParkingFloorConfigColumn(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE buildings ADD COLUMN IF NOT EXISTS parking_floor_config TEXT");
+        } catch (Exception ex) {
+            throw new IllegalStateException(
+                    "Could not ensure buildings.parking_floor_config column exists", ex);
+        }
+    }
+
+    /** Idempotent guard when V6 is recorded in history but the column was never applied. */
+    private static void ensureFlatsLinkedResidentialColumn(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute(
+                    "ALTER TABLE flats ADD COLUMN IF NOT EXISTS linked_residential_flat_id UUID");
+            statement.execute(
+                    """
+                    DO $$
+                    BEGIN
+                      IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint WHERE conname = 'flats_linked_residential_flat_id_fkey'
+                      ) THEN
+                        ALTER TABLE flats
+                          ADD CONSTRAINT flats_linked_residential_flat_id_fkey
+                          FOREIGN KEY (linked_residential_flat_id) REFERENCES flats (id) ON DELETE SET NULL;
+                      END IF;
+                    END $$""");
+            statement.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_flats_linked_residential_flat_id
+                      ON flats (linked_residential_flat_id)""");
+        } catch (Exception ex) {
+            throw new IllegalStateException(
+                    "Could not ensure flats.linked_residential_flat_id column exists", ex);
         }
     }
 }
