@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,18 +40,19 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<Booking> list() {
-        List<Booking> all = bookingRepository.findByBuilder_IdForListUi(TenantContext.requireBuilderId());
-        if (TenantContext.hasUnrestrictedBuildingAccess()) {
-            return all;
+        UUID builderId = TenantContext.requireBuilderId();
+        List<Booking> bookings;
+        if (canViewAllBookings()) {
+            bookings = bookingRepository.findByBuilder_IdForListUi(builderId);
+        } else {
+            UUID staffUserId = currentStaffUserId();
+            if (staffUserId == null) {
+                return List.of();
+            }
+            bookings =
+                    bookingRepository.findByBuilder_IdAndExecutive_IdForListUi(builderId, staffUserId);
         }
-        return all.stream()
-                .filter(
-                        b ->
-                                b.getFlat() != null
-                                        && b.getFlat().getBuilding() != null
-                                        && TenantContext.canAccessBuilding(
-                                                b.getFlat().getBuilding().getId()))
-                .toList();
+        return filterByBuildingAccess(bookings);
     }
 
     @Transactional(readOnly = true)
@@ -64,7 +66,55 @@ public class BookingService {
                 && !TenantContext.canAccessBuilding(booking.getFlat().getBuilding().getId())) {
             throw new ResourceNotFoundException("Booking not found");
         }
+        if (!canViewAllBookings() && !isOwnedByCurrentStaff(booking)) {
+            throw new ResourceNotFoundException("Booking not found");
+        }
         return booking;
+    }
+
+    private static List<Booking> filterByBuildingAccess(List<Booking> bookings) {
+        if (TenantContext.hasUnrestrictedBuildingAccess()) {
+            return bookings;
+        }
+        return bookings.stream()
+                .filter(
+                        b ->
+                                b.getFlat() != null
+                                        && b.getFlat().getBuilding() != null
+                                        && TenantContext.canAccessBuilding(
+                                                b.getFlat().getBuilding().getId()))
+                .toList();
+    }
+
+    private static boolean canViewAllBookings() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof Floor21UserPrincipal principal)) {
+            return true;
+        }
+        if (principal.isSuperAdmin()) {
+            return true;
+        }
+        if (principal.getStaffUserId() == null) {
+            return true;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_BUILDER_ADMIN".equals(a.getAuthority()));
+    }
+
+    private static UUID currentStaffUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof Floor21UserPrincipal principal)) {
+            return null;
+        }
+        return principal.getStaffUserId();
+    }
+
+    private static boolean isOwnedByCurrentStaff(Booking booking) {
+        UUID staffUserId = currentStaffUserId();
+        if (staffUserId == null || booking.getExecutive() == null) {
+            return false;
+        }
+        return staffUserId.equals(booking.getExecutive().getId());
     }
 
     @Transactional
@@ -104,6 +154,9 @@ public class BookingService {
                     bookingRepository
                             .findByIdAndBuilder_Id(form.getId(), builderId)
                             .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+            if (!canViewAllBookings() && !isOwnedByCurrentStaff(entity)) {
+                throw new ResourceNotFoundException("Booking not found");
+            }
             if (!entity.getFlat().getId().equals(flat.getId())) {
                 throw new IllegalArgumentException("Flat cannot be changed for an existing booking");
             }

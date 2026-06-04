@@ -18,6 +18,13 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
                     + "where b.builder.id = :builderId order by b.bookingDate desc, b.createdAt desc")
     List<Booking> findByBuilder_IdForListUi(@Param("builderId") UUID builderId);
 
+    @Query(
+            "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                    + "where b.builder.id = :builderId and b.executive.id = :executiveId "
+                    + "order by b.bookingDate desc, b.createdAt desc")
+    List<Booking> findByBuilder_IdAndExecutive_IdForListUi(
+            @Param("builderId") UUID builderId, @Param("executiveId") UUID executiveId);
+
     Optional<Booking> findByIdAndBuilder_Id(UUID id, UUID builderId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

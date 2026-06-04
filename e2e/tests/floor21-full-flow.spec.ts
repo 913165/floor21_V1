@@ -124,18 +124,18 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     emitFlowCredentials(flow, testInfo, 'credentials-after-bookings');
   });
 
-  test('Partner — 4. All bookings appear in list (partner 1)', async ({ page }) => {
+  test('Partner — 4. Own bookings appear in list (partner 1)', async ({ page }) => {
     requireFlowState(flow);
     await login(page, flow.user1.email, flow.user1.password);
-    for (const booking of flow.bookings) {
+    for (const booking of flow.bookings.filter((b) => b.partnerEmail === flow.user1.email)) {
       await expectBookingInList(page, booking.clientDisplayName);
     }
   });
 
-  test('Partner — 5. All bookings appear in list (partner 2)', async ({ page }) => {
+  test('Partner — 5. Own bookings appear in list (partner 2)', async ({ page }) => {
     requireFlowState(flow);
     await login(page, flow.user2.email, flow.user2.password);
-    for (const booking of flow.bookings) {
+    for (const booking of flow.bookings.filter((b) => b.partnerEmail === flow.user2.email)) {
       await expectBookingInList(page, booking.clientDisplayName);
     }
   });

@@ -872,8 +872,8 @@
 
   function buildParkingSectionInnerHtml(floor) {
     var note = parkingSectionConfigured(floor)
-      ? "Shared section — allocated across flats, not booked individually."
-      : "Set the number of parking slots for this floor.";
+      ? ""
+      : '<p class="flat-parking-section__note small text-muted mb-0">Set the number of parking slots for this floor.</p>';
     var configureLink = isPlatformAdminEdit()
       ? '<button type="button" class="flat-parking-configure-link btn btn-link btn-sm px-0">Configure</button>'
       : "";
@@ -886,9 +886,7 @@
       parkingSectionMetaDisplay(floor) +
       "</span>" +
       "</div>" +
-      '<p class="flat-parking-section__note small text-muted mb-0">' +
       note +
-      "</p>" +
       configureLink +
       "</div>" +
       '<div class="flat-parking-section__plan" aria-hidden="true">' +
@@ -1069,10 +1067,13 @@
       .join("");
     var toolbar = canEdit
       ? '<div class="parking-plan__layout-toolbar">' +
-        '<button type="button" class="btn btn-sm btn-primary parking-plan__save-layout" data-floor-number="' +
-        plan.floorNumber +
-        '">Save layout</button>' +
-        '<span class="text-muted small parking-plan__layout-hint">Drag cars to grid cells. Click a car to link or rotate its bay.</span>' +
+        '<div class="parking-plan__row-toolbar btn-group btn-group-sm" role="group" aria-label="Grid rows">' +
+        '<button type="button" class="btn btn-outline-secondary parking-plan__row-btn" data-parking-row-action="INSERT_TOP" title="Insert row at top">+ Top</button>' +
+        '<button type="button" class="btn btn-outline-secondary parking-plan__row-btn" data-parking-row-action="INSERT_BOTTOM" title="Insert row at bottom">+ Bottom</button>' +
+        '<button type="button" class="btn btn-outline-secondary parking-plan__row-btn" data-parking-row-action="REMOVE_TOP" title="Remove empty row from top">− Top</button>' +
+        '<button type="button" class="btn btn-outline-secondary parking-plan__row-btn" data-parking-row-action="REMOVE_BOTTOM" title="Remove empty row from bottom">− Bottom</button>' +
+        "</div>" +
+        '<span class="text-muted small parking-plan__layout-hint">Drag cars to grid cells. Click a car to link or rotate its bay. Only empty rows can be removed.</span>' +
         '<span class="text-danger small parking-plan__layout-error d-none"></span>' +
         "</div>"
       : "";
@@ -1101,20 +1102,10 @@
           orientation: p.orientation || "vertical",
         };
       }),
-      dirty: false,
+      saving: false,
       plan: cloneParkingPlan(plan),
     };
-    updateParkingLayoutToolbar(rootEl);
-  }
-
-  function updateParkingLayoutToolbar(rootEl) {
-    if (!rootEl) return;
-    var state = rootEl._parkingLayoutState;
-    var saveBtn = rootEl.querySelector(".parking-plan__save-layout");
-    if (saveBtn && state) {
-      saveBtn.disabled = !state.dirty;
-      saveBtn.classList.toggle("disabled", !state.dirty);
-    }
+    if (canEdit) updateParkingRowToolbar(rootEl);
   }
 
   function showParkingLayoutError(rootEl, message) {
@@ -1132,7 +1123,6 @@
   function rerenderParkingPlanFromState(rootEl) {
     var state = rootEl && rootEl._parkingLayoutState;
     if (!state || !state.plan) return;
-    var wasDirty = state.dirty;
     var plan = cloneParkingPlan(state.plan);
     plan.placements = state.placements.map(function (p) {
       return {
@@ -1143,8 +1133,6 @@
       };
     });
     renderParkingPlanGrid(plan, rootEl, isPlatformAdminEdit());
-    rootEl._parkingLayoutState.dirty = wasDirty;
-    updateParkingLayoutToolbar(rootEl);
   }
 
   function moveParkingSlotOnGrid(state, slotNumber, toCol, toRow) {
@@ -1169,7 +1157,6 @@
       moving.col = toCol;
       moving.row = toRow;
     }
-    state.dirty = true;
   }
 
   function toggleParkingSlotOrientation(state, slotNumber) {
@@ -1178,10 +1165,24 @@
       if (state.placements[i].slotNumber === slotNumber) {
         state.placements[i].orientation =
           state.placements[i].orientation === "horizontal" ? "vertical" : "horizontal";
-        state.dirty = true;
         return;
       }
     }
+  }
+
+  async function autoSaveParkingLayout(rootEl) {
+    var state = rootEl && rootEl._parkingLayoutState;
+    if (!state || state.saving) return;
+    state.saving = true;
+    showParkingLayoutError(rootEl, "");
+    var result = await persistParkingLayout(rootEl);
+    state.saving = false;
+    if (!result.ok) {
+      showParkingLayoutError(rootEl, result.error);
+      var plan = await fetchParkingPlan(state.floorNumber);
+      if (plan) showParkingPlanInSection(plan, true);
+    }
+    return result;
   }
 
   async function persistParkingLayout(rootEl) {
@@ -1213,7 +1214,6 @@
       return { ok: false, error: await parseErrorResponse(res) };
     }
     var plan = await res.json();
-    state.dirty = false;
     state.plan = cloneParkingPlan(plan);
     state.placements = (plan.placements || []).map(function (p) {
       return {
@@ -1226,13 +1226,6 @@
     invalidateParkingPlanCache(state.floorNumber);
     showParkingPlanInSection(plan, true);
     return { ok: true };
-  }
-
-  async function saveParkingLayoutFromRoot(rootEl) {
-    var state = rootEl && rootEl._parkingLayoutState;
-    if (!state || !state.dirty) return;
-    var result = await persistParkingLayout(rootEl);
-    if (!result.ok) showParkingLayoutError(rootEl, result.error);
   }
 
   function ensureParkingGridDelegation() {
@@ -1280,16 +1273,17 @@
       if (!slotNumber) return;
       moveParkingSlotOnGrid(state, slotNumber, Number(cell.dataset.col), Number(cell.dataset.row));
       rerenderParkingPlanFromState(root);
-      showParkingLayoutError(root, "");
+      void autoSaveParkingLayout(root);
     });
 
     document.addEventListener("click", function (e) {
-      var saveBtn = e.target.closest(".parking-plan__save-layout");
-      if (!saveBtn || saveBtn.disabled) return;
-      e.preventDefault();
-      e.stopPropagation();
-      var root = saveBtn.closest(".flat-parking-section__plan-root");
-      if (root) saveParkingLayoutFromRoot(root);
+      var btn = e.target.closest("[data-parking-row-action]");
+      if (!btn || btn.disabled) return;
+      var root = btn.closest(".flat-parking-section__plan-root");
+      if (!root || !isPlatformAdminEdit()) return;
+      var action = btn.getAttribute("data-parking-row-action");
+      if (!action) return;
+      void adjustParkingGridRow(root, action);
     });
   }
 
@@ -1455,31 +1449,71 @@
     return 1;
   }
 
-  function syncParkingConfigGridRowsLimits(slotCount, preferredRows) {
-    var minRows = parkingMinGridRowsForSlotCount(slotCount);
-    var rowsEl = document.getElementById("parking-config-grid-rows");
-    var hintEl = document.getElementById("parking-config-grid-rows-hint");
-    var rowsValue =
-      preferredRows != null && preferredRows !== ""
-        ? Number(preferredRows)
-        : rowsEl
-          ? Number(rowsEl.value)
-          : minRows;
-    if (!rowsValue || rowsValue < minRows) rowsValue = minRows;
-    if (rowsEl) {
-      rowsEl.min = String(minRows);
-      rowsEl.max = "24";
-      rowsEl.value = String(rowsValue);
+  var PARKING_MAX_GRID_ROWS = 24;
+
+  function parkingRowHasPlacement(state, row) {
+    if (!state || !state.placements) return false;
+    var i;
+    for (i = 0; i < state.placements.length; i++) {
+      if (state.placements[i].row === row) return true;
     }
-    if (hintEl) {
-      hintEl.textContent =
-        minRows === 3
-          ? "Minimum " +
-            minRows +
-            " rows for two car rows (top row, gap row, bottom row). You can add more rows for spacing."
-          : "Minimum " + minRows + " row for a single car row. You can add more rows for spacing.";
+    return false;
+  }
+
+  function updateParkingRowToolbar(rootEl) {
+    if (!rootEl) return;
+    var state = rootEl._parkingLayoutState;
+    if (!state) return;
+    var minRows = parkingMinGridRowsForSlotCount(
+      state.plan && state.plan.slotCount ? state.plan.slotCount : 0
+    );
+    if (state.plan && state.plan.minGridRows != null) {
+      minRows = state.plan.minGridRows;
     }
-    return rowsValue;
+    var rows = state.gridRows;
+    var removeTop = rootEl.querySelector('[data-parking-row-action="REMOVE_TOP"]');
+    var removeBottom = rootEl.querySelector('[data-parking-row-action="REMOVE_BOTTOM"]');
+    var insertTop = rootEl.querySelector('[data-parking-row-action="INSERT_TOP"]');
+    var insertBottom = rootEl.querySelector('[data-parking-row-action="INSERT_BOTTOM"]');
+    var canRemoveTop = rows > minRows && !parkingRowHasPlacement(state, 0);
+    var canRemoveBottom = rows > minRows && !parkingRowHasPlacement(state, rows - 1);
+    var canInsert = rows < PARKING_MAX_GRID_ROWS;
+    if (removeTop) removeTop.disabled = !canRemoveTop;
+    if (removeBottom) removeBottom.disabled = !canRemoveBottom;
+    if (insertTop) insertTop.disabled = !canInsert;
+    if (insertBottom) insertBottom.disabled = !canInsert;
+  }
+
+  async function adjustParkingGridRow(rootEl, action) {
+    var state = rootEl && rootEl._parkingLayoutState;
+    if (!state || state.saving) return;
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    if (!buildingId) return;
+    state.saving = true;
+    showParkingLayoutError(rootEl, "");
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    var res = await fetch(
+      appRoot() +
+        "/buildings/" +
+        buildingId +
+        "/flats/floor/" +
+        encodeURIComponent(state.floorNumber) +
+        "/parking-grid-row",
+      {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({ action: action }),
+      }
+    );
+    state.saving = false;
+    if (!res.ok) {
+      showParkingLayoutError(rootEl, await parseErrorResponse(res));
+      return;
+    }
+    var plan = await res.json();
+    invalidateParkingPlanCache(state.floorNumber);
+    showParkingPlanInSection(plan, true);
   }
 
   function syncParkingConfigCarSizeLabel(value) {
@@ -1501,10 +1535,6 @@
     if (slots) {
       slots.value = slotValue;
     }
-    syncParkingConfigGridRowsLimits(
-      slotValue,
-      sectionEl.dataset.gridRows || sectionEl.dataset.minGridRows || parkingMinGridRowsForSlotCount(slotValue)
-    );
     if (carSize) {
       var sizeValue = sectionEl.dataset.carSizePercent || "100";
       carSize.value = sizeValue;
@@ -1518,20 +1548,11 @@
     var grid = document.getElementById("flat-grid");
     var buildingId = grid ? grid.getAttribute("data-building-id") : null;
     var slotsEl = document.getElementById("parking-config-slots");
-    var gridRowsEl = document.getElementById("parking-config-grid-rows");
     var carSizeEl = document.getElementById("parking-config-car-size");
     if (!buildingId || !parkingConfigFloorNumber || !slotsEl) return;
     var slotCount = Number(slotsEl.value);
     if (!slotCount || slotCount < 1 || slotCount > 200) {
       showParkingConfigError("Enter a slot count between 1 and 200.");
-      return;
-    }
-    var minGridRows = parkingMinGridRowsForSlotCount(slotCount);
-    var gridRows = gridRowsEl ? Number(gridRowsEl.value) : minGridRows;
-    if (!gridRows || gridRows < minGridRows || gridRows > 24) {
-      showParkingConfigError(
-        "Grid rows must be between " + minGridRows + " and 24 for this slot count."
-      );
       return;
     }
     var carSizePercent = carSizeEl ? Number(carSizeEl.value) : 100;
@@ -1554,7 +1575,6 @@
         body: JSON.stringify({
           slotCount: slotCount,
           carSizePercent: carSizePercent,
-          gridRows: gridRows,
         }),
       }
     );
@@ -1634,7 +1654,8 @@
     showParkingLinkError("");
     toggleParkingSlotOrientation(state, Number(parkingLinkSlotNumber));
     syncParkingLinkOrientationLabel(state, null);
-    var result = await persistParkingLayout(root);
+    rerenderParkingPlanFromState(root);
+    var result = await autoSaveParkingLayout(root);
     if (!result.ok) showParkingLinkError(result.error);
   }
 
@@ -2377,12 +2398,6 @@
     if (parkingConfigCarSize) {
       parkingConfigCarSize.addEventListener("input", function () {
         syncParkingConfigCarSizeLabel(parkingConfigCarSize.value);
-      });
-    }
-    var parkingConfigSlots = document.getElementById("parking-config-slots");
-    if (parkingConfigSlots) {
-      parkingConfigSlots.addEventListener("input", function () {
-        syncParkingConfigGridRowsLimits(parkingConfigSlots.value);
       });
     }
     var parkingLinkSave = document.getElementById("parking-link-save");

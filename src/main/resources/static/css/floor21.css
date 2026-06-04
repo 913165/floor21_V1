@@ -1281,6 +1281,14 @@ body.modal-open .modal-backdrop {
   flex: 1 1 12rem;
 }
 
+.parking-plan__row-toolbar {
+  flex: 0 0 auto;
+}
+
+.parking-plan__row-btn {
+  white-space: nowrap;
+}
+
 .parking-plan__grid {
   display: grid;
   width: fit-content;

@@ -3,6 +3,7 @@ package com.floor21.util;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.floor21.dto.ParkingGridRowDto;
 import com.floor21.entity.Building;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -149,10 +150,10 @@ public final class ParkingFloorConfigUtil {
                 existing != null && existing.gridCols() != null
                         ? existing.gridCols()
                         : DEFAULT_GRID_COLS;
-        int gridRows = normalizeGridRows(slotCount, gridRowsParam);
-        if (gridRowsParam == null && existing != null && existing.gridRows() != null) {
-            gridRows = normalizeGridRows(slotCount, Math.max(gridRows, existing.gridRows()));
-        }
+        int gridRows =
+                existing != null && existing.gridRows() != null
+                        ? normalizeGridRows(slotCount, existing.gridRows())
+                        : normalizeGridRows(slotCount, gridRowsParam);
         List<GridPlacement> placements;
         if (existing != null
                 && existing.configured()
@@ -202,6 +203,97 @@ public final class ParkingFloorConfigUtil {
 
     public static void clearAll(Building building) {
         building.setParkingFloorConfig(null);
+    }
+
+    public record GridRowAdjustResult(int gridRows, List<GridPlacement> placements) {}
+
+    public static boolean rowHasPlacement(List<GridPlacement> placements, int row) {
+        if (placements == null) {
+            return false;
+        }
+        for (GridPlacement placement : placements) {
+            if (placement.row() == row) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static GridRowAdjustResult adjustGridRows(
+            int slotCount,
+            int gridRows,
+            List<GridPlacement> placements,
+            ParkingGridRowDto.Action action) {
+        int minRows = minGridRowsForSlotCount(slotCount);
+        List<GridPlacement> current =
+                placements != null ? new ArrayList<>(placements) : new ArrayList<>();
+        return switch (action) {
+            case INSERT_TOP -> {
+                if (gridRows >= MAX_GRID_ROWS) {
+                    throw new IllegalArgumentException(
+                            "Grid can have at most " + MAX_GRID_ROWS + " rows.");
+                }
+                List<GridPlacement> shifted = new ArrayList<>();
+                for (GridPlacement placement : current) {
+                    shifted.add(
+                            new GridPlacement(
+                                    placement.slotNumber(),
+                                    placement.col(),
+                                    placement.row() + 1,
+                                    placement.orientation()));
+                }
+                yield new GridRowAdjustResult(gridRows + 1, shifted);
+            }
+            case INSERT_BOTTOM -> {
+                if (gridRows >= MAX_GRID_ROWS) {
+                    throw new IllegalArgumentException(
+                            "Grid can have at most " + MAX_GRID_ROWS + " rows.");
+                }
+                yield new GridRowAdjustResult(gridRows + 1, current);
+            }
+            case REMOVE_TOP -> {
+                if (gridRows <= minRows) {
+                    throw new IllegalArgumentException(
+                            "Grid needs at least "
+                                    + minRows
+                                    + " rows for "
+                                    + slotCount
+                                    + " parking slots.");
+                }
+                if (rowHasPlacement(current, 0)) {
+                    throw new IllegalArgumentException(
+                            "Only empty rows can be removed. Row 1 has parking slots.");
+                }
+                List<GridPlacement> shifted = new ArrayList<>();
+                for (GridPlacement placement : current) {
+                    shifted.add(
+                            new GridPlacement(
+                                    placement.slotNumber(),
+                                    placement.col(),
+                                    placement.row() - 1,
+                                    placement.orientation()));
+                }
+                yield new GridRowAdjustResult(gridRows - 1, shifted);
+            }
+            case REMOVE_BOTTOM -> {
+                if (gridRows <= minRows) {
+                    throw new IllegalArgumentException(
+                            "Grid needs at least "
+                                    + minRows
+                                    + " rows for "
+                                    + slotCount
+                                    + " parking slots.");
+                }
+                int lastRow = gridRows - 1;
+                if (rowHasPlacement(current, lastRow)) {
+                    throw new IllegalArgumentException(
+                            "Only empty rows can be removed. Row "
+                                    + gridRows
+                                    + " has parking slots.");
+                }
+                yield new GridRowAdjustResult(gridRows - 1, current);
+            }
+        };
     }
 
     private static boolean placementsFit(

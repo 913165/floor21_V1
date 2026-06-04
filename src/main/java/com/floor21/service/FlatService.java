@@ -11,6 +11,7 @@ import com.floor21.dto.FloorMergeSplitResult;
 import com.floor21.dto.LinkedParkingSlotDto;
 import com.floor21.dto.ParkingFloorConfigDto;
 import com.floor21.dto.ParkingGridPlacementDto;
+import com.floor21.dto.ParkingGridRowDto;
 import com.floor21.dto.ParkingLayoutDto;
 import com.floor21.dto.ParkingLinkDto;
 import com.floor21.dto.ParkingPlanDto;
@@ -192,6 +193,45 @@ public class FlatService {
     }
 
     @Transactional
+    public ParkingPlanDto adjustParkingGridRow(
+            UUID buildingId, int floorNumber, ParkingGridRowDto dto) {
+        if (floorNumber < 1) {
+            throw new IllegalArgumentException("Invalid floor number.");
+        }
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!ParkingFloorConfigUtil.isConfigured(building, floorNumber)) {
+            throw new IllegalArgumentException(
+                    "Parking is not configured for floor " + floorNumber + " yet.");
+        }
+        ParkingFloorConfigUtil.FloorConfig config =
+                ParkingFloorConfigUtil.forFloor(building, floorNumber);
+        int gridCols =
+                config.gridCols() != null
+                        ? config.gridCols()
+                        : ParkingFloorConfigUtil.DEFAULT_GRID_COLS;
+        int gridRows =
+                config.gridRows() != null
+                        ? config.gridRows()
+                        : ParkingFloorConfigUtil.minGridRowsForSlotCount(config.slotCount());
+        List<ParkingFloorConfigUtil.GridPlacement> source =
+                config.placements() != null && !config.placements().isEmpty()
+                        ? config.placements()
+                        : ParkingFloorConfigUtil.defaultGridPlacements(
+                                config.slotCount(), gridCols, gridRows);
+        ParkingFloorConfigUtil.GridRowAdjustResult adjusted =
+                ParkingFloorConfigUtil.adjustGridRows(
+                        config.slotCount(), gridRows, source, dto.action());
+        ParkingFloorConfigUtil.saveLayout(
+                building,
+                floorNumber,
+                gridCols,
+                adjusted.gridRows(),
+                adjusted.placements());
+        buildingRepository.save(building);
+        return getParkingPlan(buildingId, floorNumber);
+    }
+
+    @Transactional
     public ParkingPlanDto configureParkingFloor(
             UUID buildingId, int floorNumber, ParkingFloorConfigDto dto) {
         if (floorNumber < 1) {
@@ -237,7 +277,7 @@ public class FlatService {
         int carSizePercent =
                 ParkingFloorConfigUtil.normalizeCarSizePercent(dto.carSizePercent());
         ParkingFloorConfigUtil.markConfigured(
-                building, floorNumber, slotCount, carSizePercent, dto.gridRows());
+                building, floorNumber, slotCount, carSizePercent, null);
         buildingRepository.save(building);
         return buildParkingPlan(building, floorNumber, existing);
     }
