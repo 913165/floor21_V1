@@ -155,6 +155,8 @@ public class LayoutControllerAdvice {
             model.addAttribute("impersonationActive", true);
             model.addAttribute(
                     "impersonationBuilderName", session.getAttribute(ImpersonationSession.BUILDER_NAME));
+            model.addAttribute(
+                    "impersonationStaffName", session.getAttribute(ImpersonationSession.STAFF_NAME));
         }
     }
 

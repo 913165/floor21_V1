@@ -1,7 +1,9 @@
 package com.floor21.service;
 
 import com.floor21.entity.Builder;
+import com.floor21.entity.User;
 import com.floor21.repository.BuilderRepository;
+import com.floor21.repository.UserRepository;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.ImpersonationSession;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ImpersonationService {
 
     private final BuilderRepository builderRepository;
+    private final UserRepository userRepository;
+    private final UserProjectAssignmentService userProjectAssignmentService;
     private final UserDetailsService userDetailsService;
     private final PlatformAuditService auditService;
 
@@ -31,49 +35,71 @@ public class ImpersonationService {
     }
 
     @Transactional
-    public void start(UUID builderId, HttpServletRequest request) {
+    public void startAsPartner(UUID builderId, UUID userId, HttpServletRequest request) {
         Builder builder =
                 builderRepository
                         .findById(builderId)
                         .filter(b -> !b.isPlatformAdmin())
-                        .orElseThrow(() -> new IllegalArgumentException("Builder not found."));
+                        .orElseThrow(() -> new IllegalArgumentException("Project not found."));
         if (!Boolean.TRUE.equals(builder.getActive())) {
-            throw new IllegalArgumentException("Cannot open an inactive builder account.");
+            throw new IllegalArgumentException("Cannot open an inactive project.");
         }
+        User user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(() -> new IllegalArgumentException("Partner not found."));
+        if (!Boolean.TRUE.equals(user.getActive())) {
+            throw new IllegalArgumentException("Cannot open as an inactive partner.");
+        }
+        String role = userProjectAssignmentService.getRole(userId, builderId);
+        if (role == null) {
+            throw new IllegalArgumentException("User is not a partner on this project.");
+        }
+
         AuthenticationSnapshot admin = snapshotCurrentAdmin(request);
         HttpSession session = request.getSession(true);
         session.setAttribute(ImpersonationSession.ACTIVE, Boolean.TRUE);
         session.setAttribute(ImpersonationSession.ADMIN_EMAIL, admin.email());
         session.setAttribute(ImpersonationSession.BUILDER_ID, builderId.toString());
         session.setAttribute(ImpersonationSession.BUILDER_NAME, builder.getCompanyName());
+        session.setAttribute(ImpersonationSession.STAFF_USER_ID, userId.toString());
+        session.setAttribute(ImpersonationSession.STAFF_NAME, user.getFullName());
 
-        switchToBuilderPrincipal(builder);
+        switchToStaffPrincipal(builderId, user, role);
         auditService.log(
                 "IMPERSONATION_START",
-                "builder",
-                builderId.toString(),
+                "user",
+                userId.toString(),
                 builderId,
-                "Admin " + admin.email() + " opened tenant as builder admin");
+                "Admin "
+                        + admin.email()
+                        + " opened as "
+                        + user.getFullName()
+                        + " ("
+                        + role
+                        + ") on "
+                        + builder.getCompanyName());
     }
 
     @Transactional
     public void end(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (session == null || !isImpersonating(session)) {
-            throw new IllegalStateException("Not impersonating a builder.");
+            throw new IllegalStateException("Not impersonating a partner.");
         }
         String adminEmail = (String) session.getAttribute(ImpersonationSession.ADMIN_EMAIL);
         String builderId = (String) session.getAttribute(ImpersonationSession.BUILDER_ID);
+        String staffUserId = (String) session.getAttribute(ImpersonationSession.STAFF_USER_ID);
         clearImpersonationSession(session);
         UserDetails admin = userDetailsService.loadUserByUsername(adminEmail);
         UsernamePasswordAuthenticationToken token =
                 new UsernamePasswordAuthenticationToken(admin, admin.getPassword(), admin.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(token);
-        if (builderId != null) {
+        if (builderId != null && staffUserId != null) {
             auditService.log(
                     "IMPERSONATION_END",
-                    "builder",
-                    builderId,
+                    "user",
+                    staffUserId,
                     UUID.fromString(builderId),
                     "Admin " + adminEmail + " ended impersonation");
         }
@@ -86,23 +112,22 @@ public class ImpersonationService {
         return (String) session.getAttribute(ImpersonationSession.BUILDER_NAME);
     }
 
-    private void switchToBuilderPrincipal(Builder builder) {
-        String loginEmail =
-                builder.getEmail() != null && !builder.getEmail().isBlank()
-                        ? builder.getEmail()
-                        : "project+" + builder.getId() + "@impersonation.floor21";
-        String passwordHash =
-                builder.getPasswordHash() != null && !builder.getPasswordHash().isBlank()
-                        ? builder.getPasswordHash()
-                        : "{noop}";
+    public String impersonatedStaffName(HttpSession session) {
+        if (session == null) {
+            return null;
+        }
+        return (String) session.getAttribute(ImpersonationSession.STAFF_NAME);
+    }
+
+    private void switchToStaffPrincipal(UUID builderId, User user, String role) {
         var delegate =
                 new org.springframework.security.core.userdetails.User(
-                        loginEmail,
-                        passwordHash,
-                        List.of(new SimpleGrantedAuthority("ROLE_BUILDER_ADMIN")));
+                        user.getEmail(),
+                        user.getPasswordHash(),
+                        List.of(new SimpleGrantedAuthority("ROLE_" + role)));
         Floor21UserPrincipal principal =
                 new Floor21UserPrincipal(
-                        builder.getId(), null, loginEmail, passwordHash, false, delegate);
+                        builderId, user.getId(), user.getEmail(), user.getPasswordHash(), false, delegate);
         UsernamePasswordAuthenticationToken token =
                 new UsernamePasswordAuthenticationToken(principal, principal.getPassword(), principal.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(token);
@@ -114,7 +139,7 @@ public class ImpersonationService {
             throw new IllegalStateException("You must be signed in as a platform administrator.");
         }
         if (!principal.isSuperAdmin()) {
-            throw new IllegalStateException("Only platform administrators can impersonate builders.");
+            throw new IllegalStateException("Only platform administrators can impersonate partners.");
         }
         HttpSession existing = request.getSession(false);
         if (existing != null && Boolean.TRUE.equals(existing.getAttribute(ImpersonationSession.ACTIVE))) {
@@ -128,6 +153,8 @@ public class ImpersonationService {
         session.removeAttribute(ImpersonationSession.ADMIN_EMAIL);
         session.removeAttribute(ImpersonationSession.BUILDER_ID);
         session.removeAttribute(ImpersonationSession.BUILDER_NAME);
+        session.removeAttribute(ImpersonationSession.STAFF_USER_ID);
+        session.removeAttribute(ImpersonationSession.STAFF_NAME);
         session.removeAttribute(Floor21UserPrincipal.SESSION_BUILDER_ID);
     }
 

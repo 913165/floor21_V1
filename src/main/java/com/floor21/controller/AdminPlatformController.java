@@ -8,12 +8,10 @@ import com.floor21.repository.BuildingRepository;
 import com.floor21.service.AdminReportService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.FlatService;
-import com.floor21.service.ImpersonationService;
 import com.floor21.service.PlatformAdminService;
 import com.floor21.service.PlatformAuditService;
 import com.floor21.service.PlatformSettingsService;
 import com.floor21.util.ResidentialBhkTypes;
-import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,7 +42,6 @@ public class AdminPlatformController {
     private final PlatformSettingsService settingsService;
     private final PlatformAuditService auditService;
     private final AdminReportService reportService;
-    private final ImpersonationService impersonationService;
     private final BuildingService buildingService;
     private final BuilderRepository builderRepository;
     private final BuildingRepository buildingRepository;
@@ -338,18 +335,5 @@ public class AdminPlatformController {
     @GetMapping("/reports/inventory.csv")
     public ResponseEntity<Resource> exportInventory() throws IOException {
         return reportService.exportInventory();
-    }
-
-    @PostMapping("/projects/{builderId}/impersonate")
-    public String impersonate(
-            @PathVariable UUID builderId, HttpServletRequest request, RedirectAttributes ra) {
-        try {
-            impersonationService.start(builderId, request);
-            ra.addFlashAttribute("successMessage", "You are now viewing as this builder. Use End impersonation to return.");
-            return "redirect:/dashboard";
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            ra.addFlashAttribute("errorMessage", ex.getMessage());
-            return "redirect:/admin/projects/" + builderId + "/edit";
-        }
     }
 }

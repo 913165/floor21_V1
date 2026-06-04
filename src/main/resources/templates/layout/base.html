@@ -31,8 +31,9 @@
                class="floor21-panel flex-grow-1 py-3 px-3 px-md-4 overflow-auto">
     <div class="floor21-panel__inner">
       <div th:if="${impersonationActive}" class="floor21-impersonation-banner floor21-impersonation-banner--inline text-center small py-2 px-3 mb-3">
-        Viewing as <strong th:text="${impersonationBuilderName}">builder</strong>.
-        <form class="d-inline ms-2" th:action="@{/impersonate/end}" method="post">
+        Viewing as <strong th:text="${impersonationStaffName}">partner</strong>
+        on <strong th:text="${impersonationBuilderName}">project</strong>.
+        <form class="d-inline ms-2" th:action="@{/impersonate/end}" method="post" data-turbo="false">
           <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
           <button class="btn btn-sm btn-warning" type="submit">End impersonation</button>
         </form>

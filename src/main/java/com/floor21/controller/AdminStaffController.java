@@ -4,9 +4,11 @@ import com.floor21.entity.Building;
 import com.floor21.entity.User;
 import com.floor21.service.AdminStaffService;
 import com.floor21.service.AdminUserService;
+import com.floor21.service.ImpersonationService;
 import com.floor21.service.StaffBuildingAccessService;
 import com.floor21.service.UserProjectAssignmentService;
 import com.floor21.util.IndianStates;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class AdminStaffController {
     private final AdminUserService adminUserService;
     private final StaffBuildingAccessService staffBuildingAccessService;
     private final UserProjectAssignmentService userProjectAssignmentService;
+    private final ImpersonationService impersonationService;
 
     @GetMapping("/admin/projects/{builderId}/staff")
     public String listForBuilder(@PathVariable UUID builderId, Model model) {
@@ -77,6 +80,24 @@ public class AdminStaffController {
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
             return "redirect:/admin/projects/" + builderId + "/staff/assign";
+        }
+    }
+
+    @PostMapping("/admin/projects/{builderId}/staff/{staffId}/impersonate")
+    public String impersonatePartner(
+            @PathVariable UUID builderId,
+            @PathVariable UUID staffId,
+            HttpServletRequest request,
+            RedirectAttributes ra) {
+        try {
+            impersonationService.startAsPartner(builderId, staffId, request);
+            ra.addFlashAttribute(
+                    "successMessage",
+                    "You are now viewing as this partner. Use End impersonation to return.");
+            return "redirect:/dashboard";
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/admin/projects/" + builderId + "/staff";
         }
     }
 
