@@ -139,7 +139,8 @@ public class FlatService {
                             parkingCarSizePercent,
                             parkingGridRows,
                             parkingMinGridRows,
-                            parkingConfigured ? parkingConfig.resolvedLiftCount() : 0,
+                            parkingConfigured ? parkingConfig.resolvedCarLiftCount() : 0,
+                            parkingConfigured ? parkingConfig.resolvedPassengerLiftCount() : 0,
                             parkingConfigured ? parkingConfig.resolvedGateCount() : 0));
         }
         return rows;
@@ -327,12 +328,22 @@ public class FlatService {
         }
         int carSizePercent =
                 ParkingFloorConfigUtil.normalizeCarSizePercent(dto.carSizePercent());
-        int liftCount =
-                ParkingFloorConfigUtil.resolveLiftCountFromDto(dto.liftCount(), dto.showLift());
+        int carLiftCount =
+                ParkingFloorConfigUtil.resolveCarLiftCountFromDto(
+                        dto.carLiftCount(), dto.liftCount(), dto.showLift());
+        int passengerLiftCount =
+                ParkingFloorConfigUtil.resolvePassengerLiftCountFromDto(dto.passengerLiftCount());
         int gateCount =
                 ParkingFloorConfigUtil.resolveGateCountFromDto(dto.gateCount(), dto.showGate());
         ParkingFloorConfigUtil.markConfigured(
-                building, floorNumber, slotCount, carSizePercent, null, liftCount, gateCount);
+                building,
+                floorNumber,
+                slotCount,
+                carSizePercent,
+                null,
+                carLiftCount,
+                passengerLiftCount,
+                gateCount);
         buildingRepository.save(building);
         return buildParkingPlan(building, floorNumber, existing);
     }
@@ -568,6 +579,8 @@ public class FlatService {
                 true,
                 carSizePercent,
                 minGridRows,
+                config.resolvedCarLiftCount(),
+                config.resolvedPassengerLiftCount(),
                 config.resolvedLiftCount(),
                 config.resolvedGateCount(),
                 fixtureDtos);
@@ -602,8 +615,18 @@ public class FlatService {
                     config.gridRows() != null
                             ? config.gridRows()
                             : ParkingFloorConfigUtil.minGridRowsForSlotCount(config.slotCount());
+            List<ParkingFloorConfigUtil.GridPlacement> carPlacements =
+                    config.placements() != null && !config.placements().isEmpty()
+                            ? config.placements()
+                            : ParkingFloorConfigUtil.defaultGridPlacements(
+                                    config.slotCount(), cols, rows);
             return ParkingFloorConfigUtil.defaultFixtures(
-                    config.resolvedLiftCount(), config.resolvedGateCount(), cols, rows);
+                    config.resolvedCarLiftCount(),
+                    config.resolvedPassengerLiftCount(),
+                    config.resolvedGateCount(),
+                    cols,
+                    rows,
+                    carPlacements);
         }
         return fixtures.stream()
                 .map(
@@ -653,21 +676,29 @@ public class FlatService {
         }
         List<ParkingFixturePlacementDto> fixtures =
                 dto.fixtures() != null ? dto.fixtures() : List.of();
-        int liftSeen = 0;
+        int carLiftSeen = 0;
+        int passengerLiftSeen = 0;
         int gateSeen = 0;
         for (ParkingFixturePlacementDto f : fixtures) {
             String kind = ParkingFloorConfigUtil.normalizeFixtureKind(f.kind());
-            if ("LIFT".equals(kind)) {
-                liftSeen++;
-            } else if ("GATE".equals(kind)) {
-                gateSeen++;
+            switch (kind) {
+                case "CAR_LIFT" -> carLiftSeen++;
+                case "PASSENGER_LIFT" -> passengerLiftSeen++;
+                case "GATE" -> gateSeen++;
+                default -> {}
             }
         }
-        if (liftSeen != config.resolvedLiftCount()) {
+        if (carLiftSeen != config.resolvedCarLiftCount()) {
             throw new IllegalArgumentException(
                     "Layout must include exactly "
-                            + config.resolvedLiftCount()
-                            + " lift(s).");
+                            + config.resolvedCarLiftCount()
+                            + " car lift(s).");
+        }
+        if (passengerLiftSeen != config.resolvedPassengerLiftCount()) {
+            throw new IllegalArgumentException(
+                    "Layout must include exactly "
+                            + config.resolvedPassengerLiftCount()
+                            + " passenger lift(s).");
         }
         if (gateSeen != config.resolvedGateCount()) {
             throw new IllegalArgumentException(

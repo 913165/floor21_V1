@@ -1644,10 +1644,16 @@ body.modal-open .modal-backdrop {
   cursor: grabbing;
 }
 
-.parking-plan__fixture--lift {
+.parking-plan__fixture--car-lift {
   background: #e3f2fd;
   border-color: #64b5f6;
   color: #1565c0;
+}
+
+.parking-plan__fixture--passenger-lift {
+  background: #e0f2f1;
+  border-color: #4db6ac;
+  color: #00695c;
 }
 
 .parking-plan__fixture--gate {
@@ -1669,14 +1675,33 @@ body.modal-open .modal-backdrop {
   justify-self: center;
 }
 
+.parking-plan__sheet--grid .parking-plan__fixture--car-lift,
+.parking-plan__sheet--grid .parking-plan__fixture--passenger-lift {
+  width: 80%;
+  height: 80%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.parking-plan__sheet--grid .parking-plan__fixture--car-lift .parking-plan__fixture-label,
+.parking-plan__sheet--grid .parking-plan__fixture--passenger-lift .parking-plan__fixture-label {
+  font-size: 0.72rem;
+}
+
 .parking-plan__grid--dragging .parking-plan__fixture:not(.parking-plan__fixture--dragging) {
   opacity: 0.55;
 }
 
-[data-bs-theme="dark"] .parking-plan__fixture--lift {
+[data-bs-theme="dark"] .parking-plan__fixture--car-lift {
   background: #1e3a5f;
   border-color: #64b5f6;
   color: #90caf9;
+}
+
+[data-bs-theme="dark"] .parking-plan__fixture--passenger-lift {
+  background: #1b3a34;
+  border-color: #4db6ac;
+  color: #80cbc4;
 }
 
 [data-bs-theme="dark"] .parking-plan__fixture--gate {

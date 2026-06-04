@@ -93,22 +93,60 @@ export async function configureParkingFloors(
   page: Page,
   parkingFloors: number,
   slotsPerFloor: number,
+  options?: {
+    carLiftCount?: number;
+    passengerLiftCount?: number;
+    gateCount?: number;
+  },
 ): Promise<void> {
+  const carLiftCount = options?.carLiftCount ?? 1;
+  const passengerLiftCount = options?.passengerLiftCount ?? 0;
+  const gateCount = options?.gateCount ?? 1;
+
   for (let floor = 1; floor <= parkingFloors; floor++) {
     const section = page.locator(`.flat-parking-section[data-floor-number="${floor}"]`);
     await expect(section).toBeVisible();
     await section.getByRole('button', { name: 'Configure' }).click();
-    await expect(page.locator('#parking-config-modal')).toBeVisible();
+    const modal = page.locator('#parking-config-modal');
+    await expect(modal).toBeVisible();
     await page.locator('#parking-config-slots').fill(String(slotsPerFloor));
-    await page.locator('#parking-config-save').click();
-    await expect(page.locator('#parking-config-modal')).not.toBeVisible({ timeout: 30_000 });
-    await expect(section).toHaveClass(/flat-parking-section--split/);
-    await expect(section.locator('.flat-parking-section__plan-root .parking-plan__slot')).toHaveCount(
-      slotsPerFloor,
+    await page.locator('#parking-config-car-lift-count').fill(String(carLiftCount));
+    await page.locator('#parking-config-passenger-lift-count').fill(String(passengerLiftCount));
+    await page.locator('#parking-config-gate-count').fill(String(gateCount));
+
+    const saveResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        response.url().includes('/parking-config') &&
+        response.ok(),
+      { timeout: 60_000 },
     );
-    await expect(section).toHaveAttribute('data-configured', 'true');
-    await expect(section.locator('.parking-plan__fixture--lift')).toHaveCount(1);
-    await expect(section.locator('.parking-plan__fixture--gate')).toHaveCount(1);
+    await page.locator('#parking-config-save').click();
+    await saveResponse;
+    await expect(modal).not.toBeVisible({ timeout: 30_000 });
+
+    await expect(section).toHaveAttribute('data-configured', 'true', { timeout: 15_000 });
+    await expect(section).toHaveClass(/flat-parking-section--split/);
+
+    const slots = section.locator('.flat-parking-section__plan-root .parking-plan__slot');
+    await expect(slots).toHaveCount(slotsPerFloor, { timeout: 30_000 });
+
+    if (carLiftCount > 0) {
+      await expect(section.locator('.parking-plan__fixture--car-lift')).toHaveCount(carLiftCount, {
+        timeout: 15_000,
+      });
+    }
+    if (passengerLiftCount > 0) {
+      await expect(section.locator('.parking-plan__fixture--passenger-lift')).toHaveCount(
+        passengerLiftCount,
+        { timeout: 15_000 },
+      );
+    }
+    if (gateCount > 0) {
+      await expect(section.locator('.parking-plan__fixture--gate')).toHaveCount(gateCount, {
+        timeout: 15_000,
+      });
+    }
   }
 }
 

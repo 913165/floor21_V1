@@ -7,6 +7,7 @@ import com.floor21.dto.ParkingGridColDto;
 import com.floor21.dto.ParkingGridRowDto;
 import com.floor21.entity.Building;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,16 +40,34 @@ public final class ParkingFloorConfigUtil {
             List<GridPlacement> placements,
             Integer carSizePercent,
             Integer liftCount,
+            Integer carLiftCount,
+            Integer passengerLiftCount,
             Integer gateCount,
             List<FixturePlacement> fixtures,
             Boolean showLift,
             Boolean showGate) {
 
         public FloorConfig(int slotCount, boolean configured) {
-            this(slotCount, configured, null, null, null, null, null, null, null, null, null);
+            this(
+                    slotCount,
+                    configured,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null);
         }
 
-        public int resolvedLiftCount() {
+        public int resolvedCarLiftCount() {
+            if (carLiftCount != null) {
+                return clampFixtureCount(carLiftCount);
+            }
             if (liftCount != null) {
                 return clampFixtureCount(liftCount);
             }
@@ -56,6 +75,18 @@ public final class ParkingFloorConfigUtil {
                 return showLift ? 1 : 0;
             }
             return 1;
+        }
+
+        public int resolvedPassengerLiftCount() {
+            if (passengerLiftCount != null) {
+                return clampFixtureCount(passengerLiftCount);
+            }
+            return 0;
+        }
+
+        /** Total lifts (car + passenger) for API consumers that expect a single count. */
+        public int resolvedLiftCount() {
+            return resolvedCarLiftCount() + resolvedPassengerLiftCount();
         }
 
         public int resolvedGateCount() {
@@ -75,7 +106,11 @@ public final class ParkingFloorConfigUtil {
         return Math.max(0, Math.min(MAX_FIXTURES_PER_KIND, value));
     }
 
-    public static int resolveLiftCountFromDto(Integer liftCount, Boolean showLift) {
+    public static int resolveCarLiftCountFromDto(
+            Integer carLiftCount, Integer liftCount, Boolean showLift) {
+        if (carLiftCount != null) {
+            return clampFixtureCount(carLiftCount);
+        }
         if (liftCount != null) {
             return clampFixtureCount(liftCount);
         }
@@ -83,6 +118,13 @@ public final class ParkingFloorConfigUtil {
             return showLift ? 1 : 0;
         }
         return 1;
+    }
+
+    public static int resolvePassengerLiftCountFromDto(Integer passengerLiftCount) {
+        if (passengerLiftCount != null) {
+            return clampFixtureCount(passengerLiftCount);
+        }
+        return 0;
     }
 
     public static int resolveGateCountFromDto(Integer gateCount, Boolean showGate) {
@@ -205,39 +247,131 @@ public final class ParkingFloorConfigUtil {
     }
 
     public static List<FixturePlacement> defaultFixtures(
-            int liftCount, int gateCount, int gridCols, int gridRows) {
+            int carLiftCount,
+            int passengerLiftCount,
+            int gateCount,
+            int gridCols,
+            int gridRows,
+            List<GridPlacement> placements) {
+        if (carLiftCount == 0 && passengerLiftCount == 0 && gateCount == 0) {
+            return List.of();
+        }
+        Set<String> used = occupiedCells(placements);
         List<FixturePlacement> out = new ArrayList<>();
-        int safeCols = Math.max(1, gridCols);
-        int safeRows = Math.max(1, gridRows);
-        for (int i = 1; i <= liftCount; i++) {
-            int row = Math.min(i - 1, safeRows - 1);
-            out.add(new FixturePlacement("LIFT", i, 0, row, "vertical"));
+
+        List<int[]> liftCandidates = new ArrayList<>();
+        List<int[]> gateCandidates = new ArrayList<>();
+        for (int row = 0; row < gridRows; row++) {
+            for (int col = 0; col < gridCols; col++) {
+                String key = col + ":" + row;
+                if (!used.contains(key)) {
+                    liftCandidates.add(new int[] {col, row});
+                    gateCandidates.add(new int[] {col, row});
+                }
+            }
+        }
+        liftCandidates.sort(Comparator.comparingInt((int[] c) -> c[0]).thenComparingInt(c -> c[1]));
+        gateCandidates.sort(
+                Comparator.comparingInt((int[] c) -> -c[0]).thenComparingInt(c -> c[1]));
+
+        for (int i = 1; i <= carLiftCount; i++) {
+            int[] cell = takeFirstFreeCell(liftCandidates, used);
+            if (cell == null) {
+                throw new IllegalArgumentException(
+                        "Not enough empty grid cells for "
+                                + carLiftCount
+                                + " car lift(s). Add rows/columns or reduce fixture counts.");
+            }
+            out.add(new FixturePlacement("CAR_LIFT", i, cell[0], cell[1], "vertical"));
+            used.add(cellKey(cell[0], cell[1]));
+        }
+        for (int i = 1; i <= passengerLiftCount; i++) {
+            int[] cell = takeFirstFreeCell(liftCandidates, used);
+            if (cell == null) {
+                throw new IllegalArgumentException(
+                        "Not enough empty grid cells for "
+                                + passengerLiftCount
+                                + " passenger lift(s). Add rows/columns or reduce fixture counts.");
+            }
+            out.add(new FixturePlacement("PASSENGER_LIFT", i, cell[0], cell[1], "vertical"));
+            used.add(cellKey(cell[0], cell[1]));
         }
         for (int i = 1; i <= gateCount; i++) {
-            int row = Math.min(i - 1, safeRows - 1);
-            out.add(new FixturePlacement("GATE", i, Math.max(0, safeCols - 1), row, "vertical"));
+            int[] cell = takeFirstFreeCell(gateCandidates, used);
+            if (cell == null) {
+                throw new IllegalArgumentException(
+                        "Not enough empty grid cells for "
+                                + gateCount
+                                + " gate(s). Add rows/columns or reduce lift/gate counts.");
+            }
+            out.add(new FixturePlacement("GATE", i, cell[0], cell[1], "vertical"));
+            used.add(cellKey(cell[0], cell[1]));
         }
         return out;
     }
 
+    private static Set<String> occupiedCells(List<GridPlacement> placements) {
+        Set<String> cells = new HashSet<>();
+        if (placements == null) {
+            return cells;
+        }
+        for (GridPlacement placement : placements) {
+            cells.add(cellKey(placement.col(), placement.row()));
+        }
+        return cells;
+    }
+
+    private static String cellKey(int col, int row) {
+        return col + ":" + row;
+    }
+
+    private static boolean fixturesOverlapPlacements(
+            List<FixturePlacement> fixtures, List<GridPlacement> placements) {
+        if (fixtures == null || fixtures.isEmpty()) {
+            return false;
+        }
+        Set<String> carCells = occupiedCells(placements);
+        for (FixturePlacement fixture : fixtures) {
+            if (carCells.contains(cellKey(fixture.col(), fixture.row()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static int[] takeFirstFreeCell(List<int[]> candidates, Set<String> used) {
+        for (int[] cell : candidates) {
+            String key = cellKey(cell[0], cell[1]);
+            if (!used.contains(key)) {
+                return cell;
+            }
+        }
+        return null;
+    }
+
     private static List<FixturePlacement> resolveFixturesForFloor(
             FloorConfig existing,
-            int liftCount,
+            int carLiftCount,
+            int passengerLiftCount,
             int gateCount,
             int gridCols,
-            int gridRows) {
-        if (liftCount == 0 && gateCount == 0) {
+            int gridRows,
+            List<GridPlacement> placements) {
+        if (carLiftCount == 0 && passengerLiftCount == 0 && gateCount == 0) {
             return List.of();
         }
         if (existing != null
                 && existing.fixtures() != null
                 && !existing.fixtures().isEmpty()
-                && existing.resolvedLiftCount() == liftCount
+                && existing.resolvedCarLiftCount() == carLiftCount
+                && existing.resolvedPassengerLiftCount() == passengerLiftCount
                 && existing.resolvedGateCount() == gateCount
-                && fixturesFit(existing.fixtures(), gridRows, gridCols)) {
+                && fixturesFit(existing.fixtures(), gridRows, gridCols)
+                && !fixturesOverlapPlacements(existing.fixtures(), placements)) {
             return List.copyOf(existing.fixtures());
         }
-        return defaultFixtures(liftCount, gateCount, gridCols, gridRows);
+        return defaultFixtures(
+                carLiftCount, passengerLiftCount, gateCount, gridCols, gridRows, placements);
     }
 
     public static void markConfigured(
@@ -246,7 +380,8 @@ public final class ParkingFloorConfigUtil {
             int slotCount,
             int carSizePercent,
             Integer gridRowsParam,
-            int liftCount,
+            int carLiftCount,
+            int passengerLiftCount,
             int gateCount) {
         Map<Integer, FloorConfig> map = new LinkedHashMap<>(read(building));
         FloorConfig existing = map.get(floorNumber);
@@ -269,10 +404,18 @@ public final class ParkingFloorConfigUtil {
         } else {
             placements = defaultGridPlacements(slotCount, gridCols, gridRows);
         }
-        int normalizedLift = clampFixtureCount(liftCount);
+        int normalizedCarLift = clampFixtureCount(carLiftCount);
+        int normalizedPassengerLift = clampFixtureCount(passengerLiftCount);
         int normalizedGate = clampFixtureCount(gateCount);
         List<FixturePlacement> fixtures =
-                resolveFixturesForFloor(existing, normalizedLift, normalizedGate, gridCols, gridRows);
+                resolveFixturesForFloor(
+                        existing,
+                        normalizedCarLift,
+                        normalizedPassengerLift,
+                        normalizedGate,
+                        gridCols,
+                        gridRows,
+                        placements);
         map.put(
                 floorNumber,
                 new FloorConfig(
@@ -282,7 +425,9 @@ public final class ParkingFloorConfigUtil {
                         gridRows,
                         placements,
                         normalizeCarSizePercent(carSizePercent),
-                        normalizedLift,
+                        null,
+                        normalizedCarLift,
+                        normalizedPassengerLift,
                         normalizedGate,
                         fixtures,
                         null,
@@ -313,6 +458,8 @@ public final class ParkingFloorConfigUtil {
                         List.copyOf(placements),
                         resolveCarSizePercent(existing),
                         existing.liftCount(),
+                        existing.carLiftCount(),
+                        existing.passengerLiftCount(),
                         existing.gateCount(),
                         fixtureList,
                         existing.showLift(),
@@ -344,7 +491,8 @@ public final class ParkingFloorConfigUtil {
             }
         }
         if (fixtures != null) {
-            Set<String> liftKeys = new HashSet<>();
+            Set<String> carLiftKeys = new HashSet<>();
+            Set<String> passengerLiftKeys = new HashSet<>();
             Set<String> gateKeys = new HashSet<>();
             for (FixturePlacement f : fixtures) {
                 String kind = normalizeFixtureKind(f.kind());
@@ -352,16 +500,26 @@ public final class ParkingFloorConfigUtil {
                     throw new IllegalArgumentException("Two items cannot occupy the same grid cell.");
                 }
                 String key = kind + ":" + f.index();
-                if ("LIFT".equals(kind)) {
-                    if (!liftKeys.add(key)) {
-                        throw new IllegalArgumentException("Duplicate lift index: " + f.index());
+                switch (kind) {
+                    case "CAR_LIFT" -> {
+                        if (!carLiftKeys.add(key)) {
+                            throw new IllegalArgumentException(
+                                    "Duplicate car lift index: " + f.index());
+                        }
                     }
-                } else if ("GATE".equals(kind)) {
-                    if (!gateKeys.add(key)) {
-                        throw new IllegalArgumentException("Duplicate gate index: " + f.index());
+                    case "PASSENGER_LIFT" -> {
+                        if (!passengerLiftKeys.add(key)) {
+                            throw new IllegalArgumentException(
+                                    "Duplicate passenger lift index: " + f.index());
+                        }
                     }
-                } else {
-                    throw new IllegalArgumentException("Unknown fixture kind: " + f.kind());
+                    case "GATE" -> {
+                        if (!gateKeys.add(key)) {
+                            throw new IllegalArgumentException("Duplicate gate index: " + f.index());
+                        }
+                    }
+                    default ->
+                            throw new IllegalArgumentException("Unknown fixture kind: " + f.kind());
                 }
             }
         }
@@ -371,7 +529,16 @@ public final class ParkingFloorConfigUtil {
         if (kind == null || kind.isBlank()) {
             throw new IllegalArgumentException("Fixture kind is required.");
         }
-        return kind.trim().toUpperCase(Locale.ROOT);
+        String normalized = kind.trim().toUpperCase(Locale.ROOT);
+        if ("LIFT".equals(normalized)) {
+            return "CAR_LIFT";
+        }
+        if ("CAR_LIFT".equals(normalized)
+                || "PASSENGER_LIFT".equals(normalized)
+                || "GATE".equals(normalized)) {
+            return normalized;
+        }
+        throw new IllegalArgumentException("Unknown fixture kind: " + kind);
     }
 
     public static void clearAll(Building building) {
