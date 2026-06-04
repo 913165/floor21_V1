@@ -11,6 +11,7 @@ import com.floor21.dto.FloorMergeSplitResult;
 import com.floor21.dto.LinkedParkingSlotDto;
 import com.floor21.dto.ParkingFloorConfigDto;
 import com.floor21.dto.ParkingGridPlacementDto;
+import com.floor21.dto.ParkingGridColDto;
 import com.floor21.dto.ParkingGridRowDto;
 import com.floor21.dto.ParkingLayoutDto;
 import com.floor21.dto.ParkingLinkDto;
@@ -226,6 +227,45 @@ public class FlatService {
                 floorNumber,
                 gridCols,
                 adjusted.gridRows(),
+                adjusted.placements());
+        buildingRepository.save(building);
+        return getParkingPlan(buildingId, floorNumber);
+    }
+
+    @Transactional
+    public ParkingPlanDto adjustParkingGridCol(
+            UUID buildingId, int floorNumber, ParkingGridColDto dto) {
+        if (floorNumber < 1) {
+            throw new IllegalArgumentException("Invalid floor number.");
+        }
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!ParkingFloorConfigUtil.isConfigured(building, floorNumber)) {
+            throw new IllegalArgumentException(
+                    "Parking is not configured for floor " + floorNumber + " yet.");
+        }
+        ParkingFloorConfigUtil.FloorConfig config =
+                ParkingFloorConfigUtil.forFloor(building, floorNumber);
+        int gridCols =
+                config.gridCols() != null
+                        ? config.gridCols()
+                        : ParkingFloorConfigUtil.DEFAULT_GRID_COLS;
+        int gridRows =
+                config.gridRows() != null
+                        ? config.gridRows()
+                        : ParkingFloorConfigUtil.minGridRowsForSlotCount(config.slotCount());
+        List<ParkingFloorConfigUtil.GridPlacement> source =
+                config.placements() != null && !config.placements().isEmpty()
+                        ? config.placements()
+                        : ParkingFloorConfigUtil.defaultGridPlacements(
+                                config.slotCount(), gridCols, gridRows);
+        ParkingFloorConfigUtil.GridColAdjustResult adjusted =
+                ParkingFloorConfigUtil.adjustGridCols(
+                        config.slotCount(), gridCols, source, dto.action());
+        ParkingFloorConfigUtil.saveLayout(
+                building,
+                floorNumber,
+                adjusted.gridCols(),
+                gridRows,
                 adjusted.placements());
         buildingRepository.save(building);
         return getParkingPlan(buildingId, floorNumber);

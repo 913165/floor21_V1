@@ -67,6 +67,9 @@ export function formatFlowCredentials(flow: PlatformFlowState): string {
     lines.push(`    Partner 2: ${byPartner(flow.user2.email)}`);
     lines.push(`  Latest booking: ${flow.bookingCode}`);
   }
+  if (flow.parkingLinks.length > 0) {
+    lines.push(`  Parking links: ${flow.parkingLinks.length} (one slot per booked flat)`);
+  }
 
   return lines.join('\n');
 }

@@ -10,6 +10,12 @@ import {
 } from './buildings';
 import { createBookingForFlat } from './bookings';
 import { createClient, sampleClientData, type NewClientInput } from './clients';
+import {
+  expectResidentialFlatShowsParkingLink,
+  linkParkingSlotToResidentialFlat,
+  openBuildingFlatGrid,
+  parkingSlotLocationForIndex,
+} from './parking';
 import { createProject, uniqueProjectName, waitForMainPanel } from './projects';
 import { createUser, sampleUserData, type NewUserInput } from './users';
 import { login, loginAsSuperAdmin } from './auth';
@@ -33,6 +39,14 @@ export type FlowBookingRecord = {
   bookingCode: string;
 };
 
+export type FlowParkingLinkRecord = {
+  parkingFloor: number;
+  slotNumber: number;
+  parkingFlatId: string;
+  residentialFlatId: string;
+  residentialFlatNumber: string;
+};
+
 export type PlatformFlowState = {
   stamp: number;
   projectName: string;
@@ -47,6 +61,7 @@ export type PlatformFlowState = {
   assignToUser2: string[];
   clients: FlowClientRecord[];
   bookings: FlowBookingRecord[];
+  parkingLinks: FlowParkingLinkRecord[];
   clientFirstName: string;
   clientLastName: string;
   clientDisplayName: string;
@@ -86,6 +101,7 @@ export function createPlatformFlowState(): PlatformFlowState {
     assignToUser2: [],
     clients: [],
     bookings: [],
+    parkingLinks: [],
     clientFirstName: `E2E Client ${stamp}`,
     clientLastName: 'Buyer',
     clientDisplayName: '',
@@ -257,6 +273,43 @@ export async function allPartnersCreateClientsAndBookings(page: Page, flow: Plat
     flow.clientLastName = flow.clients[0].lastName;
     flow.clientDisplayName = flow.clients[0].displayName;
     flow.bookingCode = flow.bookings[flow.bookings.length - 1]?.bookingCode ?? '';
+  }
+}
+
+/** Super admin links one parking slot to each booked residential flat. */
+export async function adminLinkParkingToBookedFlats(page: Page, flow: PlatformFlowState) {
+  if (!flow.bookings.length) {
+    throw new Error('No bookings to link parking for.');
+  }
+
+  await loginAsSuperAdmin(page);
+  await openBuildingFlatGrid(page, flow.buildingId);
+
+  flow.parkingLinks = [];
+
+  for (let i = 0; i < flow.bookings.length; i++) {
+    const booking = flow.bookings[i];
+    const { floor, slotNumber } = parkingSlotLocationForIndex(i, flow.building);
+    const residentialFlatNumber =
+      (await page.locator(`#flat-${booking.flatId} .flat-number`).textContent())?.trim() ?? '';
+    expect(residentialFlatNumber.length).toBeGreaterThan(0);
+
+    const parkingFlatId = await linkParkingSlotToResidentialFlat(
+      page,
+      floor,
+      slotNumber,
+      booking.flatId,
+    );
+
+    flow.parkingLinks.push({
+      parkingFloor: floor,
+      slotNumber,
+      parkingFlatId,
+      residentialFlatId: booking.flatId,
+      residentialFlatNumber,
+    });
+
+    await expectResidentialFlatShowsParkingLink(page, booking.flatId, floor, slotNumber);
   }
 }
 

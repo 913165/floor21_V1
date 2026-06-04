@@ -4,6 +4,7 @@ import com.floor21.dto.BuildingConfigDto;
 import com.floor21.dto.FlatAddToFloorDto;
 import com.floor21.dto.FlatAdminUpdateDto;
 import com.floor21.dto.ParkingFloorConfigDto;
+import com.floor21.dto.ParkingGridColDto;
 import com.floor21.dto.ParkingGridRowDto;
 import com.floor21.dto.ParkingLayoutDto;
 import com.floor21.entity.Building;
@@ -336,6 +337,22 @@ public class BuildingController {
             @Valid @RequestBody ParkingGridRowDto body) {
         try {
             return ResponseEntity.ok(flatService.adjustParkingGridRow(id, floorNumber, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/{id}/flats/floor/{floorNumber}/parking-grid-col",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> adjustParkingGridCol(
+            @PathVariable UUID id,
+            @PathVariable int floorNumber,
+            @Valid @RequestBody ParkingGridColDto body) {
+        try {
+            return ResponseEntity.ok(flatService.adjustParkingGridCol(id, floorNumber, body));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }

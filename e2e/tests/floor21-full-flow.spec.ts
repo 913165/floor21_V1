@@ -9,6 +9,7 @@ import {
   adminCreateBuilding,
   adminCreateProject,
   adminCreateUsers,
+  adminLinkParkingToBookedFlats,
   allPartnersCreateClientsAndBookings,
   CLIENT_BOOKING_PERCENT,
   createPlatformFlowState,
@@ -38,6 +39,7 @@ function loadFlow() {
     Object.assign(flow, saved);
     flow.clients = flow.clients ?? [];
     flow.bookings = flow.bookings ?? [];
+    flow.parkingLinks = flow.parkingLinks ?? [];
     flow.parkingFlatCount = flow.parkingFlatCount ?? 0;
     flow.residentialFlatCount = flow.residentialFlatCount ?? 0;
     if (!flow.clientDisplayName && flow.clients.length > 0) {
@@ -123,6 +125,28 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
 
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-after-bookings');
+  });
+
+  test('Admin — 6. Link parking slots to booked flats', async ({ page }, testInfo) => {
+    requireFlowState(flow);
+    expect(flow.bookings.length).toBeGreaterThan(0);
+
+    await adminLinkParkingToBookedFlats(page, flow);
+
+    expect(flow.parkingLinks.length).toBe(flow.bookings.length);
+    for (const link of flow.parkingLinks) {
+      const section = page.locator(
+        `.flat-parking-section[data-floor-number="${link.parkingFloor}"]`,
+      );
+      const slot = section.locator(
+        `.parking-plan__slot--linked[data-slot-number="${link.slotNumber}"]`,
+      );
+      await expect(slot).toHaveAttribute('data-linked-flat-id', link.residentialFlatId);
+      await expect(slot.locator('.parking-plan__slot-flat')).toContainText(link.residentialFlatNumber);
+    }
+
+    writeFlowStateFile(flow);
+    emitFlowCredentials(flow, testInfo, 'credentials-after-parking-links');
   });
 
   test('Partner — 4. Own bookings appear in list (partner 1)', async ({ page }) => {

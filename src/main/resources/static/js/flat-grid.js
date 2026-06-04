@@ -1067,13 +1067,21 @@
       .join("");
     var toolbar = canEdit
       ? '<div class="parking-plan__layout-toolbar">' +
+        '<div class="parking-plan__grid-toolbar">' +
         '<div class="parking-plan__row-toolbar btn-group btn-group-sm" role="group" aria-label="Grid rows">' +
-        '<button type="button" class="btn btn-outline-secondary parking-plan__row-btn" data-parking-row-action="INSERT_TOP" title="Insert row at top">+ Top</button>' +
-        '<button type="button" class="btn btn-outline-secondary parking-plan__row-btn" data-parking-row-action="INSERT_BOTTOM" title="Insert row at bottom">+ Bottom</button>' +
-        '<button type="button" class="btn btn-outline-secondary parking-plan__row-btn" data-parking-row-action="REMOVE_TOP" title="Remove empty row from top">− Top</button>' +
-        '<button type="button" class="btn btn-outline-secondary parking-plan__row-btn" data-parking-row-action="REMOVE_BOTTOM" title="Remove empty row from bottom">− Bottom</button>' +
+        '<button type="button" class="btn btn-outline-secondary parking-plan__grid-btn" data-parking-row-action="INSERT_TOP" title="Insert row at top">+ Top</button>' +
+        '<button type="button" class="btn btn-outline-secondary parking-plan__grid-btn" data-parking-row-action="INSERT_BOTTOM" title="Insert row at bottom">+ Bottom</button>' +
+        '<button type="button" class="btn btn-outline-secondary parking-plan__grid-btn" data-parking-row-action="REMOVE_TOP" title="Remove empty row from top">− Top</button>' +
+        '<button type="button" class="btn btn-outline-secondary parking-plan__grid-btn" data-parking-row-action="REMOVE_BOTTOM" title="Remove empty row from bottom">− Bottom</button>' +
         "</div>" +
-        '<span class="text-muted small parking-plan__layout-hint">Drag cars to grid cells. Click a car to link or rotate its bay. Only empty rows can be removed.</span>' +
+        '<div class="parking-plan__col-toolbar btn-group btn-group-sm" role="group" aria-label="Grid columns">' +
+        '<button type="button" class="btn btn-outline-secondary parking-plan__grid-btn" data-parking-col-action="INSERT_LEFT" title="Insert column on left">+ Left</button>' +
+        '<button type="button" class="btn btn-outline-secondary parking-plan__grid-btn" data-parking-col-action="INSERT_RIGHT" title="Insert column on right">+ Right</button>' +
+        '<button type="button" class="btn btn-outline-secondary parking-plan__grid-btn" data-parking-col-action="REMOVE_LEFT" title="Remove empty column from left">− Left</button>' +
+        '<button type="button" class="btn btn-outline-secondary parking-plan__grid-btn" data-parking-col-action="REMOVE_RIGHT" title="Remove empty column from right">− Right</button>' +
+        "</div>" +
+        "</div>" +
+        '<span class="text-muted small parking-plan__layout-hint">Drag cars to grid cells. Click a car to link or rotate its bay. Only empty rows and columns can be removed.</span>' +
         '<span class="text-danger small parking-plan__layout-error d-none"></span>' +
         "</div>"
       : "";
@@ -1105,7 +1113,7 @@
       saving: false,
       plan: cloneParkingPlan(plan),
     };
-    if (canEdit) updateParkingRowToolbar(rootEl);
+    if (canEdit) updateParkingGridToolbar(rootEl);
   }
 
   function showParkingLayoutError(rootEl, message) {
@@ -1289,7 +1297,7 @@
       };
     });
     invalidateParkingPlanCache(state.floorNumber);
-    updateParkingRowToolbar(rootEl);
+    updateParkingGridToolbar(rootEl);
     return { ok: true };
   }
 
@@ -1348,13 +1356,22 @@
     });
 
     document.addEventListener("click", function (e) {
-      var btn = e.target.closest("[data-parking-row-action]");
-      if (!btn || btn.disabled) return;
-      var root = btn.closest(".flat-parking-section__plan-root");
-      if (!root || !isPlatformAdminEdit()) return;
-      var action = btn.getAttribute("data-parking-row-action");
-      if (!action) return;
-      void adjustParkingGridRow(root, action);
+      var rowBtn = e.target.closest("[data-parking-row-action]");
+      if (rowBtn && !rowBtn.disabled) {
+        var rowRoot = rowBtn.closest(".flat-parking-section__plan-root");
+        if (!rowRoot || !isPlatformAdminEdit()) return;
+        var rowAction = rowBtn.getAttribute("data-parking-row-action");
+        if (!rowAction) return;
+        void adjustParkingGridRow(rowRoot, rowAction);
+        return;
+      }
+      var colBtn = e.target.closest("[data-parking-col-action]");
+      if (!colBtn || colBtn.disabled) return;
+      var colRoot = colBtn.closest(".flat-parking-section__plan-root");
+      if (!colRoot || !isPlatformAdminEdit()) return;
+      var colAction = colBtn.getAttribute("data-parking-col-action");
+      if (!colAction) return;
+      void adjustParkingGridCol(colRoot, colAction);
     });
   }
 
@@ -1521,6 +1538,15 @@
   }
 
   var PARKING_MAX_GRID_ROWS = 24;
+  var PARKING_MAX_GRID_COLS = 40;
+
+  function parkingMinGridColsForSlotCount(slotCount) {
+    slotCount = Number(slotCount) || 0;
+    if (slotCount <= 0) return 1;
+    var bottomCount = Math.ceil(slotCount / 2);
+    var topCount = slotCount - bottomCount;
+    return Math.max(1, Math.max(bottomCount, topCount));
+  }
 
   function parkingRowHasPlacement(state, row) {
     if (!state || !state.placements) return false;
@@ -1531,28 +1557,49 @@
     return false;
   }
 
-  function updateParkingRowToolbar(rootEl) {
+  function parkingColHasPlacement(state, col) {
+    if (!state || !state.placements) return false;
+    var i;
+    for (i = 0; i < state.placements.length; i++) {
+      if (state.placements[i].col === col) return true;
+    }
+    return false;
+  }
+
+  function updateParkingGridToolbar(rootEl) {
     if (!rootEl) return;
     var state = rootEl._parkingLayoutState;
     if (!state) return;
-    var minRows = parkingMinGridRowsForSlotCount(
-      state.plan && state.plan.slotCount ? state.plan.slotCount : 0
-    );
+    var slotCount = state.plan && state.plan.slotCount ? state.plan.slotCount : 0;
+    var minRows = parkingMinGridRowsForSlotCount(slotCount);
     if (state.plan && state.plan.minGridRows != null) {
       minRows = state.plan.minGridRows;
     }
+    var minCols = parkingMinGridColsForSlotCount(slotCount);
     var rows = state.gridRows;
+    var cols = state.gridCols;
     var removeTop = rootEl.querySelector('[data-parking-row-action="REMOVE_TOP"]');
     var removeBottom = rootEl.querySelector('[data-parking-row-action="REMOVE_BOTTOM"]');
     var insertTop = rootEl.querySelector('[data-parking-row-action="INSERT_TOP"]');
     var insertBottom = rootEl.querySelector('[data-parking-row-action="INSERT_BOTTOM"]');
+    var removeLeft = rootEl.querySelector('[data-parking-col-action="REMOVE_LEFT"]');
+    var removeRight = rootEl.querySelector('[data-parking-col-action="REMOVE_RIGHT"]');
+    var insertLeft = rootEl.querySelector('[data-parking-col-action="INSERT_LEFT"]');
+    var insertRight = rootEl.querySelector('[data-parking-col-action="INSERT_RIGHT"]');
     var canRemoveTop = rows > minRows && !parkingRowHasPlacement(state, 0);
     var canRemoveBottom = rows > minRows && !parkingRowHasPlacement(state, rows - 1);
-    var canInsert = rows < PARKING_MAX_GRID_ROWS;
+    var canInsertRow = rows < PARKING_MAX_GRID_ROWS;
+    var canRemoveLeft = cols > minCols && !parkingColHasPlacement(state, 0);
+    var canRemoveRight = cols > minCols && !parkingColHasPlacement(state, cols - 1);
+    var canInsertCol = cols < PARKING_MAX_GRID_COLS;
     if (removeTop) removeTop.disabled = !canRemoveTop;
     if (removeBottom) removeBottom.disabled = !canRemoveBottom;
-    if (insertTop) insertTop.disabled = !canInsert;
-    if (insertBottom) insertBottom.disabled = !canInsert;
+    if (insertTop) insertTop.disabled = !canInsertRow;
+    if (insertBottom) insertBottom.disabled = !canInsertRow;
+    if (removeLeft) removeLeft.disabled = !canRemoveLeft;
+    if (removeRight) removeRight.disabled = !canRemoveRight;
+    if (insertLeft) insertLeft.disabled = !canInsertCol;
+    if (insertRight) insertRight.disabled = !canInsertCol;
   }
 
   async function adjustParkingGridRow(rootEl, action) {
@@ -1571,6 +1618,38 @@
         "/flats/floor/" +
         encodeURIComponent(state.floorNumber) +
         "/parking-grid-row",
+      {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({ action: action }),
+      }
+    );
+    state.saving = false;
+    if (!res.ok) {
+      showParkingLayoutError(rootEl, await parseErrorResponse(res));
+      return;
+    }
+    var plan = await res.json();
+    invalidateParkingPlanCache(state.floorNumber);
+    showParkingPlanInSection(plan, true);
+  }
+
+  async function adjustParkingGridCol(rootEl, action) {
+    var state = rootEl && rootEl._parkingLayoutState;
+    if (!state || state.saving) return;
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    if (!buildingId) return;
+    state.saving = true;
+    showParkingLayoutError(rootEl, "");
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    var res = await fetch(
+      appRoot() +
+        "/buildings/" +
+        buildingId +
+        "/flats/floor/" +
+        encodeURIComponent(state.floorNumber) +
+        "/parking-grid-col",
       {
         method: "POST",
         headers: headers,
