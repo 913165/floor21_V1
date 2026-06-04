@@ -1136,17 +1136,21 @@
   }
 
   function moveParkingSlotOnGrid(state, slotNumber, toCol, toRow) {
+    slotNumber = Number(slotNumber);
+    toCol = Number(toCol);
+    toRow = Number(toRow);
     var moving = null;
     var occupant = null;
     var i;
     for (i = 0; i < state.placements.length; i++) {
-      if (state.placements[i].slotNumber === slotNumber) moving = state.placements[i];
-      if (state.placements[i].col === toCol && state.placements[i].row === toRow) {
+      if (Number(state.placements[i].slotNumber) === slotNumber) moving = state.placements[i];
+      if (Number(state.placements[i].col) === toCol && Number(state.placements[i].row) === toRow) {
         occupant = state.placements[i];
       }
     }
-    if (!moving) return;
-    if (occupant && occupant.slotNumber !== slotNumber) {
+    if (!moving) return false;
+    if (Number(moving.col) === toCol && Number(moving.row) === toRow) return false;
+    if (occupant && Number(occupant.slotNumber) !== slotNumber) {
       var oldCol = moving.col;
       var oldRow = moving.row;
       moving.col = toCol;
@@ -1157,6 +1161,69 @@
       moving.col = toCol;
       moving.row = toRow;
     }
+    return true;
+  }
+
+  function parkingDropTargetFromEvent(e) {
+    var cell = e.target.closest(".parking-plan__cell--drop");
+    if (cell) {
+      return {
+        root: cell.closest(".flat-parking-section__plan-root"),
+        col: Number(cell.dataset.col),
+        row: Number(cell.dataset.row),
+        highlightEl: cell,
+      };
+    }
+    var grid = e.target.closest(".parking-plan__grid");
+    if (grid) {
+      var cells = grid.querySelectorAll(".parking-plan__cell--drop");
+      var i;
+      for (i = 0; i < cells.length; i++) {
+        var rect = cells[i].getBoundingClientRect();
+        if (
+          e.clientX >= rect.left &&
+          e.clientX <= rect.right &&
+          e.clientY >= rect.top &&
+          e.clientY <= rect.bottom
+        ) {
+          return {
+            root: grid.closest(".flat-parking-section__plan-root"),
+            col: Number(cells[i].dataset.col),
+            row: Number(cells[i].dataset.row),
+            highlightEl: cells[i],
+          };
+        }
+      }
+    }
+    var slot = e.target.closest(".parking-plan__slot--draggable");
+    if (!slot) return null;
+    var root = slot.closest(".flat-parking-section__plan-root");
+    var state = root && root._parkingLayoutState;
+    if (!state) return null;
+    var targetSlot = Number(slot.getAttribute("data-slot-number"));
+    for (i = 0; i < state.placements.length; i++) {
+      if (Number(state.placements[i].slotNumber) === targetSlot) {
+        return {
+          root: root,
+          col: Number(state.placements[i].col),
+          row: Number(state.placements[i].row),
+          highlightEl: null,
+        };
+      }
+    }
+    return null;
+  }
+
+  function clearParkingCellDragOver() {
+    document.querySelectorAll(".parking-plan__cell--drag-over").forEach(function (cell) {
+      cell.classList.remove("parking-plan__cell--drag-over");
+    });
+  }
+
+  function setParkingGridDragActive(root, active) {
+    if (!root) return;
+    var grid = root.querySelector(".parking-plan__grid");
+    if (grid) grid.classList.toggle("parking-plan__grid--dragging", !!active);
   }
 
   function toggleParkingSlotOrientation(state, slotNumber) {
@@ -1179,8 +1246,6 @@
     state.saving = false;
     if (!result.ok) {
       showParkingLayoutError(rootEl, result.error);
-      var plan = await fetchParkingPlan(state.floorNumber);
-      if (plan) showParkingPlanInSection(plan, true);
     }
     return result;
   }
@@ -1224,7 +1289,7 @@
       };
     });
     invalidateParkingPlanCache(state.floorNumber);
-    showParkingPlanInSection(plan, true);
+    updateParkingRowToolbar(rootEl);
     return { ok: true };
   }
 
@@ -1238,22 +1303,25 @@
       e.dataTransfer.setData("text/plain", slot.getAttribute("data-slot-number") || "");
       e.dataTransfer.effectAllowed = "move";
       slot.classList.add("parking-plan__slot--dragging");
+      setParkingGridDragActive(slot.closest(".flat-parking-section__plan-root"), true);
     });
 
     document.addEventListener("dragend", function (e) {
       var slot = e.target.closest(".parking-plan__slot--draggable");
-      if (slot) slot.classList.remove("parking-plan__slot--dragging");
-      document.querySelectorAll(".parking-plan__cell--drag-over").forEach(function (cell) {
-        cell.classList.remove("parking-plan__cell--drag-over");
-      });
+      if (slot) {
+        slot.classList.remove("parking-plan__slot--dragging");
+        setParkingGridDragActive(slot.closest(".flat-parking-section__plan-root"), false);
+      }
+      clearParkingCellDragOver();
     });
 
     document.addEventListener("dragover", function (e) {
-      var cell = e.target.closest(".parking-plan__cell--drop");
-      if (!cell) return;
+      var target = parkingDropTargetFromEvent(e);
+      if (!target || !target.highlightEl) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
-      cell.classList.add("parking-plan__cell--drag-over");
+      clearParkingCellDragOver();
+      target.highlightEl.classList.add("parking-plan__cell--drag-over");
     });
 
     document.addEventListener("dragleave", function (e) {
@@ -1262,17 +1330,20 @@
     });
 
     document.addEventListener("drop", function (e) {
-      var cell = e.target.closest(".parking-plan__cell--drop");
-      if (!cell) return;
+      var target = parkingDropTargetFromEvent(e);
+      if (!target) return;
       e.preventDefault();
-      cell.classList.remove("parking-plan__cell--drag-over");
-      var root = cell.closest(".flat-parking-section__plan-root");
+      clearParkingCellDragOver();
+      var root = target.root;
       var state = root && root._parkingLayoutState;
       if (!state) return;
       var slotNumber = Number(e.dataTransfer.getData("text/plain"));
       if (!slotNumber) return;
-      moveParkingSlotOnGrid(state, slotNumber, Number(cell.dataset.col), Number(cell.dataset.row));
+      if (!moveParkingSlotOnGrid(state, slotNumber, target.col, target.row)) {
+        return;
+      }
       rerenderParkingPlanFromState(root);
+      setParkingGridDragActive(root, false);
       void autoSaveParkingLayout(root);
     });
 

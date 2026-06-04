@@ -17,6 +17,7 @@ import {
   targetClientBookingCount,
   type PlatformFlowState,
 } from '../helpers/platform-flow';
+import { expectedParkingFlatCount, expectedResidentialFlatCount } from '../helpers/buildings';
 
 /**
  * Full Floor21 flow — admin setup then both partners book ≥50% of their assigned flats.
@@ -68,8 +69,8 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     loadFlow();
     await adminCreateBuilding(page, flow);
     expect(flow.building.parkingFloors).toBe(3);
-    expect(flow.parkingFlatCount).toBe(12);
-    expect(flow.residentialFlatCount).toBe(20);
+    expect(flow.residentialFlatCount).toBe(expectedResidentialFlatCount(flow.building));
+    expect(flow.parkingFlatCount).toBe(expectedParkingFlatCount(flow.building));
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-after-building');
   });

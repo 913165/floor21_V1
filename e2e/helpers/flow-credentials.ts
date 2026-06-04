@@ -39,6 +39,13 @@ export function formatFlowCredentials(flow: PlatformFlowState): string {
     );
     if (flow.parkingFlatCount > 0) {
       lines.push(`  Parking slots: ${flow.parkingFlatCount}`);
+      const perFloor =
+        flow.building.parkingFloors && flow.building.parkingFloors > 0
+          ? Math.round(flow.parkingFlatCount / flow.building.parkingFloors)
+          : 0;
+      if (perFloor > 0) {
+        lines.push(`  Parking slots/floor: ${perFloor} (default; configurable in UI)`);
+      }
     }
   }
 

@@ -11,17 +11,29 @@ export type NewBuildingInput = {
   address?: string;
 };
 
-export function expectedParkingFlatCount(data: NewBuildingInput): number {
-  const parkingFloors = data.parkingFloors ?? 0;
-  const flatsPerFloor = data.flatsPerFloor ?? 4;
-  return parkingFloors * flatsPerFloor;
-}
-
 export function expectedResidentialFlatCount(data: NewBuildingInput): number {
   const totalFloors = data.totalFloors ?? 5;
   const parkingFloors = data.parkingFloors ?? 0;
   const flatsPerFloor = data.flatsPerFloor ?? 4;
   return Math.max(0, totalFloors - parkingFloors) * flatsPerFloor;
+}
+
+/** Default parking slots per floor: one more than residential flats spread across parking floors. */
+export function defaultParkingSlotsPerFloor(data: NewBuildingInput): number {
+  const parkingFloors = data.parkingFloors ?? 0;
+  if (parkingFloors <= 0) {
+    return 0;
+  }
+  const residential = expectedResidentialFlatCount(data);
+  return Math.ceil(residential / parkingFloors) + 1;
+}
+
+export function expectedParkingFlatCount(data: NewBuildingInput): number {
+  const parkingFloors = data.parkingFloors ?? 0;
+  if (parkingFloors <= 0) {
+    return 0;
+  }
+  return parkingFloors * defaultParkingSlotsPerFloor(data);
 }
 
 export function sampleBuildingData(index: number): NewBuildingInput {
@@ -107,9 +119,10 @@ export async function createBuilding(page: Page, data: NewBuildingInput, project
   const parkingCount = expectedParkingFlatCount(data);
   const parkingFloors = data.parkingFloors ?? 0;
   if (parkingCount > 0) {
+    const slotsPerFloor = defaultParkingSlotsPerFloor(data);
     const sections = page.locator('#flat-grid .flat-parking-section');
     await expect(sections).toHaveCount(parkingFloors);
-    await configureParkingFloors(page, parkingFloors, data.flatsPerFloor ?? 4);
+    await configureParkingFloors(page, parkingFloors, slotsPerFloor);
     const totalSlots = await sections.evaluateAll((els) =>
       els.reduce((sum, el) => sum + parseInt(el.getAttribute('data-slot-count') || '0', 10), 0),
     );

@@ -1299,6 +1299,10 @@ body.modal-open .modal-backdrop {
   overflow: visible;
 }
 
+.parking-plan__grid--dragging .parking-plan__slot:not(.parking-plan__slot--dragging) {
+  pointer-events: none;
+}
+
 .parking-plan__cell {
   border: 1px dashed rgba(108, 117, 125, 0.28);
   border-radius: 0.15rem;
