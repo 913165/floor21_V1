@@ -17,6 +17,7 @@ import com.floor21.service.FlatService;
 import com.floor21.service.PartnerFlatAllocationService;
 import com.floor21.util.ParkingFloorConfigUtil;
 import com.floor21.util.ResidentialBhkTypes;
+import com.floor21.util.SkippedFloorsUtil;
 import java.util.List;
 import java.util.Map;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -232,6 +233,7 @@ public class BuildingController {
         cfg.setBhk2PerFloor(b.getBhk2PerFloor() != null ? b.getBhk2PerFloor() : 0);
         cfg.setBhk3PerFloor(b.getBhk3PerFloor() != null ? b.getBhk3PerFloor() : 0);
         cfg.setBhkPerFloor(ResidentialBhkTypes.countsFromBuilding(b));
+        cfg.setSkippedFloorNumbers(SkippedFloorsUtil.formatForDisplay(b.getSkippedFloorNumbers()));
         long flatCount = flatService.countFlatsForBuilding(id);
         long activeBookings = flatService.countActiveBookingsForBuilding(id);
         model.addAttribute("pageTitle", "Flat Grid — " + b.getBuildingName());

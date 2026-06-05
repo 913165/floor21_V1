@@ -49,10 +49,21 @@
                th:name="|bhkPerFloor['${bhkType}']|"
                th:value="${building.bhkPerFloor != null && building.bhkPerFloor.containsKey(bhkType) ? building.bhkPerFloor.get(bhkType) : 0}"/>
       </div>
+      <div class="col-md-6">
+        <label class="form-label" for="skippedFloorNumbers">Skip floor numbers</label>
+        <input class="form-control" type="text" id="skippedFloorNumbers" th:field="*{skippedFloorNumbers}"
+               placeholder="e.g. 13 or 4, 13, 14" autocomplete="off"/>
+        <div class="form-text mb-1">No flats are generated on these floors (common in India: skip 13).</div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="skip-floor-13"/>
+          <label class="form-check-label small" for="skip-floor-13">Skip 13th floor</label>
+        </div>
+      </div>
       <div class="col-12">
         <p class="text-muted small mb-0" th:if="${generateInitialLayout}">
           Each building has its own layout (floors, flats per floor, and unit mix).
           Unit counts per floor must add up to <strong>Flats / floor</strong>.
+          <span th:if="${generateInitialLayout}">Skipped floors are omitted from the grid (floor labels jump, e.g. 12 → 14).</span>
           Submitting generates the flat grid for this building only.
         </p>
         <p class="text-muted small mb-0" th:if="${editLayoutFlow}">
@@ -88,6 +99,37 @@
          th:href="@{${cancelLink}}">Cancel</a>
     </div>
   </form>
+  <script>
+    (function () {
+      var input = document.getElementById("skippedFloorNumbers");
+      var skip13 = document.getElementById("skip-floor-13");
+      if (!input || !skip13) return;
+      function parseFloors(value) {
+        var set = new Set();
+        (value || "")
+          .split(/[,;\s]+/)
+          .forEach(function (part) {
+            var n = parseInt(part, 10);
+            if (!isNaN(n) && n > 0) set.add(n);
+          });
+        return set;
+      }
+      function writeFloors(set) {
+        input.value = Array.from(set)
+          .sort(function (a, b) {
+            return a - b;
+          })
+          .join(", ");
+      }
+      skip13.checked = parseFloors(input.value).has(13);
+      skip13.addEventListener("change", function () {
+        var floors = parseFloors(input.value);
+        if (skip13.checked) floors.add(13);
+        else floors.delete(13);
+        writeFloors(floors);
+      });
+    })();
+  </script>
   <script th:if="${adminBuildingsFlow}">
     (function () {
       var sel = document.getElementById("admin-builder-id");

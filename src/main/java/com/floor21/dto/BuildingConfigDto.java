@@ -17,4 +17,6 @@ public class BuildingConfigDto {
     @NotNull private Integer bhk1PerFloor;
     @NotNull private Integer bhk2PerFloor;
     @NotNull private Integer bhk3PerFloor;
+    /** Comma-separated floor numbers to skip (e.g. {@code 13} or {@code 4,13}). */
+    private String skippedFloorNumbers;
 }

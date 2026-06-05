@@ -53,6 +53,7 @@ public class FlywayDataSourceMigrationConfig {
                 ensureFlatsLinkedResidentialColumn(dataSource);
                 ensureFlatsAreaBreakdownColumns(dataSource);
                 ensureFlatsLayoutImagePathColumn(dataSource);
+                ensureBuildingsSkippedFloorsColumn(dataSource);
                 return bean;
             }
         };
@@ -147,6 +148,18 @@ public class FlywayDataSourceMigrationConfig {
         } catch (Exception ex) {
             throw new IllegalStateException(
                     "Could not ensure flats.layout_image_path column exists", ex);
+        }
+    }
+
+    /** Idempotent guard when V9 is recorded in history but skipped_floor_numbers was never applied. */
+    private static void ensureBuildingsSkippedFloorsColumn(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute(
+                    "ALTER TABLE buildings ADD COLUMN IF NOT EXISTS skipped_floor_numbers VARCHAR(200)");
+        } catch (Exception ex) {
+            throw new IllegalStateException(
+                    "Could not ensure buildings.skipped_floor_numbers column exists", ex);
         }
     }
 }

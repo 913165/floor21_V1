@@ -12,11 +12,13 @@ import com.floor21.service.PlatformAdminService;
 import com.floor21.service.PlatformAuditService;
 import com.floor21.service.PlatformSettingsService;
 import com.floor21.util.ResidentialBhkTypes;
+import com.floor21.util.SkippedFloorsUtil;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -178,7 +180,8 @@ public class AdminPlatformController {
 
     private static void assertInitialLayoutMix(Building form) {
         int parking = form.getParkingFloors() != null ? form.getParkingFloors() : 0;
-        int residential = form.getTotalFloors() - parking;
+        Set<Integer> skipped = SkippedFloorsUtil.parseSet(form.getSkippedFloorNumbers());
+        int residential = SkippedFloorsUtil.countActiveFloors(parking + 1, form.getTotalFloors(), skipped);
         if (residential <= 0) {
             return;
         }
@@ -207,6 +210,7 @@ public class AdminPlatformController {
         cfg.setBhk1PerFloor(mix.getOrDefault("1BHK", 0));
         cfg.setBhk2PerFloor(mix.getOrDefault("2BHK", 0));
         cfg.setBhk3PerFloor(mix.getOrDefault("3BHK", 0));
+        cfg.setSkippedFloorNumbers(SkippedFloorsUtil.formatForDisplay(building.getSkippedFloorNumbers()));
         return cfg;
     }
 
@@ -224,6 +228,7 @@ public class AdminPlatformController {
                         .filter(b -> b.getBuilder() != null && !b.getBuilder().isPlatformAdmin())
                         .orElseThrow();
         building.setBhkPerFloor(ResidentialBhkTypes.countsFromBuilding(building));
+        building.setSkippedFloorNumbers(SkippedFloorsUtil.formatForDisplay(building.getSkippedFloorNumbers()));
         populateAdminBuildingEditLayoutForm(model, building);
         return "buildings/form";
     }

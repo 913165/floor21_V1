@@ -33,8 +33,10 @@ import com.floor21.security.TenantContext;
 import com.floor21.util.FlatUnitTypes;
 import com.floor21.util.ParkingFloorConfigUtil;
 import com.floor21.util.ResidentialBhkTypes;
+import com.floor21.util.SkippedFloorsUtil;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Set;
 import java.util.Locale;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -967,6 +969,7 @@ public class FlatService {
         cfg.setBhk1PerFloor(mix.getOrDefault("1BHK", 0));
         cfg.setBhk2PerFloor(mix.getOrDefault("2BHK", 0));
         cfg.setBhk3PerFloor(mix.getOrDefault("3BHK", 0));
+        cfg.setSkippedFloorNumbers(SkippedFloorsUtil.formatForDisplay(building.getSkippedFloorNumbers()));
         return cfg;
     }
 
@@ -976,7 +979,8 @@ public class FlatService {
                         a.getParkingFloors() != null ? a.getParkingFloors() : 0,
                         b.getParkingFloors() != null ? b.getParkingFloors() : 0)
                 && Objects.equals(a.getFlatsPerFloor(), b.getFlatsPerFloor())
-                && ResidentialBhkTypes.countsFromBuilding(a).equals(ResidentialBhkTypes.countsFromBuilding(b));
+                && ResidentialBhkTypes.countsFromBuilding(a).equals(ResidentialBhkTypes.countsFromBuilding(b))
+                && SkippedFloorsUtil.setsEqual(a.getSkippedFloorNumbers(), b.getSkippedFloorNumbers());
     }
 
     @Transactional
@@ -1005,7 +1009,9 @@ public class FlatService {
         if (parking < 0 || parking > total) {
             throw new IllegalArgumentException("Parking floors must be between 0 and total floors");
         }
-        int residential = total - parking;
+        Set<Integer> skipped = SkippedFloorsUtil.parseSet(cfg.getSkippedFloorNumbers());
+        SkippedFloorsUtil.validateForBuilding(skipped, total, parking);
+        int residential = SkippedFloorsUtil.countActiveFloors(parking + 1, total, skipped);
         int mixTotal = ResidentialBhkTypes.sumCounts(mix);
         if (residential > 0 && mixTotal != perFloor) {
             throw new IllegalArgumentException(
@@ -1024,19 +1030,20 @@ public class FlatService {
         building.setParkingFloors(parking);
         building.setFlatsPerFloor(perFloor);
         ResidentialBhkTypes.persistMixOnBuilding(building, mix);
+        building.setSkippedFloorNumbers(SkippedFloorsUtil.normalize(cfg.getSkippedFloorNumbers()));
         ParkingFloorConfigUtil.clearAll(building);
         buildingRepository.save(building);
 
         Instant now = Instant.now();
         List<Flat> batch = new ArrayList<>();
-        for (int floor = 1; floor <= parking; floor++) {
+        for (int floor : SkippedFloorsUtil.activeFloors(1, parking, skipped)) {
             for (int unit = 1; unit <= perFloor; unit++) {
                 batch.add(
                         parkingFlat(
                                 builder, building, floor, unit, now));
             }
         }
-        for (int floor = parking + 1; floor <= total; floor++) {
+        for (int floor : SkippedFloorsUtil.activeFloors(parking + 1, total, skipped)) {
             appendResidentialFloorFlats(batch, builder, building, floor, mix, now);
         }
         flatRepository.saveAll(batch);
@@ -1116,9 +1123,12 @@ public class FlatService {
         Builder builder = builderRepository.findById(builderId).orElseThrow();
         Instant now = Instant.now();
         List<Flat> batch = new ArrayList<>();
+        Set<Integer> skipped = SkippedFloorsUtil.parseSet(building.getSkippedFloorNumbers());
         int newTop = topFloor + additionalFloors;
         for (int floor = topFloor + 1; floor <= newTop; floor++) {
-            appendResidentialFloorFlats(batch, builder, building, floor, mix, now);
+            if (!skipped.contains(floor)) {
+                appendResidentialFloorFlats(batch, builder, building, floor, mix, now);
+            }
         }
         flatRepository.saveAll(batch);
 

@@ -11,6 +11,7 @@ import com.floor21.repository.PaymentSlabTemplateRepository;
 import com.floor21.repository.SlabRepository;
 import com.floor21.security.TenantContext;
 import com.floor21.util.ResidentialBhkTypes;
+import com.floor21.util.SkippedFloorsUtil;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -318,6 +319,11 @@ public class BuildingService {
                             + form.getFlatsPerFloor()
                             + ").");
         }
+        int parking = form.getParkingFloors() != null ? form.getParkingFloors() : 0;
+        SkippedFloorsUtil.validateForBuilding(
+                SkippedFloorsUtil.parseSet(form.getSkippedFloorNumbers()),
+                form.getTotalFloors(),
+                parking);
     }
 
     private static Map<String, Integer> resolveFormMix(Building form) {
@@ -339,6 +345,7 @@ public class BuildingService {
         entity.setTotalFloors(form.getTotalFloors());
         entity.setParkingFloors(form.getParkingFloors() != null ? form.getParkingFloors() : 0);
         entity.setFlatsPerFloor(form.getFlatsPerFloor());
+        entity.setSkippedFloorNumbers(SkippedFloorsUtil.normalize(form.getSkippedFloorNumbers()));
         ResidentialBhkTypes.persistMixOnBuilding(entity, resolveFormMix(form));
         entity.setAddress(form.getAddress());
         entity.setCity(form.getCity());
