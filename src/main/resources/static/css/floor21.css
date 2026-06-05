@@ -1634,6 +1634,12 @@ body.modal-open .modal-backdrop {
   cursor: pointer;
 }
 
+.parking-plan__slot--selected {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+  z-index: 2;
+}
+
 .parking-plan__slot--clickable:hover .parking-plan__car-body {
   fill: #84c8e8;
 }

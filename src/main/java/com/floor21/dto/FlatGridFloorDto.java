@@ -1,5 +1,6 @@
 package com.floor21.dto;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public record FlatGridFloorDto(
@@ -15,10 +16,11 @@ public record FlatGridFloorDto(
         int parkingMinGridRows,
         int parkingCarLiftCount,
         int parkingPassengerLiftCount,
-        int parkingGateCount) {
+        int parkingGateCount,
+        BigDecimal parkingSlotAreaSqft) {
 
     /** Residential or mixed floor row. */
     public FlatGridFloorDto(int floorNumber, String label, List<FlatGridFlatDto> flats) {
-        this(floorNumber, label, flats, false, 0, null, false, 100, 1, 1, 0, 0, 1);
+        this(floorNumber, label, flats, false, 0, null, false, 100, 1, 1, 0, 0, 1, null);
     }
 }

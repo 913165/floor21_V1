@@ -52,6 +52,10 @@ export async function linkParkingSlotToResidentialFlat(
   await slot.scrollIntoViewIfNeeded();
   await slot.click();
 
+  const detailsModal = page.locator('#flat-details-modal');
+  await expect(detailsModal).toBeVisible({ timeout: 30_000 });
+  await detailsModal.locator('#panel-parking-slot-link-btn').click();
+
   const modal = page.locator('#parking-link-modal');
   await expect(modal).toBeVisible();
   const select = page.locator('#parking-link-flat');
@@ -60,8 +64,16 @@ export async function linkParkingSlotToResidentialFlat(
   await page.locator('#parking-link-save').click();
   await expect(modal).not.toBeVisible({ timeout: 30_000 });
 
-  await expect(slot).toHaveClass(/parking-plan__slot--linked/);
-  await expect(slot).toHaveAttribute('data-linked-flat-id', residentialFlatId);
+  const linkedSlot = section.locator(
+    `.parking-plan__slot--linked[data-slot-number="${slotNumber}"]`,
+  );
+  await expect(linkedSlot).toBeVisible({ timeout: 30_000 });
+  await expect(linkedSlot).toHaveAttribute('data-linked-flat-id', residentialFlatId);
+
+  if (await detailsModal.isVisible()) {
+    await detailsModal.locator('.btn-close').click();
+    await expect(detailsModal).toBeHidden();
+  }
 
   return parkingFlatId;
 }

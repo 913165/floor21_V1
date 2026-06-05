@@ -1,5 +1,6 @@
 package com.floor21.dto;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,5 +27,6 @@ public record ParkingPlanDto(
             UUID flatId,
             String flatNumber,
             UUID linkedResidentialFlatId,
-            String linkedResidentialFlatNumber) {}
+            String linkedResidentialFlatNumber,
+            BigDecimal areaSqft) {}
 }

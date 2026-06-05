@@ -1,8 +1,10 @@
 package com.floor21.dto;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
 
 public record ParkingFloorConfigDto(
         @NotNull @Min(1) @Max(200) Integer slotCount,
@@ -12,4 +14,6 @@ public record ParkingFloorConfigDto(
         @Min(0) @Max(8) Integer liftCount,
         @Min(0) @Max(8) Integer gateCount,
         Boolean showLift,
-        Boolean showGate) {}
+        Boolean showGate,
+        @DecimalMin(value = "0.01", message = "Parking slot area must be greater than zero.")
+                BigDecimal slotAreaSqft) {}

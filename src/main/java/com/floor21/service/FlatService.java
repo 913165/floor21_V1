@@ -141,7 +141,10 @@ public class FlatService {
                             parkingMinGridRows,
                             parkingConfigured ? parkingConfig.resolvedCarLiftCount() : 0,
                             parkingConfigured ? parkingConfig.resolvedPassengerLiftCount() : 0,
-                            parkingConfigured ? parkingConfig.resolvedGateCount() : 0));
+                            parkingConfigured ? parkingConfig.resolvedGateCount() : 0,
+                            parkingConfigured
+                                    ? ParkingFloorConfigUtil.resolveSlotAreaSqft(parkingConfig)
+                                    : null));
         }
         return rows;
     }
@@ -314,9 +317,13 @@ public class FlatService {
             flatRepository.delete(last);
         }
         flatRepository.flush();
+        BigDecimal slotAreaSqft =
+                ParkingFloorConfigUtil.normalizeSlotAreaSqft(dto.slotAreaSqft());
+        int priorCount = existing.size();
         while (existing.size() < slotCount) {
             int unit = existing.size() + 1;
             Flat created = parkingFlat(builder, building, floorNumber, unit, now);
+            created.setAreaSqft(slotAreaSqft);
             existing.add(flatRepository.save(created));
         }
         for (int i = 0; i < existing.size(); i++) {
@@ -324,6 +331,9 @@ public class FlatService {
             int unit = i + 1;
             flat.setUnitNumber(unit);
             flat.setFlatNumber(String.format("%02d%02d", floorNumber, unit));
+            if (i >= priorCount) {
+                flat.setAreaSqft(slotAreaSqft);
+            }
             flatRepository.save(flat);
         }
         int carSizePercent =
@@ -343,7 +353,8 @@ public class FlatService {
                 null,
                 carLiftCount,
                 passengerLiftCount,
-                gateCount);
+                gateCount,
+                slotAreaSqft);
         buildingRepository.save(building);
         return buildParkingPlan(building, floorNumber, existing);
     }
@@ -480,7 +491,8 @@ public class FlatService {
                 parking.getId(),
                 parking.getFlatNumber(),
                 residentialId,
-                linkedNumber);
+                linkedNumber,
+                parking.getAreaSqft());
     }
 
     private boolean isLinkableResidentialFlat(Flat flat) {
@@ -563,7 +575,8 @@ public class FlatService {
                             parking.getId(),
                             parking.getFlatNumber(),
                             linkedId,
-                            linkedNumber));
+                            linkedNumber,
+                            parking.getAreaSqft()));
         }
         int carSizePercent = ParkingFloorConfigUtil.resolveCarSizePercent(config);
         List<ParkingFixturePlacementDto> fixtureDtos = toFixtureDtos(config);
@@ -1272,7 +1285,7 @@ public class FlatService {
         f.setBhkType("PKG");
         f.setParking(true);
         f.setStatus("AVAILABLE");
-        f.setAreaSqft(BigDecimal.valueOf(150));
+        f.setAreaSqft(ParkingFloorConfigUtil.DEFAULT_SLOT_AREA_SQFT);
         f.setBasePrice(BigDecimal.ZERO);
         f.setCreatedAt(now);
         return f;

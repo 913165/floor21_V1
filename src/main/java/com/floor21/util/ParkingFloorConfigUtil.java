@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.floor21.dto.ParkingGridColDto;
 import com.floor21.dto.ParkingGridRowDto;
 import com.floor21.entity.Building;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -25,6 +27,7 @@ public final class ParkingFloorConfigUtil {
     public static final int DEFAULT_CAR_SIZE_PERCENT = 100;
     public static final int MAX_CAR_SIZE_PERCENT = 200;
     public static final int MAX_FIXTURES_PER_KIND = 8;
+    public static final BigDecimal DEFAULT_SLOT_AREA_SQFT = BigDecimal.valueOf(150);
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -45,12 +48,14 @@ public final class ParkingFloorConfigUtil {
             Integer gateCount,
             List<FixturePlacement> fixtures,
             Boolean showLift,
-            Boolean showGate) {
+            Boolean showGate,
+            BigDecimal slotAreaSqft) {
 
         public FloorConfig(int slotCount, boolean configured) {
             this(
                     slotCount,
                     configured,
+                    null,
                     null,
                     null,
                     null,
@@ -188,6 +193,23 @@ public final class ParkingFloorConfigUtil {
             return DEFAULT_CAR_SIZE_PERCENT;
         }
         return normalizeCarSizePercent(config.carSizePercent());
+    }
+
+    public static BigDecimal resolveSlotAreaSqft(FloorConfig config) {
+        if (config != null && config.slotAreaSqft() != null && config.slotAreaSqft().signum() > 0) {
+            return config.slotAreaSqft().setScale(2, RoundingMode.HALF_UP);
+        }
+        return DEFAULT_SLOT_AREA_SQFT;
+    }
+
+    public static BigDecimal normalizeSlotAreaSqft(BigDecimal value) {
+        if (value == null) {
+            return DEFAULT_SLOT_AREA_SQFT;
+        }
+        if (value.signum() <= 0) {
+            throw new IllegalArgumentException("Parking slot area must be greater than zero.");
+        }
+        return value.setScale(2, RoundingMode.HALF_UP);
     }
 
     public static Map<Integer, FloorConfig> read(Building building) {
@@ -382,9 +404,15 @@ public final class ParkingFloorConfigUtil {
             Integer gridRowsParam,
             int carLiftCount,
             int passengerLiftCount,
-            int gateCount) {
+            int gateCount,
+            BigDecimal slotAreaSqft) {
         Map<Integer, FloorConfig> map = new LinkedHashMap<>(read(building));
         FloorConfig existing = map.get(floorNumber);
+        BigDecimal normalizedSlotArea =
+                normalizeSlotAreaSqft(
+                        slotAreaSqft != null
+                                ? slotAreaSqft
+                                : (existing != null ? existing.slotAreaSqft() : null));
         int gridCols =
                 existing != null && existing.gridCols() != null
                         ? existing.gridCols()
@@ -431,7 +459,8 @@ public final class ParkingFloorConfigUtil {
                         normalizedGate,
                         fixtures,
                         null,
-                        null));
+                        null,
+                        normalizedSlotArea));
         building.setParkingFloorConfig(toJson(map));
     }
 
@@ -463,7 +492,8 @@ public final class ParkingFloorConfigUtil {
                         existing.gateCount(),
                         fixtureList,
                         existing.showLift(),
-                        existing.showGate()));
+                        existing.showGate(),
+                        existing.slotAreaSqft()));
         building.setParkingFloorConfig(toJson(map));
     }
 
