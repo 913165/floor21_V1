@@ -445,6 +445,13 @@
               </div>
               <div id="panel-parking-slot-actions" class="d-none mt-2" sec:authorize="hasRole('SUPER_ADMIN')">
                 <button type="button" class="btn btn-sm btn-outline-primary" id="panel-parking-slot-link-btn">Link to residential flat</button>
+                <div class="d-flex align-items-center justify-content-between gap-2 mt-2 pt-2 border-top">
+                  <div>
+                    <div class="text-muted small">Orientation</div>
+                    <div class="small fw-semibold" id="panel-parking-slot-orientation-value">Vertical</div>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" id="panel-parking-slot-rotate">Rotate bay</button>
+                </div>
                 <p class="text-muted small mb-0 mt-1" id="panel-parking-slot-linked"></p>
               </div>
             </div>
@@ -686,7 +693,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=parking-slot-individual)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=parking-slot-rotate)}"></script>
 </div>
 </body>
 </html>

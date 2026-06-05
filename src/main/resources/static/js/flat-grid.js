@@ -2582,13 +2582,15 @@
     return parkingResidentialCache;
   }
 
-  function syncParkingLinkOrientationLabel(state, slotEl) {
-    var label = document.getElementById("parking-link-orientation-value");
-    if (!label) return;
+  function syncParkingOrientationLabels(state, slotEl) {
     var orient = "vertical";
-    if (state && parkingLinkSlotNumber) {
+    var slotNumber = parkingLinkSlotNumber;
+    if (!slotNumber && selectedParkingSlotElement) {
+      slotNumber = selectedParkingSlotElement.getAttribute("data-slot-number");
+    }
+    if (state && slotNumber) {
       for (var i = 0; i < state.placements.length; i++) {
-        if (state.placements[i].slotNumber === Number(parkingLinkSlotNumber)) {
+        if (state.placements[i].slotNumber === Number(slotNumber)) {
           orient = state.placements[i].orientation || "vertical";
           break;
         }
@@ -2596,24 +2598,58 @@
     } else if (slotEl) {
       orient = slotEl.classList.contains("parking-plan__slot--horizontal") ? "horizontal" : "vertical";
     }
-    label.textContent = orient === "horizontal" ? "Horizontal" : "Vertical";
+    var text = orient === "horizontal" ? "Horizontal" : "Vertical";
+    ["parking-link-orientation-value", "panel-parking-slot-orientation-value"].forEach(function (id) {
+      var label = document.getElementById(id);
+      if (label) label.textContent = text;
+    });
+  }
+
+  function getParkingSlotRotateContext() {
+    var floorNumber = parkingLinkFloorNumber || selectedParkingFloorNumber;
+    var slotNumber = parkingLinkSlotNumber;
+    if (!slotNumber && selectedParkingSlotElement) {
+      slotNumber = selectedParkingSlotElement.getAttribute("data-slot-number");
+    }
+    if (!floorNumber || !slotNumber) return null;
+    var section = parkingSectionForFloor(floorNumber);
+    var root = section && parkingPlanRootForSection(section);
+    var state = root && root._parkingLayoutState;
+    if (!state) return null;
+    return { slotNumber: Number(slotNumber), root: root, state: state };
+  }
+
+  function refreshSelectedParkingSlotElement(flatId) {
+    if (!flatId) return null;
+    var slotEl = findParkingSlotElement(flatId);
+    if (slotEl) {
+      clearParkingSlotHighlight();
+      slotEl.classList.add("parking-plan__slot--selected");
+      selectedParkingSlotElement = slotEl;
+    }
+    return slotEl;
   }
 
   async function rotateParkingSlotFromModal() {
-    if (!parkingLinkFloorNumber || !parkingLinkSlotNumber) return;
-    var section = parkingSectionForFloor(parkingLinkFloorNumber);
-    var root = section && parkingPlanRootForSection(section);
-    var state = root && root._parkingLayoutState;
-    if (!state) {
-      showParkingLinkError("Layout is not available for this floor.");
+    var ctx = getParkingSlotRotateContext();
+    if (!ctx) {
+      if (selectedParkingSlot) showAdminError("Layout is not available for this floor.");
+      else showParkingLinkError("Layout is not available for this floor.");
       return;
     }
-    showParkingLinkError("");
-    toggleParkingSlotOrientation(state, Number(parkingLinkSlotNumber));
-    syncParkingLinkOrientationLabel(state, null);
-    rerenderParkingPlanFromState(root);
-    var result = await autoSaveParkingLayout(root);
-    if (!result.ok) showParkingLinkError(result.error);
+    if (selectedParkingSlot) showAdminError("");
+    else showParkingLinkError("");
+    toggleParkingSlotOrientation(ctx.state, ctx.slotNumber);
+    syncParkingOrientationLabels(ctx.state, null);
+    rerenderParkingPlanFromState(ctx.root);
+    var flatId =
+      selectedParkingSlotElement && selectedParkingSlotElement.getAttribute("data-parking-flat-id");
+    if (flatId) refreshSelectedParkingSlotElement(flatId);
+    var result = await autoSaveParkingLayout(ctx.root);
+    if (!result.ok) {
+      if (selectedParkingSlot) showAdminError(result.error);
+      else showParkingLinkError(result.error);
+    }
   }
 
   async function openParkingLinkModal(slotEl) {
@@ -2638,7 +2674,7 @@
         (parkingLinkSlotNumber || "") +
         (parkingLinkFloorNumber ? " · Floor " + parkingLinkFloorNumber : "");
     }
-    syncParkingLinkOrientationLabel(state, slotEl);
+    syncParkingOrientationLabels(state, slotEl);
     showParkingLinkError("");
     if (select) {
       select.innerHTML = '<option value="">— Not linked —</option>';
@@ -3278,6 +3314,8 @@
     setParkingSlotMode(true);
     syncParkingSlotAdminFields(slotEl);
     syncParkingSlotLinkedLabel(slotEl);
+    var root = section && parkingPlanRootForSection(section);
+    syncParkingOrientationLabels(root && root._parkingLayoutState, slotEl);
     if (showModal !== false) {
       openFlatDetailsModal();
     }
@@ -3471,6 +3509,12 @@
     var parkingLinkRotate = document.getElementById("parking-link-rotate");
     if (parkingLinkRotate) {
       parkingLinkRotate.addEventListener("click", function () {
+        rotateParkingSlotFromModal();
+      });
+    }
+    var parkingSlotRotate = document.getElementById("panel-parking-slot-rotate");
+    if (parkingSlotRotate) {
+      parkingSlotRotate.addEventListener("click", function () {
         rotateParkingSlotFromModal();
       });
     }
