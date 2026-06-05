@@ -52,6 +52,7 @@ public class FlywayDataSourceMigrationConfig {
                 ensureParkingFloorConfigColumn(dataSource);
                 ensureFlatsLinkedResidentialColumn(dataSource);
                 ensureFlatsAreaBreakdownColumns(dataSource);
+                ensureFlatsLayoutImagePathColumn(dataSource);
                 return bean;
             }
         };
@@ -135,6 +136,17 @@ public class FlywayDataSourceMigrationConfig {
         } catch (Exception ex) {
             throw new IllegalStateException(
                     "Could not ensure flats carpet/balcony area columns exist", ex);
+        }
+    }
+
+    /** Idempotent guard when V8 is recorded in history but layout_image_path was never applied. */
+    private static void ensureFlatsLayoutImagePathColumn(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE flats ADD COLUMN IF NOT EXISTS layout_image_path VARCHAR(500)");
+        } catch (Exception ex) {
+            throw new IllegalStateException(
+                    "Could not ensure flats.layout_image_path column exists", ex);
         }
     }
 }
