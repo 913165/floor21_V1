@@ -71,11 +71,39 @@ class PlatformAdminServiceProjectsPageTest {
         when(builderRepository.findAllTenantsOrderByCompanyNameAsc()).thenReturn(List.of(older, newer));
         stubRowCounts();
 
-        Page<AdminBuilderRow> page = service.listBuildersPage(0, 25, "lastActivity", "desc");
+        Page<AdminBuilderRow> page = service.listBuildersPage(0, 25, "lastActivity", "desc", null, null);
 
         assertThat(page.getTotalElements()).isEqualTo(2);
         assertThat(page.getContent().get(0).companyName()).isEqualTo("Newer");
         assertThat(page.getContent().get(1).companyName()).isEqualTo("Older");
+    }
+
+    @Test
+    void listBuildersPage_filtersBySearchAndActive() {
+        Builder activeMumbai =
+                tenant("Skyline Mumbai", Instant.parse("2024-01-01T00:00:00Z"), null);
+        activeMumbai.setCity("Mumbai");
+        activeMumbai.setActive(true);
+        Builder inactivePune =
+                tenant("Horizon Pune", Instant.parse("2024-02-01T00:00:00Z"), null);
+        inactivePune.setCity("Pune");
+        inactivePune.setActive(false);
+        when(builderRepository.findAllTenantsOrderByCompanyNameAsc())
+                .thenReturn(List.of(activeMumbai, inactivePune));
+        stubRowCounts();
+
+        Page<AdminBuilderRow> searchPage = service.listBuildersPage(0, 25, "companyName", "asc", "mumbai", null);
+        assertThat(searchPage.getTotalElements()).isEqualTo(1);
+        assertThat(searchPage.getContent().get(0).companyName()).isEqualTo("Skyline Mumbai");
+
+        Page<AdminBuilderRow> activePage = service.listBuildersPage(0, 25, "companyName", "asc", null, true);
+        assertThat(activePage.getTotalElements()).isEqualTo(1);
+        assertThat(activePage.getContent().get(0).companyName()).isEqualTo("Skyline Mumbai");
+
+        Page<AdminBuilderRow> combinedPage =
+                service.listBuildersPage(0, 25, "companyName", "asc", "pune", false);
+        assertThat(combinedPage.getTotalElements()).isEqualTo(1);
+        assertThat(combinedPage.getContent().get(0).companyName()).isEqualTo("Horizon Pune");
     }
 
     private Builder tenant(String name, Instant createdAt, Instant updatedAt) {

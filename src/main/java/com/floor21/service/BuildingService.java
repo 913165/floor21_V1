@@ -112,22 +112,17 @@ public class BuildingService {
 
     @Transactional(readOnly = true)
     public Page<Building> listBuildingsPage(
-            int page, int size, String sort, String dir, UUID projectId) {
+            int page, int size, String sort, String dir, UUID projectId, String search) {
         String sortKey = normalizeBuildingsSort(sort);
         boolean ascending = normalizeBuildingsSortAscending(sortKey, dir);
         int safeSize = Math.min(Math.max(size, 5), BUILDINGS_MAX_PAGE_SIZE);
         int safePage = Math.max(page, 0);
 
-        List<Building> filtered = new ArrayList<>(listAllForPlatformAdmin());
-        if (projectId != null) {
-            filtered =
-                    filtered.stream()
-                            .filter(
-                                    b ->
-                                            b.getBuilder() != null
-                                                    && projectId.equals(b.getBuilder().getId()))
-                            .toList();
-        }
+        List<Building> filtered =
+                listAllForPlatformAdmin().stream()
+                        .filter(b -> matchesProjectFilter(b, projectId))
+                        .filter(b -> matchesBuildingSearch(b, search))
+                        .toList();
 
         List<Building> sorted = new ArrayList<>(filtered);
         sorted.sort(comparatorForBuildingsSort(sortKey, ascending));
@@ -137,6 +132,38 @@ public class BuildingService {
         int to = Math.min(from + safeSize, total);
         List<Building> slice = from < to ? sorted.subList(from, to) : List.of();
         return new PageImpl<>(slice, PageRequest.of(safePage, safeSize), total);
+    }
+
+    static boolean matchesProjectFilter(Building building, UUID projectId) {
+        if (projectId == null) {
+            return true;
+        }
+        return building.getBuilder() != null && projectId.equals(building.getBuilder().getId());
+    }
+
+    static boolean matchesBuildingSearch(Building building, String search) {
+        if (search == null || search.isBlank()) {
+            return true;
+        }
+        String q = search.trim().toLowerCase();
+        if (fieldContains(building.getBuildingName(), q) || fieldContains(building.getCity(), q)) {
+            return true;
+        }
+        if (building.getBuilder() != null && fieldContains(building.getBuilder().getCompanyName(), q)) {
+            return true;
+        }
+        if (building.getId() != null) {
+            String id = building.getId().toString().toLowerCase();
+            String layoutPrefix = id.length() >= 8 ? id.substring(0, 8) : id;
+            if (id.contains(q) || layoutPrefix.contains(q)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean fieldContains(String value, String q) {
+        return value != null && value.toLowerCase().contains(q);
     }
 
     public static String normalizeBuildingsSort(String sort) {

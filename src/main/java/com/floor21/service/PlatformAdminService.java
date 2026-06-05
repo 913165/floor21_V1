@@ -107,13 +107,19 @@ public class PlatformAdminService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AdminBuilderRow> listBuildersPage(int page, int size, String sort, String dir) {
+    public Page<AdminBuilderRow> listBuildersPage(
+            int page, int size, String sort, String dir, String search, Boolean activeFilter) {
         String sortKey = normalizeProjectsSort(sort);
         boolean ascending = normalizeProjectsSortAscending(sortKey, dir);
         int safeSize = Math.min(Math.max(size, 5), PROJECTS_MAX_PAGE_SIZE);
         int safePage = Math.max(page, 0);
 
-        List<AdminBuilderRow> sorted = new ArrayList<>(loadAllBuilderRows());
+        List<AdminBuilderRow> filtered =
+                loadAllBuilderRows().stream()
+                        .filter(row -> matchesProjectSearch(row, search))
+                        .filter(row -> matchesProjectActiveFilter(row, activeFilter))
+                        .toList();
+        List<AdminBuilderRow> sorted = new ArrayList<>(filtered);
         sorted.sort(comparatorForProjectsSort(sortKey, ascending));
 
         int total = sorted.size();
@@ -121,6 +127,40 @@ public class PlatformAdminService {
         int to = Math.min(from + safeSize, total);
         List<AdminBuilderRow> slice = from < to ? sorted.subList(from, to) : List.of();
         return new PageImpl<>(slice, PageRequest.of(safePage, safeSize), total);
+    }
+
+    static boolean matchesProjectSearch(AdminBuilderRow row, String search) {
+        if (search == null || search.isBlank()) {
+            return true;
+        }
+        String q = search.trim().toLowerCase();
+        return fieldContains(row.companyName(), q)
+                || fieldContains(row.city(), q)
+                || fieldContains(row.email(), q);
+    }
+
+    static boolean matchesProjectActiveFilter(AdminBuilderRow row, Boolean activeFilter) {
+        if (activeFilter == null) {
+            return true;
+        }
+        return row.active() == activeFilter;
+    }
+
+    private static boolean fieldContains(String value, String q) {
+        return value != null && value.toLowerCase().contains(q);
+    }
+
+    public static Boolean parseProjectActiveFilter(String active) {
+        if (active == null || active.isBlank()) {
+            return null;
+        }
+        if ("true".equalsIgnoreCase(active.trim())) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(active.trim())) {
+            return false;
+        }
+        return null;
     }
 
     private List<AdminBuilderRow> loadAllBuilderRows() {

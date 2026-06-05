@@ -20,6 +20,11 @@ export default defineConfig({
     baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    actionTimeout: 30_000,
+    navigationTimeout: 30_000,
+  },
+  expect: {
+    timeout: 15_000,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   /**

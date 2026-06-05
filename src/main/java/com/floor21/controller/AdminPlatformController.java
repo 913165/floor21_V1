@@ -53,18 +53,20 @@ public class AdminPlatformController {
     public String buildings(
             Model model,
             @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size,
-            @RequestParam(defaultValue = "project") String sort,
-            @RequestParam(defaultValue = "asc") String dir) {
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @RequestParam(defaultValue = "desc") String dir) {
         String sortKey = BuildingService.normalizeBuildingsSort(sort);
         boolean ascending = BuildingService.normalizeBuildingsSortAscending(sortKey, dir);
         Page<Building> buildingPage =
                 buildingService.listBuildingsPage(
-                        page, size, sortKey, ascending ? "asc" : "desc", projectId);
+                        page, size, sortKey, ascending ? "asc" : "desc", projectId, q);
         model.addAttribute("pageTitle", "All buildings");
         model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
         model.addAttribute("filterProjectId", projectId);
+        model.addAttribute("filterSearch", q != null ? q.trim() : "");
         model.addAttribute("buildingPage", buildingPage);
         model.addAttribute("buildings", buildingPage.getContent());
         model.addAttribute("sort", sortKey);
@@ -84,9 +86,6 @@ public class AdminPlatformController {
         building.setBhkPerFloor(ResidentialBhkTypes.emptyCountMap());
         if (builderId != null) {
             Builder builder = builderRepository.findById(builderId).orElseThrow();
-            if (buildingRepository.countByBuilder_Id(builderId) == 0) {
-                building.setBuildingName(builder.getCompanyName());
-            }
             building.setCity(builder.getCity());
             building.setAddress(builder.getAddress());
             populateAdminBuildingLayoutForm(model, builder, building);

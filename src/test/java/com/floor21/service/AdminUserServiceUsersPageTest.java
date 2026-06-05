@@ -51,15 +51,35 @@ class AdminUserServiceUsersPageTest {
         when(userRepository.findAllByOrderByFullNameAsc()).thenReturn(List.of(zulu, alpha));
         when(userProjectAssignmentService.hasAnyMembership(any())).thenReturn(false);
 
-        Page<PlatformUserView> page = service.listUsersPage(0, 25, "companyName", "asc");
+        Page<PlatformUserView> page = service.listUsersPage(0, 25, "companyName", "asc", null, null, null);
 
         assertThat(page.getTotalElements()).isEqualTo(2);
         assertThat(page.getContent().get(0).companyName()).isEqualTo("Alpha Co");
         assertThat(page.getContent().get(1).companyName()).isEqualTo("Zulu Co");
 
-        Page<PlatformUserView> page2 = service.listUsersPage(0, 5, "companyName", "asc");
+        Page<PlatformUserView> page2 = service.listUsersPage(0, 5, "companyName", "asc", null, null, null);
         assertThat(page2.getSize()).isEqualTo(5);
         assertThat(page2.getTotalPages()).isEqualTo(1);
+    }
+
+    @Test
+    void listUsersPage_filtersBySearchAndActive() {
+        User active = unassignedUser("Alpha Co", "Alpha User");
+        User inactive = unassignedUser("Beta Co", "Beta User");
+        inactive.setActive(false);
+        when(userRepository.findByBuilderIsNullOrderByFullNameAsc()).thenReturn(List.of(active, inactive));
+        when(userRepository.findAllByOrderByFullNameAsc()).thenReturn(List.of(active, inactive));
+        when(userProjectAssignmentService.hasAnyMembership(any())).thenReturn(false);
+
+        Page<PlatformUserView> searchPage =
+                service.listUsersPage(0, 25, "companyName", "asc", "alpha", null, null);
+        assertThat(searchPage.getTotalElements()).isEqualTo(1);
+        assertThat(searchPage.getContent().get(0).fullName()).isEqualTo("Alpha User");
+
+        Page<PlatformUserView> activePage =
+                service.listUsersPage(0, 25, "companyName", "asc", null, true, null);
+        assertThat(activePage.getTotalElements()).isEqualTo(1);
+        assertThat(activePage.getContent().get(0).companyName()).isEqualTo("Alpha Co");
     }
 
     private static User unassignedUser(String company, String fullName) {

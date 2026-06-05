@@ -17,10 +17,11 @@ public record PlatformUserView(
         Instant lastLoginAt,
         List<String> buildingAccess,
         UUID builderId,
-        String builderCompanyName) {
+        String builderCompanyName,
+        List<UUID> projectIds) {
 
     public static PlatformUserView from(
-            User user, String projectNames, String role, List<String> buildingAccess) {
+            User user, String projectNames, String role, List<String> buildingAccess, List<UUID> projectIds) {
         return new PlatformUserView(
                 user.getId(),
                 user.getFullName(),
@@ -32,15 +33,18 @@ public record PlatformUserView(
                 user.getLastLoginAt(),
                 buildingAccess,
                 null,
-                projectNames);
+                projectNames,
+                projectIds);
     }
 
     public static PlatformUserView from(User user, Builder builder, List<String> buildingAccess) {
+        List<UUID> projectIds = builder != null ? List.of(builder.getId()) : List.of();
         return from(
                 user,
                 builder != null ? builder.getCompanyName() : "—",
                 user.getRole(),
-                buildingAccess);
+                buildingAccess,
+                projectIds);
     }
 
     public static PlatformUserView unassigned(User user) {
@@ -55,7 +59,8 @@ public record PlatformUserView(
                 user.getLastLoginAt(),
                 List.of("Not assigned to a project yet"),
                 null,
-                "—");
+                "—",
+                List.of());
     }
 
     private static String displayCompanyName(User user) {

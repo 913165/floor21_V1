@@ -13,6 +13,9 @@
         <input type="hidden" name="sort" th:value="${sort}"/>
         <input type="hidden" name="dir" th:value="${dir}"/>
         <input type="hidden" name="page" value="0"/>
+        <input type="hidden" name="q" th:if="${filterSearch != null and !#strings.isEmpty(filterSearch)}" th:value="${filterSearch}"/>
+        <input type="hidden" name="active" th:if="${filterActive != null and !#strings.isEmpty(filterActive)}" th:value="${filterActive}"/>
+        <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
         <label class="form-label small text-muted mb-0" for="users-page-size">Per page</label>
         <select class="form-select form-select-sm" id="users-page-size" name="size"
                 style="width: auto" onchange="this.form.submit()">
@@ -26,6 +29,41 @@
     </div>
   </div>
 
+  <form class="row g-2 align-items-end mb-3" method="get" th:action="@{/admin/users}">
+    <input type="hidden" name="sort" th:value="${sort}"/>
+    <input type="hidden" name="dir" th:value="${dir}"/>
+    <input type="hidden" name="size" th:value="${pageSize}"/>
+    <input type="hidden" name="page" value="0"/>
+    <div class="col-md-4 col-lg-3">
+      <label class="form-label small mb-1" for="filterProject">Project</label>
+      <select class="form-select form-select-sm" id="filterProject" name="projectId" onchange="this.form.submit()">
+        <option value="">All projects</option>
+        <option th:each="p : ${projects}"
+                th:value="${p.id}"
+                th:text="${p.companyName}"
+                th:selected="${filterProjectId != null and filterProjectId == p.id}"></option>
+      </select>
+    </div>
+    <div class="col-md-4 col-lg-3">
+      <label class="form-label small mb-1" for="user-search-q">Search</label>
+      <input class="form-control form-control-sm" id="user-search-q" name="q" th:value="${filterSearch}"
+             placeholder="Name, company, email, project"/>
+    </div>
+    <div class="col-md-3 col-lg-2">
+      <label class="form-label small mb-1" for="filterActive">Status</label>
+      <select class="form-select form-select-sm" id="filterActive" name="active" onchange="this.form.submit()">
+        <option value="" th:selected="${filterActive == null or filterActive == ''}">All statuses</option>
+        <option value="true" th:selected="${filterActive == 'true'}">Active only</option>
+        <option value="false" th:selected="${filterActive == 'false'}">Inactive only</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-outline-secondary btn-sm" type="submit">Search</button>
+      <a class="btn btn-link btn-sm" th:href="@{/admin/users(size=${pageSize}, sort=${sort}, dir=${dir})}"
+         th:if="${(filterSearch != null and !#strings.isEmpty(filterSearch)) or (filterActive != null and !#strings.isEmpty(filterActive)) or filterProjectId != null}">Clear</a>
+    </div>
+  </form>
+
   <div class="table-responsive card shadow-sm">
     <table class="table table-hover mb-0">
       <thead>
@@ -33,7 +71,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'fullName'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/users(page=0, size=${pageSize}, sort='fullName', dir=${sort == 'fullName' and dir == 'asc' ? 'desc' : 'asc'})}">
+             th:href="@{/admin/users(page=0, size=${pageSize}, sort='fullName', dir=${sort == 'fullName' and dir == 'asc' ? 'desc' : 'asc'}, q=${filterSearch}, active=${filterActive}, projectId=${filterProjectId})}">
             Name<span class="floor21-sort-th__icon" th:if="${sort == 'fullName'}"
                       th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -41,7 +79,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'companyName'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/users(page=0, size=${pageSize}, sort='companyName', dir=${sort == 'companyName' and dir == 'asc' ? 'desc' : 'asc'})}">
+             th:href="@{/admin/users(page=0, size=${pageSize}, sort='companyName', dir=${sort == 'companyName' and dir == 'asc' ? 'desc' : 'asc'}, q=${filterSearch}, active=${filterActive}, projectId=${filterProjectId})}">
             Company name<span class="floor21-sort-th__icon" th:if="${sort == 'companyName'}"
                              th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -49,7 +87,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'email'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/users(page=0, size=${pageSize}, sort='email', dir=${sort == 'email' and dir == 'asc' ? 'desc' : 'asc'})}">
+             th:href="@{/admin/users(page=0, size=${pageSize}, sort='email', dir=${sort == 'email' and dir == 'asc' ? 'desc' : 'asc'}, q=${filterSearch}, active=${filterActive}, projectId=${filterProjectId})}">
             Email<span class="floor21-sort-th__icon" th:if="${sort == 'email'}"
                       th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -57,7 +95,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'project'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/users(page=0, size=${pageSize}, sort='project', dir=${sort == 'project' and dir == 'asc' ? 'desc' : 'asc'})}">
+             th:href="@{/admin/users(page=0, size=${pageSize}, sort='project', dir=${sort == 'project' and dir == 'asc' ? 'desc' : 'asc'}, q=${filterSearch}, active=${filterActive}, projectId=${filterProjectId})}">
             Project<span class="floor21-sort-th__icon" th:if="${sort == 'project'}"
                         th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -65,7 +103,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'role'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/users(page=0, size=${pageSize}, sort='role', dir=${sort == 'role' and dir == 'asc' ? 'desc' : 'asc'})}">
+             th:href="@{/admin/users(page=0, size=${pageSize}, sort='role', dir=${sort == 'role' and dir == 'asc' ? 'desc' : 'asc'}, q=${filterSearch}, active=${filterActive}, projectId=${filterProjectId})}">
             Role<span class="floor21-sort-th__icon" th:if="${sort == 'role'}"
                       th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -74,7 +112,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'active'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/users(page=0, size=${pageSize}, sort='active', dir=${sort == 'active' and dir == 'desc' ? 'asc' : 'desc'})}">
+             th:href="@{/admin/users(page=0, size=${pageSize}, sort='active', dir=${sort == 'active' and dir == 'desc' ? 'asc' : 'desc'}, q=${filterSearch}, active=${filterActive}, projectId=${filterProjectId})}">
             Active<span class="floor21-sort-th__icon" th:if="${sort == 'active'}"
                         th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -82,7 +120,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'createdAt'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/users(page=0, size=${pageSize}, sort='createdAt', dir=${sort == 'createdAt' and dir == 'desc' ? 'asc' : 'desc'})}">
+             th:href="@{/admin/users(page=0, size=${pageSize}, sort='createdAt', dir=${sort == 'createdAt' and dir == 'desc' ? 'asc' : 'desc'}, q=${filterSearch}, active=${filterActive}, projectId=${filterProjectId})}">
             Created<span class="floor21-sort-th__icon" th:if="${sort == 'createdAt'}"
                           th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -90,7 +128,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'lastLoginAt'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/users(page=0, size=${pageSize}, sort='lastLoginAt', dir=${sort == 'lastLoginAt' and dir == 'desc' ? 'asc' : 'desc'})}">
+             th:href="@{/admin/users(page=0, size=${pageSize}, sort='lastLoginAt', dir=${sort == 'lastLoginAt' and dir == 'desc' ? 'asc' : 'desc'}, q=${filterSearch}, active=${filterActive}, projectId=${filterProjectId})}">
             Last login<span class="floor21-sort-th__icon" th:if="${sort == 'lastLoginAt'}"
                             th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -125,7 +163,15 @@
         </td>
       </tr>
       <tr th:if="${#lists.isEmpty(users)}">
-        <td colspan="10" class="text-muted text-center py-4">No users yet. Create a user, then add them to a project from Projects → Partners.</td>
+        <td colspan="10" class="text-muted text-center py-4">
+          No users found.
+          <span th:if="${(filterSearch != null and !#strings.isEmpty(filterSearch)) or (filterActive != null and !#strings.isEmpty(filterActive)) or filterProjectId != null}">
+            <a th:href="@{/admin/users(size=${pageSize}, sort=${sort}, dir=${dir})}">Clear filters</a>
+          </span>
+          <span th:unless="${(filterSearch != null and !#strings.isEmpty(filterSearch)) or (filterActive != null and !#strings.isEmpty(filterActive)) or filterProjectId != null}">
+            Create a user, then add them to a project from Projects → Partners.
+          </span>
+        </td>
       </tr>
       </tbody>
     </table>
@@ -145,7 +191,7 @@
       <li class="page-item" th:classappend="${!userPage.hasPrevious()} ? 'disabled'">
         <a class="page-link"
            th:if="${userPage.hasPrevious()}"
-           th:href="@{/admin/users(page=${userPage.number - 1}, size=${pageSize}, sort=${sort}, dir=${dir})}">Previous</a>
+           th:href="@{/admin/users(page=${userPage.number - 1}, size=${pageSize}, sort=${sort}, dir=${dir}, q=${filterSearch}, active=${filterActive}, projectId=${filterProjectId})}">Previous</a>
         <span class="page-link" th:unless="${userPage.hasPrevious()}">Previous</span>
       </li>
       <li class="page-item disabled">
@@ -155,7 +201,7 @@
       <li class="page-item" th:classappend="${!userPage.hasNext()} ? 'disabled'">
         <a class="page-link"
            th:if="${userPage.hasNext()}"
-           th:href="@{/admin/users(page=${userPage.number + 1}, size=${pageSize}, sort=${sort}, dir=${dir})}">Next</a>
+           th:href="@{/admin/users(page=${userPage.number + 1}, size=${pageSize}, sort=${sort}, dir=${dir}, q=${filterSearch}, active=${filterActive}, projectId=${filterProjectId})}">Next</a>
         <span class="page-link" th:unless="${userPage.hasNext()}">Next</span>
       </li>
     </ul>

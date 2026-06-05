@@ -3,6 +3,7 @@ package com.floor21.controller;
 import com.floor21.dto.PlatformUserView;
 import com.floor21.entity.User;
 import com.floor21.service.AdminUserService;
+import com.floor21.service.PlatformAdminService;
 import com.floor21.service.UserProjectAssignmentService;
 import com.floor21.util.IndianStates;
 import java.util.List;
@@ -33,18 +34,27 @@ public class AdminUserController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size,
             @RequestParam(defaultValue = "companyName") String sort,
-            @RequestParam(defaultValue = "asc") String dir) {
+            @RequestParam(defaultValue = "asc") String dir,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String active,
+            @RequestParam(required = false) UUID projectId) {
         String sortKey = AdminUserService.normalizeUsersSort(sort);
         boolean ascending = AdminUserService.normalizeUsersSortAscending(sortKey, dir);
+        Boolean activeFilter = PlatformAdminService.parseProjectActiveFilter(active);
         Page<PlatformUserView> userPage =
-                adminUserService.listUsersPage(page, size, sortKey, ascending ? "asc" : "desc");
+                adminUserService.listUsersPage(
+                        page, size, sortKey, ascending ? "asc" : "desc", q, activeFilter, projectId);
         model.addAttribute("pageTitle", "Users");
         model.addAttribute("userPage", userPage);
         model.addAttribute("users", userPage.getContent());
+        model.addAttribute("projects", adminUserService.listTenantBuilders());
         model.addAttribute("sort", sortKey);
         model.addAttribute("dir", ascending ? "asc" : "desc");
         model.addAttribute("pageSize", userPage.getSize());
         model.addAttribute("pageSizeOptions", List.of(10, 25, 50));
+        model.addAttribute("filterSearch", q != null ? q.trim() : "");
+        model.addAttribute("filterActive", activeFilter == null ? "" : activeFilter.toString());
+        model.addAttribute("filterProjectId", projectId);
         return "admin/users/list";
     }
 

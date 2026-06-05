@@ -56,10 +56,17 @@ export function sampleBuildingData(index: number): NewBuildingInput {
   };
 }
 
-export async function openAllBuildingsList(page: Page): Promise<Locator> {
-  await page.goto('admin/buildings', { waitUntil: 'commit' });
+export async function openAllBuildingsList(
+  page: Page,
+  options?: { projectId?: string },
+): Promise<Locator> {
+  const query = options?.projectId ? `?projectId=${options.projectId}` : '';
+  await page.goto(`admin/buildings${query}`, { waitUntil: 'commit' });
   const main = await waitForMainPanel(page);
   await expect(main.getByRole('heading', { name: 'All buildings' })).toBeVisible();
+  if (options?.projectId) {
+    await expect(main.locator('#filterProject')).toHaveValue(options.projectId);
+  }
   return main;
 }
 
@@ -72,7 +79,9 @@ export async function openNewBuildingForm(page: Page, projectId: string): Promis
 }
 
 export async function fillNewBuildingForm(main: Locator, data: NewBuildingInput) {
-  await main.locator('#buildingName').fill(data.name);
+  const buildingName = main.locator('input#buildingName');
+  await expect(buildingName).toBeVisible({ timeout: 15_000 });
+  await buildingName.fill(data.name);
   await main.locator('#totalFloors').fill(String(data.totalFloors ?? 5));
   await main.locator('#parkingFloors').fill(String(data.parkingFloors ?? 0));
   await main.locator('#flatsPerFloor').fill(String(data.flatsPerFloor ?? 4));
@@ -200,7 +209,146 @@ export async function createBuilding(page: Page, data: NewBuildingInput, project
 }
 
 export function buildingRow(list: Locator, buildingName: string) {
-  return list.locator('tbody tr').filter({ hasText: buildingName });
+  return list.locator('tbody tr').filter({
+    has: list.page().getByRole('cell', { name: buildingName }),
+  });
+}
+
+export function buildingRowById(list: Locator, buildingId: string) {
+  const id = buildingId.toLowerCase();
+  return list.locator(`tbody tr:has(a[href*="${id}"])`);
+}
+
+const LIST_LOOKUP_ATTEMPTS = 12;
+const LIST_LOOKUP_INTERVAL_MS = 1_500;
+
+export type BuildingListMatch = {
+  row: Locator;
+  flatsLink: Locator;
+};
+
+/**
+ * Scan buildings table rows (like manual lookup): reload the filtered list and loop
+ * each row until we find the building (by data-building-id, then Flats href fallback).
+ */
+export async function waitForBuildingInList(
+  page: Page,
+  options: {
+    projectId: string;
+    buildingId: string;
+    projectName: string;
+    buildingName: string;
+    attempts?: number;
+    intervalMs?: number;
+  },
+): Promise<BuildingListMatch> {
+  const attempts = options.attempts ?? LIST_LOOKUP_ATTEMPTS;
+  const intervalMs = options.intervalMs ?? LIST_LOOKUP_INTERVAL_MS;
+  const id = options.buildingId.toLowerCase();
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const list = await openAllBuildingsList(page, { projectId: options.projectId });
+    await expect(list.locator('#filterProject')).toHaveValue(options.projectId);
+
+    const match = await findBuildingRowInList(list, id, options.projectName, options.buildingName);
+    if (match) {
+      await expect(match.flatsLink).toBeVisible();
+      return match;
+    }
+
+    if (attempt < attempts) {
+      await page.waitForTimeout(intervalMs);
+    }
+  }
+
+  throw new Error(
+    `Building ${options.buildingId} (${options.buildingName}) not found in All buildings ` +
+      `for project ${options.projectName} after ${attempts} lookup attempts.`,
+  );
+}
+
+function flatsLinkInRow(row: Locator, buildingId: string): Locator {
+  const id = buildingId.toLowerCase();
+  return row.locator(`a[data-building-id="${id}"], a[href*="/buildings/${id}/flats"]`).first();
+}
+
+async function findBuildingRowInList(
+  list: Locator,
+  buildingId: string,
+  projectName: string,
+  buildingName: string,
+): Promise<BuildingListMatch | null> {
+  const id = buildingId.toLowerCase();
+  const byId = list.locator(`tbody tr[data-building-id="${id}"]`);
+  if ((await byId.count()) > 0) {
+    const row = byId.first();
+    if (await rowMatchesBuilding(row, buildingId, projectName, buildingName)) {
+      return { row, flatsLink: flatsLinkInRow(row, buildingId) };
+    }
+  }
+
+  const rows = list.locator('tbody tr');
+  const rowCount = await rows.count();
+  for (let i = 0; i < rowCount; i++) {
+    const row = rows.nth(i);
+    if (await rowMatchesBuilding(row, buildingId, projectName, buildingName)) {
+      return { row, flatsLink: flatsLinkInRow(row, buildingId) };
+    }
+  }
+
+  return null;
+}
+
+async function rowMatchesBuilding(
+  row: Locator,
+  buildingId: string,
+  projectName: string,
+  buildingName: string,
+): Promise<boolean> {
+  const id = buildingId.toLowerCase();
+  const dataId = ((await row.getAttribute('data-building-id')) ?? '').toLowerCase();
+  const dataName = ((await row.getAttribute('data-building-name')) ?? '').trim();
+  const flatsLink = flatsLinkInRow(row, buildingId);
+  if ((await flatsLink.count()) === 0) {
+    return false;
+  }
+
+  if (dataId && dataId !== id) {
+    return false;
+  }
+
+  const href = ((await flatsLink.getAttribute('href')) ?? '').toLowerCase();
+  if (!href.includes(id) || !href.includes('/flats')) {
+    return false;
+  }
+
+  const rowText = ((await row.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+  if (!rowText.includes(projectName)) {
+    return false;
+  }
+
+  if (dataName) {
+    return dataName === buildingName || rowText.includes(buildingName);
+  }
+  return rowText.includes(buildingName);
+}
+
+/** Scan an already-open list panel (no reload/retry). */
+export async function expectBuildingListed(
+  list: Locator,
+  projectId: string,
+  buildingId: string,
+  projectName: string,
+  buildingName: string,
+): Promise<void> {
+  await expect(list.locator('#filterProject')).toHaveValue(projectId);
+  const match = await findBuildingRowInList(list, buildingId.toLowerCase(), projectName, buildingName);
+  if (!match) {
+    throw new Error(
+      `Building ${buildingId} (${buildingName}) not found when scanning the open list.`,
+    );
+  }
+  await expect(match.flatsLink).toBeVisible();
 }
 
 export async function firstTenantProjectId(page: Page): Promise<string> {

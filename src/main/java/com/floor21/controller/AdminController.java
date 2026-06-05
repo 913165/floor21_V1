@@ -40,11 +40,15 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size,
             @RequestParam(defaultValue = "lastActivity") String sort,
-            @RequestParam(defaultValue = "desc") String dir) {
+            @RequestParam(defaultValue = "desc") String dir,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String active) {
         String sortKey = PlatformAdminService.normalizeProjectsSort(sort);
         boolean ascending = PlatformAdminService.normalizeProjectsSortAscending(sortKey, dir);
+        Boolean activeFilter = PlatformAdminService.parseProjectActiveFilter(active);
         Page<AdminBuilderRow> projectPage =
-                platformAdminService.listBuildersPage(page, size, sortKey, ascending ? "asc" : "desc");
+                platformAdminService.listBuildersPage(
+                        page, size, sortKey, ascending ? "asc" : "desc", q, activeFilter);
         model.addAttribute("pageTitle", "Projects");
         model.addAttribute("projectPage", projectPage);
         model.addAttribute("builders", projectPage.getContent());
@@ -52,6 +56,8 @@ public class AdminController {
         model.addAttribute("dir", ascending ? "asc" : "desc");
         model.addAttribute("pageSize", projectPage.getSize());
         model.addAttribute("pageSizeOptions", List.of(10, 25, 50));
+        model.addAttribute("filterSearch", q != null ? q.trim() : "");
+        model.addAttribute("filterActive", activeFilter == null ? "" : activeFilter.toString());
         return "admin/builders/list";
     }
 

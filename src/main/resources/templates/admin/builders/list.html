@@ -10,6 +10,8 @@
         <input type="hidden" name="sort" th:value="${sort}"/>
         <input type="hidden" name="dir" th:value="${dir}"/>
         <input type="hidden" name="page" value="0"/>
+        <input type="hidden" name="q" th:if="${filterSearch != null and !#strings.isEmpty(filterSearch)}" th:value="${filterSearch}"/>
+        <input type="hidden" name="active" th:if="${filterActive != null and !#strings.isEmpty(filterActive)}" th:value="${filterActive}"/>
         <label class="form-label small text-muted mb-0" for="projects-page-size">Per page</label>
         <select class="form-select form-select-sm" id="projects-page-size" name="size"
                 style="width: auto" onchange="this.form.submit()">
@@ -23,6 +25,31 @@
     </div>
   </div>
 
+  <form class="row g-2 align-items-end mb-3" method="get" th:action="@{/admin/projects}">
+    <input type="hidden" name="sort" th:value="${sort}"/>
+    <input type="hidden" name="dir" th:value="${dir}"/>
+    <input type="hidden" name="size" th:value="${pageSize}"/>
+    <input type="hidden" name="page" value="0"/>
+    <div class="col-md-5 col-lg-4">
+      <label class="form-label small mb-1" for="project-search-q">Search</label>
+      <input class="form-control form-control-sm" id="project-search-q" name="q" th:value="${filterSearch}"
+             placeholder="Project name, city, or email"/>
+    </div>
+    <div class="col-md-3 col-lg-2">
+      <label class="form-label small mb-1" for="filterActive">Status</label>
+      <select class="form-select form-select-sm" id="filterActive" name="active" onchange="this.form.submit()">
+        <option value="" th:selected="${filterActive == null or filterActive == ''}">All statuses</option>
+        <option value="true" th:selected="${filterActive == 'true'}">Active only</option>
+        <option value="false" th:selected="${filterActive == 'false'}">Inactive only</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-outline-secondary btn-sm" type="submit">Search</button>
+      <a class="btn btn-link btn-sm" th:href="@{/admin/projects(size=${pageSize}, sort=${sort}, dir=${dir})}"
+         th:if="${(filterSearch != null and !#strings.isEmpty(filterSearch)) or (filterActive != null and !#strings.isEmpty(filterActive))}">Clear</a>
+    </div>
+  </form>
+
   <div class="table-responsive card shadow-sm">
     <table class="table table-hover mb-0">
       <thead>
@@ -30,7 +57,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'companyName'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='companyName', dir=${sort == 'companyName' and dir == 'asc' ? 'desc' : 'asc'})}">
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='companyName', dir=${sort == 'companyName' and dir == 'asc' ? 'desc' : 'asc'}, q=${filterSearch}, active=${filterActive})}">
             Project<span class="floor21-sort-th__icon" th:if="${sort == 'companyName'}"
                          th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -38,7 +65,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'city'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='city', dir=${sort == 'city' and dir == 'asc' ? 'desc' : 'asc'})}">
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='city', dir=${sort == 'city' and dir == 'asc' ? 'desc' : 'asc'}, q=${filterSearch}, active=${filterActive})}">
             City<span class="floor21-sort-th__icon" th:if="${sort == 'city'}"
                       th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -46,7 +73,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'buildingCount'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='buildingCount', dir=${sort == 'buildingCount' and dir == 'desc' ? 'asc' : 'desc'})}">
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='buildingCount', dir=${sort == 'buildingCount' and dir == 'desc' ? 'asc' : 'desc'}, q=${filterSearch}, active=${filterActive})}">
             Buildings<span class="floor21-sort-th__icon" th:if="${sort == 'buildingCount'}"
                            th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -54,7 +81,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'active'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='active', dir=${sort == 'active' and dir == 'desc' ? 'asc' : 'desc'})}">
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='active', dir=${sort == 'active' and dir == 'desc' ? 'asc' : 'desc'}, q=${filterSearch}, active=${filterActive})}">
             Active<span class="floor21-sort-th__icon" th:if="${sort == 'active'}"
                         th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -62,7 +89,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'createdAt'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='createdAt', dir=${sort == 'createdAt' and dir == 'desc' ? 'asc' : 'desc'})}">
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='createdAt', dir=${sort == 'createdAt' and dir == 'desc' ? 'asc' : 'desc'}, q=${filterSearch}, active=${filterActive})}">
             Created<span class="floor21-sort-th__icon" th:if="${sort == 'createdAt'}"
                           th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -70,7 +97,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'updatedAt'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='updatedAt', dir=${sort == 'updatedAt' and dir == 'desc' ? 'asc' : 'desc'})}">
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='updatedAt', dir=${sort == 'updatedAt' and dir == 'desc' ? 'asc' : 'desc'}, q=${filterSearch}, active=${filterActive})}">
             Updated<span class="floor21-sort-th__icon" th:if="${sort == 'updatedAt'}"
                           th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -78,7 +105,7 @@
         <th>
           <a class="floor21-sort-th"
              th:classappend="${sort == 'lastLoginAt'} ? 'floor21-sort-th--active' : ''"
-             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='lastLoginAt', dir=${sort == 'lastLoginAt' and dir == 'desc' ? 'asc' : 'desc'})}">
+             th:href="@{/admin/projects(page=0, size=${pageSize}, sort='lastLoginAt', dir=${sort == 'lastLoginAt' and dir == 'desc' ? 'asc' : 'desc'}, q=${filterSearch}, active=${filterActive})}">
             Last login<span class="floor21-sort-th__icon" th:if="${sort == 'lastLoginAt'}"
                             th:text="${dir == 'asc' ? ' ^' : ' v'}"></span>
           </a>
@@ -119,7 +146,12 @@
         </td>
       </tr>
       <tr th:if="${#lists.isEmpty(builders)}">
-        <td colspan="8" class="text-muted text-center py-4">No projects found.</td>
+        <td colspan="8" class="text-muted text-center py-4">
+          No projects found.
+          <span th:if="${(filterSearch != null and !#strings.isEmpty(filterSearch)) or (filterActive != null and !#strings.isEmpty(filterActive))}">
+            <a th:href="@{/admin/projects(size=${pageSize}, sort=${sort}, dir=${dir})}">Clear filters</a>
+          </span>
+        </td>
       </tr>
       </tbody>
     </table>
@@ -139,7 +171,7 @@
       <li class="page-item" th:classappend="${!projectPage.hasPrevious()} ? 'disabled'">
         <a class="page-link"
            th:if="${projectPage.hasPrevious()}"
-           th:href="@{/admin/projects(page=${projectPage.number - 1}, size=${pageSize}, sort=${sort}, dir=${dir})}">Previous</a>
+           th:href="@{/admin/projects(page=${projectPage.number - 1}, size=${pageSize}, sort=${sort}, dir=${dir}, q=${filterSearch}, active=${filterActive})}">Previous</a>
         <span class="page-link" th:unless="${projectPage.hasPrevious()}">Previous</span>
       </li>
       <li class="page-item disabled">
@@ -149,7 +181,7 @@
       <li class="page-item" th:classappend="${!projectPage.hasNext()} ? 'disabled'">
         <a class="page-link"
            th:if="${projectPage.hasNext()}"
-           th:href="@{/admin/projects(page=${projectPage.number + 1}, size=${pageSize}, sort=${sort}, dir=${dir})}">Next</a>
+           th:href="@{/admin/projects(page=${projectPage.number + 1}, size=${pageSize}, sort=${sort}, dir=${dir}, q=${filterSearch}, active=${filterActive})}">Next</a>
         <span class="page-link" th:unless="${projectPage.hasNext()}">Next</span>
       </li>
     </ul>

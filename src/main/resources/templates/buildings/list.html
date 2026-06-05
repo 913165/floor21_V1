@@ -27,7 +27,8 @@
       </tr>
       </thead>
       <tbody>
-      <tr th:each="b : ${buildings}">
+      <tr th:each="b : ${buildings}"
+          th:attr="data-building-id=${b.id}, data-building-name=${b.buildingName}">
         <td th:if="${platformAdminView}" th:text="${b.builder != null ? b.builder.companyName : '—'}">—</td>
         <td class="font-monospace small text-muted">
           <span th:title="${b.id}"

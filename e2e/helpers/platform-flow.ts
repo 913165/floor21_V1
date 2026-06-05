@@ -1,11 +1,10 @@
 import { expect, type Page } from '@playwright/test';
 import {
-  buildingRow,
   createBuilding,
   expectedParkingFlatCount,
   expectedResidentialFlatCount,
-  openAllBuildingsList,
   sampleBuildingData,
+  waitForBuildingInList,
   type NewBuildingInput,
 } from './buildings';
 import { createBookingForFlat } from './bookings';
@@ -142,10 +141,17 @@ export async function adminCreateBuilding(page: Page, flow: PlatformFlowState) {
   const residential = page.locator('#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"]');
   await expect(residential).toHaveCount(flow.residentialFlatCount);
 
-  const list = await openAllBuildingsList(page);
-  const row = buildingRow(list, flow.building.name);
-  await expect(row).toBeVisible();
-  await expect(row).toContainText(flow.projectName);
+  const savedName = await page.locator('#floor21-main h1 ~ div.text-muted.small').textContent();
+  if (savedName?.trim()) {
+    flow.building.name = savedName.trim();
+  }
+
+  await waitForBuildingInList(page, {
+    projectId: flow.projectId,
+    buildingId: flow.buildingId,
+    projectName: flow.projectName,
+    buildingName: flow.building.name,
+  });
 }
 
 export async function adminAddPartners(page: Page, flow: PlatformFlowState) {

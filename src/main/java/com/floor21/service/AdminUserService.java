@@ -50,13 +50,20 @@ public class AdminUserService {
     private final PlatformAuditService auditService;
 
     @Transactional(readOnly = true)
-    public Page<PlatformUserView> listUsersPage(int page, int size, String sort, String dir) {
+    public Page<PlatformUserView> listUsersPage(
+            int page, int size, String sort, String dir, String search, Boolean activeFilter, UUID projectId) {
         String sortKey = normalizeUsersSort(sort);
         boolean ascending = normalizeUsersSortAscending(sortKey, dir);
         int safeSize = Math.min(Math.max(size, 5), USERS_MAX_PAGE_SIZE);
         int safePage = Math.max(page, 0);
 
-        List<PlatformUserView> sorted = new ArrayList<>(loadAllUserRows());
+        List<PlatformUserView> filtered =
+                loadAllUserRows().stream()
+                        .filter(row -> matchesUserSearch(row, search))
+                        .filter(row -> matchesUserActiveFilter(row, activeFilter))
+                        .filter(row -> matchesUserProjectFilter(row, projectId))
+                        .toList();
+        List<PlatformUserView> sorted = new ArrayList<>(filtered);
         sorted.sort(comparatorForUsersSort(sortKey, ascending));
 
         int total = sorted.size();
@@ -64,6 +71,38 @@ public class AdminUserService {
         int to = Math.min(from + safeSize, total);
         List<PlatformUserView> slice = from < to ? sorted.subList(from, to) : List.of();
         return new PageImpl<>(slice, PageRequest.of(safePage, safeSize), total);
+    }
+
+    static boolean matchesUserSearch(PlatformUserView row, String search) {
+        if (search == null || search.isBlank()) {
+            return true;
+        }
+        String q = search.trim().toLowerCase();
+        return fieldContains(row.fullName(), q)
+                || fieldContains(row.companyName(), q)
+                || fieldContains(row.email(), q)
+                || fieldContains(row.builderCompanyName(), q)
+                || fieldContains(row.role(), q)
+                || row.buildingAccess().stream().anyMatch(access -> fieldContains(access, q));
+    }
+
+    static boolean matchesUserActiveFilter(PlatformUserView row, Boolean activeFilter) {
+        if (activeFilter == null) {
+            return true;
+        }
+        boolean active = row.active() != null && row.active();
+        return active == activeFilter;
+    }
+
+    static boolean matchesUserProjectFilter(PlatformUserView row, UUID projectId) {
+        if (projectId == null) {
+            return true;
+        }
+        return row.projectIds().contains(projectId);
+    }
+
+    private static boolean fieldContains(String value, String q) {
+        return value != null && value.toLowerCase().contains(q);
     }
 
     private List<PlatformUserView> loadAllUserRows() {
@@ -231,7 +270,12 @@ public class AdminUserService {
                             user.getId(), membership.getBuilder().getId()));
         }
         buildingAccess = buildingAccess.stream().distinct().toList();
-        return PlatformUserView.from(user, projects, roleLabel, buildingAccess);
+        List<UUID> projectIds =
+                memberships.stream()
+                        .map(a -> a.getBuilder().getId())
+                        .distinct()
+                        .toList();
+        return PlatformUserView.from(user, projects, roleLabel, buildingAccess, projectIds);
     }
 
     /** Profile fields only; name, email, and role stay as-is (change those under Projects → Partners). */

@@ -27,20 +27,20 @@
         <p class="form-text mb-0">Choose the project this building belongs to. Changing the selection reloads address defaults from the project.</p>
       </div>
       <div class="col-md-6">
-        <label class="form-label">Building name <span class="text-danger">*</span></label>
+        <label class="form-label" for="buildingName">Building name <span class="text-danger">*</span></label>
         <input class="form-control" th:field="*{buildingName}" required
                th:placeholder="${generateInitialLayout} ? 'e.g. Tower A, Wing B' : null"/>
       </div>
       <div class="col-md-3">
-        <label class="form-label">Total floors</label>
+        <label class="form-label" for="totalFloors">Total floors</label>
         <input class="form-control" type="number" th:field="*{totalFloors}" required min="1"/>
       </div>
       <div class="col-md-3">
-        <label class="form-label">Parking floors</label>
+        <label class="form-label" for="parkingFloors">Parking floors</label>
         <input class="form-control" type="number" th:field="*{parkingFloors}" min="0"/>
       </div>
       <div class="col-md-3">
-        <label class="form-label">Flats / floor</label>
+        <label class="form-label" for="flatsPerFloor">Flats / floor</label>
         <input class="form-control" type="number" th:field="*{flatsPerFloor}" required min="1"/>
       </div>
       <div class="col-md-3" th:each="bhkType : ${perFloorLayoutBhkTypes}">
@@ -76,11 +76,11 @@
         </p>
       </div>
       <div class="col-12">
-        <label class="form-label">Address</label>
+        <label class="form-label" for="address">Address</label>
         <textarea class="form-control" rows="2" th:field="*{address}"></textarea>
       </div>
       <div class="col-md-4">
-        <label class="form-label">City</label>
+        <label class="form-label" for="city">City</label>
         <input class="form-control" th:field="*{city}"/>
       </div>
       <div class="col-md-4 d-flex align-items-end" th:unless="${generateInitialLayout}">
