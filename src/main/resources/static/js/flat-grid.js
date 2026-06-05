@@ -117,6 +117,7 @@
     var actions = document.getElementById("panel-booking-actions");
     var parkingLinks = document.getElementById("panel-parking-links");
     var parkingSlotActions = document.getElementById("panel-parking-slot-actions");
+    var flatLayoutActions = document.getElementById("panel-flat-layout-actions");
     var adminPanel = document.getElementById("flat-admin-panel");
     var saveRow = document.getElementById("admin-save-row");
     var saveBtn = document.getElementById("admin-save-btn");
@@ -127,6 +128,7 @@
     if (actions) actions.classList.toggle("d-none", parkingMode);
     if (parkingLinks) parkingLinks.classList.toggle("d-none", parkingMode);
     if (parkingSlotActions) parkingSlotActions.classList.toggle("d-none", !slot);
+    if (flatLayoutActions) flatLayoutActions.classList.toggle("d-none", parkingMode);
     if (adminPanel) adminPanel.classList.toggle("d-none", parkingMode);
     if (saveRow) {
       saveRow.classList.toggle("d-none", !(section || slot) || !isPlatformAdminEdit());
@@ -651,32 +653,6 @@
     };
   }
 
-  function parseBhkSize(type) {
-    if (!type) return 0;
-    var unit = String(type).trim().toUpperCase();
-    if (unit === "STUDIO") return 0.5;
-    if (unit === "PENTHOUSE") return 8;
-    var numeric = unit.replace(/BHK/i, "").trim();
-    var value = parseFloat(numeric);
-    return isNaN(value) ? 0 : value;
-  }
-
-  function resolveFloorPlanSlot(bhkType) {
-    var grid = document.getElementById("flat-grid");
-    if (!grid || !bhkType) return null;
-    var size = parseBhkSize(bhkType);
-    if (size <= 1.5 && grid.getAttribute("data-floor-plan-1bhk") === "true") {
-      return "1bhk";
-    }
-    if (size <= 2.5 && grid.getAttribute("data-floor-plan-2bhk") === "true") {
-      return "2bhk";
-    }
-    if (size <= 3.5 && grid.getAttribute("data-floor-plan-3bhk") === "true") {
-      return "3bhk";
-    }
-    return null;
-  }
-
   function ensureAdminBhkOption(selectEl, value) {
     if (!selectEl || !value) return;
     var exists = false;
@@ -740,17 +716,14 @@
     var typeSpan = cardEl.querySelector(".flat-type");
     if (typeSpan && displayType) typeSpan.textContent = displayType;
     if (parking || amenity || duplexSecondary || mergeSecondary) {
-      delete cardEl.dataset.floorPlanSlot;
-      stripFloorPlanTriggers(cardEl);
+      delete cardEl.dataset.hasLayoutImage;
       return;
     }
-    var slot = resolveFloorPlanSlot(flat.bhkType);
-    if (slot) {
-      cardEl.dataset.floorPlanSlot = slot;
+    if (flat.hasLayoutImage === true || flat.hasLayoutImage === "true") {
+      cardEl.dataset.hasLayoutImage = "true";
     } else {
-      delete cardEl.dataset.floorPlanSlot;
+      delete cardEl.dataset.hasLayoutImage;
     }
-    syncFloorPlanLink(cardEl);
   }
 
   async function loadMergeCandidates(flatId) {
@@ -1283,13 +1256,16 @@
       !flat.mergeSecondary
     ) {
       el.classList.add("flat-card--other-partner");
-      delete el.dataset.floorPlanSlot;
+      delete el.dataset.hasLayoutImage;
     } else {
       el.classList.remove("flat-card--other-partner");
     }
-    stripFloorPlanTriggers(el);
+    if (flat.hasLayoutImage) {
+      el.dataset.hasLayoutImage = "true";
+    } else {
+      delete el.dataset.hasLayoutImage;
+    }
     stripNonBookableHover(el);
-    syncFloorPlanLink(el);
   }
 
   function createFlatCardFromData(flat) {
@@ -1473,6 +1449,68 @@
     return parkingSectionConfigured(floor) ? parkingSectionMetaText(floor) : "Not configured";
   }
 
+  function parkingLayoutImageUrl(floorNumber) {
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : "";
+    if (!buildingId || !floorNumber) return "";
+    return (
+      appRoot() +
+      "/buildings/" +
+      buildingId +
+      "/parking-layout-image/" +
+      encodeURIComponent(floorNumber) +
+      "?t=" +
+      Date.now()
+    );
+  }
+
+  function buildParkingLayoutLinksHtml(floor) {
+    var admin = isPlatformAdminEdit();
+    var hasImage = !!(floor && floor.parkingHasLayoutImage);
+    if (!admin && !hasImage) return "";
+    var upload = admin
+      ? '<button type="button" class="flat-parking-layout-upload-link btn btn-link btn-sm px-0">Upload layout</button>'
+      : "";
+    var view = hasImage
+      ? '<button type="button" class="flat-parking-layout-view-link btn btn-link btn-sm px-0">View layout</button>'
+      : "";
+    if (!upload && !view) return "";
+    return (
+      '<div class="flat-parking-section__layout-links d-flex flex-wrap align-items-center gap-2">' +
+      upload +
+      view +
+      "</div>"
+    );
+  }
+
+  function refreshParkingLayoutLinks(sectionEl) {
+    if (!sectionEl) return;
+    var floorNumber = sectionEl.getAttribute("data-floor-number");
+    var hasImage = sectionEl.getAttribute("data-layout-image") === "true";
+    var floor = {
+      floorNumber: floorNumber,
+      parkingHasLayoutImage: hasImage,
+    };
+    var html = buildParkingLayoutLinksHtml(floor);
+    var existing = sectionEl.querySelector(".flat-parking-section__layout-links");
+    if (existing) {
+      if (html) {
+        existing.outerHTML = html;
+      } else {
+        existing.remove();
+      }
+      return;
+    }
+    if (!html) return;
+    var configure = sectionEl.querySelector(".flat-parking-configure-link");
+    if (configure && configure.parentNode) {
+      configure.insertAdjacentHTML("afterend", html);
+    } else {
+      var summary = sectionEl.querySelector(".flat-parking-section__summary");
+      if (summary) summary.insertAdjacentHTML("beforeend", html);
+    }
+  }
+
   function buildParkingSectionInnerHtml(floor) {
     var note = parkingSectionConfigured(floor)
       ? ""
@@ -1491,6 +1529,7 @@
       "</div>" +
       note +
       configureLink +
+      buildParkingLayoutLinksHtml(floor) +
       "</div>" +
       '<div class="flat-parking-section__plan" aria-hidden="true">' +
       '<div class="parking-plan flat-parking-section__plan-root" data-floor-number="' +
@@ -1525,6 +1564,7 @@
       first ? first.id : "",
       first && first.areaSqft != null ? first.areaSqft : "",
       first && first.basePrice != null ? first.basePrice : "",
+      floor.parkingHasLayoutImage ? "1" : "0",
     ].join("|");
   }
 
@@ -2935,6 +2975,7 @@
     );
     el.setAttribute("data-range-label", floor.parkingRangeLabel || "");
     el.setAttribute("data-configured", configured ? "true" : "false");
+    el.setAttribute("data-layout-image", floor.parkingHasLayoutImage ? "true" : "false");
     el.setAttribute(
       "data-car-lift-count",
       String(floor.parkingCarLiftCount != null ? floor.parkingCarLiftCount : 0)
@@ -3108,6 +3149,45 @@
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
+  function openParkingLayoutModal(floorNumber) {
+    var url = parkingLayoutImageUrl(floorNumber);
+    if (!url) return;
+    openFloorPlanModal(url, "Parking layout — Floor " + floorNumber, null);
+  }
+
+  var parkingLayoutUploadSection = null;
+
+  async function uploadParkingLayoutImage(sectionEl, file) {
+    if (!sectionEl || !file || !isPlatformAdminEdit()) return;
+    var floorNumber = sectionEl.getAttribute("data-floor-number");
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : "";
+    if (!buildingId || !floorNumber) return;
+    var formData = new FormData();
+    formData.append("image", file);
+    var res = await fetch(
+      appRoot() + "/buildings/" + buildingId + "/parking-layout-image/" + encodeURIComponent(floorNumber),
+      {
+        method: "POST",
+        headers: csrfHeaders(),
+        body: formData,
+      }
+    );
+    if (!res.ok) {
+      var message = "Could not upload parking layout image.";
+      try {
+        var err = await res.json();
+        if (err && err.error) message = err.error;
+      } catch (ignore) {
+        /* use default message */
+      }
+      window.alert(message);
+      return;
+    }
+    sectionEl.setAttribute("data-layout-image", "true");
+    refreshParkingLayoutLinks(sectionEl);
+  }
+
   function isFlatBookable(cardEl) {
     return !!(cardEl && cardEl.dataset.bookable === "true");
   }
@@ -3138,30 +3218,72 @@
     };
   }
 
-  function syncFloorPlanLink(cardEl) {
-    if (!cardEl) return;
-    var bookable = isFlatBookable(cardEl);
-    var fp = cardEl.querySelector(".flat-floor-plan-trigger");
-    if (!fp) return;
-    fp.disabled = !bookable;
-    if (!bookable) {
-      fp.classList.remove("flat-floor-plan-trigger");
-      fp.classList.add("flat-floor-plan-link--disabled");
-      fp.removeAttribute("data-floor-plan-url");
-      fp.setAttribute("title", "Floor plan not available — flat not assigned to you");
-    }
+  function flatLayoutImageUrl(flatId) {
+    if (!flatId) return "";
+    return appRoot() + "/flats/" + encodeURIComponent(flatId) + "/layout-image?t=" + Date.now();
   }
 
-  function stripFloorPlanTriggers(cardEl) {
-    if (!cardEl || isFlatBookable(cardEl)) return;
-    cardEl.querySelectorAll(".flat-floor-plan-trigger").forEach(function (btn) {
-      var label = document.createElement("span");
-      label.className = "flat-floor-plan-muted";
-      label.setAttribute("aria-hidden", "true");
-      label.textContent = "Floor plan";
-      btn.replaceWith(label);
+  function cardHasLayoutImage(cardEl) {
+    return !!(cardEl && cardEl.dataset.hasLayoutImage === "true");
+  }
+
+  function canViewFlatLayout(cardEl) {
+    if (!cardEl || !cardHasLayoutImage(cardEl)) return false;
+    if (isPlatformAdminEdit()) return true;
+    return isFlatBookable(cardEl) && !isNonBookableUnit(cardEl);
+  }
+
+  function syncFlatLayoutPanel(cardEl) {
+    var actions = document.getElementById("panel-flat-layout-actions");
+    var upload = document.getElementById("panel-flat-layout-upload");
+    var view = document.getElementById("panel-flat-layout-view");
+    var hint = document.getElementById("panel-flat-layout-hint");
+    if (!actions) return;
+    if (!cardEl || isNonBookableUnit(cardEl)) {
+      actions.classList.add("d-none");
+      return;
+    }
+    actions.classList.remove("d-none");
+    var canUpload = isPlatformAdminEdit();
+    var canView = canViewFlatLayout(cardEl);
+    if (upload) upload.classList.toggle("d-none", !canUpload);
+    if (view) view.classList.toggle("d-none", !canView);
+    if (hint) hint.classList.toggle("d-none", !canUpload);
+  }
+
+  function openFlatLayoutModal(flatId, title) {
+    var url = flatLayoutImageUrl(flatId);
+    if (!url) return;
+    openFloorPlanModal(url, title || "Flat layout", null);
+  }
+
+  var flatLayoutUploadFlatId = null;
+
+  async function uploadFlatLayoutImage(flatId, file) {
+    if (!flatId || !file || !isPlatformAdminEdit()) return;
+    var formData = new FormData();
+    formData.append("image", file);
+    var res = await fetch(appRoot() + "/flats/" + encodeURIComponent(flatId) + "/layout-image", {
+      method: "POST",
+      headers: csrfHeaders(),
+      body: formData,
     });
-    delete cardEl.dataset.floorPlanSlot;
+    if (!res.ok) {
+      var message = "Could not upload flat layout image.";
+      try {
+        var err = await res.json();
+        if (err && err.error) message = err.error;
+      } catch (ignore) {
+        /* use default message */
+      }
+      window.alert(message);
+      return;
+    }
+    var card = document.getElementById("flat-" + flatId);
+    if (card) {
+      card.dataset.hasLayoutImage = "true";
+      syncFlatLayoutPanel(card);
+    }
   }
 
   function initAllFlatCards() {
@@ -3170,27 +3292,7 @@
         card.dataset.bookable = card.classList.contains("flat-card--other-partner") ? "false" : "true";
       }
       stripNonBookableHover(card);
-      stripFloorPlanTriggers(card);
-      syncFloorPlanLink(card);
     });
-  }
-
-  function floorPlanUrlForCard(cardEl) {
-    if (!cardEl || !isFlatBookable(cardEl)) return null;
-    var grid = document.getElementById("flat-grid");
-    var bid = grid ? grid.getAttribute("data-building-id") : null;
-    var slot = cardEl.dataset.floorPlanSlot;
-    var flatId = cardEl.dataset.flatId || cardEl.getAttribute("data-flat-id");
-    if (!bid || !slot || !flatId) return null;
-    return (
-      appRoot() +
-      "/buildings/" +
-      bid +
-      "/floor-plan/" +
-      encodeURIComponent(slot) +
-      "?flatId=" +
-      encodeURIComponent(flatId)
-    );
   }
 
   function syncActionButtons(cardEl) {
@@ -3198,7 +3300,6 @@
     var nonBookable = isNonBookableUnit(cardEl);
     var hold = document.getElementById("hold-btn");
     var book = document.getElementById("book-btn");
-    var panelFp = document.getElementById("panel-floor-plan-btn");
     if (hold) {
       hold.disabled = !bookable || nonBookable;
       hold.classList.toggle("disabled", !bookable || nonBookable);
@@ -3216,13 +3317,6 @@
         book.removeAttribute("title");
       }
     }
-    if (panelFp) {
-      panelFp.disabled = !bookable || nonBookable;
-      panelFp.classList.toggle("disabled", !bookable || nonBookable);
-      panelFp.title =
-        bookable && !nonBookable ? "" : nonBookable ? "Not a residential unit" : "Floor plan not available — flat not assigned to you";
-    }
-    syncFloorPlanLink(cardEl);
   }
 
   function openFlatDetailsModal() {
@@ -3393,30 +3487,7 @@
         clientInfo.setAttribute("href", "#");
       }
     }
-    var fpBtn = document.getElementById("panel-floor-plan-btn");
-    if (fpBtn) {
-      var gridEl = document.getElementById("flat-grid");
-      var bid = gridEl ? gridEl.getAttribute("data-building-id") : null;
-      var slot = el.dataset.floorPlanSlot;
-      var bookable = isFlatBookable(el);
-      if (slot && bid && bookable) {
-        fpBtn.setAttribute("data-floor-plan-url", floorPlanUrlForCard(el));
-        fpBtn.classList.remove("d-none");
-        fpBtn.disabled = false;
-        fpBtn.classList.remove("disabled");
-        fpBtn.removeAttribute("title");
-      } else if (slot && bid) {
-        fpBtn.classList.remove("d-none");
-        fpBtn.removeAttribute("data-floor-plan-url");
-        fpBtn.disabled = true;
-        fpBtn.classList.add("disabled");
-        fpBtn.title = "Floor plan not available — flat not assigned to you";
-      } else {
-        fpBtn.classList.add("d-none");
-        fpBtn.removeAttribute("data-floor-plan-url");
-        fpBtn.disabled = true;
-      }
-    }
+    syncFlatLayoutPanel(el);
     applyBookingSelectionHighlight();
     syncActionButtons(el);
     syncAdminPanel(el);
@@ -3494,6 +3565,16 @@
         saveParkingConfig();
       });
     }
+    var parkingLayoutFileInput = document.getElementById("parking-layout-file-input");
+    if (parkingLayoutFileInput) {
+      parkingLayoutFileInput.addEventListener("change", function () {
+        var file = parkingLayoutFileInput.files && parkingLayoutFileInput.files[0];
+        if (!file || !parkingLayoutUploadSection) return;
+        void uploadParkingLayoutImage(parkingLayoutUploadSection, file);
+        parkingLayoutUploadSection = null;
+        parkingLayoutFileInput.value = "";
+      });
+    }
     var parkingConfigCarSize = document.getElementById("parking-config-car-size");
     if (parkingConfigCarSize) {
       parkingConfigCarSize.addEventListener("input", function () {
@@ -3544,23 +3625,36 @@
         );
       });
     }
-    var panelFp = document.getElementById("panel-floor-plan-btn");
-    if (panelFp) {
-      panelFp.addEventListener("click", function () {
-        if (panelFp.disabled) return;
-        var url = panelFp.getAttribute("data-floor-plan-url");
-        if (!url) return;
-        if (selectedFlatId) {
-          var sel = document.getElementById("flat-" + selectedFlatId);
-          if (sel && !isFlatBookable(sel)) {
-            window.alert("Floor plan is not available for flats not assigned to you.");
-            return;
-          }
-        }
-        var typeEl = document.getElementById("panel-type");
-        var sub = typeEl && typeEl.textContent ? typeEl.textContent.trim() + " — Floor plan" : "Floor plan";
-        var sel = selectedFlatId ? document.getElementById("flat-" + selectedFlatId) : null;
-        openFloorPlanModal(url, sub, sel);
+    var flatLayoutFileInput = document.getElementById("flat-layout-file-input");
+    if (flatLayoutFileInput) {
+      flatLayoutFileInput.addEventListener("change", function () {
+        var file = flatLayoutFileInput.files && flatLayoutFileInput.files[0];
+        if (!file || !flatLayoutUploadFlatId) return;
+        void uploadFlatLayoutImage(flatLayoutUploadFlatId, file);
+        flatLayoutUploadFlatId = null;
+        flatLayoutFileInput.value = "";
+      });
+    }
+    var flatLayoutUpload = document.getElementById("panel-flat-layout-upload");
+    if (flatLayoutUpload) {
+      flatLayoutUpload.addEventListener("click", function () {
+        if (!selectedFlatId || !isPlatformAdminEdit()) return;
+        var fileInput = document.getElementById("flat-layout-file-input");
+        if (!fileInput) return;
+        flatLayoutUploadFlatId = selectedFlatId;
+        fileInput.value = "";
+        fileInput.click();
+      });
+    }
+    var flatLayoutView = document.getElementById("panel-flat-layout-view");
+    if (flatLayoutView) {
+      flatLayoutView.addEventListener("click", function () {
+        if (!selectedFlatId) return;
+        var card = document.getElementById("flat-" + selectedFlatId);
+        if (!card || !canViewFlatLayout(card)) return;
+        var titleEl = document.getElementById("panel-title");
+        var title = titleEl && titleEl.textContent ? titleEl.textContent.trim() : "Flat layout";
+        openFlatLayoutModal(selectedFlatId, title);
       });
     }
     var hold = document.getElementById("hold-btn");
@@ -3631,6 +3725,7 @@
         if (card) {
           syncAdminPanel(card);
           syncActionButtons(card);
+          syncFlatLayoutPanel(card);
         }
       });
     }
@@ -4023,11 +4118,6 @@
       grid.addEventListener(
         "click",
         function (e) {
-          if (e.target.closest(".flat-floor-plan-muted")) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-          }
           var quick = e.target.closest(".flat-quick-link");
           if (quick) {
             e.preventDefault();
@@ -4053,18 +4143,26 @@
             if (sectionCfg) openParkingConfigModal(sectionCfg);
             return;
           }
-          var cardForFp = e.target.closest(".flat-card");
-          var fp = e.target.closest(".flat-floor-plan-trigger");
-          if (fp) {
+          var parkingLayoutUpload = e.target.closest(".flat-parking-layout-upload-link");
+          if (parkingLayoutUpload) {
             e.preventDefault();
             e.stopPropagation();
-            if (!cardForFp || isNonBookableUnit(cardForFp)) return;
-            if (!isFlatBookable(cardForFp)) return;
-            var url = fp.getAttribute("data-floor-plan-url") || floorPlanUrlForCard(cardForFp);
-            if (url) {
-              var typ = cardForFp.dataset.type ? cardForFp.dataset.type + " — Floor plan" : "Floor plan";
-              openFloorPlanModal(url, typ, cardForFp);
-            }
+            if (!isPlatformAdminEdit()) return;
+            var sectionUpload = parkingLayoutUpload.closest(".flat-parking-section");
+            var fileInput = document.getElementById("parking-layout-file-input");
+            if (!sectionUpload || !fileInput) return;
+            parkingLayoutUploadSection = sectionUpload;
+            fileInput.value = "";
+            fileInput.click();
+            return;
+          }
+          var parkingLayoutView = e.target.closest(".flat-parking-layout-view-link");
+          if (parkingLayoutView) {
+            e.preventDefault();
+            e.stopPropagation();
+            var sectionView = parkingLayoutView.closest(".flat-parking-section");
+            if (!sectionView) return;
+            openParkingLayoutModal(sectionView.getAttribute("data-floor-number"));
             return;
           }
           var card = e.target.closest(".flat-card");

@@ -1,9 +1,12 @@
 package com.floor21.service;
 
 import com.floor21.entity.Building;
+import com.floor21.entity.Flat;
 import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BuildingRepository;
+import com.floor21.repository.FlatRepository;
 import com.floor21.security.TenantContext;
+import com.floor21.util.ParkingFloorConfigUtil;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +33,7 @@ public class BuildingFloorPlanService {
     private static final Set<String> ALLOWED_EXT = Set.of(".png", ".jpg", ".jpeg", ".webp", ".gif");
 
     private final BuildingRepository buildingRepository;
+    private final FlatRepository flatRepository;
 
     @Value("${floor21.upload-root}")
     private String uploadRoot;
@@ -52,6 +56,59 @@ public class BuildingFloorPlanService {
         }
 
         buildingRepository.save(building);
+    }
+
+    @Transactional
+    public void saveParkingLayoutImage(UUID buildingId, int floorNumber, MultipartFile image) {
+        if (floorNumber < 1) {
+            throw new IllegalArgumentException("Invalid floor number.");
+        }
+        Building building = requireBuildingForAccess(buildingId);
+        Path base = Paths.get(uploadRoot).toAbsolutePath().normalize();
+        Path buildingDir = base.resolve("buildings").resolve(buildingId.toString());
+        String previous = ParkingFloorConfigUtil.layoutImagePath(building, floorNumber);
+        String slotLabel = "parking-floor-" + floorNumber;
+        String webPath = storeOne(buildingDir, buildingId, slotLabel, image, previous, base);
+        ParkingFloorConfigUtil.setLayoutImagePath(building, floorNumber, webPath);
+        buildingRepository.save(building);
+    }
+
+    @Transactional
+    public String storeFlatLayoutImage(UUID flatId, MultipartFile image) {
+        Flat flat =
+                flatRepository
+                        .findById(flatId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
+        UUID buildingId = flat.getBuilding().getId();
+        requireBuildingForAccess(buildingId);
+        Path base = Paths.get(uploadRoot).toAbsolutePath().normalize();
+        Path buildingRoot = base.resolve("buildings").resolve(buildingId.toString()).normalize();
+        Path flatsDir = buildingRoot.resolve("flats").normalize();
+        String ext = validateExtension(image.getOriginalFilename());
+        String filename = flatId + ext;
+        try {
+            Files.createDirectories(flatsDir);
+            Path target = flatsDir.resolve(filename).normalize();
+            if (!target.startsWith(buildingRoot)) {
+                throw new IllegalArgumentException("Invalid upload path");
+            }
+            String previous = flat.getLayoutImagePath();
+            if (previous != null && previous.startsWith(WEB_PREFIX)) {
+                deletePhysical(previous, base);
+            }
+            Files.copy(image.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new IllegalStateException("Could not store flat layout image", e);
+        }
+        return WEB_PREFIX + buildingId + "/flats/" + flatId + ext;
+    }
+
+    public void deleteStoredWebPath(String webPath) {
+        if (webPath == null || webPath.isBlank()) {
+            return;
+        }
+        Path base = Paths.get(uploadRoot).toAbsolutePath().normalize();
+        deletePhysical(webPath, base);
     }
 
     private Building requireBuildingForAccess(UUID buildingId) {

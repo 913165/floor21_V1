@@ -15,6 +15,7 @@ import com.floor21.service.BuildingService;
 import com.floor21.service.FlatGridExportService;
 import com.floor21.service.FlatService;
 import com.floor21.service.PartnerFlatAllocationService;
+import com.floor21.util.ParkingFloorConfigUtil;
 import com.floor21.util.ResidentialBhkTypes;
 import java.util.List;
 import java.util.Map;
@@ -167,6 +168,56 @@ public class BuildingController {
                                     .body(resource);
                         })
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/parking-layout-image/{floorNumber}")
+    public ResponseEntity<Resource> parkingLayoutImage(
+            @PathVariable UUID id, @PathVariable int floorNumber) {
+        if (floorNumber < 1) {
+            return ResponseEntity.badRequest().build();
+        }
+        Building building = buildingService.resolveForAccess(id);
+        String webPath = ParkingFloorConfigUtil.layoutImagePath(building, floorNumber);
+        if (webPath == null || webPath.isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+        return buildingFloorPlanService
+                .loadAsResource(webPath)
+                .map(
+                        resource -> {
+                            MediaType contentType =
+                                    MediaTypeFactory.getMediaType(resource.getFilename())
+                                            .orElse(MediaType.APPLICATION_OCTET_STREAM);
+                            return ResponseEntity.ok()
+                                    .cacheControl(CacheControl.noCache())
+                                    .contentType(contentType)
+                                    .body(resource);
+                        })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{id}/parking-layout-image/{floorNumber}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> uploadParkingLayoutImage(
+            @PathVariable UUID id,
+            @PathVariable int floorNumber,
+            @RequestParam("image") MultipartFile image) {
+        if (floorNumber < 1) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid floor number."));
+        }
+        if (image == null || image.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Choose an image to upload."));
+        }
+        try {
+            buildingFloorPlanService.saveParkingLayoutImage(id, floorNumber, image);
+            return ResponseEntity.ok(Map.of("success", "Parking layout image updated."));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Could not save image. Check server disk and permissions."));
+        }
     }
 
     @GetMapping("/{id}/flats")
@@ -473,32 +524,6 @@ public class BuildingController {
                             + ".");
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
-        }
-        return "redirect:/buildings/" + id + "/flats";
-    }
-
-    @PostMapping("/{id}/floor-plans")
-    public String uploadFloorPlans(
-            @PathVariable UUID id,
-            @RequestParam(value = "plan1Bhk", required = false) MultipartFile plan1Bhk,
-            @RequestParam(value = "plan2Bhk", required = false) MultipartFile plan2Bhk,
-            @RequestParam(value = "plan3Bhk", required = false) MultipartFile plan3Bhk,
-            RedirectAttributes ra) {
-        boolean any =
-                (plan1Bhk != null && !plan1Bhk.isEmpty())
-                        || (plan2Bhk != null && !plan2Bhk.isEmpty())
-                        || (plan3Bhk != null && !plan3Bhk.isEmpty());
-        if (!any) {
-            ra.addFlashAttribute("errorMessage", "Choose at least one image to upload.");
-            return "redirect:/buildings/" + id + "/flats";
-        }
-        try {
-            buildingFloorPlanService.savePlans(id, plan1Bhk, plan2Bhk, plan3Bhk);
-            ra.addFlashAttribute("successMessage", "Floor plan images updated.");
-        } catch (IllegalArgumentException ex) {
-            ra.addFlashAttribute("errorMessage", ex.getMessage());
-        } catch (IllegalStateException ex) {
-            ra.addFlashAttribute("errorMessage", "Could not save floor plan files. Check server disk and permissions.");
         }
         return "redirect:/buildings/" + id + "/flats";
     }

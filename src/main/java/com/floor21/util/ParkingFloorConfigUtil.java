@@ -49,12 +49,14 @@ public final class ParkingFloorConfigUtil {
             List<FixturePlacement> fixtures,
             Boolean showLift,
             Boolean showGate,
-            BigDecimal slotAreaSqft) {
+            BigDecimal slotAreaSqft,
+            String layoutImagePath) {
 
         public FloorConfig(int slotCount, boolean configured) {
             this(
                     slotCount,
                     configured,
+                    null,
                     null,
                     null,
                     null,
@@ -200,6 +202,41 @@ public final class ParkingFloorConfigUtil {
             return config.slotAreaSqft().setScale(2, RoundingMode.HALF_UP);
         }
         return DEFAULT_SLOT_AREA_SQFT;
+    }
+
+    public static String layoutImagePath(Building building, int floorNumber) {
+        FloorConfig config = forFloor(building, floorNumber);
+        String path = config.layoutImagePath();
+        if (path == null || path.isBlank()) {
+            return null;
+        }
+        return path;
+    }
+
+    public static void setLayoutImagePath(Building building, int floorNumber, String webPath) {
+        Map<Integer, FloorConfig> map = new LinkedHashMap<>(read(building));
+        FloorConfig existing = map.getOrDefault(floorNumber, new FloorConfig(0, false));
+        map.put(floorNumber, withLayoutImagePath(existing, webPath));
+        building.setParkingFloorConfig(toJson(map));
+    }
+
+    private static FloorConfig withLayoutImagePath(FloorConfig existing, String layoutImagePath) {
+        return new FloorConfig(
+                existing.slotCount(),
+                existing.configured(),
+                existing.gridCols(),
+                existing.gridRows(),
+                existing.placements(),
+                existing.carSizePercent(),
+                existing.liftCount(),
+                existing.carLiftCount(),
+                existing.passengerLiftCount(),
+                existing.gateCount(),
+                existing.fixtures(),
+                existing.showLift(),
+                existing.showGate(),
+                existing.slotAreaSqft(),
+                layoutImagePath);
     }
 
     public static BigDecimal normalizeSlotAreaSqft(BigDecimal value) {
@@ -460,7 +497,8 @@ public final class ParkingFloorConfigUtil {
                         fixtures,
                         null,
                         null,
-                        normalizedSlotArea));
+                        normalizedSlotArea,
+                        existing != null ? existing.layoutImagePath() : null));
         building.setParkingFloorConfig(toJson(map));
     }
 
@@ -493,7 +531,8 @@ public final class ParkingFloorConfigUtil {
                         fixtureList,
                         existing.showLift(),
                         existing.showGate(),
-                        existing.slotAreaSqft()));
+                        existing.slotAreaSqft(),
+                        existing.layoutImagePath()));
         building.setParkingFloorConfig(toJson(map));
     }
 

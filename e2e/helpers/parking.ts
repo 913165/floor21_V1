@@ -7,6 +7,20 @@ export type ParkingSlotLocation = {
   slotNumber: number;
 };
 
+/** How many booked flats to link in the full-flow parking test (random sample). */
+export const PARKING_LINK_SAMPLE_SIZE = 3;
+
+/** Fisher–Yates shuffle, then take the first `count` items. */
+export function pickRandomSample<T>(items: T[], count: number): T[] {
+  if (items.length <= count) return [...items];
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, count);
+}
+
 /** Round-robin across parking floors, then next slot number on each floor. */
 export function parkingSlotLocationForIndex(
   index: number,

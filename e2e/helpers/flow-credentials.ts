@@ -68,7 +68,7 @@ export function formatFlowCredentials(flow: PlatformFlowState): string {
     lines.push(`  Latest booking: ${flow.bookingCode}`);
   }
   if (flow.parkingLinks.length > 0) {
-    lines.push(`  Parking links: ${flow.parkingLinks.length} (one slot per booked flat)`);
+    lines.push(`  Parking links: ${flow.parkingLinks.length} (random sample of booked flats)`);
   }
 
   return lines.join('\n');

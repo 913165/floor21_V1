@@ -79,6 +79,10 @@ public class Flat {
     @Column(name = "merged_absorbed_flat_id")
     private UUID mergedAbsorbedFlatId;
 
+    /** Uploaded layout image for this unit (web path under upload root). */
+    @Column(name = "layout_image_path", length = 500)
+    private String layoutImagePath;
+
     /** When set, this parking slot is assigned to a residential flat (many slots may share one flat). */
     @Column(name = "linked_residential_flat_id")
     private UUID linkedResidentialFlatId;

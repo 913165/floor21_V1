@@ -52,64 +52,6 @@
     <span th:if="${activeBookingCount != null && activeBookingCount > 0}"> &middot; <span th:text="${activeBookingCount}">0</span> active booking(s)</span>
   </div>
 
-  <div class="card shadow-sm mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span>Floor plan images (by BHK)</span>
-      <span class="text-muted small">PNG, JPEG, WebP, or GIF - up to 8&nbsp;MB each</span>
-    </div>
-    <div class="card-body">
-      <div class="row g-3 mb-3">
-        <div class="col-md-4">
-          <div class="text-muted small mb-1">1BHK</div>
-          <div th:if="${building.floorPlan1Bhk != null}">
-            <img th:src="@{/buildings/{bid}/floor-plan/1bhk(bid=${building.id})}" alt="1BHK floor plan" class="img-fluid rounded border" style="max-height: 200px;"/>
-          </div>
-          <p class="text-muted small mb-0 mt-1" th:unless="${building.floorPlan1Bhk != null}">No image uploaded yet.</p>
-        </div>
-        <div class="col-md-4">
-          <div class="text-muted small mb-1">2BHK</div>
-          <div th:if="${building.floorPlan2Bhk != null}">
-            <img th:src="@{/buildings/{bid}/floor-plan/2bhk(bid=${building.id})}" alt="2BHK floor plan" class="img-fluid rounded border" style="max-height: 200px;"/>
-          </div>
-          <p class="text-muted small mb-0 mt-1" th:unless="${building.floorPlan2Bhk != null}">No image uploaded yet.</p>
-        </div>
-        <div class="col-md-4">
-          <div class="text-muted small mb-1">3BHK</div>
-          <div th:if="${building.floorPlan3Bhk != null}">
-            <img th:src="@{/buildings/{bid}/floor-plan/3bhk(bid=${building.id})}" alt="3BHK floor plan" class="img-fluid rounded border" style="max-height: 200px;"/>
-          </div>
-          <p class="text-muted small mb-0 mt-1" th:unless="${building.floorPlan3Bhk != null}">No image uploaded yet.</p>
-        </div>
-      </div>
-      <div sec:authorize="hasRole('BUILDER_ADMIN')">
-        <form th:action="@{/buildings/{id}/floor-plans(id=${building.id})}"
-              method="post"
-              enctype="multipart/form-data"
-              data-turbo="false"
-              class="row g-3 align-items-end border-top pt-3">
-          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-          <div class="col-md-4">
-            <label class="form-label">Replace 1BHK</label>
-            <input class="form-control form-control-sm" type="file" name="plan1Bhk" accept="image/png,image/jpeg,image/webp,image/gif"/>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Replace 2BHK</label>
-            <input class="form-control form-control-sm" type="file" name="plan2Bhk" accept="image/png,image/jpeg,image/webp,image/gif"/>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Replace 3BHK</label>
-            <input class="form-control form-control-sm" type="file" name="plan3Bhk" accept="image/png,image/jpeg,image/webp,image/gif"/>
-          </div>
-          <div class="col-12">
-            <button class="btn btn-outline-primary" type="submit">Upload selected floor plans</button>
-            <span class="text-muted small ms-2">Only files you choose are replaced; others stay unchanged.</span>
-          </div>
-        </form>
-      </div>
-      <p sec:authorize="hasRole('EXECUTIVE')" class="text-muted small mb-0 border-top pt-3">Floor plan images are managed by your builder admin.</p>
-    </div>
-  </div>
-
   <div class="alert alert-info py-2" sec:authorize="hasRole('EXECUTIVE')">
     Full flat layout for this building. Only flats <strong>assigned to you</strong> are active — use <em>Flat details</em> to book or hold.
     Unassigned flats and other partners’ flats are greyed out (no details popup, no booking).
@@ -222,10 +164,7 @@
        th:attr="data-building-id=${building.id},
                 data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''},
                 data-platform-admin-edit=${platformAdminView},
-                data-amenity-types=${#strings.listJoin(flatAmenityTypes, ',')},
-                data-floor-plan-1bhk=${building.floorPlan1Bhk != null},
-                data-floor-plan-2bhk=${building.floorPlan2Bhk != null},
-                data-floor-plan-3bhk=${building.floorPlan3Bhk != null}">
+                data-amenity-types=${#strings.listJoin(flatAmenityTypes, ',')}">
     <svg id="flat-grid-duplex-links" class="flat-duplex-links-overlay" aria-hidden="true"></svg>
     <div class="flat-grid-legend mb-2" th:if="${!#lists.isEmpty(floors)}">
       <span class="flat-grid-legend__item">
@@ -286,7 +225,8 @@
                       data-gate-count=${floor.parkingGateCount()},
                       data-first-flat-id=${floor.flats()[0].id()},
                       data-area=${floor.flats()[0].areaSqft()},
-                      data-price=${floor.flats()[0].basePrice()}">
+                      data-price=${floor.flats()[0].basePrice()},
+                      data-layout-image=${floor.parkingHasLayoutImage()}">
           <div class="flat-parking-section__layout">
             <div class="flat-parking-section__summary">
               <div class="flat-parking-section__head">
@@ -303,6 +243,14 @@
               <button type="button"
                       class="flat-parking-configure-link btn btn-link btn-sm px-0"
                       th:if="${platformAdminView}">Configure</button>
+              <div class="flat-parking-section__layout-links d-flex flex-wrap align-items-center gap-2">
+                <button type="button"
+                        class="flat-parking-layout-upload-link btn btn-link btn-sm px-0"
+                        th:if="${platformAdminView}">Upload layout</button>
+                <button type="button"
+                        class="flat-parking-layout-view-link btn btn-link btn-sm px-0"
+                        th:if="${floor.parkingHasLayoutImage()}">View layout</button>
+              </div>
             </div>
             <div class="flat-parking-section__plan" th:attr="aria-hidden=${floor.parkingConfigured() ? 'false' : 'true'}">
               <div class="parking-plan flat-parking-section__plan-root" th:attr="data-floor-number=${floor.floorNumber()}"></div>
@@ -312,8 +260,7 @@
         <div th:unless="${floor.parkingSection()}"
              th:each="flat : ${floor.flats()}"
              th:id="'flat-' + ${flat.id()}"
-             th:with="fpSlot=${flat.parking() or T(com.floor21.util.FlatUnitTypes).isAmenityCode(flat.bhkType()) ? null : T(com.floor21.util.ResidentialBhkTypes).resolveFloorPlanSlot(flat.bhkType(), building)},
-                      isAmenity=${T(com.floor21.util.FlatUnitTypes).isAmenityCode(flat.bhkType())}"
+             th:with="isAmenity=${T(com.floor21.util.FlatUnitTypes).isAmenityCode(flat.bhkType())}"
              th:class="${flat.cardClass()}"
              th:attr="data-flat-id=${flat.id()},
                       data-type=${flat.bhkType()},
@@ -342,7 +289,7 @@
                       data-booking-code=${flat.bookingCode()},
                       data-buyer-phone=${flat.buyerPhone()},
                       data-buyer-email=${flat.buyerEmail()},
-                      data-floor-plan-slot=${flat.bookableByCurrentUser() and fpSlot != null ? fpSlot : ''},
+                      data-has-layout-image=${flat.hasLayoutImage()},
                       data-bookable=${flat.bookableByCurrentUser() ? 'true' : 'false'}">
           <div class="flat-card-buyertip" th:if="${flat.bookableByCurrentUser() and flat.status() == 'BOOKED' and !#strings.isEmpty(flat.ownerDisplay())}">
             <div class="flat-card-buyertip__title">Buyer</div>
@@ -366,13 +313,6 @@
               <span class="flat-status-tag small"
                     th:if="${flat.status() == 'CANCELLED'}">Deactivated</span>
               <span class="flat-type" th:text="${flat.gridTypeLabel()}">2BHK</span>
-              <button type="button"
-                      th:if="${fpSlot != null and flat.bookableByCurrentUser()}"
-                      class="flat-floor-plan-link flat-floor-plan-trigger"
-                      th:attr="data-floor-plan-url=@{/buildings/{bid}/floor-plan/{slot}(bid=${building.id}, slot=${fpSlot}, flatId=${flat.id()})}">Floor plan</button>
-              <span th:if="${fpSlot != null and !flat.bookableByCurrentUser()}"
-                    class="flat-floor-plan-muted"
-                    aria-hidden="true">Floor plan</span>
             </div>
             <div class="flat-card-owner" th:classappend="${#strings.isEmpty(flat.ownerDisplay()) && #strings.isEmpty(flat.ownerDetail())} ? ' is-blank'">
               <span class="flat-owner-name"
@@ -495,8 +435,17 @@
           <div id="panel-parking-note" class="alert alert-secondary py-2 small d-none mb-3">
             Shared parking section — slots are allocated across flats on partner assignment, not booked as individual units.
           </div>
+          <div id="panel-flat-layout-actions" class="flat-details-layout-links d-flex flex-wrap align-items-center gap-2 mb-3">
+            <button type="button"
+                    class="btn btn-link btn-sm px-0 flat-layout-upload-link d-none"
+                    id="panel-flat-layout-upload"
+                    sec:authorize="hasRole('SUPER_ADMIN')">Upload layout</button>
+            <button type="button"
+                    class="btn btn-link btn-sm px-0 flat-layout-view-link d-none"
+                    id="panel-flat-layout-view">View layout</button>
+            <span class="text-muted small d-none" id="panel-flat-layout-hint">PNG, JPEG, WebP, or GIF</span>
+          </div>
           <div id="panel-booking-actions" class="d-flex flex-wrap gap-2 justify-content-center">
-            <button type="button" id="panel-floor-plan-btn" class="btn btn-outline-secondary d-none">Floor plan</button>
             <button type="button" class="btn btn-outline-warning" id="hold-btn">Hold / Release</button>
             <a id="book-btn" href="#" class="btn btn-success">Book this flat</a>
             <a id="client-info-btn" href="#" class="btn btn-outline-primary d-none">Client info</a>
@@ -635,11 +584,23 @@
     </div>
   </div>
 
+  <input type="file"
+         id="flat-layout-file-input"
+         class="d-none"
+         accept="image/png,image/jpeg,image/webp,image/gif"
+         sec:authorize="hasRole('SUPER_ADMIN')"/>
+
+  <input type="file"
+         id="parking-layout-file-input"
+         class="d-none"
+         accept="image/png,image/jpeg,image/webp,image/gif"
+         sec:authorize="hasRole('SUPER_ADMIN')"/>
+
   <div class="modal fade" id="floor-plan-modal" tabindex="-1" aria-labelledby="floor-plan-modal-title" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable floor-plan-modal-dialog">
       <div class="modal-content shadow">
         <div class="modal-header py-2 px-3">
-          <h6 class="modal-title" id="floor-plan-modal-title">Floor plan</h6>
+          <h6 class="modal-title" id="floor-plan-modal-title">Layout image</h6>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body text-center p-2 p-md-3">
@@ -693,7 +654,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=parking-slot-rotate)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=flat-layout-image)}"></script>
 </div>
 </body>
 </html>

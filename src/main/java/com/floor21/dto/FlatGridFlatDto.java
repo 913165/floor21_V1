@@ -52,4 +52,6 @@ public record FlatGridFlatDto(
         /** Absorbed flat number shown in admin restore UI. */
         String mergeAbsorbedFlatNumber,
         /** Label shown on the card type line (may differ from raw bhkType). */
-        String gridTypeLabel) {}
+        String gridTypeLabel,
+        /** True when this flat has an uploaded layout image. */
+        boolean hasLayoutImage) {}

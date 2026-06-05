@@ -49,6 +49,7 @@ import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -60,6 +61,7 @@ public class FlatService {
     private final BuilderRepository builderRepository;
     private final BookingRepository bookingRepository;
     private final PartnerFlatAllocationService partnerFlatAllocationService;
+    private final BuildingFloorPlanService buildingFloorPlanService;
 
     @Transactional(readOnly = true)
     public long countFlatsForBuilding(UUID buildingId) {
@@ -127,6 +129,9 @@ public class FlatService {
                                     ? parkingConfig.gridRows()
                                     : parkingMinGridRows)
                             : parkingMinGridRows;
+            boolean parkingHasLayoutImage =
+                    parkingSection
+                            && ParkingFloorConfigUtil.layoutImagePath(building, floor) != null;
             rows.add(
                     new FlatGridFloorDto(
                             floor,
@@ -144,7 +149,8 @@ public class FlatService {
                             parkingConfigured ? parkingConfig.resolvedGateCount() : 0,
                             parkingConfigured
                                     ? ParkingFloorConfigUtil.resolveSlotAreaSqft(parkingConfig)
-                                    : null));
+                                    : null,
+                            parkingHasLayoutImage));
         }
         return rows;
     }
@@ -1423,7 +1429,37 @@ public class FlatService {
             throw new IllegalArgumentException("Cannot remove a booked flat. Cancel the booking first.");
         }
         partnerFlatAllocationService.clearAssignmentForFlat(flatId);
+        buildingFloorPlanService.deleteStoredWebPath(flat.getLayoutImagePath());
         flatRepository.delete(flat);
+    }
+
+    @Transactional
+    public Flat saveFlatLayoutImageAsPlatformAdmin(UUID flatId, MultipartFile image) {
+        Flat flat = requireResidentialFlatForAdmin(flatId);
+        String webPath = buildingFloorPlanService.storeFlatLayoutImage(flatId, image);
+        flat.setLayoutImagePath(webPath);
+        return flatRepository.save(flat);
+    }
+
+    @Transactional(readOnly = true)
+    public Flat resolveFlatForLayoutImageAccess(UUID flatId) {
+        Flat flat =
+                flatRepository
+                        .findById(flatId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
+        buildingService.resolveForAccess(flat.getBuilding().getId());
+        if (FlatUnitTypes.isNonBookable(flat)) {
+            throw new ResourceNotFoundException("Flat not found");
+        }
+        String webPath = flat.getLayoutImagePath();
+        if (webPath == null || webPath.isBlank()) {
+            throw new ResourceNotFoundException("Layout image not found");
+        }
+        UUID assignedPartnerId = partnerFlatAllocationService.getAssignedPartnerIdForFlat(flatId);
+        if (!partnerFlatAllocationService.isBookableByCurrentUser(flat.getBuilding().getId(), assignedPartnerId)) {
+            throw new ResourceNotFoundException("Flat not found");
+        }
+        return flat;
     }
 
     /**
@@ -1814,7 +1850,8 @@ public class FlatService {
                 mergePartnerFlatId(f),
                 mergeAbsorbed != null ? mergeAbsorbed.getId() : null,
                 mergeAbsorbed != null ? mergeAbsorbed.getFlatNumber() : null,
-                gridTypeLabel(f, flatById));
+                gridTypeLabel(f, flatById),
+                f.getLayoutImagePath() != null && !f.getLayoutImagePath().isBlank());
     }
 
     private static Flat mergeAbsorbedFlat(Flat flat, Map<UUID, Flat> flatById) {

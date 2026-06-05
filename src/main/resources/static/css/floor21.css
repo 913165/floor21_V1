@@ -1276,6 +1276,21 @@ body.modal-open .modal-backdrop {
   margin-top: 0.25rem;
 }
 
+.flat-parking-layout-upload-link,
+.flat-parking-layout-view-link {
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+
+.flat-parking-section__layout-links {
+  margin-top: 0.15rem;
+}
+
+.flat-details-layout-links .btn-link {
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+
 .flat-parking-section__inner {
   display: flex;
   flex-direction: column;

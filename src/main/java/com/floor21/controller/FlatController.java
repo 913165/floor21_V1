@@ -7,6 +7,8 @@ import com.floor21.dto.FloorMergeSplitResult;
 import com.floor21.dto.FlatPartnerAssignDto;
 import com.floor21.dto.ParkingLinkDto;
 import com.floor21.entity.Flat;
+import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.service.BuildingFloorPlanService;
 import com.floor21.service.FlatService;
 import com.floor21.service.PartnerFlatAllocationService;
 import com.floor21.util.FlatUnitTypes;
@@ -16,7 +18,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -25,7 +30,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 
 @Controller
 @RequiredArgsConstructor
@@ -33,6 +40,7 @@ public class FlatController {
 
     private final FlatService flatService;
     private final PartnerFlatAllocationService partnerFlatAllocationService;
+    private final BuildingFloorPlanService buildingFloorPlanService;
 
     public record StatusBody(String status) {}
 
@@ -59,6 +67,48 @@ public class FlatController {
                             name != null ? name : ""));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/flats/{id}/layout-image")
+    public ResponseEntity<Resource> layoutImage(@PathVariable UUID id) {
+        try {
+            var flat = flatService.resolveFlatForLayoutImageAccess(id);
+            return buildingFloorPlanService
+                    .loadAsResource(flat.getLayoutImagePath())
+                    .map(
+                            resource -> {
+                                MediaType contentType =
+                                        MediaTypeFactory.getMediaType(resource.getFilename())
+                                                .orElse(MediaType.APPLICATION_OCTET_STREAM);
+                                return ResponseEntity.ok()
+                                        .cacheControl(CacheControl.noCache())
+                                        .contentType(contentType)
+                                        .body(resource);
+                            })
+                    .orElseGet(() -> ResponseEntity.notFound().build());
+        } catch (ResourceNotFoundException ex) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/flats/{id}/layout-image")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> uploadLayoutImage(
+            @PathVariable UUID id, @RequestParam("image") MultipartFile image) {
+        if (image == null || image.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Choose an image to upload."));
+        }
+        try {
+            Flat flat = flatService.saveFlatLayoutImageAsPlatformAdmin(id, image);
+            return ResponseEntity.ok(
+                    Map.of("ok", true, "hasLayoutImage", true, "flatId", flat.getId()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Could not save image. Check server disk and permissions."));
         }
     }
 
@@ -199,6 +249,9 @@ public class FlatController {
         map.put("mergeSecondary", FlatUnitTypes.isMergeAbsorbed(flat));
         map.put("mergePartnerFlatId", flat.getMergedAbsorbedFlatId() != null ? flat.getMergedAbsorbedFlatId() : flat.getMergedIntoFlatId());
         map.put("mergeAbsorbedFlatId", flat.getMergedAbsorbedFlatId());
+        map.put(
+                "hasLayoutImage",
+                flat.getLayoutImagePath() != null && !flat.getLayoutImagePath().isBlank());
         return map;
     }
 }

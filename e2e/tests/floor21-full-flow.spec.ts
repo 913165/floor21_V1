@@ -15,6 +15,7 @@ import {
   createPlatformFlowState,
   expectPartnerBookableFlatCount,
   FLAT_ASSIGN_PERCENT,
+  PARKING_LINK_SAMPLE_SIZE,
   targetClientBookingCount,
   type PlatformFlowState,
 } from '../helpers/platform-flow';
@@ -161,7 +162,9 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
 
     await adminLinkParkingToBookedFlats(page, flow);
 
-    expect(flow.parkingLinks.length).toBe(flow.bookings.length);
+    expect(flow.parkingLinks.length).toBe(
+      Math.min(PARKING_LINK_SAMPLE_SIZE, flow.bookings.length),
+    );
     for (const link of flow.parkingLinks) {
       const section = page.locator(
         `.flat-parking-section[data-floor-number="${link.parkingFloor}"]`,

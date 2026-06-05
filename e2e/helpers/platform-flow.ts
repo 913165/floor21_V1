@@ -14,12 +14,15 @@ import {
   expectResidentialFlatShowsParkingLink,
   linkParkingSlotToResidentialFlat,
   openBuildingFlatGrid,
+  PARKING_LINK_SAMPLE_SIZE,
   parkingSlotLocationForIndex,
+  pickRandomSample,
 } from './parking';
 import { createProject, uniqueProjectName, waitForMainPanel } from './projects';
 import { createUser, sampleUserData, type NewUserInput } from './users';
 import { login, loginAsSuperAdmin } from './auth';
 
+export { PARKING_LINK_SAMPLE_SIZE } from './parking';
 /** Share of residential flats assigned to partners (remainder stays unassigned). */
 export const FLAT_ASSIGN_PERCENT = 0.9;
 /** Minimum share of partner-assigned flats that get a client + booking in E2E. */
@@ -276,7 +279,7 @@ export async function allPartnersCreateClientsAndBookings(page: Page, flow: Plat
   }
 }
 
-/** Super admin links one parking slot to each booked residential flat. */
+/** Super admin links parking slots to a random sample of booked residential flats. */
 export async function adminLinkParkingToBookedFlats(page: Page, flow: PlatformFlowState) {
   if (!flow.bookings.length) {
     throw new Error('No bookings to link parking for.');
@@ -286,9 +289,10 @@ export async function adminLinkParkingToBookedFlats(page: Page, flow: PlatformFl
   await openBuildingFlatGrid(page, flow.buildingId);
 
   flow.parkingLinks = [];
+  const bookingsToLink = pickRandomSample(flow.bookings, PARKING_LINK_SAMPLE_SIZE);
 
-  for (let i = 0; i < flow.bookings.length; i++) {
-    const booking = flow.bookings[i];
+  for (let i = 0; i < bookingsToLink.length; i++) {
+    const booking = bookingsToLink[i];
     const { floor, slotNumber } = parkingSlotLocationForIndex(i, flow.building);
     const residentialFlatNumber =
       (await page.locator(`#flat-${booking.flatId} .flat-number`).textContent())?.trim() ?? '';

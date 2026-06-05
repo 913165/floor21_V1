@@ -1,0 +1,1 @@
+ALTER TABLE flats ADD COLUMN IF NOT EXISTS layout_image_path VARCHAR(500);
