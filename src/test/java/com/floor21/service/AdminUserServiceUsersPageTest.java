@@ -44,7 +44,31 @@ class AdminUserServiceUsersPageTest {
     }
 
     @Test
+    void listUsersPage_includesPlatformAdmins() {
+        com.floor21.entity.Builder superAdmin = new com.floor21.entity.Builder();
+        superAdmin.setId(UUID.randomUUID());
+        superAdmin.setCompanyName("Floor21 Platform");
+        superAdmin.setEmail("super@floor21.com");
+        superAdmin.setActive(true);
+        superAdmin.setPlatformAdmin(true);
+        superAdmin.setCreatedAt(Instant.parse("2024-01-01T00:00:00Z"));
+
+        when(builderRepository.findAllPlatformAdminsOrderByEmailAsc()).thenReturn(List.of(superAdmin));
+        when(userRepository.findByBuilderIsNullOrderByFullNameAsc()).thenReturn(List.of());
+        when(userRepository.findAllByOrderByFullNameAsc()).thenReturn(List.of());
+
+        Page<PlatformUserView> page =
+                service.listUsersPage(0, 25, "email", "asc", null, null, null);
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent().get(0).email()).isEqualTo("super@floor21.com");
+        assertThat(page.getContent().get(0).role()).isEqualTo("Platform admin");
+        assertThat(page.getContent().get(0).platformAdminAccount()).isTrue();
+    }
+
+    @Test
     void listUsersPage_sortsByCompanyNameAndPaginates() {
+        when(builderRepository.findAllPlatformAdminsOrderByEmailAsc()).thenReturn(List.of());
         User zulu = unassignedUser("Zulu Co", "Zulu User");
         User alpha = unassignedUser("Alpha Co", "Alpha User");
         when(userRepository.findByBuilderIsNullOrderByFullNameAsc()).thenReturn(List.of(zulu, alpha));
@@ -64,6 +88,7 @@ class AdminUserServiceUsersPageTest {
 
     @Test
     void listUsersPage_filtersBySearchAndActive() {
+        when(builderRepository.findAllPlatformAdminsOrderByEmailAsc()).thenReturn(List.of());
         User active = unassignedUser("Alpha Co", "Alpha User");
         User inactive = unassignedUser("Beta Co", "Beta User");
         inactive.setActive(false);

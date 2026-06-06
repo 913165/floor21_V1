@@ -54,6 +54,7 @@ public class FlywayDataSourceMigrationConfig {
                 ensureFlatsAreaBreakdownColumns(dataSource);
                 ensureFlatsLayoutImagePathColumn(dataSource);
                 ensureBuildingsSkippedFloorsColumn(dataSource);
+                ensureSuper2PlatformAdmin(dataSource);
                 return bean;
             }
         };
@@ -160,6 +161,36 @@ public class FlywayDataSourceMigrationConfig {
         } catch (Exception ex) {
             throw new IllegalStateException(
                     "Could not ensure buildings.skipped_floor_numbers column exists", ex);
+        }
+    }
+
+    /** Idempotent guard when V10 cannot run via Flyway (e.g. DB history still at version 50 after squash). */
+    private static void ensureSuper2PlatformAdmin(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection()) {
+            boolean exists;
+            try (var check =
+                    connection.prepareStatement(
+                            "SELECT 1 FROM builders WHERE lower(email) = lower(?) LIMIT 1")) {
+                check.setString(1, "super2@floor21.in");
+                try (var rs = check.executeQuery()) {
+                    exists = rs.next();
+                }
+            }
+            if (exists) {
+                log.info("Platform admin super2@floor21.in already present");
+                return;
+            }
+            try (var insert = connection.prepareStatement(
+                    """
+                    INSERT INTO builders (company_name, email, password_hash, city, is_platform_admin, is_active)
+                    VALUES ('Floor21 Platform Admin 2', 'super2@floor21.in', '{noop}super123', 'System', TRUE, TRUE)
+                    """)) {
+                insert.executeUpdate();
+            }
+            log.info("Created platform admin super2@floor21.in (startup guard; Flyway V10 may not run when DB version > 10)");
+        } catch (Exception ex) {
+            throw new IllegalStateException(
+                    "Could not ensure super2@floor21.in platform admin exists", ex);
         }
     }
 }

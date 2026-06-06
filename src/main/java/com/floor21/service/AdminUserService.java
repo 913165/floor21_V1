@@ -107,6 +107,9 @@ public class AdminUserService {
 
     private List<PlatformUserView> loadAllUserRows() {
         List<PlatformUserView> rows = new ArrayList<>();
+        for (Builder platformAdmin : builderRepository.findAllPlatformAdminsOrderByEmailAsc()) {
+            rows.add(PlatformUserView.fromPlatformAdmin(platformAdmin));
+        }
         Set<UUID> seen = new LinkedHashSet<>();
         for (User user : userRepository.findByBuilderIsNullOrderByFullNameAsc()) {
             if (userProjectAssignmentService.hasAnyMembership(user.getId())) {

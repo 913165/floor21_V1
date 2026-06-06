@@ -18,7 +18,8 @@ public record PlatformUserView(
         List<String> buildingAccess,
         UUID builderId,
         String builderCompanyName,
-        List<UUID> projectIds) {
+        List<UUID> projectIds,
+        boolean platformAdminAccount) {
 
     public static PlatformUserView from(
             User user, String projectNames, String role, List<String> buildingAccess, List<UUID> projectIds) {
@@ -34,7 +35,8 @@ public record PlatformUserView(
                 buildingAccess,
                 null,
                 projectNames,
-                projectIds);
+                projectIds,
+                false);
     }
 
     public static PlatformUserView from(User user, Builder builder, List<String> buildingAccess) {
@@ -60,7 +62,26 @@ public record PlatformUserView(
                 List.of("Not assigned to a project yet"),
                 null,
                 "—",
-                List.of());
+                List.of(),
+                false);
+    }
+
+    /** Platform super-admin login stored on {@code builders} (not {@code users}). */
+    public static PlatformUserView fromPlatformAdmin(Builder builder) {
+        return new PlatformUserView(
+                builder.getId(),
+                builder.getCompanyName(),
+                builder.getCompanyName(),
+                builder.getEmail(),
+                "Platform admin",
+                builder.getActive(),
+                builder.getCreatedAt(),
+                builder.getLastLoginAt(),
+                List.of("All tenants (platform)"),
+                null,
+                "—",
+                List.of(),
+                true);
     }
 
     private static String displayCompanyName(User user) {
