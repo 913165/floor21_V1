@@ -31,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class BuildingService {
 
-    public static final int BUILDINGS_DEFAULT_PAGE_SIZE = 25;
+    public static final int BUILDINGS_DEFAULT_PAGE_SIZE = 10;
     public static final int BUILDINGS_MAX_PAGE_SIZE = 100;
 
     private static final Set<String> BUILDINGS_SORT_FIELDS =

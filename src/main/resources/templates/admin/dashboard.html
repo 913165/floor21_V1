@@ -44,21 +44,65 @@
   <div class="row g-3">
     <div class="col-lg-7">
       <div class="card shadow-sm">
-        <div class="card-header">Recent bookings (all tenants)</div>
+        <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <span>Recent bookings (all tenants)</span>
+          <form class="d-flex align-items-center gap-2 mb-0" method="get" th:action="@{/dashboard}">
+            <input type="hidden" name="page" value="0"/>
+            <label class="form-label small text-muted mb-0" for="dashboard-page-size">Per page</label>
+            <select class="form-select form-select-sm" id="dashboard-page-size" name="size"
+                    style="width: auto" onchange="this.form.submit()">
+              <option th:each="opt : ${pageSizeOptions}"
+                      th:value="${opt}"
+                      th:text="${opt}"
+                      th:selected="${pageSize == opt}">10</option>
+            </select>
+          </form>
+        </div>
         <div class="table-responsive">
           <table class="table table-sm mb-0">
             <thead><tr><th>Code</th><th>Client</th><th>Flat</th><th>Building</th><th>Status</th></tr></thead>
             <tbody>
-            <tr th:each="r : ${pd.recentBookings()}">
+            <tr th:each="r : ${recentBookings}">
               <td th:text="${r.bookingCode()}"></td>
               <td th:text="${r.clientName()}"></td>
               <td th:text="${r.flatNumber()}"></td>
               <td th:text="${r.buildingName()}"></td>
               <td th:text="${r.status()}"></td>
             </tr>
-            <tr th:if="${#lists.isEmpty(pd.recentBookings())}"><td colspan="5" class="text-muted">No bookings yet.</td></tr>
+            <tr th:if="${#lists.isEmpty(recentBookings)}"><td colspan="5" class="text-muted">No bookings yet.</td></tr>
             </tbody>
           </table>
+        </div>
+        <div class="card-footer border-top-0 pt-0 pb-3">
+          <nav class="d-flex flex-wrap align-items-center justify-content-between gap-2"
+               th:if="${recentBookingPage != null and recentBookingPage.totalElements > 0}"
+               aria-label="Recent bookings pagination">
+            <p class="text-muted small mb-0">
+              Showing
+              <strong th:text="${recentBookingPage.number * recentBookingPage.size + 1}">1</strong>
+              to
+              <strong th:text="${recentBookingPage.number * recentBookingPage.size + recentBookingPage.numberOfElements}">10</strong>
+              of <strong th:text="${recentBookingPage.totalElements}">0</strong>
+            </p>
+            <ul class="pagination pagination-sm mb-0" th:if="${recentBookingPage.totalPages > 1}">
+              <li class="page-item" th:classappend="${!recentBookingPage.hasPrevious()} ? 'disabled'">
+                <a class="page-link"
+                   th:if="${recentBookingPage.hasPrevious()}"
+                   th:href="@{/dashboard(page=${recentBookingPage.number - 1}, size=${pageSize})}">Previous</a>
+                <span class="page-link" th:unless="${recentBookingPage.hasPrevious()}">Previous</span>
+              </li>
+              <li class="page-item disabled">
+                <span class="page-link"
+                      th:text="|Page ${recentBookingPage.number + 1} of ${recentBookingPage.totalPages}|">Page 1 of 1</span>
+              </li>
+              <li class="page-item" th:classappend="${!recentBookingPage.hasNext()} ? 'disabled'">
+                <a class="page-link"
+                   th:if="${recentBookingPage.hasNext()}"
+                   th:href="@{/dashboard(page=${recentBookingPage.number + 1}, size=${pageSize})}">Next</a>
+                <span class="page-link" th:unless="${recentBookingPage.hasNext()}">Next</span>
+              </li>
+            </ul>
+          </nav>
         </div>
       </div>
     </div>
@@ -67,8 +111,8 @@
         <div class="card-header">Newest builders</div>
         <ul class="list-group list-group-flush">
           <li class="list-group-item d-flex justify-content-between" th:each="b : ${pd.recentBuilders()}">
-            <span th:text="${b.companyName()}">ó</span>
-            <span class="text-muted small" th:text="${b.city()}">ó</span>
+            <span th:text="${b.companyName()}">ù</span>
+            <span class="text-muted small" th:text="${b.city()}">ù</span>
           </li>
           <li class="list-group-item text-muted" th:if="${#lists.isEmpty(pd.recentBuilders())}">No builders.</li>
         </ul>

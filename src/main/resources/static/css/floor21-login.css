@@ -37,6 +37,23 @@ html[data-bs-theme="dark"] .floor21-login {
   max-width: calc(100% - 5.5rem);
 }
 
+.floor21-login__brand-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  border-radius: 0.5rem;
+}
+
+.floor21-login__brand-link:hover .floor21-login__logo,
+.floor21-login__brand-link:focus-visible .floor21-login__logo {
+  box-shadow: 0 6px 20px rgba(8, 20, 40, 0.28);
+}
+
+.floor21-login__brand-link:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 3px;
+}
+
 .floor21-login__theme-corner {
   position: fixed;
   top: 1rem;

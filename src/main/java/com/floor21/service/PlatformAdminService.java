@@ -39,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PlatformAdminService {
 
-    public static final int PROJECTS_DEFAULT_PAGE_SIZE = 25;
+    public static final int PROJECTS_DEFAULT_PAGE_SIZE = 10;
     public static final int PROJECTS_MAX_PAGE_SIZE = 100;
 
     private static final Set<String> PROJECTS_SORT_FIELDS =
@@ -82,8 +82,6 @@ public class PlatformAdminService {
                         .atStartOfDay(ZoneId.systemDefault())
                         .toInstant();
         long bookingsThisMonth = bookingRepository.countCreatedSince(monthStart);
-        List<RecentBookingRow> recent =
-                bookingRepository.findTop10ByOrderByCreatedAtDesc().stream().map(this::toBookingRow).toList();
         List<AdminBuilderRow> recentBuilders =
                 builderRepository.findAllTenantsOrderByCompanyNameAsc().stream()
                         .map(this::toBuilderRow)
@@ -102,8 +100,18 @@ public class PlatformAdminService {
                 available,
                 revenue,
                 bookingsThisMonth,
-                recent,
                 recentBuilders);
+    }
+
+    public static final int DASHBOARD_BOOKINGS_MAX_PAGE_SIZE = 100;
+
+    @Transactional(readOnly = true)
+    public Page<RecentBookingRow> recentBookingsPage(int page, int size) {
+        int safeSize = Math.min(Math.max(size, 5), DASHBOARD_BOOKINGS_MAX_PAGE_SIZE);
+        int safePage = Math.max(page, 0);
+        return bookingRepository
+                .findAllForPlatformDashboard(PageRequest.of(safePage, safeSize))
+                .map(this::toBookingRow);
     }
 
     @Transactional(readOnly = true)

@@ -28,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AdminUserService {
 
-    public static final int USERS_DEFAULT_PAGE_SIZE = 25;
+    public static final int USERS_DEFAULT_PAGE_SIZE = 10;
     public static final int USERS_MAX_PAGE_SIZE = 100;
 
     private static final Set<String> USERS_SORT_FIELDS =

@@ -21,12 +21,14 @@
 <span class="floor21-login__accent floor21-login__accent--blue" aria-hidden="true"></span>
 
 <div class="floor21-login__brand-corner">
-  <img class="floor21-login__logo"
-       th:src="@{/images/floor21-logo.png(v=logo1)}"
-       src="/images/floor21-logo.png"
-       alt="Floor21"
-       width="160"
-       height="42"/>
+  <a class="floor21-login__brand-link" th:href="@{/}" title="Home">
+    <img class="floor21-login__logo"
+         th:src="@{/images/floor21-logo.png(v=logo1)}"
+         src="/images/floor21-logo.png"
+         alt="Floor21"
+         width="160"
+         height="42"/>
+  </a>
 </div>
 
 <div class="floor21-login__theme-corner">

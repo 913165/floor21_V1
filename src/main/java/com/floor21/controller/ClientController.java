@@ -37,7 +37,7 @@ public class ClientController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) UUID projectId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "25") int size) {
+            @RequestParam(defaultValue = "10") int size) {
         Page<Client> clientPage = clientService.listPage(page, size, q, projectId);
         model.addAttribute("pageTitle", "Clients");
         model.addAttribute("clientPage", clientPage);
@@ -59,7 +59,7 @@ public class ClientController {
             @RequestParam String q,
             @RequestParam(required = false) UUID projectId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "25") int size) {
+            @RequestParam(defaultValue = "10") int size) {
         Page<Client> clientPage = clientService.listPage(page, size, q, projectId);
         model.addAttribute("clientPage", clientPage);
         model.addAttribute("clients", clientPage.getContent());

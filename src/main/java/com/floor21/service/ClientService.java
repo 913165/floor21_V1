@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ClientService {
 
-    public static final int CLIENTS_DEFAULT_PAGE_SIZE = 25;
+    public static final int CLIENTS_DEFAULT_PAGE_SIZE = 10;
     public static final int CLIENTS_MAX_PAGE_SIZE = 100;
 
     private final ClientRepository clientRepository;

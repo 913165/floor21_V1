@@ -38,7 +38,7 @@ public class AdminController {
     public String list(
             Model model,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "lastActivity") String sort,
             @RequestParam(defaultValue = "desc") String dir,
             @RequestParam(required = false) String q,

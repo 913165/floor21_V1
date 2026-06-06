@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -61,6 +63,13 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findTop10ByOrderByCreatedAtDesc();
 
     List<Booking> findTop20ByOrderByCreatedAtDesc();
+
+    @Query(
+            value =
+                    "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                            + "order by b.createdAt desc",
+            countQuery = "select count(b) from Booking b")
+    Page<Booking> findAllForPlatformDashboard(Pageable pageable);
 
     @Query("select count(b) from Booking b where b.createdAt >= :since")
     long countCreatedSince(@Param("since") java.time.Instant since);

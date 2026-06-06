@@ -32,7 +32,7 @@ public class AdminUserController {
     public String list(
             Model model,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "companyName") String sort,
             @RequestParam(defaultValue = "asc") String dir,
             @RequestParam(required = false) String q,
