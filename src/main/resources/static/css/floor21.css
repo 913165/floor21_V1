@@ -509,7 +509,7 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 }
 
 .flat-grid-shell > .flat-grid-legend,
-.flat-grid-shell > .d-flex,
+.flat-grid-shell > .flat-floor-row,
 .flat-grid-shell > p {
   position: relative;
   z-index: 1;
@@ -551,8 +551,21 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   stroke: #4db6ac;
 }
 
-#flat-grid > .d-flex {
+#flat-grid > .flat-floor-row {
   overflow: visible;
+}
+
+.flat-floor-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.flat-floor-row__rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
 }
 
 .flat-grid-legend {
@@ -644,13 +657,13 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 .flat-card-row {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: stretch;
   gap: 0.35rem;
   width: 100%;
   min-width: 0;
   overflow: visible;
-  padding-top: 0.35rem;
+  padding-top: 0;
   padding-bottom: 2px;
 }
 
@@ -2170,8 +2183,9 @@ body.modal-open .modal-backdrop {
 }
 
 .floor-label {
-  width: 6.75rem;
   flex-shrink: 0;
+  font-weight: 600;
+  line-height: 1.25;
 }
 
 /* Theme switch: sun (light) / moon (dark), one control */
