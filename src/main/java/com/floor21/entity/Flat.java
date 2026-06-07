@@ -45,6 +45,10 @@ public class Flat {
     @Column(name = "bhk_type", nullable = false, length = 20)
     private String bhkType;
 
+    /** Vertical column label (A, B, C…) — same position on every residential floor (e.g. x01, x02). */
+    @Column(name = "layout_column_type", length = 10)
+    private String layoutColumnType;
+
     @Column(name = "area_sqft", precision = 10, scale = 2)
     private BigDecimal areaSqft;
 

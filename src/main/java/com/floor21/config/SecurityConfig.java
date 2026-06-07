@@ -55,7 +55,9 @@ public class SecurityConfig {
                                         .requestMatchers(
                                                 HttpMethod.POST,
                                                 "/buildings/*/unit-type-defaults",
-                                                "/buildings/*/unit-type-defaults/apply")
+                                                "/buildings/*/unit-type-defaults/apply",
+                                                "/buildings/*/column-type-defaults",
+                                                "/buildings/*/column-type-defaults/apply")
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/buildings/*/flats/floor/*/parking-layout")
                                         .hasRole("SUPER_ADMIN")

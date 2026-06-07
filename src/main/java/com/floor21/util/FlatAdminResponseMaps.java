@@ -13,6 +13,10 @@ public final class FlatAdminResponseMaps {
         map.put("id", flat.getId());
         map.put("flatNumber", flat.getFlatNumber());
         map.put("bhkType", flat.getBhkType());
+        map.put("layoutColumnType", flat.getLayoutColumnType());
+        map.put(
+                "gridTypeLabel",
+                LayoutColumnTypes.formatGridTypeLabel(flat.getBhkType(), flat.getLayoutColumnType()));
         map.put("areaSqft", flat.getAreaSqft());
         map.put("carpetAreaSqft", flat.getCarpetAreaSqft());
         map.put("balconyAreaSqft", flat.getBalconyAreaSqft());

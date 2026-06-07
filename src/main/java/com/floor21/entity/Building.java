@@ -64,6 +64,10 @@ public class Building {
     @Column(name = "unit_type_defaults", columnDefinition = "TEXT")
     private String unitTypeDefaults;
 
+    /** JSON map of layout column type (A, B, C…) → default areas and price. */
+    @Column(name = "column_type_defaults", columnDefinition = "TEXT")
+    private String columnTypeDefaults;
+
     /** Comma-separated floor numbers to omit from the grid (e.g. {@code 13} or {@code 4,13}). */
     @Column(name = "skipped_floor_numbers", length = 200)
     private String skippedFloorNumbers;

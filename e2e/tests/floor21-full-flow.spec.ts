@@ -6,6 +6,7 @@ import { readFlowStateFile, requireFlowState, writeFlowStateFile } from '../help
 import {
   adminAddPartners,
   adminAssignFlats,
+  adminConfigureColumnAUnitTypeDefaults,
   adminConfigure2BhkUnitTypeDefaults,
   adminCreateBuilding,
   adminCreateProject,
@@ -126,6 +127,13 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     await adminConfigure2BhkUnitTypeDefaults(page, flow);
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-after-unit-type-defaults');
+  });
+
+  test('Admin — 3c. Configure column A defaults (save + apply)', async ({ page }, testInfo) => {
+    loadFlow();
+    await adminConfigureColumnAUnitTypeDefaults(page, flow);
+    writeFlowStateFile(flow);
+    emitFlowCredentials(flow, testInfo, 'credentials-after-column-defaults');
   });
 
   test('Admin — 4. Add partners', async ({ page }, testInfo) => {

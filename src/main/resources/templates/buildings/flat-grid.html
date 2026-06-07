@@ -200,14 +200,22 @@
   </div>
 
   <div class="card shadow-sm mb-3" sec:authorize="hasRole('SUPER_ADMIN')" th:if="${flatCount != null && flatCount > 0}">
-    <div class="card-header">Unit type defaults</div>
+    <div class="card-header">Unit &amp; column defaults</div>
     <div class="card-body">
-      <p class="text-muted small mb-3">
-        Set super built-up, carpet, balcony, and price once per unit type (Studio, 1–7 BHK, Penthouse, Duplex).
-        Every flat of that type in this building uses these values unless you override a single unit in Flat details.
+      <p class="text-muted small mb-2">
+        <strong>By BHK / unit type</strong> — same Studio, 1BHK, 2BHK, etc. across the building.
+        Cards show e.g. <span class="text-nowrap">2BHK · A</span> when a column label applies.
       </p>
-      <button type="button" class="btn btn-outline-primary btn-sm" id="grid-configure-type-defaults-btn">
+      <button type="button" class="btn btn-outline-primary btn-sm mb-3" id="grid-configure-type-defaults-btn">
         Configure unit type defaults
+      </button>
+      <p class="text-muted small mb-2 border-top pt-3">
+        <strong>By column (A, B, C…)</strong> — same vertical position on every floor
+        (e.g. 401, 501, 601 are column A; 402, 502, 602 are column B).
+        Use this when several flats on one floor share a BHK but have different layouts.
+      </p>
+      <button type="button" class="btn btn-outline-primary btn-sm" id="grid-configure-column-type-defaults-btn">
+        Configure column type defaults
       </button>
     </div>
   </div>
@@ -317,6 +325,7 @@
              th:class="${flat.cardClass()}"
              th:attr="data-flat-id=${flat.id()},
                       data-type=${flat.bhkType()},
+                      data-column-type=${flat.layoutColumnType()},
                       data-floor=${flat.floorNumber()},
                       data-price=${flat.basePrice()},
                       data-status=${flat.status()},
@@ -702,6 +711,46 @@
       </div>
     </div>
   </div>
+  <div class="modal fade" id="column-type-defaults-modal" tabindex="-1" aria-labelledby="column-type-defaults-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content shadow">
+        <div class="modal-header py-2 px-3">
+          <h6 class="modal-title mb-0" id="column-type-defaults-modal-title">Column type defaults</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body pt-2 pb-3">
+          <label class="form-label small mb-1" for="column-type-defaults-column">Column type</label>
+          <select class="form-select form-select-sm" id="column-type-defaults-column" aria-label="Column type">
+            <option th:each="col, colStat : ${layoutColumnTypes}" th:value="${col}" th:text="${col + ' — position ' + (colStat.index + 1) + ' on each floor'}">A</option>
+          </select>
+          <div class="flat-details-area-unit d-flex align-items-center justify-content-between gap-2 mt-3 mb-1">
+            <label class="form-label small mb-0 text-muted flex-shrink-0" for="column-type-defaults-area-unit">Measurement unit</label>
+            <select class="form-select form-select-sm flat-details-area-unit__select" id="column-type-defaults-area-unit" aria-label="Measurement unit">
+              <option value="sqft">Square foot (sq ft)</option>
+              <option value="sqm">Square meter (sq m)</option>
+            </select>
+          </div>
+          <label class="form-label small mb-1" for="column-type-defaults-super-builder-area" id="column-type-defaults-super-builder-area-label" data-area-label-base="Super built-up area">Super built-up area (sq ft)</label>
+          <input class="form-control form-control-sm" type="number" id="column-type-defaults-super-builder-area" data-area-input="true" min="0" step="1"/>
+          <label class="form-label small mb-1 mt-2" for="column-type-defaults-carpet-area" id="column-type-defaults-carpet-area-label" data-area-label-base="Carpet area">Carpet area (sq ft)</label>
+          <input class="form-control form-control-sm" type="number" id="column-type-defaults-carpet-area" data-area-input="true" min="0" step="1"/>
+          <label class="form-label small mb-1 mt-2" for="column-type-defaults-balcony-area" id="column-type-defaults-balcony-area-label" data-area-label-base="Balcony area">Balcony area (sq ft)</label>
+          <input class="form-control form-control-sm" type="number" id="column-type-defaults-balcony-area" data-area-input="true" min="0" step="1"/>
+          <label class="form-label small mb-1 mt-2" for="column-type-defaults-price">Base price</label>
+          <input class="form-control form-control-sm" type="number" id="column-type-defaults-price" min="0" step="1"/>
+          <p class="text-muted small mt-2 mb-0">Save stores defaults for this column. <strong>Apply to column</strong> updates every flat in that vertical column (all floors) with the values above.</p>
+          <p class="text-danger small mb-0 mt-2 d-none" id="column-type-defaults-error"></p>
+        </div>
+        <div class="modal-footer py-2 px-3 d-flex flex-wrap justify-content-between gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="column-type-defaults-apply">Apply to column</button>
+            <button type="button" class="btn btn-sm btn-primary" id="column-type-defaults-save">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="modal fade" id="flat-add-modal" tabindex="-1" aria-labelledby="flat-add-modal-title" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">
       <div class="modal-content shadow">
@@ -747,7 +796,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=unit-type-save-apply)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=column-type-defaults)}"></script>
 </div>
 </body>
 </html>

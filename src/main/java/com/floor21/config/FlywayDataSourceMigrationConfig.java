@@ -55,6 +55,7 @@ public class FlywayDataSourceMigrationConfig {
                 ensureFlatsLayoutImagePathColumn(dataSource);
                 ensureBuildingsSkippedFloorsColumn(dataSource);
                 ensureBuildingsUnitTypeDefaultsColumn(dataSource);
+                ensureLayoutColumnTypeColumns(dataSource);
                 ensureSuper2PlatformAdmin(dataSource);
                 return bean;
             }
@@ -150,6 +151,18 @@ public class FlywayDataSourceMigrationConfig {
         } catch (Exception ex) {
             throw new IllegalStateException(
                     "Could not ensure flats.layout_image_path column exists", ex);
+        }
+    }
+
+    /** Idempotent guard when V12 is recorded in history but layout column columns were never applied. */
+    private static void ensureLayoutColumnTypeColumns(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE flats ADD COLUMN IF NOT EXISTS layout_column_type VARCHAR(10)");
+            statement.execute("ALTER TABLE buildings ADD COLUMN IF NOT EXISTS column_type_defaults TEXT");
+        } catch (Exception ex) {
+            throw new IllegalStateException(
+                    "Could not ensure layout column type columns exist", ex);
         }
     }
 

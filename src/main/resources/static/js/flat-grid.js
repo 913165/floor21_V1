@@ -25,6 +25,7 @@
   var parkingResidentialCache = null;
   var parkingSlotsCache = null;
   var unitTypeDefaultsCache = null;
+  var columnTypeDefaultsCache = null;
 
   /** Bootstrap backdrop is on body; modals must be too or backdrop blocks clicks. */
   function mountModalsOnBody() {
@@ -33,6 +34,7 @@
       "floor-plan-modal",
       "flat-add-modal",
       "unit-type-defaults-modal",
+      "column-type-defaults-modal",
       "parking-config-modal",
       "parking-link-modal",
     ].forEach(function (id) {
@@ -707,11 +709,20 @@
     );
   }
 
+  function getConfiguredColumnDefaults(columnType) {
+    if (!columnTypeDefaultsCache || !columnType) return null;
+    return columnTypeDefaultsCache[columnType] || null;
+  }
+
   function getEffectiveFlatDatasetValue(cardEl, datasetKey, defaultsKey) {
     if (!cardEl) return "";
     var value = cardEl.dataset[datasetKey];
     if (value != null && value !== "") return value;
     if (!isResidentialFlatCard(cardEl)) return "";
+    var columnDefaults = getConfiguredColumnDefaults(cardEl.dataset.columnType);
+    if (columnDefaults && columnDefaults[defaultsKey] != null) {
+      return String(columnDefaults[defaultsKey]);
+    }
     var defaults = getConfiguredTypeDefaults(cardEl.dataset.type);
     if (!defaults || defaults[defaultsKey] == null) return "";
     return String(defaults[defaultsKey]);
@@ -902,6 +913,166 @@
     showGridToast("Applied to " + countMsg + " " + bhkSel.value + " flat(s)", "success");
   }
 
+  async function loadColumnTypeDefaults(force) {
+    if (!isPlatformAdminEdit()) {
+      return {};
+    }
+    if (!force && columnTypeDefaultsCache) {
+      return columnTypeDefaultsCache;
+    }
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    if (!buildingId) {
+      return {};
+    }
+    var res = await fetch(appRoot() + "/buildings/" + buildingId + "/column-type-defaults", {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      return columnTypeDefaultsCache || {};
+    }
+    columnTypeDefaultsCache = await res.json();
+    return columnTypeDefaultsCache;
+  }
+
+  function populateColumnTypeDefaultsModal(columnType) {
+    var colSel = document.getElementById("column-type-defaults-column");
+    if (colSel) {
+      if (columnType) {
+        colSel.value = columnType;
+      } else if (!colSel.value && colSel.options.length > 0) {
+        colSel.value = colSel.options[0].value;
+      }
+    }
+    var col = colSel ? colSel.value : columnType;
+    var entry = getConfiguredColumnDefaults(col);
+    var superBuilder = document.getElementById("column-type-defaults-super-builder-area");
+    var carpet = document.getElementById("column-type-defaults-carpet-area");
+    var balcony = document.getElementById("column-type-defaults-balcony-area");
+    var price = document.getElementById("column-type-defaults-price");
+    if (superBuilder) {
+      superBuilder.value = entry && entry.areaSqft != null ? formatAreaForDisplay(entry.areaSqft) : "";
+    }
+    if (carpet) {
+      carpet.value =
+        entry && entry.carpetAreaSqft != null ? formatAreaForDisplay(entry.carpetAreaSqft) : "";
+    }
+    if (balcony) {
+      balcony.value =
+        entry && entry.balconyAreaSqft != null ? formatAreaForDisplay(entry.balconyAreaSqft) : "";
+    }
+    if (price) {
+      price.value = entry && entry.basePrice != null ? String(entry.basePrice) : "";
+    }
+    updateColumnTypeDefaultsModalTitle(col);
+  }
+
+  function updateColumnTypeDefaultsModalTitle(columnType) {
+    var title = document.getElementById("column-type-defaults-modal-title");
+    if (!title) return;
+    title.textContent = columnType
+      ? "Column type defaults — " + columnType
+      : "Column type defaults";
+  }
+
+  function showColumnTypeDefaultsError(message) {
+    var el = document.getElementById("column-type-defaults-error");
+    if (!el) return;
+    if (!message) {
+      el.textContent = "";
+      el.classList.add("d-none");
+      return;
+    }
+    el.textContent = message;
+    el.classList.remove("d-none");
+  }
+
+  async function openColumnTypeDefaultsModal(columnType) {
+    if (!isPlatformAdminEdit()) return;
+    mountModalsOnBody();
+    await loadColumnTypeDefaults(false);
+    populateColumnTypeDefaultsModal(columnType || null);
+    var unitSel = document.getElementById("column-type-defaults-area-unit");
+    if (unitSel) {
+      unitSel.value = getAreaUnit();
+    }
+    updateAreaUnitLabels();
+    showColumnTypeDefaultsError("");
+    var modalEl = document.getElementById("column-type-defaults-modal");
+    if (modalEl && typeof bootstrap !== "undefined" && bootstrap.Modal) {
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+  }
+
+  function readColumnTypeDefaultsFormPayload() {
+    var colSel = document.getElementById("column-type-defaults-column");
+    var superBuilder = document.getElementById("column-type-defaults-super-builder-area");
+    var carpet = document.getElementById("column-type-defaults-carpet-area");
+    var balcony = document.getElementById("column-type-defaults-balcony-area");
+    var price = document.getElementById("column-type-defaults-price");
+    if (!colSel) return null;
+    return {
+      columnType: colSel.value,
+      areaSqft: readAreaInputSqft(superBuilder),
+      carpetAreaSqft: readAreaInputSqft(carpet),
+      balconyAreaSqft: readAreaInputSqft(balcony),
+      basePrice: price && price.value.trim() !== "" ? Number(price.value.trim()) : null,
+    };
+  }
+
+  async function saveColumnTypeDefaults() {
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    var colSel = document.getElementById("column-type-defaults-column");
+    var payload = readColumnTypeDefaultsFormPayload();
+    if (!buildingId || !colSel || !payload) return;
+    showColumnTypeDefaultsError("");
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    var res = await fetch(appRoot() + "/buildings/" + buildingId + "/column-type-defaults", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      showColumnTypeDefaultsError(await parseErrorResponse(res));
+      return;
+    }
+    columnTypeDefaultsCache = await res.json();
+    populateColumnTypeDefaultsModal(colSel.value);
+    var modalEl = document.getElementById("column-type-defaults-modal");
+    if (modalEl && bootstrap.Modal.getInstance(modalEl)) {
+      bootstrap.Modal.getInstance(modalEl).hide();
+    }
+    showGridToast("Saved column defaults for " + colSel.value, "success");
+  }
+
+  async function applyColumnTypeDefaultsToFlats() {
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    var colSel = document.getElementById("column-type-defaults-column");
+    var payload = readColumnTypeDefaultsFormPayload();
+    if (!buildingId || !colSel || !payload) return;
+    showColumnTypeDefaultsError("");
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    var res = await fetch(appRoot() + "/buildings/" + buildingId + "/column-type-defaults/apply", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      showColumnTypeDefaultsError(await parseErrorResponse(res));
+      return;
+    }
+    var data = await res.json();
+    if (data.defaults) {
+      columnTypeDefaultsCache = data.defaults;
+    }
+    var updatedFlats = data.updatedFlats || [];
+    applyUnitTypeDefaultsResultToGrid(updatedFlats);
+    var countMsg = updatedFlats.length > 0 ? String(updatedFlats.length) : "0";
+    showGridToast("Applied to " + countMsg + " flat(s) in column " + colSel.value, "success");
+  }
+
   function ensureAdminBhkOption(selectEl, value) {
     if (!selectEl || !value) return;
     var exists = false;
@@ -935,6 +1106,11 @@
   function applyFlatDataToCard(cardEl, flat) {
     if (!cardEl || !flat) return;
     if (flat.bhkType != null) cardEl.dataset.type = flat.bhkType;
+    if (flat.layoutColumnType != null) {
+      cardEl.dataset.columnType = flat.layoutColumnType;
+    } else {
+      delete cardEl.dataset.columnType;
+    }
     if (flat.areaSqft != null) cardEl.dataset.area = String(flat.areaSqft);
     if (flat.carpetAreaSqft != null) cardEl.dataset.carpetArea = String(flat.carpetAreaSqft);
     else delete cardEl.dataset.carpetArea;
@@ -958,7 +1134,11 @@
       mergePrimary: mergePrimary,
       status: flat.status || cardEl.dataset.status,
     });
-    var displayType = flat.gridTypeLabel || flat.bhkType;
+    var displayType =
+      flat.gridTypeLabel ||
+      (flat.bhkType && flat.layoutColumnType
+        ? flat.bhkType + " · " + flat.layoutColumnType
+        : flat.bhkType);
     if (displayType) {
       cardEl.dataset.gridType = displayType;
     }
@@ -3821,6 +4001,7 @@
     initAreaUnitSelector();
     if (isPlatformAdminEdit()) {
       loadUnitTypeDefaults(true);
+      loadColumnTypeDefaults(true);
     }
     var flatAddBhk = document.getElementById("flat-add-bhk");
     if (flatAddBhk) {
@@ -3830,6 +4011,12 @@
     if (gridConfigureDefaults) {
       gridConfigureDefaults.addEventListener("click", function () {
         openUnitTypeDefaultsModal(null);
+      });
+    }
+    var gridConfigureColumnDefaults = document.getElementById("grid-configure-column-type-defaults-btn");
+    if (gridConfigureColumnDefaults) {
+      gridConfigureColumnDefaults.addEventListener("click", function () {
+        openColumnTypeDefaultsModal(null);
       });
     }
     var unitDefaultsBhk = document.getElementById("unit-type-defaults-bhk");
@@ -3864,6 +4051,42 @@
     if (unitDefaultsApply) {
       unitDefaultsApply.addEventListener("click", function () {
         applyUnitTypeDefaultsToFlats();
+      });
+    }
+    var columnDefaultsCol = document.getElementById("column-type-defaults-column");
+    if (columnDefaultsCol) {
+      columnDefaultsCol.addEventListener("change", function () {
+        populateColumnTypeDefaultsModal(columnDefaultsCol.value);
+        updateColumnTypeDefaultsModalTitle(columnDefaultsCol.value);
+      });
+    }
+    var columnDefaultsAreaUnit = document.getElementById("column-type-defaults-area-unit");
+    if (columnDefaultsAreaUnit) {
+      columnDefaultsAreaUnit.addEventListener("change", function () {
+        var nextUnit = columnDefaultsAreaUnit.value === "sqm" ? "sqm" : "sqft";
+        var prevUnit = nextUnit === "sqm" ? "sqft" : "sqm";
+        convertAllAreaInputDisplays(prevUnit, nextUnit);
+        setAreaUnit(nextUnit);
+        var panelSel = document.getElementById("panel-area-unit");
+        if (panelSel) panelSel.value = nextUnit;
+        var addSel = document.getElementById("flat-add-area-unit");
+        if (addSel) addSel.value = nextUnit;
+        var unitDefaultsAreaUnit = document.getElementById("unit-type-defaults-area-unit");
+        if (unitDefaultsAreaUnit) unitDefaultsAreaUnit.value = nextUnit;
+        updateAreaUnitLabels();
+        refreshAreaPanelDisplayOnly();
+      });
+    }
+    var columnDefaultsSave = document.getElementById("column-type-defaults-save");
+    if (columnDefaultsSave) {
+      columnDefaultsSave.addEventListener("click", function () {
+        saveColumnTypeDefaults();
+      });
+    }
+    var columnDefaultsApply = document.getElementById("column-type-defaults-apply");
+    if (columnDefaultsApply) {
+      columnDefaultsApply.addEventListener("click", function () {
+        applyColumnTypeDefaultsToFlats();
       });
     }
     var modalEl = document.getElementById("floor-plan-modal");

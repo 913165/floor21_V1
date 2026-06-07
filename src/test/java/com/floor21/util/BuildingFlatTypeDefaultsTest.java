@@ -105,6 +105,46 @@ class BuildingFlatTypeDefaultsTest {
     }
 
     @Test
+    void resolvePrefersColumnDefaultsOverBhkDefaults() {
+        Map<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> bhkConfigured =
+                Map.of(
+                        "2BHK",
+                        new BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry(
+                                new BigDecimal("820"),
+                                new BigDecimal("600"),
+                                null,
+                                new BigDecimal("8000000")));
+        Map<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> columnConfigured =
+                Map.of(
+                        "A",
+                        new BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry(
+                                new BigDecimal("920"),
+                                new BigDecimal("710"),
+                                new BigDecimal("55"),
+                                new BigDecimal("8500000")));
+
+        BuildingFlatTypeDefaults.Defaults defaults =
+                BuildingFlatTypeDefaults.resolve(
+                        bhkConfigured, columnConfigured, List.of(), "2BHK", "A");
+
+        assertEquals(new BigDecimal("920"), defaults.areaSqft());
+        assertEquals(new BigDecimal("710"), defaults.carpetAreaSqft());
+        assertEquals(new BigDecimal("55"), defaults.balconyAreaSqft());
+        assertEquals(new BigDecimal("8500000"), defaults.basePrice());
+    }
+
+    @Test
+    void shouldPropagateColumnDefaultsMatchesLayoutColumnType() {
+        Flat flat = new Flat();
+        flat.setBhkType("2BHK");
+        flat.setLayoutColumnType("A");
+        flat.setParking(false);
+
+        assertEquals(true, BuildingFlatTypeDefaults.shouldPropagateColumnDefaults(flat, "A"));
+        assertEquals(false, BuildingFlatTypeDefaults.shouldPropagateColumnDefaults(flat, "B"));
+    }
+
+    @Test
     void coalesceForEditKeepsCurrentValueUnlessTypeChanged() {
         assertNull(BuildingFlatTypeDefaults.coalesceForEdit(null, new BigDecimal("100"), false));
         assertEquals(

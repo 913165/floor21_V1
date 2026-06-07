@@ -2,6 +2,9 @@ package com.floor21.service;
 
 import com.floor21.dto.BuildingConfigDto;
 import com.floor21.dto.FlatAddToFloorDto;
+import com.floor21.dto.ColumnTypeDefaultsDto;
+import com.floor21.dto.ColumnTypeDefaultsSaveDto;
+import com.floor21.dto.ColumnTypeDefaultsSaveResultDto;
 import com.floor21.dto.UnitTypeDefaultsDto;
 import com.floor21.dto.UnitTypeDefaultsSaveDto;
 import com.floor21.dto.UnitTypeDefaultsSaveResultDto;
@@ -33,8 +36,10 @@ import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.security.TenantContext;
+import com.floor21.util.BuildingColumnTypeDefaultsUtil;
 import com.floor21.util.BuildingFlatTypeDefaults;
 import com.floor21.util.BuildingUnitTypeDefaultsUtil;
+import com.floor21.util.LayoutColumnTypes;
 import com.floor21.util.FlatAdminResponseMaps;
 import com.floor21.util.FlatUnitTypes;
 import com.floor21.util.ParkingFloorConfigUtil;
@@ -1330,6 +1335,7 @@ public class FlatService {
         f.setUnitNumber(unit);
         f.setFlatNumber(String.format("%02d%02d", floor, unit));
         f.setBhkType(bhk);
+        f.setLayoutColumnType(LayoutColumnTypes.columnTypeForUnitNumber(unit));
         f.setParking(false);
         f.setStatus("AVAILABLE");
         f.setAreaSqft(BigDecimal.valueOf(area));
@@ -1374,7 +1380,8 @@ public class FlatService {
                         : flat.getBhkType();
         boolean typeChanged = !requestedBhk.equals(flat.getBhkType());
         BuildingFlatTypeDefaults.Defaults typeDefaults =
-                resolveBuildingTypeDefaults(flat.getBuilding(), requestedBhk);
+                resolveBuildingTypeDefaults(
+                        flat.getBuilding(), requestedBhk, flat.getLayoutColumnType());
         if (hasActiveBooking(flatId)) {
             if (typeChanged) {
                 throw new IllegalArgumentException(
@@ -1534,9 +1541,11 @@ public class FlatService {
         flat.setFloorNumber(floorNumber);
         flat.setUnitNumber(nextUnit);
         flat.setFlatNumber(String.format("%02d%02d", floorNumber, nextUnit));
+        flat.setLayoutColumnType(LayoutColumnTypes.columnTypeForUnitNumber(nextUnit));
         flat.setCreatedAt(now);
         flat.setStatus("AVAILABLE");
-        BuildingFlatTypeDefaults.Defaults typeDefaults = resolveBuildingTypeDefaults(building, bhk);
+        BuildingFlatTypeDefaults.Defaults typeDefaults =
+                resolveBuildingTypeDefaults(building, bhk, flat.getLayoutColumnType());
         FlatUnitTypes.applyToFlat(
                 flat,
                 bhk,
@@ -1596,18 +1605,8 @@ public class FlatService {
         if (FlatUnitTypes.isParkingCode(bhk) || FlatUnitTypes.isAmenityCode(bhk)) {
             throw new IllegalArgumentException("Configure defaults for residential unit types only.");
         }
-        if (dto.areaSqft() != null && dto.areaSqft().signum() <= 0) {
-            throw new IllegalArgumentException("Super built-up area must be greater than zero.");
-        }
-        if (dto.carpetAreaSqft() != null && dto.carpetAreaSqft().signum() <= 0) {
-            throw new IllegalArgumentException("Carpet area must be greater than zero.");
-        }
-        if (dto.balconyAreaSqft() != null && dto.balconyAreaSqft().signum() < 0) {
-            throw new IllegalArgumentException("Balcony area cannot be negative.");
-        }
-        if (dto.basePrice() != null && dto.basePrice().signum() < 0) {
-            throw new IllegalArgumentException("Price cannot be negative.");
-        }
+        validateDefaultsAreasAndPrice(
+                dto.areaSqft(), dto.carpetAreaSqft(), dto.balconyAreaSqft(), dto.basePrice());
         return bhk;
     }
 
@@ -1639,15 +1638,138 @@ public class FlatService {
         return updated;
     }
 
+    @Transactional
+    public void ensureLayoutColumnTypes(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> flats =
+                flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
+                        buildingId, builderId);
+        for (Flat flat : flats) {
+            if (FlatUnitTypes.isNonBookable(flat)) {
+                continue;
+            }
+            if (flat.getLayoutColumnType() != null && !flat.getLayoutColumnType().isBlank()) {
+                continue;
+            }
+            flat.setLayoutColumnType(LayoutColumnTypes.columnTypeForUnitNumber(flat.getUnitNumber()));
+            flatRepository.save(flat);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, ColumnTypeDefaultsDto> getColumnTypeDefaults(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        Map<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> configured =
+                BuildingColumnTypeDefaultsUtil.read(building);
+        Map<String, ColumnTypeDefaultsDto> out = new LinkedHashMap<>();
+        for (Map.Entry<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> entry :
+                configured.entrySet()) {
+            BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry value = entry.getValue();
+            out.put(
+                    entry.getKey(),
+                    new ColumnTypeDefaultsDto(
+                            entry.getKey(),
+                            value.areaSqft(),
+                            value.carpetAreaSqft(),
+                            value.balconyAreaSqft(),
+                            value.basePrice()));
+        }
+        return out;
+    }
+
+    @Transactional
+    public Map<String, ColumnTypeDefaultsDto> saveColumnTypeDefaults(
+            UUID buildingId, ColumnTypeDefaultsSaveDto dto) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        String columnType = validateColumnTypeDefaultsDto(dto);
+        BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry = toColumnTypeDefaultsEntry(dto);
+        BuildingColumnTypeDefaultsUtil.putForColumn(building, columnType, entry);
+        buildingRepository.save(building);
+        return getColumnTypeDefaults(buildingId);
+    }
+
+    @Transactional
+    public ColumnTypeDefaultsSaveResultDto applyColumnTypeDefaultsToFlats(
+            UUID buildingId, ColumnTypeDefaultsSaveDto dto) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        String columnType = validateColumnTypeDefaultsDto(dto);
+        BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry = toColumnTypeDefaultsEntry(dto);
+        List<Map<String, Object>> updatedFlats =
+                propagateColumnTypeDefaultsToFlats(building, columnType, entry);
+        return new ColumnTypeDefaultsSaveResultDto(getColumnTypeDefaults(buildingId), updatedFlats);
+    }
+
+    private static String validateColumnTypeDefaultsDto(ColumnTypeDefaultsSaveDto dto) {
+        String columnType = LayoutColumnTypes.normalize(dto.columnType());
+        if (columnType == null) {
+            throw new IllegalArgumentException("Column type is required.");
+        }
+        validateDefaultsAreasAndPrice(
+                dto.areaSqft(), dto.carpetAreaSqft(), dto.balconyAreaSqft(), dto.basePrice());
+        return columnType;
+    }
+
+    private static void validateDefaultsAreasAndPrice(
+            BigDecimal areaSqft,
+            BigDecimal carpetAreaSqft,
+            BigDecimal balconyAreaSqft,
+            BigDecimal basePrice) {
+        if (areaSqft != null && areaSqft.signum() <= 0) {
+            throw new IllegalArgumentException("Super built-up area must be greater than zero.");
+        }
+        if (carpetAreaSqft != null && carpetAreaSqft.signum() <= 0) {
+            throw new IllegalArgumentException("Carpet area must be greater than zero.");
+        }
+        if (balconyAreaSqft != null && balconyAreaSqft.signum() < 0) {
+            throw new IllegalArgumentException("Balcony area cannot be negative.");
+        }
+        if (basePrice != null && basePrice.signum() < 0) {
+            throw new IllegalArgumentException("Price cannot be negative.");
+        }
+    }
+
+    private static BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry toColumnTypeDefaultsEntry(
+            ColumnTypeDefaultsSaveDto dto) {
+        return new BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry(
+                dto.areaSqft(),
+                dto.carpetAreaSqft(),
+                dto.balconyAreaSqft(),
+                dto.basePrice());
+    }
+
+    private List<Map<String, Object>> propagateColumnTypeDefaultsToFlats(
+            Building building, String columnType, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry) {
+        UUID buildingId = building.getId();
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> flats =
+                flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
+                        buildingId, builderId);
+        List<Map<String, Object>> updated = new ArrayList<>();
+        for (Flat flat : flats) {
+            if (!BuildingFlatTypeDefaults.shouldPropagateColumnDefaults(flat, columnType)) {
+                continue;
+            }
+            BuildingFlatTypeDefaults.applyConfiguredEntry(flat, entry);
+            flatRepository.save(flat);
+            updated.add(FlatAdminResponseMaps.fromFlat(flat));
+        }
+        return updated;
+    }
+
     private BuildingFlatTypeDefaults.Defaults resolveBuildingTypeDefaults(
-            Building building, String unitType) {
+            Building building, String unitType, String columnType) {
         UUID buildingId = building.getId();
         UUID builderId = building.getBuilder().getId();
         List<Flat> buildingFlats =
                 flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
                         buildingId, builderId);
         return BuildingFlatTypeDefaults.resolve(
-                BuildingUnitTypeDefaultsUtil.read(building), buildingFlats, unitType);
+                BuildingUnitTypeDefaultsUtil.read(building),
+                BuildingColumnTypeDefaultsUtil.read(building),
+                buildingFlats,
+                unitType,
+                columnType);
     }
 
     @Transactional
@@ -1967,6 +2089,7 @@ public class FlatService {
                 f.getFlatNumber(),
                 f.getFloorNumber(),
                 f.getBhkType(),
+                f.getLayoutColumnType(),
                 f.getBasePrice(),
                 f.getAreaSqft(),
                 f.getCarpetAreaSqft(),
@@ -2159,7 +2282,7 @@ public class FlatService {
                 return "MERGED · " + flat.getFlatNumber() + "+" + absorbed.getFlatNumber();
             }
         }
-        return flat.getBhkType();
+        return LayoutColumnTypes.formatGridTypeLabel(flat.getBhkType(), flat.getLayoutColumnType());
     }
 
     private Flat requireFlatForAdmin(UUID flatId) {

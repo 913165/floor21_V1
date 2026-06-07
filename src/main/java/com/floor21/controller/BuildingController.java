@@ -7,7 +7,9 @@ import com.floor21.dto.ParkingFloorConfigDto;
 import com.floor21.dto.ParkingGridColDto;
 import com.floor21.dto.ParkingGridRowDto;
 import com.floor21.dto.ParkingLayoutDto;
+import com.floor21.dto.ColumnTypeDefaultsSaveDto;
 import com.floor21.dto.UnitTypeDefaultsSaveDto;
+import com.floor21.util.LayoutColumnTypes;
 import com.floor21.entity.Building;
 import com.floor21.entity.Flat;
 import com.floor21.security.Floor21UserPrincipal;
@@ -236,6 +238,9 @@ public class BuildingController {
         cfg.setBhkPerFloor(ResidentialBhkTypes.countsFromBuilding(b));
         cfg.setSkippedFloorNumbers(SkippedFloorsUtil.formatForDisplay(b.getSkippedFloorNumbers()));
         long flatCount = flatService.countFlatsForBuilding(id);
+        if (flatCount > 0) {
+            flatService.ensureLayoutColumnTypes(id);
+        }
         long activeBookings = flatService.countActiveBookingsForBuilding(id);
         model.addAttribute("pageTitle", "Flat Grid — " + b.getBuildingName());
         model.addAttribute("building", b);
@@ -253,6 +258,10 @@ public class BuildingController {
             model.addAttribute("topFloorNumber", flatService.getTopFloorNumber(id));
             model.addAttribute("maxRemovableTopFloors", flatService.getMaxRemovableTopFloors(id));
             model.addAttribute("addFloorMix", flatService.bhkMixForTopResidentialFloor(id));
+            model.addAttribute(
+                    "layoutColumnTypes",
+                    LayoutColumnTypes.typesForFlatsPerFloor(
+                            b.getFlatsPerFloor() != null ? b.getFlatsPerFloor() : 0));
         }
         return "buildings/flat-grid";
     }
@@ -334,6 +343,41 @@ public class BuildingController {
             @PathVariable UUID id, @Valid @RequestBody UnitTypeDefaultsSaveDto body) {
         try {
             return ResponseEntity.ok(flatService.applyUnitTypeDefaultsToFlats(id, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/column-type-defaults")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public Map<String, ?> columnTypeDefaults(@PathVariable UUID id) {
+        return flatService.getColumnTypeDefaults(id);
+    }
+
+    @PostMapping(
+            value = "/{id}/column-type-defaults",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> saveColumnTypeDefaults(
+            @PathVariable UUID id, @Valid @RequestBody ColumnTypeDefaultsSaveDto body) {
+        try {
+            return ResponseEntity.ok(flatService.saveColumnTypeDefaults(id, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/{id}/column-type-defaults/apply",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> applyColumnTypeDefaultsToFlats(
+            @PathVariable UUID id, @Valid @RequestBody ColumnTypeDefaultsSaveDto body) {
+        try {
+            return ResponseEntity.ok(flatService.applyColumnTypeDefaultsToFlats(id, body));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }

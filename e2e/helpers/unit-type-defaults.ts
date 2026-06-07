@@ -17,6 +17,33 @@ export const E2E_2BHK_UNIT_DEFAULTS: UnitTypeDefaultsInput = {
   basePrice: 8_500_000,
 };
 
+export async function applyDefaultsResultToFlatCards(
+  page: Page,
+  updatedFlats: Array<{
+    id: string;
+    areaSqft?: number | string;
+    carpetAreaSqft?: number | string;
+    balconyAreaSqft?: number | string;
+    basePrice?: number | string;
+    gridTypeLabel?: string;
+    layoutColumnType?: string;
+  }>,
+) {
+  if (!updatedFlats.length) return;
+  for (const flat of updatedFlats) {
+    const card = page.locator('#flat-' + flat.id);
+    await expect(card).toBeVisible();
+    if (flat.areaSqft != null) await expect(card).toHaveAttribute('data-area', String(flat.areaSqft));
+    if (flat.carpetAreaSqft != null) {
+      await expect(card).toHaveAttribute('data-carpet-area', String(flat.carpetAreaSqft));
+    }
+    if (flat.balconyAreaSqft != null) {
+      await expect(card).toHaveAttribute('data-balcony-area', String(flat.balconyAreaSqft));
+    }
+    if (flat.basePrice != null) await expect(card).toHaveAttribute('data-price', String(flat.basePrice));
+  }
+}
+
 export async function openUnitTypeDefaultsModal(page: Page) {
   const openBtn = page.locator('#grid-configure-type-defaults-btn');
   await expect(openBtn).toBeVisible();

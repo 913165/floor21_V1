@@ -959,6 +959,7 @@ button.flat-floor-plan-link {
 #floor-plan-modal.modal,
 #flat-add-modal.modal,
 #unit-type-defaults-modal.modal,
+#column-type-defaults-modal.modal,
 #parking-config-modal.modal,
 #parking-link-modal.modal {
   z-index: 1060;
@@ -968,7 +969,11 @@ button.flat-floor-plan-link {
 #unit-type-defaults-modal .modal-content,
 #unit-type-defaults-modal .modal-content input,
 #unit-type-defaults-modal .modal-content select,
-#unit-type-defaults-modal .modal-content button {
+#unit-type-defaults-modal .modal-content button,
+#column-type-defaults-modal .modal-content,
+#column-type-defaults-modal .modal-content input,
+#column-type-defaults-modal .modal-content select,
+#column-type-defaults-modal .modal-content button {
   pointer-events: auto;
 }
 

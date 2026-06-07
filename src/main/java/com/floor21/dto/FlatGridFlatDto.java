@@ -8,6 +8,8 @@ public record FlatGridFlatDto(
         String flatNumber,
         int floorNumber,
         String bhkType,
+        /** Column label (A, B, C…) for this unit position across floors. */
+        String layoutColumnType,
         BigDecimal basePrice,
         BigDecimal areaSqft,
         BigDecimal carpetAreaSqft,

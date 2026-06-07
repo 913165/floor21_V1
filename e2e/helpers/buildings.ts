@@ -19,19 +19,18 @@ export const LAYOUT_BHK_TYPES = [
   '7BHK',
 ] as const;
 
-/** Default E2E mix: one of each common type per residential floor (must sum to flatsPerFloor). */
+/** Default E2E mix per residential floor: 1×1BHK, 3×2BHK, 1×3BHK (must sum to flatsPerFloor). */
 export const DEFAULT_E2E_BHK_MIX: Record<string, number> = {
-  STUDIO: 1,
   '1BHK': 1,
-  '2BHK': 1,
+  '2BHK': 3,
   '3BHK': 1,
 };
 
-/** 9 total floors = 3 parking + 6 residential; 4 mixed units per residential floor. */
+/** 9 total floors = 3 parking + 6 residential; 5 units per residential floor. */
 export const DEFAULT_E2E_BUILDING_LAYOUT = {
   totalFloors: 9,
   parkingFloors: 3,
-  flatsPerFloor: 4,
+  flatsPerFloor: 5,
   bhkPerFloor: DEFAULT_E2E_BHK_MIX,
 } as const;
 

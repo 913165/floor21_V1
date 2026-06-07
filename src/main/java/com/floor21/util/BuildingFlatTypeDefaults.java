@@ -22,29 +22,47 @@ public final class BuildingFlatTypeDefaults {
             Map<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> configured,
             List<Flat> buildingFlats,
             String unitType) {
+        return resolve(configured, null, buildingFlats, unitType, null);
+    }
+
+    public static Defaults resolve(
+            Map<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> bhkConfigured,
+            Map<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> columnConfigured,
+            List<Flat> buildingFlats,
+            String unitType,
+            String columnType) {
         String normalized = FlatUnitTypes.normalize(unitType);
         if (FlatUnitTypes.isParkingCode(normalized) || FlatUnitTypes.isAmenityCode(normalized)) {
             return new Defaults(null, null, null, null);
         }
-        BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry configuredEntry =
-                configured != null ? configured.get(normalized) : null;
+        String normalizedColumn = LayoutColumnTypes.normalize(columnType);
+        BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry columnEntry =
+                normalizedColumn != null && columnConfigured != null
+                        ? columnConfigured.get(normalizedColumn)
+                        : null;
+        BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry bhkEntry =
+                bhkConfigured != null ? bhkConfigured.get(normalized) : null;
         Optional<Flat> template = findTemplate(buildingFlats, normalized);
         BigDecimal area =
                 firstNonNull(
-                        configuredEntry != null ? configuredEntry.areaSqft() : null,
+                        columnEntry != null ? columnEntry.areaSqft() : null,
+                        bhkEntry != null ? bhkEntry.areaSqft() : null,
                         template.map(Flat::getAreaSqft).orElse(null),
                         BigDecimal.valueOf(ResidentialBhkTypes.defaultAreaSqft(normalized)));
         BigDecimal carpet =
                 firstNonNull(
-                        configuredEntry != null ? configuredEntry.carpetAreaSqft() : null,
+                        columnEntry != null ? columnEntry.carpetAreaSqft() : null,
+                        bhkEntry != null ? bhkEntry.carpetAreaSqft() : null,
                         template.map(Flat::getCarpetAreaSqft).orElse(null));
         BigDecimal balcony =
                 firstNonNull(
-                        configuredEntry != null ? configuredEntry.balconyAreaSqft() : null,
+                        columnEntry != null ? columnEntry.balconyAreaSqft() : null,
+                        bhkEntry != null ? bhkEntry.balconyAreaSqft() : null,
                         template.map(Flat::getBalconyAreaSqft).orElse(null));
         BigDecimal price =
                 firstNonNull(
-                        configuredEntry != null ? configuredEntry.basePrice() : null,
+                        columnEntry != null ? columnEntry.basePrice() : null,
+                        bhkEntry != null ? bhkEntry.basePrice() : null,
                         template.map(Flat::getBasePrice).orElse(null),
                         BigDecimal.valueOf(ResidentialBhkTypes.defaultBasePrice(normalized)));
         return new Defaults(area, carpet, balcony, price);
@@ -85,6 +103,22 @@ public final class BuildingFlatTypeDefaults {
                 entry.carpetAreaSqft(),
                 entry.balconyAreaSqft(),
                 entry.basePrice());
+    }
+
+    public static boolean shouldPropagateColumnDefaults(Flat flat, String columnType) {
+        if (flat == null || columnType == null || columnType.isBlank()) {
+            return false;
+        }
+        if (!columnType.equals(LayoutColumnTypes.normalize(flat.getLayoutColumnType()))) {
+            return false;
+        }
+        if (FlatUnitTypes.isDuplexSecondary(flat) || FlatUnitTypes.isMergeAbsorbed(flat)) {
+            return false;
+        }
+        if (Boolean.TRUE.equals(flat.getParking())) {
+            return false;
+        }
+        return !FlatUnitTypes.isAmenityCode(flat.getBhkType());
     }
 
     public static boolean shouldPropagateTypeDefaults(Flat flat, String unitType) {
