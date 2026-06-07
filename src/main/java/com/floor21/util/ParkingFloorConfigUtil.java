@@ -24,7 +24,7 @@ public final class ParkingFloorConfigUtil {
     public static final int DEFAULT_GRID_ROWS = 8;
     public static final int MAX_GRID_ROWS = 24;
     public static final int MAX_GRID_COLS = 40;
-    public static final int DEFAULT_CAR_SIZE_PERCENT = 100;
+    public static final int DEFAULT_CAR_SIZE_PERCENT = 180;
     public static final int MAX_CAR_SIZE_PERCENT = 200;
     public static final int MAX_FIXTURES_PER_KIND = 8;
     public static final BigDecimal DEFAULT_SLOT_AREA_SQFT = BigDecimal.valueOf(150);

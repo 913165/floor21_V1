@@ -1551,8 +1551,8 @@ body.modal-open .modal-backdrop {
 }
 
 .parking-plan__sheet--grid {
-  --parking-cell-base-width: 2.85rem;
-  --parking-cell-base-height: 3.5rem;
+  --parking-cell-base-width: 3.6rem;
+  --parking-cell-base-height: 4.75rem;
   --parking-car-scale: 1;
   --parking-cell-width: calc(var(--parking-cell-base-width) * var(--parking-car-scale, 1));
   --parking-cell-height: calc(var(--parking-cell-base-height) * var(--parking-car-scale, 1));
@@ -1608,13 +1608,14 @@ body.modal-open .modal-backdrop {
 }
 
 .parking-plan__cell {
-  border: 1px dashed rgba(108, 117, 125, 0.28);
-  border-radius: 0.15rem;
+  border: 1.5px dashed #ced4da;
+  border-radius: 0.375rem;
   width: var(--parking-cell-width, 2.85rem);
   height: var(--parking-cell-height, 3.5rem);
   min-height: var(--parking-cell-height, 3.5rem);
   z-index: 1;
   overflow: visible;
+  background: transparent;
 }
 
 .parking-plan__cell--drag-over {
@@ -1630,6 +1631,12 @@ body.modal-open .modal-backdrop {
   justify-self: center;
   overflow: visible;
   container-type: size;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.0625rem;
+  transition: transform 0.12s ease;
 }
 
 .parking-plan__sheet--grid .parking-plan__slot--vertical {
@@ -1648,12 +1655,26 @@ body.modal-open .modal-backdrop {
 .parking-plan__sheet--grid .parking-plan__bay {
   max-width: 100%;
   width: 100%;
-  height: 100%;
+  flex: 1 1 0;
   min-height: 0;
-  overflow: hidden;
-  border: 1px dashed rgba(108, 117, 125, 0.35);
-  border-radius: 0.15rem;
+  overflow: visible;
+  border: none;
+  border-radius: 0;
   box-sizing: border-box;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.parking-plan__sheet--grid .parking-plan__car-svg {
+  display: block;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  flex-shrink: 0;
+  transform: none;
 }
 
 .parking-plan__slot--horizontal {
@@ -1681,23 +1702,23 @@ body.modal-open .modal-backdrop {
   transform: none;
 }
 
-.parking-plan__sheet--grid .parking-plan__car-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  transform: none;
-}
-
 .parking-plan__sheet--grid .parking-plan__slot--horizontal .parking-plan__car-svg {
   transform: none;
 }
 
 .parking-plan__sheet--grid .parking-plan__slot-no {
-  font-size: calc(0.85rem * var(--parking-car-scale, 1));
+  position: static;
+  transform: none;
+  flex: 0 0 auto;
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--bs-secondary-color, #6c757d);
+  text-shadow: none;
+  line-height: 1;
 }
 
-.parking-plan__sheet--grid .parking-plan__slot-flat {
-  font-size: calc(0.58rem * var(--parking-car-scale, 1));
+.parking-plan__sheet--grid .parking-plan__slot--horizontal.parking-plan__slot--clickable:hover {
+  transform: rotate(90deg) scale(1.06);
 }
 
 .parking-plan__sheet:not(.parking-plan__sheet--grid) .parking-plan__slot--horizontal .parking-plan__car-svg {
@@ -1711,23 +1732,14 @@ body.modal-open .modal-backdrop {
 }
 
 .parking-plan__sheet--grid .parking-plan__slot--horizontal .parking-plan__slot-no {
-  transform: translate(-50%, -50%) rotate(-90deg);
-}
-
-.parking-plan__sheet--grid .parking-plan__slot--horizontal .parking-plan__slot-flat {
-  transform: translateX(-50%) rotate(-90deg);
+  transform: none;
 }
 
 .parking-plan__sheet:not(.parking-plan__sheet--grid) .parking-plan__slot--horizontal .parking-plan__slot-no {
   transform: translate(-50%, -50%) rotate(-90deg);
 }
 
-.parking-plan__sheet:not(.parking-plan__sheet--grid) .parking-plan__slot--horizontal .parking-plan__slot-flat {
-  transform: translateX(-50%) rotate(-90deg);
-}
-
-.parking-plan__slot--horizontal .parking-plan__slot-no,
-.parking-plan__slot--horizontal .parking-plan__slot-flat {
+.parking-plan__slot--horizontal .parking-plan__slot-no {
   z-index: 3;
 }
 
@@ -1770,90 +1782,104 @@ body.modal-open .modal-backdrop {
   border: none;
   background: transparent;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.125rem;
+  transition: transform 0.12s ease;
 }
 
 .parking-plan__bay {
   position: relative;
   width: 100%;
   max-width: 3.35rem;
+  flex: 1 1 0;
+  min-height: 0;
   height: 5.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .parking-plan__car-svg {
-  width: 100%;
+  width: auto;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   display: block;
   transform: scale(var(--parking-car-scale, 1));
   transform-origin: center center;
 }
 
-.parking-plan__car-shape {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+/* Top-down parking car (available = blue, booked = green) */
+.parking-plan__car-wheel {
+  fill: #042c53;
 }
 
-.parking-plan__bay-line {
-  stroke: #5c7a99;
-  stroke-width: 0.85;
-  stroke-dasharray: 2.5 2.5;
-  fill: none;
+.parking-plan__car-shell {
+  fill: #185fa5;
 }
 
-.parking-plan__car-body {
-  fill: #6eb5d8;
-  stroke: #4a8aab;
-  stroke-width: 0.55;
-  stroke-linejoin: round;
+.parking-plan__car-hood {
+  fill: #0c447c;
+}
+
+.parking-plan__car-glass-front {
+  fill: #b5d4f4;
+  opacity: 0.95;
 }
 
 .parking-plan__car-cabin {
-  fill: #1a2a38;
-  stroke: none;
+  fill: #0c447c;
 }
 
-.parking-plan__car-sunroof {
-  fill: #2a4154;
-  stroke: none;
+.parking-plan__car-glass-rear {
+  fill: #b5d4f4;
+  opacity: 0.8;
 }
 
-.parking-plan__car-mirror {
-  fill: #5a9fbf;
-  stroke: #3d7288;
-  stroke-width: 0.45;
-  stroke-linejoin: round;
+.parking-plan__car-light-front {
+  fill: #e6f1fb;
 }
 
-.parking-plan__car-accent--light {
-  fill: #f4f8fc;
-  stroke: none;
-  opacity: 0.92;
+.parking-plan__car-light-rear {
+  fill: #85b7eb;
 }
 
-.parking-plan__car-accent--tail {
-  fill: #e25555;
-  stroke: none;
-  opacity: 0.88;
+.parking-plan__car-bumper {
+  fill: #042c53;
+}
+
+.parking-plan__car-label-bg {
+  fill: #085041;
+  opacity: 0.9;
+}
+
+.parking-plan__car-label-text {
+  fill: #9fe1cb;
 }
 
 .parking-plan__slot-no {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 2;
-  font-weight: 800;
-  font-size: 0.78rem;
+  position: static;
+  font-weight: 500;
+  font-size: 0.625rem;
   line-height: 1;
-  color: #fff;
+  color: var(--bs-secondary-color, #6c757d);
   text-align: center;
-  letter-spacing: -0.02em;
   pointer-events: none;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+}
+
+.parking-plan__slot-no--booked {
+  color: #1d9e75;
+  font-weight: 700;
 }
 
 .parking-plan__slot--clickable {
   cursor: pointer;
+}
+
+.parking-plan__slot--clickable:hover {
+  transform: scale(1.06);
 }
 
 .parking-plan__slot--selected {
@@ -1862,51 +1888,50 @@ body.modal-open .modal-backdrop {
   z-index: 2;
 }
 
-.parking-plan__slot--clickable:hover .parking-plan__car-body {
-  fill: #84c8e8;
+.parking-plan__slot--clickable:hover .parking-plan__car-shell {
+  fill: #1f6fbd;
 }
 
-.parking-plan__slot--linked .parking-plan__car-body {
-  fill: #3ecf8e;
-  stroke: #28a86a;
+.parking-plan__slot--linked .parking-plan__car-wheel {
+  fill: #085041;
+}
+
+.parking-plan__slot--linked .parking-plan__car-shell {
+  fill: #1d9e75;
+}
+
+.parking-plan__slot--linked .parking-plan__car-hood {
+  fill: #17845f;
+}
+
+.parking-plan__slot--linked .parking-plan__car-glass-front {
+  fill: #9fe1cb;
+  opacity: 0.95;
 }
 
 .parking-plan__slot--linked .parking-plan__car-cabin {
-  fill: #123024;
+  fill: #17845f;
 }
 
-.parking-plan__slot--linked .parking-plan__car-sunroof {
-  fill: #1c4534;
+.parking-plan__slot--linked .parking-plan__car-glass-rear {
+  fill: #9fe1cb;
+  opacity: 0.8;
 }
 
-.parking-plan__slot--linked .parking-plan__car-mirror {
-  fill: #2ea872;
-  stroke: #22855a;
+.parking-plan__slot--linked .parking-plan__car-light-front {
+  fill: #e1f5ee;
 }
 
-.parking-plan__slot--linked .parking-plan__car-accent--light {
-  fill: #eafff5;
+.parking-plan__slot--linked .parking-plan__car-light-rear {
+  fill: #5dcaa5;
 }
 
-.parking-plan__slot--linked .parking-plan__car-accent--tail {
-  fill: #ff7070;
+.parking-plan__slot--linked .parking-plan__car-bumper {
+  fill: #085041;
 }
 
-.parking-plan__slot-flat {
-  position: absolute;
-  left: 50%;
-  bottom: 2px;
-  transform: translateX(-50%);
-  max-width: 92%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.52rem;
-  font-weight: 700;
-  line-height: 1.1;
-  color: #198754;
-  pointer-events: none;
-  z-index: 2;
+.parking-plan__slot--clickable.parking-plan__slot--linked:hover .parking-plan__car-shell {
+  fill: #22ad79;
 }
 
 .parking-plan__aisle {
@@ -1923,15 +1948,20 @@ body.modal-open .modal-backdrop {
   position: relative;
   z-index: 3;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.25rem;
   min-width: 2.1rem;
   min-height: 2.35rem;
-  border-radius: 0.35rem;
-  border: 2px solid transparent;
+  padding: 0.25rem 0.15rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
   box-sizing: border-box;
   user-select: none;
   pointer-events: auto;
+  text-align: center;
+  background: var(--bs-body-bg, #fff);
 }
 
 .parking-plan__fixture--draggable {
@@ -1944,15 +1974,27 @@ body.modal-open .modal-backdrop {
 }
 
 .parking-plan__fixture--car-lift {
-  background: #e3f2fd;
-  border-color: #64b5f6;
-  color: #1565c0;
+  border-color: #378add;
+}
+
+.parking-plan__fixture--car-lift .parking-plan__fixture-icon {
+  color: #378add;
+}
+
+.parking-plan__fixture--car-lift .parking-plan__fixture-label {
+  color: #185fa5;
 }
 
 .parking-plan__fixture--passenger-lift {
-  background: #e0f2f1;
-  border-color: #4db6ac;
-  color: #00695c;
+  border-color: #2dd4a0;
+}
+
+.parking-plan__fixture--passenger-lift .parking-plan__fixture-icon {
+  color: #2dd4a0;
+}
+
+.parking-plan__fixture--passenger-lift .parking-plan__fixture-label {
+  color: #0f6e56;
 }
 
 .parking-plan__fixture--gate {
@@ -1962,11 +2004,27 @@ body.modal-open .modal-backdrop {
 }
 
 .parking-plan__fixture-label {
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  line-height: 1.1;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: none;
+}
+
+.parking-plan__fixture-sub {
+  font-size: 0.625rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.parking-plan__fixture-icon {
+  width: 1.375rem;
+  height: 1.375rem;
+  flex: 0 0 auto;
+  display: block;
 }
 
 .parking-plan__sheet--grid .parking-plan__fixture {
@@ -1976,15 +2034,26 @@ body.modal-open .modal-backdrop {
 
 .parking-plan__sheet--grid .parking-plan__fixture--car-lift,
 .parking-plan__sheet--grid .parking-plan__fixture--passenger-lift {
-  width: 80%;
-  height: 80%;
+  width: 88%;
+  height: 88%;
   min-width: 0;
   min-height: 0;
 }
 
 .parking-plan__sheet--grid .parking-plan__fixture--car-lift .parking-plan__fixture-label,
 .parking-plan__sheet--grid .parking-plan__fixture--passenger-lift .parking-plan__fixture-label {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
+}
+
+.parking-plan__sheet--grid .parking-plan__fixture--car-lift .parking-plan__fixture-sub,
+.parking-plan__sheet--grid .parking-plan__fixture--passenger-lift .parking-plan__fixture-sub {
+  font-size: 0.625rem;
+}
+
+.parking-plan__sheet--grid .parking-plan__fixture--car-lift .parking-plan__fixture-icon,
+.parking-plan__sheet--grid .parking-plan__fixture--passenger-lift .parking-plan__fixture-icon {
+  width: 1.375rem;
+  height: 1.375rem;
 }
 
 .parking-plan__grid--dragging .parking-plan__fixture:not(.parking-plan__fixture--dragging) {
@@ -2023,81 +2092,38 @@ body.modal-open .modal-backdrop {
   border-color: #adb5bd;
 }
 
-[data-bs-theme="dark"] .parking-plan__car-shape {
-  filter: drop-shadow(0 1.5px 2.5px rgba(0, 0, 0, 0.55));
+[data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked) .parking-plan__car-shell {
+  fill: #2a6cb0;
 }
 
-[data-bs-theme="dark"] .parking-plan__bay-line {
-  stroke: #8ea8c4;
-}
-
-[data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked) .parking-plan__car-body {
-  fill: #5889a8;
-  stroke: #7aa3be;
-}
-
+[data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked) .parking-plan__car-hood,
 [data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked) .parking-plan__car-cabin {
-  fill: #15202b;
+  fill: #0f3a66;
 }
 
-[data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked) .parking-plan__car-sunroof {
-  fill: #223544;
+[data-bs-theme="dark"] .parking-plan__slot--clickable:not(.parking-plan__slot--linked):hover .parking-plan__car-shell {
+  fill: #3580c9;
 }
 
-[data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked) .parking-plan__car-mirror {
-  fill: #4d7894;
-  stroke: #6a93ad;
+[data-bs-theme="dark"] .parking-plan__slot--linked .parking-plan__car-shell {
+  fill: #1d9e75;
 }
 
-[data-bs-theme="dark"] .parking-plan__slot--clickable:not(.parking-plan__slot--linked):hover .parking-plan__car-body {
-  fill: #6fa3c4;
-  stroke: #93c5fd;
-}
-
-[data-bs-theme="dark"] .parking-plan__slot--linked .parking-plan__bay {
-  background: rgba(16, 185, 129, 0.12);
-  border-radius: 0.25rem;
-  outline: 1.5px solid rgba(52, 211, 153, 0.65);
-  outline-offset: -1px;
-}
-
-[data-bs-theme="dark"] .parking-plan__slot--linked .parking-plan__car-body {
-  fill: #34d399;
-  stroke: #10b981;
-  stroke-width: 0.65;
-}
-
+[data-bs-theme="dark"] .parking-plan__slot--linked .parking-plan__car-hood,
 [data-bs-theme="dark"] .parking-plan__slot--linked .parking-plan__car-cabin {
-  fill: #0f291f;
+  fill: #17845f;
 }
 
-[data-bs-theme="dark"] .parking-plan__slot--linked .parking-plan__car-sunroof {
-  fill: #174532;
+[data-bs-theme="dark"] .parking-plan__slot--clickable.parking-plan__slot--linked:hover .parking-plan__car-shell {
+  fill: #22ad79;
 }
 
-[data-bs-theme="dark"] .parking-plan__slot--linked .parking-plan__car-mirror {
-  fill: #2bb87f;
-  stroke: #1d9664;
-}
-
-[data-bs-theme="dark"] .parking-plan__slot--clickable.parking-plan__slot--linked:hover .parking-plan__car-body {
-  fill: #4ade80;
-  stroke: #a7f3d0;
+[data-bs-theme="dark"] .parking-plan__slot-no--booked {
+  color: #6ee7b7;
 }
 
 [data-bs-theme="dark"] .parking-plan__slot-no {
-  color: #fff;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.75);
-}
-
-[data-bs-theme="dark"] .parking-plan__slot--linked .parking-plan__slot-no {
-  text-shadow: 0 0 8px rgba(16, 185, 129, 0.85);
-}
-
-[data-bs-theme="dark"] .parking-plan__slot-flat {
-  color: #6ee7b7;
-  font-weight: 800;
-  text-shadow: 0 0 6px rgba(16, 185, 129, 0.55);
+  color: #adb5bd;
 }
 
 [data-bs-theme="dark"] .parking-plan__slot {
