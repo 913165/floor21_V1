@@ -76,6 +76,13 @@ export function formatFlowCredentials(flow: PlatformFlowState): string {
     lines.push(`    Partner 2: ${byPartner(flow.user2.email)}`);
     lines.push(`  Latest booking: ${flow.bookingCode}`);
   }
+  if (flow.unitTypeDefaults2Bhk) {
+    const d = flow.unitTypeDefaults2Bhk;
+    lines.push(
+      `  2BHK defaults: ${d.bhkType} · ${d.areaSqft} sq ft · carpet ${d.carpetAreaSqft} · price ${d.basePrice}`,
+    );
+  }
+
   if (flow.parkingLinks.length > 0) {
     lines.push(`  Parking links: ${flow.parkingLinks.length} (random sample of booked flats)`);
   }

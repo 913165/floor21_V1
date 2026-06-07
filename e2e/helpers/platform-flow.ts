@@ -1,6 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 import {
   createBuilding,
+  expectedFlatCountForType,
   expectedParkingFlatCount,
   expectedResidentialFlatCount,
   sampleBuildingData,
@@ -20,6 +21,11 @@ import {
 import { createProject, uniqueProjectName, waitForMainPanel } from './projects';
 import { createUser, sampleUserData, type NewUserInput } from './users';
 import { login, loginAsSuperAdmin } from './auth';
+import {
+  configureAndApplyUnitTypeDefaults,
+  E2E_2BHK_UNIT_DEFAULTS,
+  type UnitTypeDefaultsInput,
+} from './unit-type-defaults';
 
 export { PARKING_LINK_SAMPLE_SIZE } from './parking';
 /** Share of residential flats assigned to partners (remainder stays unassigned). */
@@ -68,6 +74,7 @@ export type PlatformFlowState = {
   clientLastName: string;
   clientDisplayName: string;
   bookingCode: string;
+  unitTypeDefaults2Bhk?: UnitTypeDefaultsInput;
 };
 
 export function createPlatformFlowState(): PlatformFlowState {
@@ -148,6 +155,14 @@ export async function adminCreateBuilding(page: Page, flow: PlatformFlowState) {
     projectName: flow.projectName,
     buildingName: flow.building.name,
   });
+}
+
+export async function adminConfigure2BhkUnitTypeDefaults(page: Page, flow: PlatformFlowState) {
+  await loginAsSuperAdmin(page);
+  const defaults = flow.unitTypeDefaults2Bhk ?? E2E_2BHK_UNIT_DEFAULTS;
+  const expectedCount = expectedFlatCountForType(flow.building, defaults.bhkType);
+  await configureAndApplyUnitTypeDefaults(page, flow.buildingId, defaults, expectedCount);
+  flow.unitTypeDefaults2Bhk = defaults;
 }
 
 export async function adminAddPartners(page: Page, flow: PlatformFlowState) {

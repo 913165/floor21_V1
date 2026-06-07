@@ -229,6 +229,7 @@ There is **one login page** (`/login`) for all roles. Resolution order: active `
 | GRID-A10 | Delete flat (no booking) | Delete flat | Removed | F | Manual |
 | GRID-A11 | Activate/deactivate flat | Toggle activation | Status updated | F | Manual |
 | GRID-A12 | Update flat status (HOLD) | HOLD from grid/modal | Status changes; partner rules apply | R | Manual |
+| GRID-A13 | Unit type defaults (2BHK) | Save config, then Apply to all flats | Saved defaults persist; all 2BHK cards updated | S | E2E Admin — 3b |
 
 ---
 
@@ -453,6 +454,7 @@ Applies to: Projects, Users, All buildings, Clients (where implemented).
 | E2E-01 | Admin — 1. Create project | PROJ-05, ACC-02 |
 | E2E-02 | Admin — 2. Create 2 users | USER-03, ACC-03 |
 | E2E-03 | Admin — 3. Create building | BLD-ADM-05, GRID-01, GRID-02, ACC-04 |
+| E2E-03b | Admin — 3b. Configure 2BHK unit type defaults | GRID-A13 |
 | E2E-04 | Admin — 4. Add partners | STAFF-02, ACC-03 |
 | E2E-05 | Admin — 5. Assign ~90% flats between partners | GRID-A06, GRID-P01 prep, ACC-05 |
 | E2E-06 | Partner — 1. Partner 1 sees assigned flats on grid | GRID-P01 |
