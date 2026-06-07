@@ -275,8 +275,8 @@ public final class ParkingFloorConfigUtil {
     }
 
     public static List<GridPlacement> defaultGridPlacements(int slotCount, int gridCols, int gridRows) {
-        int bottomCount = (int) Math.ceil(slotCount / 2.0);
-        int topCount = slotCount - bottomCount;
+        int topCount = (int) Math.ceil(slotCount / 2.0);
+        int bottomCount = slotCount - topCount;
         int topRowIdx = 0;
         int bottomRowIdx;
         if (topCount > 0 && bottomCount > 0) {
@@ -291,16 +291,16 @@ public final class ParkingFloorConfigUtil {
             topRowIdx = 0;
         }
         List<GridPlacement> out = new ArrayList<>();
-        for (int slot = 1; slot <= bottomCount; slot++) {
+        for (int slot = 1; slot <= topCount; slot++) {
             out.add(
                     new GridPlacement(
-                            slot, Math.min(slot - 1, gridCols - 1), bottomRowIdx, "vertical"));
+                            slot, Math.min(slot - 1, gridCols - 1), topRowIdx, "vertical"));
         }
-        for (int i = 0; i < topCount; i++) {
-            int slotNum = bottomCount + topCount - i;
+        for (int i = 0; i < bottomCount; i++) {
+            int slotNum = topCount + i + 1;
             out.add(
                     new GridPlacement(
-                            slotNum, Math.min(i, gridCols - 1), topRowIdx, "vertical"));
+                            slotNum, Math.min(i, gridCols - 1), bottomRowIdx, "vertical"));
         }
         return out;
     }
@@ -612,6 +612,65 @@ public final class ParkingFloorConfigUtil {
 
     public static void clearAll(Building building) {
         building.setParkingFloorConfig(null);
+    }
+
+    public static void removeFloor(Building building, int floorNumber) {
+        Map<Integer, FloorConfig> map = new LinkedHashMap<>(read(building));
+        if (!map.containsKey(floorNumber)) {
+            return;
+        }
+        map.remove(floorNumber);
+        if (map.isEmpty()) {
+            building.setParkingFloorConfig(null);
+        } else {
+            building.setParkingFloorConfig(toJson(map));
+        }
+    }
+
+    public static final int MAX_BASEMENT_FLOORS = 10;
+
+    public static boolean isBasementFloor(int floorNumber) {
+        return floorNumber < 0;
+    }
+
+    public static void assertBasementFloor(int floorNumber) {
+        if (!isBasementFloor(floorNumber)) {
+            throw new IllegalArgumentException("Invalid basement floor number.");
+        }
+        if (Math.abs(floorNumber) > MAX_BASEMENT_FLOORS) {
+            throw new IllegalArgumentException(
+                    "Maximum of " + MAX_BASEMENT_FLOORS + " basements allowed.");
+        }
+    }
+
+    /** Basements nearest ground first: -1, then -2, … */
+    public static List<Integer> listBasementFloors(Building building) {
+        return read(building).keySet().stream()
+                .filter(ParkingFloorConfigUtil::isBasementFloor)
+                .sorted(Comparator.reverseOrder())
+                .toList();
+    }
+
+    /** Next deeper basement floor (-1, then -2, …). */
+    public static int nextBasementFloorNumber(Building building) {
+        return listBasementFloors(building).stream()
+                .min(Integer::compareTo)
+                .map(f -> f - 1)
+                .orElse(-1);
+    }
+
+    public static String basementLabel(int floorNumber) {
+        int level = Math.abs(floorNumber);
+        return level <= 1 ? "Basement" : "Basement " + level;
+    }
+
+    public static String basementFlatNumber(int floorNumber, int unit) {
+        assertBasementFloor(floorNumber);
+        int level = Math.abs(floorNumber);
+        if (level == 1) {
+            return String.format("B%02d", unit);
+        }
+        return String.format("B%d%02d", level, unit);
     }
 
     public record GridRowAdjustResult(

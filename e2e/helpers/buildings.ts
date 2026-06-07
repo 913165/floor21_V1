@@ -182,6 +182,31 @@ export async function waitForFlatGridReady(page: Page): Promise<void> {
   );
 }
 
+/** Opens flat details modal. Clicks the card — not `.flat-quick-link` (sr-only, not Playwright-actionable). */
+export async function openFlatDetailsForFlat(page: Page, flatId: string): Promise<Locator> {
+  const card = page.locator(`#flat-${flatId}.flat-card`);
+  await expect(card).toBeVisible();
+  await card.scrollIntoViewIfNeeded();
+
+  const modal = page.locator('#flat-details-modal');
+  if (await modal.isVisible()) {
+    await modal.locator('.btn-close').click();
+    await expect(modal).toBeHidden();
+  }
+
+  await card.evaluate((el) => {
+    const quick = el.querySelector('.flat-quick-link') as HTMLButtonElement | null;
+    if (quick) {
+      quick.click();
+      return;
+    }
+    (el as HTMLElement).click();
+  });
+
+  await expect(modal).toBeVisible();
+  return modal;
+}
+
 export async function configureParkingFloors(
   page: Page,
   parkingFloors: number,

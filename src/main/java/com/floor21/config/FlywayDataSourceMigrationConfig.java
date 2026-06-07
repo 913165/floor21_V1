@@ -56,6 +56,7 @@ public class FlywayDataSourceMigrationConfig {
                 ensureBuildingsSkippedFloorsColumn(dataSource);
                 ensureBuildingsUnitTypeDefaultsColumn(dataSource);
                 ensureLayoutColumnTypeColumns(dataSource);
+                ensureGroundFloorColumns(dataSource);
                 ensureSuper2PlatformAdmin(dataSource);
                 return bean;
             }
@@ -186,6 +187,22 @@ public class FlywayDataSourceMigrationConfig {
         } catch (Exception ex) {
             throw new IllegalStateException(
                     "Could not ensure buildings.skipped_floor_numbers column exists", ex);
+        }
+    }
+
+    /** Idempotent guard when V13 is recorded in history but ground floor columns were never applied. */
+    private static void ensureGroundFloorColumns(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute(
+                    "ALTER TABLE buildings ADD COLUMN IF NOT EXISTS ground_floor_shop_count INT DEFAULT 0");
+            statement.execute(
+                    "ALTER TABLE buildings ADD COLUMN IF NOT EXISTS ground_floor_shop_area_sqft DECIMAL(10, 2)");
+            statement.execute(
+                    "ALTER TABLE buildings ADD COLUMN IF NOT EXISTS ground_floor_config TEXT");
+        } catch (Exception ex) {
+            throw new IllegalStateException(
+                    "Could not ensure buildings ground floor columns exist", ex);
         }
     }
 

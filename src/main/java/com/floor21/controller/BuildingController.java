@@ -3,6 +3,10 @@ package com.floor21.controller;
 import com.floor21.dto.BuildingConfigDto;
 import com.floor21.dto.FlatAddToFloorDto;
 import com.floor21.dto.FlatAdminUpdateDto;
+import com.floor21.dto.FlatGridDataDto;
+import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.dto.GroundFloorConfigDto;
+import com.floor21.dto.GroundFloorLayoutDto;
 import com.floor21.dto.ParkingFloorConfigDto;
 import com.floor21.dto.ParkingGridColDto;
 import com.floor21.dto.ParkingGridRowDto;
@@ -18,6 +22,7 @@ import com.floor21.service.BuildingService;
 import com.floor21.service.FlatGridExportService;
 import com.floor21.service.FlatService;
 import com.floor21.service.PartnerFlatAllocationService;
+import com.floor21.util.GroundFloorShopConfigUtil;
 import com.floor21.util.ParkingFloorConfigUtil;
 import com.floor21.util.ResidentialBhkTypes;
 import com.floor21.util.SkippedFloorsUtil;
@@ -30,6 +35,7 @@ import jakarta.validation.Valid;
 import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
@@ -40,6 +46,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -54,6 +61,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 @RequestMapping("/buildings")
 @RequiredArgsConstructor
+@Slf4j
 public class BuildingController {
 
     private final BuildingService buildingService;
@@ -219,8 +227,49 @@ public class BuildingController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (IllegalStateException ex) {
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", "Could not save image. Check server disk and permissions."));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/ground-floor-layout-image")
+    public ResponseEntity<Resource> groundFloorLayoutImage(@PathVariable UUID id) {
+        Building building = buildingService.resolveForAccess(id);
+        String webPath = GroundFloorShopConfigUtil.layoutImagePath(building);
+        if (webPath == null || webPath.isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+        return buildingFloorPlanService
+                .loadAsResource(webPath)
+                .map(
+                        resource -> {
+                            MediaType contentType =
+                                    MediaTypeFactory.getMediaType(resource.getFilename())
+                                            .orElse(MediaType.APPLICATION_OCTET_STREAM);
+                            return ResponseEntity.ok()
+                                    .cacheControl(CacheControl.noCache())
+                                    .contentType(contentType)
+                                    .body(resource);
+                        })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{id}/ground-floor-layout-image")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> uploadGroundFloorLayoutImage(
+            @PathVariable UUID id, @RequestParam("image") MultipartFile image) {
+        if (image == null || image.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Choose an image to upload."));
+        }
+        try {
+            buildingFloorPlanService.saveGroundFloorLayoutImage(id, image);
+            return ResponseEntity.ok(Map.of("success", "Ground floor layout image updated."));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", ex.getMessage()));
         }
     }
 
@@ -242,6 +291,8 @@ public class BuildingController {
         model.addAttribute("pageTitle", "Flat Grid — " + b.getBuildingName());
         model.addAttribute("building", b);
         model.addAttribute("floors", flatService.getGridData(id));
+        model.addAttribute("groundFloor", flatService.getGroundFloorSection(id));
+        model.addAttribute("basements", flatService.getBasementSections(id));
         model.addAttribute("config", cfg);
         model.addAttribute("focusFlatId", focusFlat);
         model.addAttribute("flatCount", flatCount);
@@ -395,8 +446,295 @@ public class BuildingController {
 
     @GetMapping("/{id}/flats/data")
     @ResponseBody
-    public Object flatData(@PathVariable UUID id) {
-        return flatService.getGridData(id);
+    public FlatGridDataDto flatData(@PathVariable UUID id) {
+        return flatService.getGridPageData(id);
+    }
+
+    @PostMapping(
+            value = "/{id}/ground-floor-config",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> configureGroundFloor(
+            @PathVariable UUID id, @Valid @RequestBody GroundFloorConfigDto body) {
+        try {
+            return ResponseEntity.ok(flatService.configureGroundFloor(id, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/ground-floor/plan")
+    @ResponseBody
+    public ResponseEntity<?> groundFloorShopPlan(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(flatService.getGroundFloorShopPlan(id));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/{id}/ground-floor/layout",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> saveGroundFloorLayout(
+            @PathVariable UUID id, @Valid @RequestBody GroundFloorLayoutDto body) {
+        try {
+            return ResponseEntity.ok(flatService.saveGroundFloorLayout(id, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/{id}/ground-floor/grid-row",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> adjustGroundFloorGridRow(
+            @PathVariable UUID id, @Valid @RequestBody ParkingGridRowDto body) {
+        try {
+            return ResponseEntity.ok(flatService.adjustGroundFloorGridRow(id, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/{id}/ground-floor/grid-col",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> adjustGroundFloorGridCol(
+            @PathVariable UUID id, @Valid @RequestBody ParkingGridColDto body) {
+        try {
+            return ResponseEntity.ok(flatService.adjustGroundFloorGridCol(id, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/basements/next-floor")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> nextBasementFloor(@PathVariable UUID id) {
+        Building building = buildingService.resolveForAccess(id);
+        int next = ParkingFloorConfigUtil.nextBasementFloorNumber(building);
+        if (Math.abs(next) > ParkingFloorConfigUtil.MAX_BASEMENT_FLOORS) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Maximum number of basements reached."));
+        }
+        return ResponseEntity.ok(
+                Map.of(
+                        "floorNumber",
+                        next,
+                        "label",
+                        ParkingFloorConfigUtil.basementLabel(next)));
+    }
+
+    @PostMapping(
+            value = "/{id}/basement/{floorNumber}/config",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> configureBasementFloor(
+            @PathVariable UUID id,
+            @PathVariable int floorNumber,
+            @Valid @RequestBody ParkingFloorConfigDto body) {
+        try {
+            return ResponseEntity.ok(flatService.configureBasement(id, floorNumber, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/{id}/basement-config",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> configureBasementLegacy(
+            @PathVariable UUID id, @Valid @RequestBody ParkingFloorConfigDto body) {
+        return configureBasementFloor(id, FlatService.BASEMENT_FLOOR_NUMBER, body);
+    }
+
+    @DeleteMapping("/{id}/basement/{floorNumber}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> removeBasementFloor(
+            @PathVariable UUID id, @PathVariable int floorNumber) {
+        try {
+            return ResponseEntity.ok(flatService.removeBasement(id, floorNumber));
+        } catch (ResourceNotFoundException ex) {
+            return ResponseEntity.status(404).body(Map.of("error", ex.getMessage()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            log.error("removeBasement failed for building {} floor {}", id, floorNumber, ex);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Could not remove basement. Try again or check server logs."));
+        }
+    }
+
+    @DeleteMapping("/{id}/basement")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> removeBasementLegacy(@PathVariable UUID id) {
+        return removeBasementFloor(id, FlatService.BASEMENT_FLOOR_NUMBER);
+    }
+
+    @GetMapping("/{id}/basement/{floorNumber}/plan")
+    @ResponseBody
+    public ResponseEntity<?> basementPlanFloor(
+            @PathVariable UUID id, @PathVariable int floorNumber) {
+        try {
+            return ResponseEntity.ok(flatService.getBasementPlan(id, floorNumber));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/basement/plan")
+    @ResponseBody
+    public ResponseEntity<?> basementPlanLegacy(@PathVariable UUID id) {
+        return basementPlanFloor(id, FlatService.BASEMENT_FLOOR_NUMBER);
+    }
+
+    @PostMapping(
+            value = "/{id}/basement/{floorNumber}/layout",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> saveBasementLayoutFloor(
+            @PathVariable UUID id,
+            @PathVariable int floorNumber,
+            @Valid @RequestBody ParkingLayoutDto body) {
+        try {
+            return ResponseEntity.ok(flatService.saveBasementLayout(id, floorNumber, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/{id}/basement/layout",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> saveBasementLayoutLegacy(
+            @PathVariable UUID id, @Valid @RequestBody ParkingLayoutDto body) {
+        return saveBasementLayoutFloor(id, FlatService.BASEMENT_FLOOR_NUMBER, body);
+    }
+
+    @PostMapping(
+            value = "/{id}/basement/{floorNumber}/grid-row",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> adjustBasementGridRowFloor(
+            @PathVariable UUID id,
+            @PathVariable int floorNumber,
+            @Valid @RequestBody ParkingGridRowDto body) {
+        try {
+            return ResponseEntity.ok(flatService.adjustBasementGridRow(id, floorNumber, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/{id}/basement/grid-row",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> adjustBasementGridRowLegacy(
+            @PathVariable UUID id, @Valid @RequestBody ParkingGridRowDto body) {
+        return adjustBasementGridRowFloor(id, FlatService.BASEMENT_FLOOR_NUMBER, body);
+    }
+
+    @PostMapping(
+            value = "/{id}/basement/{floorNumber}/grid-col",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> adjustBasementGridColFloor(
+            @PathVariable UUID id,
+            @PathVariable int floorNumber,
+            @Valid @RequestBody ParkingGridColDto body) {
+        try {
+            return ResponseEntity.ok(flatService.adjustBasementGridCol(id, floorNumber, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/{id}/basement/grid-col",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> adjustBasementGridColLegacy(
+            @PathVariable UUID id, @Valid @RequestBody ParkingGridColDto body) {
+        return adjustBasementGridColFloor(id, FlatService.BASEMENT_FLOOR_NUMBER, body);
+    }
+
+    @GetMapping("/{id}/basement/{floorNumber}/layout-image")
+    public ResponseEntity<Resource> basementLayoutImageFloor(
+            @PathVariable UUID id, @PathVariable int floorNumber) {
+        Building building = buildingService.resolveForAccess(id);
+        String webPath = ParkingFloorConfigUtil.layoutImagePath(building, floorNumber);
+        if (webPath == null || webPath.isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+        return buildingFloorPlanService
+                .loadAsResource(webPath)
+                .map(
+                        resource -> {
+                            MediaType contentType =
+                                    MediaTypeFactory.getMediaType(resource.getFilename())
+                                            .orElse(MediaType.APPLICATION_OCTET_STREAM);
+                            return ResponseEntity.ok()
+                                    .cacheControl(CacheControl.noCache())
+                                    .contentType(contentType)
+                                    .body(resource);
+                        })
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/basement-layout-image")
+    public ResponseEntity<Resource> basementLayoutImageLegacy(@PathVariable UUID id) {
+        return basementLayoutImageFloor(id, FlatService.BASEMENT_FLOOR_NUMBER);
+    }
+
+    @PostMapping("/{id}/basement/{floorNumber}/layout-image")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> uploadBasementLayoutImageFloor(
+            @PathVariable UUID id,
+            @PathVariable int floorNumber,
+            @RequestParam("image") MultipartFile image) {
+        if (image == null || image.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Choose an image to upload."));
+        }
+        try {
+            buildingFloorPlanService.saveBasementLayoutImage(id, floorNumber, image);
+            return ResponseEntity.ok(Map.of("success", "Basement layout image updated."));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/basement-layout-image")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> uploadBasementLayoutImageLegacy(
+            @PathVariable UUID id, @RequestParam("image") MultipartFile image) {
+        return uploadBasementLayoutImageFloor(id, FlatService.BASEMENT_FLOOR_NUMBER, image);
     }
 
     @PostMapping(value = "/{id}/flats/floor/{floorNumber}/details", consumes = MediaType.APPLICATION_JSON_VALUE)

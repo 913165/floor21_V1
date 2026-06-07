@@ -4,8 +4,10 @@ import {
   expectedFlatCountForType,
   expectedParkingFlatCount,
   expectedResidentialFlatCount,
+  openFlatDetailsForFlat,
   sampleBuildingData,
   waitForBuildingInList,
+  waitForFlatGridReady,
   type NewBuildingInput,
 } from './buildings';
 import { createBookingForFlat } from './bookings';
@@ -187,6 +189,7 @@ export async function adminAddPartners(page: Page, flow: PlatformFlowState) {
 export async function adminAssignFlats(page: Page, flow: PlatformFlowState) {
   await loginAsSuperAdmin(page);
   await page.goto(`buildings/${flow.buildingId}/flats`, { waitUntil: 'commit' });
+  await waitForFlatGridReady(page);
   const adminGrid = await waitForMainPanel(page);
   await expect(adminGrid.locator('#flat-grid')).toBeVisible();
 
@@ -362,15 +365,25 @@ export async function expectPartnerBookableFlatCount(
 }
 
 export async function assignFlatToPartner(page: Page, flatId: string, partnerName: string) {
-  const card = page.locator(`#flat-${flatId}`);
-  const detailsBtn = card.locator('.flat-quick-link');
-  await detailsBtn.scrollIntoViewIfNeeded();
-  await detailsBtn.click();
+  const modal = await openFlatDetailsForFlat(page, flatId);
+  const partnerSelect = modal.locator('#admin-partner');
+  await expect(partnerSelect.getByRole('option', { name: partnerName })).toHaveCount(1, {
+    timeout: 15_000,
+  });
+  await partnerSelect.selectOption({ label: partnerName });
 
-  const modal = page.locator('#flat-details-modal');
-  await expect(modal).toBeVisible();
-  await modal.locator('#admin-partner').selectOption({ label: partnerName });
+  const saveResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().includes('/flats/') &&
+      response.url().includes('/partner') &&
+      response.ok(),
+    { timeout: 30_000 },
+  );
   await modal.locator('#admin-partner-save').click();
+  await saveResponse;
+
+  const card = page.locator(`#flat-${flatId}`);
   await expect(card).toContainText(partnerName);
 
   await modal.locator('.btn-close').click();

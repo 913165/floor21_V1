@@ -1099,6 +1099,7 @@ button.flat-floor-plan-link {
 #unit-type-defaults-modal.modal,
 #column-type-defaults-modal.modal,
 #parking-config-modal.modal,
+#ground-floor-config-modal.modal,
 #parking-link-modal.modal {
   z-index: 1060;
   pointer-events: auto;
@@ -1111,7 +1112,15 @@ button.flat-floor-plan-link {
 #column-type-defaults-modal .modal-content,
 #column-type-defaults-modal .modal-content input,
 #column-type-defaults-modal .modal-content select,
-#column-type-defaults-modal .modal-content button {
+#column-type-defaults-modal .modal-content button,
+#ground-floor-config-modal .modal-content,
+#ground-floor-config-modal .modal-content input,
+#ground-floor-config-modal .modal-content select,
+#ground-floor-config-modal .modal-content button,
+#parking-config-modal .modal-content,
+#parking-config-modal .modal-content input,
+#parking-config-modal .modal-content select,
+#parking-config-modal .modal-content button {
   pointer-events: auto;
 }
 
@@ -1490,6 +1499,17 @@ body.modal-open .modal-backdrop {
 }
 
 .flat-parking-section__layout-links {
+  margin-top: 0.15rem;
+}
+
+.ground-floor-layout-upload-link,
+.ground-floor-layout-view-link,
+.flat-ground-floor-section__layout-links .btn-link {
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+
+.flat-ground-floor-section__layout-links {
   margin-top: 0.15rem;
 }
 
@@ -3110,3 +3130,344 @@ body.modal-open .modal-backdrop {
   font-size: 0.7em;
   opacity: 0.85;
 }
+
+/* Ground floor shop panel (mirrors parking section layout; separate from parking styles) */
+.flat-ground-floor-section {
+  margin-top: 0.25rem;
+}
+
+.flat-basement-section {
+  margin-top: 0.25rem;
+}
+
+.flat-basement-section--pending {
+  display: none;
+}
+
+.flat-ground-floor-section {
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed rgba(var(--bs-body-color-rgb), 0.18);
+}
+
+.flat-ground-floor-section__panel {
+  width: 100%;
+  min-height: 5.5rem;
+  border: 1px solid #6c757d;
+  border-radius: 0.5rem;
+  background: #e2e3e5;
+}
+
+.flat-ground-floor-section--pending {
+  display: none;
+}
+
+.flat-ground-floor-section--split {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.flat-ground-floor-section__layout {
+  display: block;
+  padding: 0.75rem 1rem;
+}
+
+.flat-ground-floor-section--split .flat-ground-floor-section__layout {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.flat-ground-floor-section__summary {
+  min-width: 0;
+}
+
+.flat-ground-floor-section--split .flat-ground-floor-section__summary {
+  flex: 0 0 11rem;
+  max-width: 40%;
+}
+
+.flat-ground-floor-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+}
+
+.flat-ground-floor-section__title {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.flat-ground-floor-section__meta {
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+}
+
+.flat-ground-floor-section__plan {
+  display: none;
+  min-width: 0;
+}
+
+.flat-ground-floor-section--split .flat-ground-floor-section__plan {
+  display: block;
+  flex: 0 0 auto;
+  width: fit-content;
+  max-width: calc(100% - 12rem);
+  overflow-x: auto;
+}
+
+.flat-ground-floor-section__plan-root {
+  width: fit-content;
+}
+
+.shop-plan__grid {
+  display: grid;
+  width: fit-content;
+  max-width: 100%;
+  grid-template-columns: repeat(var(--shop-grid-cols, 14), calc(3.6rem * var(--shop-car-scale, 1)));
+  grid-template-rows: repeat(var(--shop-grid-rows, 8), calc(4rem * var(--shop-car-scale, 1)));
+  gap: calc(3px * var(--shop-car-scale, 1));
+}
+
+.shop-plan__cell {
+  border: 1.5px dashed #ced4da;
+  border-radius: 0.375rem;
+  width: 3.6rem;
+  height: 4rem;
+  min-height: 4rem;
+  z-index: 1;
+  background: transparent;
+}
+
+.shop-plan__slot {
+  z-index: 2;
+  align-self: center;
+  justify-self: center;
+  width: calc(3.6rem * var(--shop-car-scale, 1));
+  height: calc(4rem * var(--shop-car-scale, 1));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.0625rem;
+  cursor: pointer;
+}
+
+.shop-plan__slot--clickable:hover {
+  filter: brightness(1.05);
+}
+
+.shop-plan__slot--selected {
+  outline: 3px solid var(--bs-primary);
+  outline-offset: 2px;
+  z-index: 2;
+}
+
+.shop-plan__bay {
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.35rem;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
+}
+
+.shop-plan__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.shop-plan__slot-no {
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.shop-plan__unit-no {
+  font-size: 0.58rem;
+  line-height: 1;
+  color: var(--bs-secondary-color);
+}
+
+.shop-plan__slot--available .shop-plan__bay {
+  background: #d1e7dd;
+  border-color: #198754;
+  color: #0f5132;
+}
+
+.shop-plan__slot--booked .shop-plan__bay {
+  background: #cfe2ff;
+  border-color: #0d6efd;
+  color: #084298;
+}
+
+.shop-plan__slot--hold .shop-plan__bay {
+  background: #fff3cd;
+  border-color: #ffc107;
+  color: #664d03;
+}
+
+.shop-plan__slot--deactivated .shop-plan__bay {
+  background: #e2e3e5;
+  border-color: #6c757d;
+  color: #495057;
+}
+
+.shop-plan__layout-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.shop-plan__layout-hint {
+  line-height: 1.35;
+}
+
+.shop-plan__grid-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.shop-plan__cell--drop.shop-plan__cell--drag-over {
+  background: rgba(13, 110, 253, 0.12);
+  border-color: #0d6efd;
+}
+
+.shop-plan__grid--dragging .shop-plan__slot--draggable,
+.shop-plan__grid--dragging .shop-plan__fixture--draggable {
+  cursor: grabbing;
+}
+
+.shop-plan__slot--dragging,
+.shop-plan__fixture--dragging {
+  opacity: 0.55;
+}
+
+.shop-plan__slot--parking.shop-plan__slot--clickable {
+  cursor: pointer;
+}
+
+.shop-plan__slot--parking.shop-plan__slot--linked .shop-plan__car-body {
+  fill: #0d6efd;
+}
+
+.shop-plan__slot--parking.shop-plan__slot--linked .shop-plan__car-roof {
+  fill: #6ea8fe;
+}
+
+.shop-plan__linked-flat {
+  position: absolute;
+  left: 50%;
+  bottom: 0.1rem;
+  transform: translateX(-50%);
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #084298;
+  white-space: nowrap;
+  max-width: 95%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shop-plan__slot-no--linked {
+  color: #0d6efd;
+  font-weight: 700;
+}
+
+.shop-plan__slot--parking .shop-plan__bay--parking {
+  position: relative;
+  background: #f8f9fa;
+  border-color: #adb5bd;
+  padding: 0.1rem;
+}
+
+.shop-plan__slot--parking .shop-plan__car-svg {
+  width: calc(100% * var(--shop-parking-car-scale, 1));
+  height: auto;
+  max-height: 100%;
+}
+
+.shop-plan__car-body {
+  fill: #6c757d;
+}
+
+.shop-plan__car-roof {
+  fill: #adb5bd;
+}
+
+.shop-plan__car-wheel {
+  fill: #343a40;
+}
+
+.shop-plan__fixture {
+  z-index: 3;
+  align-self: center;
+  justify-self: center;
+  width: 3.6rem;
+  height: 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  border-radius: 0.35rem;
+  border: 2px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.shop-plan__fixture--gate {
+  background: #fff3cd;
+  border-color: #ffc107;
+  color: #664d03;
+}
+
+.shop-plan__fixture--car-lift {
+  background: #e7f1ff;
+  border-color: #6ea8fe;
+  color: #084298;
+}
+
+.shop-plan__fixture--passenger-lift {
+  background: #e2e3e5;
+  border-color: #6c757d;
+  color: #343a40;
+}
+
+.shop-plan__fixture-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.shop-plan__fixture-sub {
+  font-size: 0.52rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.shop-plan__fixture--draggable {
+  cursor: grab;
+}
+
+[data-bs-theme="dark"] .flat-ground-floor-section__panel {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(173, 181, 189, 0.35);
+}
+
+[data-bs-theme="dark"] .shop-plan__cell {
+  border-color: rgba(173, 181, 189, 0.35);
+}
+

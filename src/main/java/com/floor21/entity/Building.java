@@ -11,6 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -59,6 +60,17 @@ public class Building {
     /** JSON map of floor number → parking slot count / configured flag. */
     @Column(name = "parking_floor_config", columnDefinition = "TEXT")
     private String parkingFloorConfig;
+
+    /** Number of retail shop units on ground floor (floor 0). */
+    @Column(name = "ground_floor_shop_count")
+    private Integer groundFloorShopCount = 0;
+
+    @Column(name = "ground_floor_shop_area_sqft", precision = 10, scale = 2)
+    private BigDecimal groundFloorShopAreaSqft;
+
+    /** JSON grid layout for ground-floor shop slots. */
+    @Column(name = "ground_floor_config", columnDefinition = "TEXT")
+    private String groundFloorConfig;
 
     /** JSON map of unit type → default super built-up, carpet, balcony, and price. */
     @Column(name = "unit_type_defaults", columnDefinition = "TEXT")

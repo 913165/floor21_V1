@@ -6,6 +6,8 @@ import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.security.TenantContext;
+import com.floor21.service.FlatService;
+import com.floor21.util.GroundFloorShopConfigUtil;
 import com.floor21.util.ParkingFloorConfigUtil;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -70,6 +72,35 @@ public class BuildingFloorPlanService {
         String slotLabel = "parking-floor-" + floorNumber;
         String webPath = storeOne(buildingDir, buildingId, slotLabel, image, previous, base);
         ParkingFloorConfigUtil.setLayoutImagePath(building, floorNumber, webPath);
+        buildingRepository.save(building);
+    }
+
+    @Transactional
+    public void saveBasementLayoutImage(UUID buildingId, int floorNumber, MultipartFile image) {
+        ParkingFloorConfigUtil.assertBasementFloor(floorNumber);
+        Building building = requireBuildingForAccess(buildingId);
+        if (!ParkingFloorConfigUtil.isConfigured(building, floorNumber)) {
+            throw new IllegalArgumentException(
+                    ParkingFloorConfigUtil.basementLabel(floorNumber) + " is not configured yet.");
+        }
+        Path base = Paths.get(uploadRoot).toAbsolutePath().normalize();
+        Path buildingDir = base.resolve("buildings").resolve(buildingId.toString());
+        String previous = ParkingFloorConfigUtil.layoutImagePath(building, floorNumber);
+        String slotLabel = "basement-" + Math.abs(floorNumber) + "-layout";
+        String webPath =
+                storeOne(buildingDir, buildingId, slotLabel, image, previous, base);
+        ParkingFloorConfigUtil.setLayoutImagePath(building, floorNumber, webPath);
+        buildingRepository.save(building);
+    }
+
+    @Transactional
+    public void saveGroundFloorLayoutImage(UUID buildingId, MultipartFile image) {
+        Building building = requireBuildingForAccess(buildingId);
+        Path base = Paths.get(uploadRoot).toAbsolutePath().normalize();
+        Path buildingDir = base.resolve("buildings").resolve(buildingId.toString());
+        String previous = GroundFloorShopConfigUtil.layoutImagePath(building);
+        String webPath = storeOne(buildingDir, buildingId, "ground-floor-layout", image, previous, base);
+        GroundFloorShopConfigUtil.setLayoutImagePath(building, webPath);
         buildingRepository.save(building);
     }
 

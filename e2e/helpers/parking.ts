@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import { defaultParkingSlotsPerFloor, type NewBuildingInput } from './buildings';
+import { defaultParkingSlotsPerFloor, openFlatDetailsForFlat, type NewBuildingInput } from './buildings';
 import { waitForMainPanel } from './projects';
 
 export type ParkingSlotLocation = {
@@ -100,10 +100,7 @@ export async function expectResidentialFlatShowsParkingLink(
 ) {
   const card = page.locator(`#flat-${residentialFlatId}`);
   await card.scrollIntoViewIfNeeded();
-  await card.locator('.flat-quick-link').click();
-
-  const modal = page.locator('#flat-details-modal');
-  await expect(modal).toBeVisible();
+  const modal = await openFlatDetailsForFlat(page, residentialFlatId);
   const parkingLinks = modal.locator('#panel-parking-links');
   await expect(parkingLinks).toBeVisible();
   const list = parkingLinks.locator('#panel-parking-links-list');

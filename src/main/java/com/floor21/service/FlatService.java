@@ -9,8 +9,14 @@ import com.floor21.dto.UnitTypeDefaultsDto;
 import com.floor21.dto.UnitTypeDefaultsSaveDto;
 import com.floor21.dto.UnitTypeDefaultsSaveResultDto;
 import com.floor21.dto.FlatAdminUpdateDto;
+import com.floor21.dto.FlatGridBasementDto;
+import com.floor21.dto.FlatGridDataDto;
 import com.floor21.dto.FlatGridFlatDto;
 import com.floor21.dto.FlatGridFloorDto;
+import com.floor21.dto.FlatGridGroundFloorDto;
+import com.floor21.dto.GroundFloorConfigDto;
+import com.floor21.dto.GroundFloorLayoutDto;
+import com.floor21.dto.GroundFloorShopPlanDto;
 import com.floor21.dto.FlatMergeCandidateDto;
 import com.floor21.dto.FlatMergeDto;
 import com.floor21.dto.FloorMergeSplitResult;
@@ -42,10 +48,13 @@ import com.floor21.util.BuildingUnitTypeDefaultsUtil;
 import com.floor21.util.LayoutColumnTypes;
 import com.floor21.util.FlatAdminResponseMaps;
 import com.floor21.util.FlatUnitTypes;
+import com.floor21.util.GroundFloorShopConfigUtil;
+import com.floor21.util.GroundFloorStoredConfig;
 import com.floor21.util.ParkingFloorConfigUtil;
 import com.floor21.util.ResidentialBhkTypes;
 import com.floor21.util.SkippedFloorsUtil;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Set;
 import java.util.Locale;
@@ -69,6 +78,11 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class FlatService {
 
+    public static final int GROUND_FLOOR_NUMBER = 0;
+    public static final int BASEMENT_FLOOR_NUMBER = -1;
+    public static final int MAX_GROUND_FLOOR_SHOPS = 50;
+    public static final int MAX_BASEMENT_SLOTS = 50;
+
     private final FlatRepository flatRepository;
     private final BuildingRepository buildingRepository;
     private final BuildingService buildingService;
@@ -90,6 +104,14 @@ public class FlatService {
     }
 
     @Transactional(readOnly = true)
+    public FlatGridDataDto getGridPageData(UUID buildingId) {
+        return new FlatGridDataDto(
+                getGridData(buildingId),
+                getGroundFloorSection(buildingId),
+                getBasementSections(buildingId));
+    }
+
+    @Transactional(readOnly = true)
     public List<FlatGridFloorDto> getGridData(UUID buildingId) {
         Building building = buildingService.resolveForAccess(buildingId);
         UUID builderId = building.getBuilder().getId();
@@ -108,6 +130,9 @@ public class FlatService {
         orderedFloors.sort(Comparator.reverseOrder());
         List<FlatGridFloorDto> rows = new ArrayList<>();
         for (Integer floor : orderedFloors) {
+            if (floor == GROUND_FLOOR_NUMBER || ParkingFloorConfigUtil.isBasementFloor(floor)) {
+                continue;
+            }
             List<FlatGridFlatDto> cells =
                     byFloor.get(floor).stream()
                             .sorted(Comparator.comparing(Flat::getUnitNumber))
@@ -167,6 +192,791 @@ public class FlatService {
                             parkingHasLayoutImage));
         }
         return rows;
+    }
+
+    @Transactional(readOnly = true)
+    public FlatGridGroundFloorDto getGroundFloorSection(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        int shopCount =
+                building.getGroundFloorShopCount() != null ? building.getGroundFloorShopCount() : 0;
+        BigDecimal shopArea =
+                building.getGroundFloorShopAreaSqft() != null
+                        ? building.getGroundFloorShopAreaSqft()
+                        : GroundFloorShopConfigUtil.DEFAULT_SHOP_AREA_SQFT;
+        List<Flat> shopFlats =
+                flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                        buildingId, builderId, GROUND_FLOOR_NUMBER);
+        shopFlats =
+                shopFlats.stream().filter(f -> FlatUnitTypes.isShopCode(f.getBhkType())).toList();
+        if (shopCount <= 0 && shopFlats.isEmpty()) {
+            return FlatGridGroundFloorDto.empty();
+        }
+        Map<UUID, UUID> partnerIds = partnerFlatAllocationService.getFlatOwnerByPartnerId(buildingId);
+        Map<UUID, String> partnerLabels = partnerFlatAllocationService.getFlatPartnerLabels(buildingId);
+        List<Flat> allFlats =
+                flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
+                        buildingId, builderId);
+        Map<UUID, Booking> bookingByFlatId = activeBookingsByFlatId(builderId, shopFlats);
+        Map<UUID, Flat> flatById =
+                allFlats.stream()
+                        .collect(Collectors.toMap(Flat::getId, f -> f, (a, b) -> a, HashMap::new));
+        List<FlatGridFlatDto> shops =
+                shopFlats.stream()
+                        .map(
+                                f ->
+                                        toGridFlatDto(
+                                                f,
+                                                bookingByFlatId,
+                                                flatById,
+                                                buildingId,
+                                                partnerIds,
+                                                partnerLabels))
+                        .toList();
+        boolean configured = GroundFloorShopConfigUtil.isConfigured(building) && !shops.isEmpty();
+        GroundFloorStoredConfig stored = GroundFloorShopConfigUtil.readStored(building);
+        ParkingFloorConfigUtil.FloorConfig config = stored.shops();
+        int combinedSlots = shops.size() + stored.parkingSlotCount();
+        int minGridRows =
+                ParkingFloorConfigUtil.minGridRowsForSlotCount(
+                        configured ? combinedSlots : Math.max(shopCount, 1));
+        int gridRows =
+                configured && config.gridRows() != null ? config.gridRows() : minGridRows;
+        boolean hasLayoutImage = GroundFloorShopConfigUtil.layoutImagePath(building) != null;
+        int parkingSlotCount = stored.parkingSlotCount();
+        BigDecimal parkingSlotAreaSqft =
+                stored.parking() != null && stored.parking().slotAreaSqft() != null
+                        ? stored.parking().slotAreaSqft()
+                        : ParkingFloorConfigUtil.DEFAULT_SLOT_AREA_SQFT;
+        int shopSizePercent = GroundFloorShopConfigUtil.resolveShopSizePercent(config);
+        int parkingCarSizePercent =
+                stored.parking() != null && stored.parking().carSizePercent() != null
+                        ? ParkingFloorConfigUtil.normalizeCarSizePercent(
+                                stored.parking().carSizePercent())
+                        : ParkingFloorConfigUtil.DEFAULT_CAR_SIZE_PERCENT;
+        return new FlatGridGroundFloorDto(
+                configured,
+                configured ? shops.size() : shopCount,
+                shopRangeLabel(shops),
+                shops,
+                shopArea,
+                gridRows,
+                minGridRows,
+                hasLayoutImage,
+                parkingSlotCount,
+                parkingSlotAreaSqft,
+                shopSizePercent,
+                parkingCarSizePercent,
+                config.resolvedCarLiftCount(),
+                config.resolvedPassengerLiftCount(),
+                config.resolvedGateCount());
+    }
+
+    @Transactional(readOnly = true)
+    public List<FlatGridBasementDto> getBasementSections(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        return ParkingFloorConfigUtil.listBasementFloors(building).stream()
+                .map(f -> getBasementSection(buildingId, f))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public FlatGridBasementDto getBasementSection(UUID buildingId, int floorNumber) {
+        ParkingFloorConfigUtil.assertBasementFloor(floorNumber);
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!ParkingFloorConfigUtil.isConfigured(building, floorNumber)) {
+            throw new IllegalArgumentException(
+                    ParkingFloorConfigUtil.basementLabel(floorNumber) + " is not configured.");
+        }
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> flats =
+                flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                        buildingId, builderId, floorNumber);
+        flats =
+                flats.stream().filter(f -> FlatUnitTypes.isParkingCode(f.getBhkType())).toList();
+        if (flats.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "No parking slots found for " + ParkingFloorConfigUtil.basementLabel(floorNumber) + ".");
+        }
+        ParkingFloorConfigUtil.FloorConfig config =
+                ParkingFloorConfigUtil.forFloor(building, floorNumber);
+        int slotCount = flats.size();
+        int minGridRows = ParkingFloorConfigUtil.minGridRowsForSlotCount(slotCount);
+        int gridRows =
+                config.gridRows() != null ? config.gridRows() : minGridRows;
+        Flat first = flats.get(0);
+        return new FlatGridBasementDto(
+                floorNumber,
+                ParkingFloorConfigUtil.basementLabel(floorNumber),
+                true,
+                slotCount,
+                parkingRangeLabelFromFlats(flats),
+                ParkingFloorConfigUtil.resolveCarSizePercent(config),
+                gridRows,
+                minGridRows,
+                config.resolvedCarLiftCount(),
+                config.resolvedPassengerLiftCount(),
+                config.resolvedGateCount(),
+                ParkingFloorConfigUtil.resolveSlotAreaSqft(config),
+                ParkingFloorConfigUtil.layoutImagePath(building, floorNumber) != null,
+                first.getId(),
+                first.getAreaSqft(),
+                first.getBasePrice());
+    }
+
+    @Transactional
+    public ParkingPlanDto configureBasement(
+            UUID buildingId, int floorNumber, ParkingFloorConfigDto dto) {
+        return configureBasementParking(buildingId, floorNumber, dto);
+    }
+
+    @Transactional
+    public List<FlatGridBasementDto> removeBasement(UUID buildingId, int floorNumber) {
+        ParkingFloorConfigUtil.assertBasementFloor(floorNumber);
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> flats =
+                flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                        buildingId, builderId, floorNumber);
+        for (Flat flat : flats) {
+            if (bookingRepository.countByFlatId(flat.getId()) > 0) {
+                throw new IllegalArgumentException(
+                        "Cannot remove "
+                                + ParkingFloorConfigUtil.basementLabel(floorNumber)
+                                + " while slot "
+                                + flat.getFlatNumber()
+                                + " has a booking record.");
+            }
+            partnerFlatAllocationService.clearAssignmentForFlat(flat.getId());
+            buildingFloorPlanService.deleteStoredWebPath(flat.getLayoutImagePath());
+        }
+        String layoutImage = ParkingFloorConfigUtil.layoutImagePath(building, floorNumber);
+        if (layoutImage != null && !layoutImage.isBlank()) {
+            buildingFloorPlanService.deleteStoredWebPath(layoutImage);
+        }
+        flatRepository.deleteAll(flats);
+        flatRepository.flush();
+        ParkingFloorConfigUtil.removeFloor(building, floorNumber);
+        buildingRepository.save(building);
+        return getBasementSections(buildingId);
+    }
+
+    @Transactional(readOnly = true)
+    public ParkingPlanDto getBasementPlan(UUID buildingId, int floorNumber) {
+        return getBasementParkingPlan(buildingId, floorNumber);
+    }
+
+    @Transactional
+    public ParkingPlanDto saveBasementLayout(UUID buildingId, int floorNumber, ParkingLayoutDto dto) {
+        return saveBasementParkingLayout(buildingId, floorNumber, dto);
+    }
+
+    @Transactional
+    public ParkingPlanDto adjustBasementGridRow(
+            UUID buildingId, int floorNumber, ParkingGridRowDto dto) {
+        return adjustBasementParkingGridRow(buildingId, floorNumber, dto);
+    }
+
+    @Transactional
+    public ParkingPlanDto adjustBasementGridCol(
+            UUID buildingId, int floorNumber, ParkingGridColDto dto) {
+        return adjustBasementParkingGridCol(buildingId, floorNumber, dto);
+    }
+
+    private ParkingPlanDto configureBasementParking(
+            UUID buildingId, int floorNumber, ParkingFloorConfigDto dto) {
+        ParkingFloorConfigUtil.assertBasementFloor(floorNumber);
+        int slotCount = dto.slotCount();
+        if (slotCount < 1 || slotCount > MAX_BASEMENT_SLOTS) {
+            throw new IllegalArgumentException(
+                    "Basement slot count must be between 1 and " + MAX_BASEMENT_SLOTS + ".");
+        }
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> existing =
+                new ArrayList<>(
+                        flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                        buildingId, builderId, floorNumber)
+                                .stream()
+                                .filter(f -> FlatUnitTypes.isParkingCode(f.getBhkType()))
+                                .toList());
+        Builder builder = building.getBuilder();
+        Instant now = Instant.now();
+        while (existing.size() > slotCount) {
+            Flat last = existing.remove(existing.size() - 1);
+            flatRepository.delete(last);
+        }
+        flatRepository.flush();
+        BigDecimal slotAreaSqft = ParkingFloorConfigUtil.normalizeSlotAreaSqft(dto.slotAreaSqft());
+        int priorCount = existing.size();
+        while (existing.size() < slotCount) {
+            int unit = existing.size() + 1;
+            Flat created = basementParkingFlat(builder, building, floorNumber, unit, now);
+            created.setAreaSqft(slotAreaSqft);
+            existing.add(flatRepository.save(created));
+        }
+        for (int i = 0; i < existing.size(); i++) {
+            Flat flat = existing.get(i);
+            int unit = i + 1;
+            flat.setUnitNumber(unit);
+            flat.setFlatNumber(ParkingFloorConfigUtil.basementFlatNumber(floorNumber, unit));
+            if (i >= priorCount) {
+                flat.setAreaSqft(slotAreaSqft);
+            }
+            flatRepository.save(flat);
+        }
+        int carSizePercent = ParkingFloorConfigUtil.normalizeCarSizePercent(dto.carSizePercent());
+        int carLiftCount =
+                ParkingFloorConfigUtil.resolveCarLiftCountFromDto(
+                        dto.carLiftCount(), dto.liftCount(), dto.showLift());
+        int passengerLiftCount =
+                ParkingFloorConfigUtil.resolvePassengerLiftCountFromDto(dto.passengerLiftCount());
+        int gateCount =
+                ParkingFloorConfigUtil.resolveGateCountFromDto(dto.gateCount(), dto.showGate());
+        ParkingFloorConfigUtil.markConfigured(
+                building,
+                floorNumber,
+                slotCount,
+                carSizePercent,
+                null,
+                carLiftCount,
+                passengerLiftCount,
+                gateCount,
+                slotAreaSqft);
+        buildingRepository.save(building);
+        return buildParkingPlan(building, floorNumber, existing);
+    }
+
+    private ParkingPlanDto getBasementParkingPlan(UUID buildingId, int floorNumber) {
+        ParkingFloorConfigUtil.assertBasementFloor(floorNumber);
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!ParkingFloorConfigUtil.isConfigured(building, floorNumber)) {
+            throw new IllegalArgumentException(
+                    ParkingFloorConfigUtil.basementLabel(floorNumber) + " is not configured yet.");
+        }
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> flats =
+                flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                        buildingId, builderId, floorNumber);
+        if (flats.isEmpty()
+                || flats.stream().anyMatch(f -> !FlatUnitTypes.isParkingCode(f.getBhkType()))) {
+            throw new IllegalArgumentException(
+                    "No parking layout for " + ParkingFloorConfigUtil.basementLabel(floorNumber) + ".");
+        }
+        return buildParkingPlan(building, floorNumber, flats);
+    }
+
+    private ParkingPlanDto saveBasementParkingLayout(
+            UUID buildingId, int floorNumber, ParkingLayoutDto dto) {
+        ParkingFloorConfigUtil.assertBasementFloor(floorNumber);
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!ParkingFloorConfigUtil.isConfigured(building, floorNumber)) {
+            throw new IllegalArgumentException(
+                    ParkingFloorConfigUtil.basementLabel(floorNumber) + " is not configured yet.");
+        }
+        ParkingFloorConfigUtil.FloorConfig config =
+                ParkingFloorConfigUtil.forFloor(building, floorNumber);
+        validateParkingLayout(dto, config.slotCount(), config);
+        List<ParkingFloorConfigUtil.GridPlacement> placements =
+                dto.placements().stream()
+                        .map(
+                                p ->
+                                        new ParkingFloorConfigUtil.GridPlacement(
+                                                p.slotNumber(),
+                                                p.col(),
+                                                p.row(),
+                                                normalizeParkingOrientation(p.orientation())))
+                        .toList();
+        List<ParkingFloorConfigUtil.FixturePlacement> fixtures =
+                mapFixturePlacements(dto.fixtures(), config);
+        ParkingFloorConfigUtil.saveLayout(
+                building,
+                floorNumber,
+                dto.gridCols(),
+                dto.gridRows(),
+                placements,
+                fixtures);
+        buildingRepository.save(building);
+        return getBasementParkingPlan(buildingId, floorNumber);
+    }
+
+    private ParkingPlanDto adjustBasementParkingGridRow(
+            UUID buildingId, int floorNumber, ParkingGridRowDto dto) {
+        ParkingFloorConfigUtil.assertBasementFloor(floorNumber);
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!ParkingFloorConfigUtil.isConfigured(building, floorNumber)) {
+            throw new IllegalArgumentException(
+                    ParkingFloorConfigUtil.basementLabel(floorNumber) + " is not configured yet.");
+        }
+        ParkingFloorConfigUtil.FloorConfig config =
+                ParkingFloorConfigUtil.forFloor(building, floorNumber);
+        int gridCols =
+                config.gridCols() != null
+                        ? config.gridCols()
+                        : ParkingFloorConfigUtil.DEFAULT_GRID_COLS;
+        int gridRows =
+                config.gridRows() != null
+                        ? config.gridRows()
+                        : ParkingFloorConfigUtil.minGridRowsForSlotCount(config.slotCount());
+        List<ParkingFloorConfigUtil.GridPlacement> source =
+                config.placements() != null && !config.placements().isEmpty()
+                        ? config.placements()
+                        : ParkingFloorConfigUtil.defaultGridPlacements(
+                                config.slotCount(), gridCols, gridRows);
+        List<ParkingFloorConfigUtil.FixturePlacement> fixtureSource =
+                config.fixtures() != null ? config.fixtures() : List.of();
+        ParkingFloorConfigUtil.GridRowAdjustResult adjusted =
+                ParkingFloorConfigUtil.adjustGridRows(
+                        config.slotCount(), gridRows, source, fixtureSource, dto.action());
+        ParkingFloorConfigUtil.saveLayout(
+                building,
+                floorNumber,
+                gridCols,
+                adjusted.gridRows(),
+                adjusted.placements(),
+                adjusted.fixtures());
+        buildingRepository.save(building);
+        return getBasementParkingPlan(buildingId, floorNumber);
+    }
+
+    private ParkingPlanDto adjustBasementParkingGridCol(
+            UUID buildingId, int floorNumber, ParkingGridColDto dto) {
+        ParkingFloorConfigUtil.assertBasementFloor(floorNumber);
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!ParkingFloorConfigUtil.isConfigured(building, floorNumber)) {
+            throw new IllegalArgumentException(
+                    ParkingFloorConfigUtil.basementLabel(floorNumber) + " is not configured yet.");
+        }
+        ParkingFloorConfigUtil.FloorConfig config =
+                ParkingFloorConfigUtil.forFloor(building, floorNumber);
+        int gridCols =
+                config.gridCols() != null
+                        ? config.gridCols()
+                        : ParkingFloorConfigUtil.DEFAULT_GRID_COLS;
+        int minGridRows =
+                ParkingFloorConfigUtil.minGridRowsForSlotCount(config.slotCount());
+        int gridRows = config.gridRows() != null ? config.gridRows() : minGridRows;
+        if (gridRows < minGridRows) {
+            gridRows = minGridRows;
+        }
+        List<ParkingFloorConfigUtil.GridPlacement> source =
+                config.placements() != null && !config.placements().isEmpty()
+                        ? config.placements()
+                        : ParkingFloorConfigUtil.defaultGridPlacements(
+                                config.slotCount(), gridCols, gridRows);
+        List<ParkingFloorConfigUtil.FixturePlacement> fixtureSource =
+                config.fixtures() != null ? config.fixtures() : List.of();
+        ParkingFloorConfigUtil.GridColAdjustResult adjusted =
+                ParkingFloorConfigUtil.adjustGridCols(
+                        config.slotCount(), gridCols, source, fixtureSource, dto.action());
+        ParkingFloorConfigUtil.saveLayout(
+                building,
+                floorNumber,
+                adjusted.gridCols(),
+                gridRows,
+                adjusted.placements(),
+                adjusted.fixtures());
+        buildingRepository.save(building);
+        return getBasementParkingPlan(buildingId, floorNumber);
+    }
+
+    private static Flat basementParkingFlat(
+            Builder builder, Building building, int floorNumber, int unit, Instant now) {
+        Flat f = parkingFlat(builder, building, floorNumber, unit, now);
+        f.setFlatNumber(ParkingFloorConfigUtil.basementFlatNumber(floorNumber, unit));
+        return f;
+    }
+
+    @Transactional
+    public FlatGridGroundFloorDto configureGroundFloor(UUID buildingId, GroundFloorConfigDto dto) {
+        int shopCount = dto.shopCount();
+        if (shopCount < 0 || shopCount > MAX_GROUND_FLOOR_SHOPS) {
+            throw new IllegalArgumentException(
+                    "Shop count must be between 0 and " + MAX_GROUND_FLOOR_SHOPS + ".");
+        }
+        BigDecimal shopArea =
+                dto.shopAreaSqft() != null && dto.shopAreaSqft().signum() > 0
+                        ? dto.shopAreaSqft().setScale(2, RoundingMode.HALF_UP)
+                        : GroundFloorShopConfigUtil.DEFAULT_SHOP_AREA_SQFT;
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        Builder builder = building.getBuilder();
+        List<Flat> existing =
+                new ArrayList<>(
+                        flatRepository
+                                .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                        buildingId, builderId, GROUND_FLOOR_NUMBER)
+                                .stream()
+                                .filter(f -> FlatUnitTypes.isShopCode(f.getBhkType()))
+                                .toList());
+        Instant now = Instant.now();
+        if (shopCount == 0) {
+            flatRepository
+                    .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                            buildingId, builderId, GROUND_FLOOR_NUMBER)
+                    .forEach(flatRepository::delete);
+            flatRepository.flush();
+            GroundFloorShopConfigUtil.clear(building);
+            buildingRepository.save(building);
+            return FlatGridGroundFloorDto.empty();
+        }
+        while (existing.size() > shopCount) {
+            Flat last = existing.remove(existing.size() - 1);
+            flatRepository.delete(last);
+        }
+        flatRepository.flush();
+        while (existing.size() < shopCount) {
+            int unit = existing.size() + 1;
+            Flat created = shopFlat(builder, building, unit, shopArea, now);
+            existing.add(flatRepository.save(created));
+        }
+        for (int i = 0; i < existing.size(); i++) {
+            Flat flat = existing.get(i);
+            int unit = i + 1;
+            flat.setUnitNumber(unit);
+            flat.setFlatNumber(String.format("%02d%02d", GROUND_FLOOR_NUMBER, unit));
+            flat.setAreaSqft(shopArea);
+            flatRepository.save(flat);
+        }
+        int carLiftCount =
+                dto.carLiftCount() != null
+                        ? dto.carLiftCount()
+                        : ParkingFloorConfigUtil.resolveCarLiftCountFromDto(null, null, true);
+        int passengerLiftCount =
+                dto.passengerLiftCount() != null ? dto.passengerLiftCount() : 0;
+        int gateCount =
+                dto.gateCount() != null
+                        ? dto.gateCount()
+                        : ParkingFloorConfigUtil.resolveGateCountFromDto(null, true);
+        int parkingSlotCount = dto.parkingSlotCount() != null ? dto.parkingSlotCount() : 0;
+        if (parkingSlotCount < 0 || parkingSlotCount > MAX_GROUND_FLOOR_SHOPS) {
+            throw new IllegalArgumentException(
+                    "Ground parking slot count must be between 0 and " + MAX_GROUND_FLOOR_SHOPS + ".");
+        }
+        BigDecimal parkingSlotArea =
+                dto.parkingSlotAreaSqft() != null && dto.parkingSlotAreaSqft().signum() > 0
+                        ? dto.parkingSlotAreaSqft().setScale(2, RoundingMode.HALF_UP)
+                        : ParkingFloorConfigUtil.DEFAULT_SLOT_AREA_SQFT;
+        Integer parkingCarSizePercent = dto.parkingCarSizePercent();
+        GroundFloorShopConfigUtil.markConfigured(
+                building,
+                shopCount,
+                shopArea,
+                dto.shopSizePercent(),
+                carLiftCount,
+                passengerLiftCount,
+                gateCount,
+                parkingSlotCount,
+                parkingSlotArea,
+                parkingCarSizePercent);
+        syncGroundParkingFlats(
+                builder, building, shopCount, parkingSlotCount, parkingSlotArea, now);
+        buildingRepository.save(building);
+        return getGroundFloorSection(buildingId);
+    }
+
+    @Transactional
+    public GroundFloorShopPlanDto saveGroundFloorLayout(UUID buildingId, GroundFloorLayoutDto dto) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!GroundFloorShopConfigUtil.isConfigured(building)) {
+            throw new IllegalArgumentException("Ground floor shops are not configured yet.");
+        }
+        GroundFloorStoredConfig stored = GroundFloorShopConfigUtil.readStored(building);
+        ParkingFloorConfigUtil.FloorConfig config = stored.shops();
+        List<ParkingFloorConfigUtil.GridPlacement> shopPlacements =
+                dto.shopPlacements().stream()
+                        .map(
+                                p ->
+                                        new ParkingFloorConfigUtil.GridPlacement(
+                                                p.slotNumber(),
+                                                p.col(),
+                                                p.row(),
+                                                GroundFloorShopConfigUtil.normalizeOrientation(
+                                                        p.orientation())))
+                        .toList();
+        List<ParkingFloorConfigUtil.GridPlacement> parkingPlacements =
+                (dto.parkingPlacements() != null ? dto.parkingPlacements() : List.<ParkingGridPlacementDto>of())
+                        .stream()
+                        .map(
+                                p ->
+                                        new ParkingFloorConfigUtil.GridPlacement(
+                                                p.slotNumber(),
+                                                p.col(),
+                                                p.row(),
+                                                GroundFloorShopConfigUtil.normalizeOrientation(
+                                                        p.orientation())))
+                        .toList();
+        List<ParkingFloorConfigUtil.FixturePlacement> fixtures =
+                mapGroundFloorFixturePlacements(dto.fixtures(), config, shopPlacements);
+        GroundFloorShopConfigUtil.saveLayout(
+                building,
+                dto.gridCols(),
+                dto.gridRows(),
+                shopPlacements,
+                parkingPlacements,
+                fixtures);
+        buildingRepository.save(building);
+        return getGroundFloorShopPlan(buildingId);
+    }
+
+    @Transactional
+    public GroundFloorShopPlanDto adjustGroundFloorGridRow(
+            UUID buildingId, ParkingGridRowDto dto) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!GroundFloorShopConfigUtil.isConfigured(building)) {
+            throw new IllegalArgumentException("Ground floor shops are not configured yet.");
+        }
+        GroundFloorShopConfigUtil.adjustGridRows(building, dto.action());
+        buildingRepository.save(building);
+        return getGroundFloorShopPlan(buildingId);
+    }
+
+    @Transactional
+    public GroundFloorShopPlanDto adjustGroundFloorGridCol(
+            UUID buildingId, ParkingGridColDto dto) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!GroundFloorShopConfigUtil.isConfigured(building)) {
+            throw new IllegalArgumentException("Ground floor shops are not configured yet.");
+        }
+        GroundFloorShopConfigUtil.adjustGridCols(building, dto.action());
+        buildingRepository.save(building);
+        return getGroundFloorShopPlan(buildingId);
+    }
+
+    @Transactional
+    public GroundFloorShopPlanDto getGroundFloorShopPlan(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        if (!GroundFloorShopConfigUtil.isConfigured(building)) {
+            throw new IllegalArgumentException("Ground floor shops are not configured yet.");
+        }
+        if (GroundFloorShopConfigUtil.migrateTopDownLayoutIfNeeded(building)) {
+            buildingRepository.save(building);
+        }
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> shops =
+                flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                buildingId, builderId, GROUND_FLOOR_NUMBER)
+                        .stream()
+                        .filter(f -> FlatUnitTypes.isShopCode(f.getBhkType()))
+                        .toList();
+        if (shops.isEmpty()) {
+            throw new IllegalArgumentException("No ground floor shops found.");
+        }
+        return buildGroundFloorShopPlan(buildingId, building, shops);
+    }
+
+    private void syncGroundParkingFlats(
+            Builder builder,
+            Building building,
+            int shopCount,
+            int parkingSlotCount,
+            BigDecimal parkingSlotArea,
+            Instant now) {
+        UUID buildingId = building.getId();
+        UUID builderId = builder.getId();
+        List<Flat> parkingFlats =
+                new ArrayList<>(
+                        flatRepository
+                                .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                        buildingId, builderId, GROUND_FLOOR_NUMBER)
+                                .stream()
+                                .filter(f -> FlatUnitTypes.isParkingCode(f.getBhkType()))
+                                .toList());
+        while (parkingFlats.size() > parkingSlotCount) {
+            Flat last = parkingFlats.remove(parkingFlats.size() - 1);
+            flatRepository.delete(last);
+        }
+        flatRepository.flush();
+        while (parkingFlats.size() < parkingSlotCount) {
+            int unit = shopCount + parkingFlats.size() + 1;
+            Flat created = parkingFlat(builder, building, GROUND_FLOOR_NUMBER, unit, now);
+            created.setAreaSqft(parkingSlotArea);
+            parkingFlats.add(flatRepository.save(created));
+        }
+        for (int i = 0; i < parkingFlats.size(); i++) {
+            Flat flat = parkingFlats.get(i);
+            int unit = shopCount + i + 1;
+            flat.setUnitNumber(unit);
+            flat.setFlatNumber(String.format("%02d%02d", GROUND_FLOOR_NUMBER, unit));
+            flat.setAreaSqft(parkingSlotArea);
+            flatRepository.save(flat);
+        }
+    }
+
+    private List<ParkingFloorConfigUtil.FixturePlacement> mapGroundFloorFixturePlacements(
+            List<ParkingFixturePlacementDto> fixtures,
+            ParkingFloorConfigUtil.FloorConfig config,
+            List<ParkingFloorConfigUtil.GridPlacement> shopPlacements) {
+        if (fixtures == null || fixtures.isEmpty()) {
+            int cols =
+                    config.gridCols() != null
+                            ? config.gridCols()
+                            : ParkingFloorConfigUtil.DEFAULT_GRID_COLS;
+            int rows =
+                    config.gridRows() != null
+                            ? config.gridRows()
+                            : ParkingFloorConfigUtil.minGridRowsForSlotCount(config.slotCount());
+            return ParkingFloorConfigUtil.defaultFixtures(
+                    config.resolvedCarLiftCount(),
+                    config.resolvedPassengerLiftCount(),
+                    config.resolvedGateCount(),
+                    cols,
+                    rows,
+                    shopPlacements);
+        }
+        return fixtures.stream()
+                .map(
+                        f ->
+                                new ParkingFloorConfigUtil.FixturePlacement(
+                                        ParkingFloorConfigUtil.normalizeFixtureKind(f.kind()),
+                                        f.index(),
+                                        f.col(),
+                                        f.row(),
+                                        GroundFloorShopConfigUtil.normalizeOrientation(
+                                                f.orientation())))
+                .toList();
+    }
+
+    private GroundFloorShopPlanDto buildGroundFloorShopPlan(
+            UUID buildingId, Building building, List<Flat> shops) {
+        int n = shops.size();
+        UUID builderId = building.getBuilder().getId();
+        Map<UUID, Booking> bookingByFlatId = activeBookingsByFlatId(builderId, shops);
+        Map<UUID, UUID> partnerIds = partnerFlatAllocationService.getFlatOwnerByPartnerId(buildingId);
+        GroundFloorStoredConfig stored = GroundFloorShopConfigUtil.readStored(building);
+        ParkingFloorConfigUtil.FloorConfig config = stored.shops();
+        int parkingCount = stored.parkingSlotCount();
+        int combined = n + parkingCount;
+        int gridCols =
+                config.gridCols() != null
+                        ? config.gridCols()
+                        : ParkingFloorConfigUtil.DEFAULT_GRID_COLS;
+        int minGridRows =
+                GroundFloorShopConfigUtil.minGridRowsForGroundFloorSlotCount(combined, gridCols);
+        int gridRows = config.gridRows() != null ? config.gridRows() : minGridRows;
+        if (gridRows < minGridRows) {
+            gridRows = minGridRows;
+        }
+        List<ParkingGridPlacementDto> shopPlacements =
+                resolveGroundFloorShopPlacements(config, n, gridCols, gridRows);
+        List<ParkingGridPlacementDto> parkingPlacements = List.of();
+        List<GroundFloorShopPlanDto.GroundFloorParkingSlotDto> parkingSlots = List.of();
+        Integer parkingCarSizePercent = null;
+        if (stored.parking() != null && parkingCount > 0) {
+            parkingCarSizePercent = stored.parking().carSizePercent();
+            parkingPlacements =
+                    (stored.parking().placements() != null
+                                    ? stored.parking().placements()
+                                    : List.<ParkingFloorConfigUtil.GridPlacement>of())
+                            .stream()
+                            .map(
+                                    p ->
+                                            new ParkingGridPlacementDto(
+                                                    p.slotNumber(),
+                                                    p.col(),
+                                                    p.row(),
+                                                    normalizeParkingOrientation(p.orientation())))
+                            .toList();
+            List<Flat> parkingFlats =
+                    flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                    buildingId, builderId, GROUND_FLOOR_NUMBER)
+                            .stream()
+                            .filter(f -> FlatUnitTypes.isParkingCode(f.getBhkType()))
+                            .toList();
+            java.util.Set<UUID> linkedIds =
+                    parkingFlats.stream()
+                            .map(Flat::getLinkedResidentialFlatId)
+                            .filter(java.util.Objects::nonNull)
+                            .collect(java.util.stream.Collectors.toSet());
+            Map<UUID, Flat> linkedById =
+                    linkedIds.isEmpty()
+                            ? Map.of()
+                            : flatRepository.findAllById(linkedIds).stream()
+                                    .collect(java.util.stream.Collectors.toMap(Flat::getId, f -> f));
+            parkingSlots = new ArrayList<>();
+            for (int i = 0; i < parkingFlats.size(); i++) {
+                Flat parking = parkingFlats.get(i);
+                UUID linkedId = parking.getLinkedResidentialFlatId();
+                String linkedNumber = null;
+                if (linkedId != null) {
+                    Flat linked = linkedById.get(linkedId);
+                    if (linked != null) {
+                        linkedNumber = linked.getFlatNumber();
+                    }
+                }
+                parkingSlots.add(
+                        new GroundFloorShopPlanDto.GroundFloorParkingSlotDto(
+                                i + 1,
+                                parking.getId(),
+                                parking.getFlatNumber(),
+                                parking.getAreaSqft(),
+                                linkedId,
+                                linkedNumber));
+            }
+        }
+        List<GroundFloorShopPlanDto.ShopPlanSlotDto> slots = new ArrayList<>();
+        for (int i = 0; i < shops.size(); i++) {
+            Flat shop = shops.get(i);
+            Booking booking = bookingByFlatId.get(shop.getId());
+            UUID clientId = booking != null && booking.getClient() != null ? booking.getClient().getId() : null;
+            UUID assignedPartnerId = partnerIds.get(shop.getId());
+            boolean bookable =
+                    partnerFlatAllocationService.isBookableByCurrentUser(
+                            buildingId, assignedPartnerId);
+            slots.add(
+                    new GroundFloorShopPlanDto.ShopPlanSlotDto(
+                            i + 1,
+                            shop.getId(),
+                            shop.getFlatNumber(),
+                            shop.getAreaSqft(),
+                            shop.getBasePrice(),
+                            shop.getStatus(),
+                            bookable,
+                            clientId));
+        }
+        return new GroundFloorShopPlanDto(
+                n,
+                parkingCount,
+                gridCols,
+                gridRows,
+                minGridRows,
+                shopPlacements,
+                parkingPlacements,
+                slots,
+                parkingSlots,
+                toFixtureDtos(config),
+                config.resolvedCarLiftCount(),
+                config.resolvedPassengerLiftCount(),
+                config.resolvedGateCount(),
+                parkingCarSizePercent,
+                GroundFloorShopConfigUtil.resolveShopSizePercent(config),
+                GroundFloorShopConfigUtil.layoutImagePath(building) != null);
+    }
+
+    private static String shopRangeLabel(List<FlatGridFlatDto> shops) {
+        if (shops.isEmpty()) {
+            return "";
+        }
+        String first = shops.get(0).flatNumber();
+        String last = shops.get(shops.size() - 1).flatNumber();
+        return shops.size() == 1 ? first : first + "–" + last;
+    }
+
+    private static Flat shopFlat(
+            Builder builder, Building building, int unit, BigDecimal areaSqft, Instant now) {
+        Flat f = new Flat();
+        f.setBuilder(builder);
+        f.setBuilding(building);
+        f.setFloorNumber(GROUND_FLOOR_NUMBER);
+        f.setUnitNumber(unit);
+        f.setFlatNumber(String.format("%02d%02d", GROUND_FLOOR_NUMBER, unit));
+        f.setBhkType("SHOP");
+        f.setParking(false);
+        f.setStatus("AVAILABLE");
+        f.setAreaSqft(areaSqft);
+        f.setBasePrice(BigDecimal.ZERO);
+        f.setCreatedAt(now);
+        return f;
     }
 
     @Transactional(readOnly = true)
@@ -432,6 +1242,23 @@ public class FlatService {
         UUID builderId = building.getBuilder().getId();
         int parkingFloors = building.getParkingFloors() != null ? building.getParkingFloors() : 0;
         List<Flat> parkingFlats = new ArrayList<>();
+        if (GroundFloorShopConfigUtil.isConfigured(building)
+                && GroundFloorShopConfigUtil.readStored(building).parkingSlotCount() > 0) {
+            flatRepository
+                    .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                            buildingId, builderId, GROUND_FLOOR_NUMBER)
+                    .stream()
+                    .filter(f -> FlatUnitTypes.isParkingCode(f.getBhkType()))
+                    .forEach(parkingFlats::add);
+        }
+        for (int floorNumber : ParkingFloorConfigUtil.listBasementFloors(building)) {
+            flatRepository
+                    .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                            buildingId, builderId, floorNumber)
+                    .stream()
+                    .filter(f -> FlatUnitTypes.isParkingCode(f.getBhkType()))
+                    .forEach(parkingFlats::add);
+        }
         for (int floor = 1; floor <= parkingFloors; floor++) {
             if (!ParkingFloorConfigUtil.isConfigured(building, floor)) {
                 continue;
@@ -545,14 +1372,14 @@ public class FlatService {
 
     private ParkingPlanDto buildParkingPlan(Building building, int floorNumber, List<Flat> flats) {
         int n = flats.size();
-        int bottomCount = (int) Math.ceil(n / 2.0);
-        List<Integer> bottomRow = new ArrayList<>();
-        for (int slot = 1; slot <= bottomCount; slot++) {
-            bottomRow.add(slot);
-        }
+        int topCount = (int) Math.ceil(n / 2.0);
         List<Integer> topRow = new ArrayList<>();
-        for (int slot = n; slot > bottomCount; slot--) {
+        for (int slot = 1; slot <= topCount; slot++) {
             topRow.add(slot);
+        }
+        List<Integer> bottomRow = new ArrayList<>();
+        for (int slot = topCount + 1; slot <= n; slot++) {
+            bottomRow.add(slot);
         }
         ParkingFloorConfigUtil.FloorConfig config =
                 ParkingFloorConfigUtil.forFloor(building, floorNumber);
@@ -673,6 +1500,25 @@ public class FlatService {
                 .toList();
     }
 
+    private static List<ParkingGridPlacementDto> resolveGroundFloorShopPlacements(
+            ParkingFloorConfigUtil.FloorConfig config, int slotCount, int gridCols, int gridRows) {
+        List<ParkingFloorConfigUtil.GridPlacement> source =
+                config.placements() != null && !config.placements().isEmpty()
+                        ? config.placements()
+                        : GroundFloorShopConfigUtil.defaultGroundFloorPlacements(
+                                slotCount, gridCols, gridRows);
+        List<ParkingGridPlacementDto> out = new ArrayList<>();
+        for (ParkingFloorConfigUtil.GridPlacement p : source) {
+            out.add(
+                    new ParkingGridPlacementDto(
+                            p.slotNumber(),
+                            p.col(),
+                            p.row(),
+                            normalizeParkingOrientation(p.orientation())));
+        }
+        return out;
+    }
+
     private static List<ParkingGridPlacementDto> resolveGridPlacements(
             ParkingFloorConfigUtil.FloorConfig config, int slotCount, int gridCols, int gridRows) {
         List<ParkingFloorConfigUtil.GridPlacement> source =
@@ -777,6 +1623,15 @@ public class FlatService {
             return "horizontal";
         }
         throw new IllegalArgumentException("Orientation must be vertical or horizontal.");
+    }
+
+    private static String parkingRangeLabelFromFlats(List<Flat> flats) {
+        if (flats.isEmpty()) {
+            return "";
+        }
+        String first = flats.get(0).getFlatNumber();
+        String last = flats.get(flats.size() - 1).getFlatNumber();
+        return flats.size() == 1 ? first : first + "–" + last;
     }
 
     private static String parkingRangeLabel(List<FlatGridFlatDto> cells) {

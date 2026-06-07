@@ -11,6 +11,7 @@ import java.util.Set;
 public final class FlatUnitTypes {
 
     private static final Set<String> PARKING_CODES = Set.of("PKG", "PARKING");
+    private static final Set<String> SHOP_CODES = Set.of("SHOP");
 
     private static final List<String> AMENITY =
             List.of("GYM", "CLUB", "LOBBY", "TERRACE", "STORAGE", "OFFICE", "MECHANICAL", "REFUGE");
@@ -25,6 +26,7 @@ public final class FlatUnitTypes {
     public static List<String> allForAdminSelect() {
         List<String> all = new ArrayList<>(ResidentialBhkTypes.all());
         all.add("PKG");
+        all.add("SHOP");
         all.addAll(AMENITY);
         return all;
     }
@@ -38,6 +40,13 @@ public final class FlatUnitTypes {
             return false;
         }
         return PARKING_CODES.contains(unitType.trim().toUpperCase(Locale.ROOT));
+    }
+
+    public static boolean isShopCode(String unitType) {
+        if (unitType == null || unitType.isBlank()) {
+            return false;
+        }
+        return SHOP_CODES.contains(unitType.trim().toUpperCase(Locale.ROOT));
     }
 
     public static boolean isAmenityCode(String unitType) {
@@ -87,6 +96,9 @@ public final class FlatUnitTypes {
         if (isParkingCode(trimmed)) {
             return "PKG";
         }
+        if (isShopCode(trimmed)) {
+            return "SHOP";
+        }
         if (isAmenityCode(trimmed)) {
             return trimmed;
         }
@@ -105,6 +117,17 @@ public final class FlatUnitTypes {
         if (isParkingCode(normalized)) {
             flat.setParking(true);
             flat.setAreaSqft(areaSqft != null ? areaSqft : BigDecimal.valueOf(150));
+            flat.setCarpetAreaSqft(null);
+            flat.setBalconyAreaSqft(null);
+            flat.setBasePrice(basePrice != null ? basePrice : BigDecimal.ZERO);
+            if (!"BOOKED".equals(flat.getStatus())) {
+                flat.setStatus("AVAILABLE");
+            }
+            return;
+        }
+        if (isShopCode(normalized)) {
+            flat.setParking(false);
+            flat.setAreaSqft(areaSqft != null ? areaSqft : BigDecimal.valueOf(350));
             flat.setCarpetAreaSqft(null);
             flat.setBalconyAreaSqft(null);
             flat.setBasePrice(basePrice != null ? basePrice : BigDecimal.ZERO);
@@ -187,6 +210,9 @@ public final class FlatUnitTypes {
         }
         if (isParkingCode(unitType) || "PKG".equalsIgnoreCase(unitType.trim())) {
             return "PKG";
+        }
+        if (isShopCode(unitType)) {
+            return "SHOP";
         }
         return unitType.trim().toUpperCase(Locale.ROOT);
     }
