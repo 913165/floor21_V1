@@ -274,6 +274,81 @@
     } else {
       cardEl.classList.add("flat-hold");
     }
+    syncFlatCardStatusLabel(cardEl, opts.status);
+  }
+
+  function statusLabelForFlat(status) {
+    if (status === "BOOKED") return "BOOKED";
+    if (status === "HOLD") return "ON HOLD";
+    if (status === "CANCELLED") return "DEACTIVATED";
+    return "AVAILABLE";
+  }
+
+  function syncFlatCardStatusLabel(cardEl, status) {
+    if (!cardEl) return;
+    var label = cardEl.querySelector(".flat-card-status__label");
+    if (!label) return;
+    label.textContent = statusLabelForFlat(status || cardEl.dataset.status);
+  }
+
+  function appendFlatCardRoof(cardEl, bhkType) {
+    var roof = document.createElement("div");
+    roof.className = "flat-card-roof";
+    roof.setAttribute("aria-hidden", "true");
+    var peak = document.createElement("div");
+    peak.className = "flat-card-roof__peak";
+    peak.innerHTML =
+      '<div class="flat-card-roof__shape"></div>' +
+      '<div class="flat-card-roof__windows"><span></span><span></span></div>';
+    roof.appendChild(peak);
+    var bricks = document.createElement("div");
+    bricks.className = "flat-card-roof__bricks";
+    if (bhkType && /^[34]/.test(String(bhkType))) {
+      bricks.classList.add("flat-card-roof__bricks--three");
+    }
+    bricks.innerHTML = "<span></span><span></span><span class=\"flat-card-roof__brick-extra\"></span>";
+    roof.appendChild(bricks);
+    cardEl.appendChild(roof);
+  }
+
+  function appendFlatCardStatus(cardEl, status) {
+    var statusEl = document.createElement("div");
+    statusEl.className = "flat-card-status";
+    var label = document.createElement("span");
+    label.className = "flat-card-status__label";
+    label.textContent = statusLabelForFlat(status);
+    statusEl.appendChild(label);
+    cardEl.appendChild(statusEl);
+  }
+
+  function buildFlatCardContent(flat) {
+    var body = document.createElement("div");
+    body.className = "flat-card-body";
+    var inner = document.createElement("div");
+    inner.className = "flat-card-inner";
+    var num = document.createElement("span");
+    num.className = "flat-number";
+    num.textContent = flat.flatNumber || "";
+    inner.appendChild(num);
+    var typeSpan = document.createElement("span");
+    typeSpan.className = "flat-type";
+    typeSpan.textContent = flat.gridTypeLabel || flat.bhkType || "";
+    inner.appendChild(typeSpan);
+    var owner = document.createElement("div");
+    owner.className = "flat-card-owner is-blank";
+    owner.innerHTML =
+      '<span class="flat-owner-name"></span><span class="flat-owner-detail"></span>';
+    inner.appendChild(owner);
+    if (flat.bookableByCurrentUser !== false || isPlatformAdminEdit()) {
+      var quick = document.createElement("button");
+      quick.type = "button";
+      quick.className = "flat-quick-link flat-quick-link--sr";
+      quick.dataset.flatId = flat.id;
+      quick.textContent = "Flat details";
+      inner.appendChild(quick);
+    }
+    body.appendChild(inner);
+    return body;
   }
 
   function showAdminError(message) {
@@ -1178,7 +1253,10 @@
     if (flat.balconyAreaSqft != null) cardEl.dataset.balconyArea = String(flat.balconyAreaSqft);
     else delete cardEl.dataset.balconyArea;
     if (flat.basePrice != null) cardEl.dataset.price = String(flat.basePrice);
-    if (flat.status != null) cardEl.dataset.status = flat.status;
+    if (flat.status != null) {
+      cardEl.dataset.status = flat.status;
+      syncFlatCardStatusLabel(cardEl, flat.status);
+    }
     if (flat.floorNumber != null) cardEl.dataset.floor = String(flat.floorNumber);
     var parking = flat.parking === true || flat.parking === "true";
     var amenity = flat.amenity === true || flat.amenity === "true" || isAmenityType(flat.bhkType);
@@ -1262,8 +1340,8 @@
     } else {
       delete cardEl.dataset.partnerName;
     }
-    var head = cardEl.querySelector(".flat-card-head");
-    if (!head) return;
+    var inner = cardEl.querySelector(".flat-card-inner");
+    if (!inner) return;
     var tag = cardEl.querySelector(".flat-partner-tag");
     var label = partnerName ? String(partnerName).trim() : "";
     if (!label) {
@@ -1273,17 +1351,17 @@
     if (!tag) {
       tag = document.createElement("span");
       tag.className = "flat-partner-tag small";
-      var typeSpan = head.querySelector(".flat-type");
-      if (typeSpan) head.insertBefore(tag, typeSpan);
-      else head.appendChild(tag);
+      var typeSpan = inner.querySelector(".flat-type");
+      if (typeSpan) inner.insertBefore(tag, typeSpan);
+      else inner.appendChild(tag);
     }
     tag.textContent = label;
   }
 
   function syncDeactivatedTag(cardEl) {
     if (!cardEl) return;
-    var head = cardEl.querySelector(".flat-card-head");
-    if (!head) return;
+    var inner = cardEl.querySelector(".flat-card-inner");
+    if (!inner) return;
     var tag = cardEl.querySelector(".flat-status-tag");
     var isDeactivated = cardEl.dataset.status === "CANCELLED";
     if (!isDeactivated) {
@@ -1294,9 +1372,9 @@
       tag = document.createElement("span");
       tag.className = "flat-status-tag small";
       tag.textContent = "Deactivated";
-      var typeSpan = head.querySelector(".flat-type");
-      if (typeSpan) head.insertBefore(tag, typeSpan);
-      else head.appendChild(tag);
+      var typeSpan = inner.querySelector(".flat-type");
+      if (typeSpan) inner.insertBefore(tag, typeSpan);
+      else inner.appendChild(tag);
     }
   }
 
@@ -1781,33 +1859,9 @@
     card.id = "flat-" + flat.id;
     card.className = flat.cardClass || "flat-card flat-available";
     card.dataset.flatId = flat.id;
-    var inner = document.createElement("div");
-    inner.className = "flat-card-inner";
-    var head = document.createElement("div");
-    head.className = "flat-card-head";
-    var num = document.createElement("span");
-    num.className = "flat-number";
-    num.textContent = flat.flatNumber || "";
-    head.appendChild(num);
-    var typeSpan = document.createElement("span");
-    typeSpan.className = "flat-type";
-    typeSpan.textContent = flat.gridTypeLabel || flat.bhkType || "";
-    head.appendChild(typeSpan);
-    inner.appendChild(head);
-    var owner = document.createElement("div");
-    owner.className = "flat-card-owner is-blank";
-    owner.innerHTML =
-      '<span class="flat-owner-name"></span><span class="flat-owner-detail"></span>';
-    inner.appendChild(owner);
-    if (flat.bookableByCurrentUser !== false || isPlatformAdminEdit()) {
-      var quick = document.createElement("button");
-      quick.type = "button";
-      quick.className = "flat-quick-link";
-      quick.dataset.flatId = flat.id;
-      quick.textContent = "Flat details";
-      inner.appendChild(quick);
-    }
-    card.appendChild(inner);
+    appendFlatCardRoof(card, flat.bhkType);
+    card.appendChild(buildFlatCardContent(flat));
+    appendFlatCardStatus(card, flat.status);
     syncFlatCardFromData(card, flat);
     return card;
   }

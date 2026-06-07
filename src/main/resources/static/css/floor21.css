@@ -565,7 +565,14 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 0.65rem;
+  gap: 0.5rem 0.75rem;
+}
+
+.flat-floor-row__divider {
+  flex: 1 1 auto;
+  height: 1px;
+  min-width: 2rem;
+  background: rgba(var(--bs-body-color-rgb), 0.14);
 }
 
 .flat-grid-legend {
@@ -636,21 +643,28 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   box-sizing: border-box;
   position: relative;
   overflow: visible;
-  width: 15.5rem;
-  min-width: 15.5rem;
-  min-height: 5.35rem;
-  border-radius: 10px;
-  border: 2px solid #dee2e6;
+  width: 12.25rem;
+  min-width: 9.5rem;
+  max-width: 14.25rem;
+  min-height: 11rem;
+  border: none;
+  border-radius: 0;
   cursor: pointer;
   display: inline-flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  text-align: center;
-  padding: 0.45rem 0.6rem 0.45rem 0.5rem;
-  font-size: 0.875rem;
-  line-height: 1.25;
+  text-align: left;
+  padding: 0;
+  font-size: 0.9375rem;
+  line-height: 1.3;
+  background: transparent;
+  box-shadow: none;
   transition: transform 0.08s ease, box-shadow 0.08s ease;
+  --flat-roof-dark: #1f9d73;
+  --flat-roof-light: #5fd4a8;
+  --flat-status-bg: #ecfdf5;
+  --flat-status-fg: #059669;
 }
 
 /* One row per floor: cards shrink to fit — no row scrollbar */
@@ -659,7 +673,7 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   flex-wrap: nowrap;
   justify-content: flex-start;
   align-items: stretch;
-  gap: 0.35rem;
+  gap: 0.65rem;
   width: 100%;
   min-width: 0;
   overflow: visible;
@@ -670,156 +684,255 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 .flat-card-row .flat-card {
   flex: 1 1 0;
   width: auto;
-  min-width: 5.25rem;
-  max-width: 15.5rem;
-  padding: 0.32rem 0.4rem 0.32rem 0.35rem;
+  min-width: 9rem;
+  max-width: 14.25rem;
+  height: auto;
 }
 
-.flat-card-row .flat-card-inner {
+.flat-card:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) {
+  min-height: 14.75rem;
+}
+
+.flat-card-roof {
+  position: relative;
+  width: 100%;
+  flex: 0 0 auto;
+  z-index: 1;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.flat-card-roof__peak {
+  position: relative;
+  width: 100%;
+  height: 1.55rem;
+  flex: 0 0 1.55rem;
+}
+
+.flat-card-roof__shape {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    118deg,
+    var(--flat-roof-dark) 0%,
+    var(--flat-roof-dark) 46%,
+    var(--flat-roof-light) 46%,
+    var(--flat-roof-light) 100%
+  );
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.08);
+}
+
+.flat-card-roof__windows {
+  position: absolute;
+  left: 50%;
+  top: 0.68rem;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.34rem;
+  z-index: 2;
+}
+
+.flat-card-roof__windows span {
+  display: block;
+  width: 1.1rem;
+  height: 0.32rem;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.flat-card-roof__bricks {
+  display: flex;
+  align-items: center;
   gap: 0.28rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.14rem 0 0.16rem;
 }
 
-.flat-card-row .flat-card-head {
-  min-width: 2rem;
-  padding-right: 0.28rem;
+.flat-card-roof__bricks span {
+  display: block;
+  flex: 1 1 0;
+  height: 0.44rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--flat-roof-light) 68%, #ffffff);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-.flat-card-row .flat-number {
-  font-size: 0.95rem;
+.flat-card-roof__brick-extra {
+  display: none;
 }
 
-.flat-card-row .flat-type {
-  font-size: 0.8rem;
-  margin-top: 0.05rem;
+.flat-card-roof__bricks--three .flat-card-roof__brick-extra {
+  display: block;
 }
 
-.flat-card-row .flat-owner-name {
-  font-size: 0.8rem;
+.flat-card-body {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  padding: 0.65rem 0.65rem 0.5rem;
+  flex: 1 1 auto;
+  min-height: 7.75rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
-.flat-card-row .flat-owner-detail {
-  font-size: 0.72rem;
-}
-
-.flat-card-row .flat-card-owner {
-  min-height: 2.1rem;
-}
-
-.flat-card-row .flat-card-owner.is-blank {
-  min-height: 2.1rem;
+.flat-card:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) .flat-card-body {
+  height: 7.75rem;
+  min-height: 7.75rem;
+  max-height: 7.75rem;
+  overflow: hidden;
 }
 
 .flat-card-inner {
   display: flex;
-  flex-direction: row;
-  flex: 1 1 auto;
+  flex-direction: column;
   align-items: stretch;
   width: 100%;
+  flex: 1 1 auto;
   min-height: 0;
-  gap: 0.5rem;
+  gap: 0.24rem;
+  overflow: hidden;
 }
 
-.flat-partner-tag {
-  display: block;
-  font-size: 0.58rem;
-  font-weight: 600;
-  color: #6366f1;
-  line-height: 1.2;
-  margin-top: 0.1rem;
-}
-
-.flat-status-tag {
-  display: block;
-  font-size: 0.58rem;
-  font-weight: 700;
-  color: #b45309;
-  line-height: 1.2;
-  margin-top: 0.1rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-[data-bs-theme="dark"] .flat-partner-tag {
-  color: #a5b4fc;
-}
-
-[data-bs-theme="dark"] .flat-status-tag {
-  color: #fbbf24;
+.flat-card-row .flat-card-inner {
+  gap: 0.2rem;
 }
 
 .flat-card-head {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 3.35rem;
-  padding-right: 0.45rem;
-  border-right: 1px dashed rgba(33, 37, 41, 0.2);
+  display: none;
 }
 
 .flat-card-owner {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.12rem;
   min-width: 0;
-  min-height: 2.5rem;
-  margin-top: 0;
+  min-height: 3.15rem;
+  max-height: 3.65rem;
+  margin-top: 0.18rem;
   padding-top: 0;
   border-top: none;
   text-align: left;
+  overflow: hidden;
 }
 
 .flat-card-owner.is-blank {
-  border-top-color: transparent;
   opacity: 0;
-  min-height: 2.5rem;
+  min-height: 3.15rem;
+  max-height: 3.65rem;
   pointer-events: none;
 }
 
-.flat-booked .flat-card-head {
-  border-right-color: rgba(13, 110, 253, 0.4);
+.flat-card-status {
+  margin-top: auto;
+  border-radius: 8px;
+  padding: 0.44rem 0.5rem;
+  text-align: center;
+  background: var(--flat-status-bg);
+  flex: 0 0 auto;
+  min-height: 1.85rem;
+}
+
+.flat-card-status__label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--flat-status-fg);
+  line-height: 1.15;
+}
+
+.flat-partner-tag {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #6366f1;
+  line-height: 1.2;
+  margin-top: 0.05rem;
+}
+
+.flat-status-tag {
+  display: none;
 }
 
 .flat-owner-name {
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   font-weight: 700;
-  font-size: 0.875rem;
-  line-height: 1.25;
+  font-size: 0.88rem;
+  line-height: 1.28;
   max-width: 100%;
-  overflow-wrap: anywhere;
-  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  color: #0f172a;
 }
 
 .flat-owner-detail {
-  display: block;
-  font-size: 0.78rem;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.8rem;
   font-weight: 500;
-  line-height: 1.25;
+  line-height: 1.28;
   max-width: 100%;
-  overflow-wrap: anywhere;
-  color: var(--bs-secondary-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  color: #64748b;
 }
 
 .flat-number {
   display: block;
-  font-weight: 700;
-  font-size: 1.05rem;
-  letter-spacing: 0.02em;
+  font-weight: 800;
+  font-size: 1.18rem;
+  letter-spacing: 0.01em;
   max-width: 100%;
   overflow-wrap: anywhere;
+  color: #0f172a;
 }
 
 .flat-type {
   display: block;
-  margin-top: 0.08rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--bs-secondary-color);
+  margin-top: 0;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #64748b;
   max-width: 100%;
   overflow-wrap: anywhere;
+}
+
+.flat-card-row .flat-number {
+  font-size: 1.14rem;
+}
+
+.flat-card-row .flat-type {
+  font-size: 0.8rem;
+}
+
+.flat-card-row .flat-owner-name {
+  font-size: 0.86rem;
+}
+
+.flat-card-row .flat-owner-detail {
+  font-size: 0.78rem;
+}
+
+.flat-card-row .flat-card-owner,
+.flat-card-row .flat-card-owner.is-blank {
+  min-height: 3rem;
+  max-height: 3.5rem;
 }
 
 .flat-floor-plan-link {
@@ -894,6 +1007,18 @@ button.flat-floor-plan-link {
   color: var(--bs-link-color);
   text-decoration: underline;
   cursor: pointer;
+}
+
+.flat-quick-link--sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .flat-card-row .flat-quick-link {
@@ -1140,8 +1265,11 @@ body.modal-open .modal-backdrop {
 }
 
 .flat-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.flat-card:hover .flat-card-body {
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
 }
 
 .flat-card--other-partner:not(.flat-parking),
@@ -1153,60 +1281,112 @@ body.modal-open .modal-backdrop {
   outline: 3px solid var(--bs-warning);
   outline-offset: 2px;
   z-index: 5;
+}
+
+.flat-card--focused .flat-card-body {
   box-shadow: 0 0 0 4px rgba(var(--bs-warning-rgb), 0.35);
 }
 
 /* Flat chosen in the booking panel */
 .flat-card.flat-card--booking-selected {
-  background: #ffe5cc !important;
-  border-color: #e8590c !important;
-  box-shadow: 0 0 0 2px rgba(232, 89, 12, 0.35);
+  background: transparent !important;
 }
 
-.flat-card.flat-card--booking-selected .flat-card-head {
-  border-right-color: rgba(232, 89, 12, 0.45);
+.flat-card.flat-card--booking-selected .flat-card-body {
+  box-shadow: 0 0 0 2px rgba(232, 89, 12, 0.45);
 }
 
 .flat-card.flat-card--booking-selected .flat-type,
 .flat-card.flat-card--booking-selected .flat-owner-detail {
-  color: #663c00;
+  color: #64748b;
 }
 
 .flat-card.flat-card--booking-selected .flat-owner-name {
-  color: #5c2f00;
+  color: #0f172a;
 }
 
 .flat-available {
-  background: #d1e7dd;
-  border-color: #198754;
+  --flat-roof-dark: #1f9d73;
+  --flat-roof-light: #5fd4a8;
+  --flat-status-bg: #ecfdf5;
+  --flat-status-fg: #059669;
 }
 
 .flat-booked {
-  background: #cfe2ff;
-  border-color: #0d6efd;
+  --flat-roof-dark: #3b82c4;
+  --flat-roof-light: #7eb8ea;
+  --flat-status-bg: #eff6ff;
+  --flat-status-fg: #2563eb;
   cursor: default;
 }
 
 .flat-booked .flat-owner-name {
-  color: #052c65;
+  color: #0f172a;
 }
 
 .flat-booked .flat-owner-detail {
-  color: #0d47a1;
+  color: #64748b;
 }
 
 .flat-hold {
-  background: #fff3cd;
-  border-color: #ffc107;
+  --flat-roof-dark: #d97706;
+  --flat-roof-light: #fbbf24;
+  --flat-status-bg: #fffbeb;
+  --flat-status-fg: #b45309;
 }
 
 .flat-deactivated {
-  background: #f8d7da;
-  border-color: #dc3545;
+  --flat-roof-dark: #dc2626;
+  --flat-roof-light: #f87171;
+  --flat-status-bg: #fef2f2;
+  --flat-status-fg: #b91c1c;
 }
 
 .flat-deactivated .flat-owner-name {
-  color: #842029;
+  color: #991b1b;
+}
+
+.flat-card.flat-parking,
+.flat-card.flat-amenity,
+.flat-card.flat-duplex-part,
+.flat-card.flat-merge-part {
+  min-height: 5.35rem;
+  border-radius: 10px;
+  border: 2px solid #dee2e6;
+  padding: 0.45rem 0.6rem 0.45rem 0.5rem;
+  background: #e2e3e5;
+}
+
+.flat-card.flat-parking .flat-card-roof,
+.flat-card.flat-amenity .flat-card-roof,
+.flat-card.flat-duplex-part .flat-card-roof,
+.flat-card.flat-merge-part .flat-card-roof,
+.flat-card.flat-parking .flat-card-status,
+.flat-card.flat-amenity .flat-card-status,
+.flat-card.flat-duplex-part .flat-card-status,
+.flat-card.flat-merge-part .flat-card-status {
+  display: none;
+}
+
+.flat-card.flat-parking .flat-card-body,
+.flat-card.flat-amenity .flat-card-body,
+.flat-card.flat-duplex-part .flat-card-body,
+.flat-card.flat-merge-part .flat-card-body {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  min-height: 0;
+}
+
+.flat-card.flat-parking .flat-card-inner,
+.flat-card.flat-amenity .flat-card-inner,
+.flat-card.flat-duplex-part .flat-card-inner,
+.flat-card.flat-merge-part .flat-card-inner {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 [data-bs-theme="dark"] .flat-deactivated {
@@ -1950,41 +2130,45 @@ body.modal-open .modal-backdrop {
 }
 
 .flat-duplex-primary {
-  background: #ebe2f7;
-  border-color: #7e57c2;
+  --flat-roof-dark: #7e57c2;
+  --flat-roof-light: #b39ddb;
 }
 
 .flat-duplex-primary.flat-booked {
-  background: #dfe8fb;
-  border-color: #0d6efd;
+  --flat-roof-dark: #3b82c4;
+  --flat-roof-light: #7eb8ea;
+  --flat-status-bg: #eff6ff;
+  --flat-status-fg: #2563eb;
 }
 
 [data-bs-theme="dark"] .flat-duplex-primary {
-  background: #2d2438;
-  border-color: #b39ddb;
+  --flat-roof-dark: #6d28d9;
+  --flat-roof-light: #a78bfa;
 }
 
 .flat-duplex {
-  box-shadow: inset 0 0 0 2px rgba(111, 66, 193, 0.35);
+  box-shadow: none;
 }
 
 .flat-merge-primary {
-  background: #dff2ef;
-  border-color: #00897b;
+  --flat-roof-dark: #0f766e;
+  --flat-roof-light: #5eead4;
 }
 
 .flat-merge-primary.flat-booked {
-  background: #dfe8fb;
-  border-color: #0d6efd;
+  --flat-roof-dark: #3b82c4;
+  --flat-roof-light: #7eb8ea;
+  --flat-status-bg: #eff6ff;
+  --flat-status-fg: #2563eb;
 }
 
 [data-bs-theme="dark"] .flat-merge-primary {
-  background: #1a2e2b;
-  border-color: #4db6ac;
+  --flat-roof-dark: #115e59;
+  --flat-roof-light: #2dd4bf;
 }
 
 .flat-merge {
-  box-shadow: inset 0 0 0 2px rgba(0, 137, 123, 0.35);
+  box-shadow: none;
 }
 
 .flat-merge-part {
@@ -2024,20 +2208,28 @@ body.modal-open .modal-backdrop {
 
 .flat-card--other-partner,
 .flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) {
-  background: #eceff1 !important;
-  border-color: #b0bec5 !important;
-  border-style: dashed;
   cursor: default;
   opacity: 0.58;
   filter: grayscale(0.35);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
+}
+
+.flat-card--other-partner .flat-card-body,
+.flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part)
+  .flat-card-body {
+  background: #eceff1 !important;
+  border-color: #b0bec5 !important;
+  border-style: dashed;
 }
 
 .flat-card--other-partner:hover,
 .flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):hover {
   transform: none;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
   filter: grayscale(0.35);
+}
+
+.flat-card--other-partner:hover .flat-card-body,
+.flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):hover .flat-card-body {
+  box-shadow: none;
 }
 
 .flat-card--other-partner .flat-number,
@@ -2057,49 +2249,76 @@ body.modal-open .modal-backdrop {
   font-weight: 500;
 }
 
-.flat-card--other-partner .flat-card-head,
-.flat-card[data-bookable="false"]:not(.flat-parking) .flat-card-head {
-  border-right-color: rgba(108, 117, 125, 0.35);
+[data-bs-theme="dark"] .flat-card-body {
+  background: #1e293b;
+  border-color: #334155;
 }
 
-[data-bs-theme="dark"] .flat-card {
-  border-color: var(--bs-border-color);
+[data-bs-theme="dark"] .flat-number,
+[data-bs-theme="dark"] .flat-owner-name {
+  color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .flat-type,
+[data-bs-theme="dark"] .flat-owner-detail {
+  color: #94a3b8;
 }
 
 [data-bs-theme="dark"] .flat-available {
-  background: rgba(25, 135, 84, 0.25);
-  border-color: #198754;
+  --flat-roof-dark: #15803d;
+  --flat-roof-light: #4ade80;
+  --flat-status-bg: rgba(25, 135, 84, 0.18);
+  --flat-status-fg: #86efac;
 }
 
 [data-bs-theme="dark"] .flat-booked {
-  background: rgba(13, 110, 253, 0.28);
-  border-color: #6ea8fe;
+  --flat-roof-dark: #2563eb;
+  --flat-roof-light: #60a5fa;
+  --flat-status-bg: rgba(13, 110, 253, 0.2);
+  --flat-status-fg: #93c5fd;
 }
 
 [data-bs-theme="dark"] .flat-booked .flat-owner-name {
-  color: #e7efff;
-}
-
-[data-bs-theme="dark"] .flat-booked .flat-owner-detail {
-  color: #b6d4fe;
+  color: #f1f5f9;
 }
 
 [data-bs-theme="dark"] .flat-hold {
-  background: rgba(255, 193, 7, 0.2);
-  border-color: #ffc107;
+  --flat-roof-dark: #b45309;
+  --flat-roof-light: #fbbf24;
+  --flat-status-bg: rgba(255, 193, 7, 0.15);
+  --flat-status-fg: #fcd34d;
 }
 
-[data-bs-theme="dark"] .flat-card--other-partner {
-  background: rgba(108, 117, 125, 0.22) !important;
-  border-color: rgba(173, 181, 189, 0.55) !important;
+[data-bs-theme="dark"] .flat-deactivated {
+  --flat-roof-dark: #b91c1c;
+  --flat-roof-light: #f87171;
+  --flat-status-bg: rgba(220, 53, 69, 0.18);
+  --flat-status-fg: #fca5a5;
+}
+
+[data-bs-theme="dark"] .flat-booked .flat-owner-detail {
+  color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .flat-card--other-partner,
+[data-bs-theme="dark"]
+  .flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) {
   opacity: 0.62;
   filter: grayscale(0.4);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
-[data-bs-theme="dark"] .flat-card--other-partner:hover {
+[data-bs-theme="dark"] .flat-card--other-partner .flat-card-body,
+[data-bs-theme="dark"]
+  .flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part)
+  .flat-card-body {
+  background: rgba(108, 117, 125, 0.22) !important;
+  border-color: rgba(173, 181, 189, 0.55) !important;
+}
+
+[data-bs-theme="dark"] .flat-card--other-partner:hover,
+[data-bs-theme="dark"]
+  .flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):hover {
   transform: none;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 [data-bs-theme="dark"] .flat-card--other-partner .flat-number,
@@ -2118,31 +2337,21 @@ body.modal-open .modal-backdrop {
   border-color: #6c757d;
 }
 
-[data-bs-theme="dark"] .flat-card-head {
-  border-right-color: rgba(255, 255, 255, 0.14);
-}
-
-[data-bs-theme="dark"] .flat-booked .flat-card-head {
-  border-right-color: rgba(110, 168, 254, 0.45);
-}
-
 [data-bs-theme="dark"] .flat-card.flat-card--booking-selected {
-  background: rgba(253, 126, 20, 0.32) !important;
-  border-color: #ffa94d !important;
-  box-shadow: 0 0 0 2px rgba(253, 126, 20, 0.3);
+  background: transparent !important;
 }
 
-[data-bs-theme="dark"] .flat-card.flat-card--booking-selected .flat-card-head {
-  border-right-color: rgba(255, 169, 77, 0.55);
+[data-bs-theme="dark"] .flat-card.flat-card--booking-selected .flat-card-body {
+  box-shadow: 0 0 0 2px rgba(253, 126, 20, 0.45);
 }
 
 [data-bs-theme="dark"] .flat-card.flat-card--booking-selected .flat-type,
 [data-bs-theme="dark"] .flat-card.flat-card--booking-selected .flat-owner-detail {
-  color: #ffe8cc;
+  color: #94a3b8;
 }
 
 [data-bs-theme="dark"] .flat-card.flat-card--booking-selected .flat-owner-name {
-  color: #fff5eb;
+  color: #f1f5f9;
 }
 
 [data-bs-theme="dark"] .flat-card-owner {
@@ -2184,8 +2393,20 @@ body.modal-open .modal-backdrop {
 
 .floor-label {
   flex-shrink: 0;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
   line-height: 1.25;
+}
+
+[data-bs-theme="dark"] .floor-label {
+  color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .flat-partner-tag {
+  color: #a5b4fc;
 }
 
 /* Theme switch: sun (light) / moon (dark), one control */

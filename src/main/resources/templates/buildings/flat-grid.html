@@ -264,7 +264,8 @@
     </p>
     <div th:each="floor : ${floors}" class="flat-floor-row mb-3" th:attr="data-floor-number=${floor.floorNumber()}">
       <div class="flat-floor-row__rail">
-        <span class="floor-label text-muted small text-nowrap" th:text="${floor.label()}">Floor</span>
+        <span class="floor-label text-nowrap" th:text="${floor.label()}">Floor</span>
+        <span class="flat-floor-row__divider" aria-hidden="true"></span>
         <button type="button" class="btn btn-sm btn-outline-secondary flat-add-unit-btn"
                 sec:authorize="hasRole('SUPER_ADMIN')"
                 th:classappend="${floor.parkingSection()} ? ' d-none' : ''"
@@ -367,29 +368,43 @@
               <span>Email</span><span class="flat-card-buyertip__email" th:text="${flat.buyerEmail()}">-</span>
             </div>
           </div>
-          <div class="flat-card-inner">
-            <div class="flat-card-head">
+          <div class="flat-card-roof" aria-hidden="true">
+            <div class="flat-card-roof__peak">
+              <div class="flat-card-roof__shape"></div>
+              <div class="flat-card-roof__windows"><span></span><span></span></div>
+            </div>
+            <div class="flat-card-roof__bricks"
+                 th:classappend="${flat.bhkType() != null and flat.bhkType().matches('^[34].*')} ? ' flat-card-roof__bricks--three' : ''">
+              <span></span><span></span><span class="flat-card-roof__brick-extra"></span>
+            </div>
+          </div>
+          <div class="flat-card-body">
+            <div class="flat-card-inner">
               <span class="flat-number" th:text="${flat.flatNumber()}">0101</span>
+              <span class="flat-type" th:text="${flat.gridTypeLabel()}">2BHK</span>
               <span class="flat-partner-tag small"
                     th:if="${flat.assignedPartnerName() != null}"
                     th:text="${flat.assignedPartnerName()}">Partner</span>
               <span class="flat-status-tag small"
                     th:if="${flat.status() == 'CANCELLED'}">Deactivated</span>
-              <span class="flat-type" th:text="${flat.gridTypeLabel()}">2BHK</span>
+              <div class="flat-card-owner" th:classappend="${#strings.isEmpty(flat.ownerDisplay()) && #strings.isEmpty(flat.ownerDetail())} ? ' is-blank'">
+                <span class="flat-owner-name"
+                      th:text="${flat.bookableByCurrentUser()
+                        ? (flat.status() == 'CANCELLED' ? 'Deactivated' : flat.ownerDisplay())
+                        : (flat.status() == 'BOOKED' ? 'Booked' : (flat.status() == 'CANCELLED' ? 'Deactivated' : ''))}"></span>
+                <span class="flat-owner-detail" th:if="${flat.bookableByCurrentUser()}" th:text="${flat.ownerDetail()}"></span>
+              </div>
+              <button th:if="${flat.bookableByCurrentUser() or platformAdminView}"
+                      type="button"
+                      class="flat-quick-link flat-quick-link--sr"
+                      th:attr="data-flat-id=${flat.id()}">
+                Flat details
+              </button>
             </div>
-            <div class="flat-card-owner" th:classappend="${#strings.isEmpty(flat.ownerDisplay()) && #strings.isEmpty(flat.ownerDetail())} ? ' is-blank'">
-              <span class="flat-owner-name"
-                    th:text="${flat.bookableByCurrentUser()
-                      ? (flat.status() == 'CANCELLED' ? 'Deactivated' : flat.ownerDisplay())
-                      : (flat.status() == 'BOOKED' ? 'Booked' : (flat.status() == 'CANCELLED' ? 'Deactivated' : ''))}"></span>
-              <span class="flat-owner-detail" th:if="${flat.bookableByCurrentUser()}" th:text="${flat.ownerDetail()}"></span>
-            </div>
-            <button th:if="${flat.bookableByCurrentUser() or platformAdminView}"
-                    type="button"
-                    class="flat-quick-link"
-                    th:attr="data-flat-id=${flat.id()}">
-              Flat details
-            </button>
+          </div>
+          <div class="flat-card-status">
+            <span class="flat-card-status__label"
+                  th:text="${flat.status() == 'BOOKED' ? 'BOOKED' : (flat.status() == 'HOLD' ? 'ON HOLD' : (flat.status() == 'CANCELLED' ? 'DEACTIVATED' : 'AVAILABLE'))}">AVAILABLE</span>
           </div>
         </div>
       </div>
@@ -818,7 +833,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=flat-column-type-panel)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=flat-house-cards-v3)}"></script>
 </div>
 </body>
 </html>
