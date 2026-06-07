@@ -13,6 +13,21 @@ class FlatAdminUpdateDtoTest {
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Test
+    void deserializesLayoutColumnType() throws Exception {
+        String json =
+                "{\"bhkType\":\"2BHK\",\"areaSqft\":820,\"layoutColumnType\":\"B\"}";
+        FlatAdminUpdateDto dto = mapper.readValue(json, FlatAdminUpdateDto.class);
+        assertEquals("2BHK", dto.bhkType());
+        assertEquals("B", dto.layoutColumnType());
+    }
+
+    @Test
+    void deserializesBlankLayoutColumnTypeAsEmptyString() throws Exception {
+        String json = "{\"bhkType\":\"2BHK\",\"layoutColumnType\":\"\"}";
+        FlatAdminUpdateDto dto = mapper.readValue(json, FlatAdminUpdateDto.class);
+        assertEquals("", dto.layoutColumnType());
+    }
+    @Test
     void deserializesCarpetAndBalconyAreas() throws Exception {
         String json =
                 "{\"bhkType\":\"2BHK\",\"areaSqft\":820,\"carpetAreaSqft\":650.5,\"balconyAreaSqft\":40,\"basePrice\":8400000}";

@@ -3,7 +3,8 @@ package com.floor21.dto;
 import java.math.BigDecimal;
 
 public record ColumnTypeDefaultsDto(
-        String columnType,
+        int columnNumber,
+        String layoutColumnType,
         BigDecimal areaSqft,
         BigDecimal carpetAreaSqft,
         BigDecimal balconyAreaSqft,

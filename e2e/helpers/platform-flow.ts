@@ -23,7 +23,7 @@ import { createUser, sampleUserData, type NewUserInput } from './users';
 import { login, loginAsSuperAdmin } from './auth';
 import {
   configureAndApplyColumnTypeDefaults,
-  E2E_COLUMN_A_DEFAULTS,
+  E2E_COLUMN_1_DEFAULTS,
   type ColumnTypeDefaultsInput,
 } from './column-type-defaults';
 import {
@@ -80,7 +80,7 @@ export type PlatformFlowState = {
   clientDisplayName: string;
   bookingCode: string;
   unitTypeDefaults2Bhk?: UnitTypeDefaultsInput;
-  columnTypeDefaultsA?: ColumnTypeDefaultsInput;
+  columnTypeDefaults1?: ColumnTypeDefaultsInput;
 };
 
 export function createPlatformFlowState(): PlatformFlowState {
@@ -165,9 +165,9 @@ export async function adminCreateBuilding(page: Page, flow: PlatformFlowState) {
 
 export async function adminConfigureColumnAUnitTypeDefaults(page: Page, flow: PlatformFlowState) {
   await loginAsSuperAdmin(page);
-  const defaults = flow.columnTypeDefaultsA ?? E2E_COLUMN_A_DEFAULTS;
+  const defaults = flow.columnTypeDefaults1 ?? E2E_COLUMN_1_DEFAULTS;
   await configureAndApplyColumnTypeDefaults(page, flow.buildingId, flow.building, defaults);
-  flow.columnTypeDefaultsA = defaults;
+  flow.columnTypeDefaults1 = defaults;
 }
 
 export async function adminConfigure2BhkUnitTypeDefaults(page: Page, flow: PlatformFlowState) {

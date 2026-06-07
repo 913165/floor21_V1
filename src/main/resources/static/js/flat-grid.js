@@ -156,6 +156,10 @@
       }
     }
     setParkingExtraAreaFieldsVisible(!parkingMode);
+    ["panel-column-number-col", "panel-column-type-col"].forEach(function (id) {
+      var col = document.getElementById(id);
+      if (col) col.classList.toggle("d-none", parkingMode);
+    });
     var areaLabel = document.getElementById("panel-super-builder-area-label");
     if (areaLabel) {
       if (parkingMode) {
@@ -414,6 +418,43 @@
     if (carpet) carpet.value = formatAreaForDisplay(flat.carpetAreaSqft);
     if (balcony) balcony.value = formatAreaForDisplay(flat.balconyAreaSqft);
     if (price) price.value = flat.basePrice != null ? String(flat.basePrice) : "";
+    syncColumnTypePanelFromFlat(flat);
+  }
+
+  function formatColumnTypeDisplay(typeLabel) {
+    return typeLabel != null && String(typeLabel).trim() !== "" ? String(typeLabel).trim() : "—";
+  }
+
+  function syncColumnTypePanelFromCard(cardEl) {
+    if (!cardEl) return;
+    var show = isResidentialFlatCard(cardEl);
+    ["panel-column-number-col", "panel-column-type-col"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.toggle("d-none", !show);
+    });
+    var columnNumber = document.getElementById("panel-column-number");
+    if (columnNumber) {
+      columnNumber.textContent = show && cardEl.dataset.columnNumber ? cardEl.dataset.columnNumber : "—";
+    }
+    var panelColumnType = document.getElementById("panel-column-type");
+    if (panelColumnType) {
+      panelColumnType.textContent = show ? formatColumnTypeDisplay(cardEl.dataset.columnType) : "—";
+    }
+    var columnTypeInput = document.getElementById("admin-column-type");
+    if (columnTypeInput) {
+      columnTypeInput.value = show && cardEl.dataset.columnType ? cardEl.dataset.columnType : "";
+    }
+  }
+
+  function syncColumnTypePanelFromFlat(flat) {
+    var panelColumnType = document.getElementById("panel-column-type");
+    if (panelColumnType) {
+      panelColumnType.textContent = formatColumnTypeDisplay(flat.layoutColumnType);
+    }
+    var columnTypeInput = document.getElementById("admin-column-type");
+    if (columnTypeInput) {
+      columnTypeInput.value = flat.layoutColumnType != null ? String(flat.layoutColumnType) : "";
+    }
   }
 
   function updateAreaUnitLabels() {
@@ -657,19 +698,25 @@
     }
   }
 
-  function readAdminForm() {
+  function readAdminForm(options) {
+    var opts = options || {};
     var bhk = document.getElementById("admin-bhk");
     var superBuilder = document.getElementById("admin-super-builder-area");
     var carpet = document.getElementById("admin-carpet-area");
     var balcony = document.getElementById("admin-balcony-area");
     var price = document.getElementById("admin-price");
-    return {
+    var payload = {
       bhkType: bhk ? bhk.value : "",
       areaSqft: readAreaInputSqft(superBuilder),
       carpetAreaSqft: readAreaInputSqft(carpet),
       balconyAreaSqft: readAreaInputSqft(balcony),
       basePrice: price && price.value.trim() !== "" ? Number(price.value.trim()) : null,
     };
+    if (opts.includeColumnType) {
+      var columnType = document.getElementById("admin-column-type");
+      payload.layoutColumnType = columnType ? columnType.value.trim() : "";
+    }
+    return payload;
   }
 
   async function loadUnitTypeDefaults(force) {
@@ -709,9 +756,10 @@
     );
   }
 
-  function getConfiguredColumnDefaults(columnType) {
-    if (!columnTypeDefaultsCache || !columnType) return null;
-    return columnTypeDefaultsCache[columnType] || null;
+  function getConfiguredColumnDefaults(columnNumber) {
+    if (!columnTypeDefaultsCache || columnNumber == null || columnNumber === "") return null;
+    var key = String(columnNumber);
+    return columnTypeDefaultsCache[key] || null;
   }
 
   function getEffectiveFlatDatasetValue(cardEl, datasetKey, defaultsKey) {
@@ -719,7 +767,7 @@
     var value = cardEl.dataset[datasetKey];
     if (value != null && value !== "") return value;
     if (!isResidentialFlatCard(cardEl)) return "";
-    var columnDefaults = getConfiguredColumnDefaults(cardEl.dataset.columnType);
+    var columnDefaults = getConfiguredColumnDefaults(cardEl.dataset.columnNumber);
     if (columnDefaults && columnDefaults[defaultsKey] != null) {
       return String(columnDefaults[defaultsKey]);
     }
@@ -935,21 +983,26 @@
     return columnTypeDefaultsCache;
   }
 
-  function populateColumnTypeDefaultsModal(columnType) {
+  function populateColumnTypeDefaultsModal(columnNumber) {
     var colSel = document.getElementById("column-type-defaults-column");
     if (colSel) {
-      if (columnType) {
-        colSel.value = columnType;
+      if (columnNumber) {
+        colSel.value = String(columnNumber);
       } else if (!colSel.value && colSel.options.length > 0) {
         colSel.value = colSel.options[0].value;
       }
     }
-    var col = colSel ? colSel.value : columnType;
+    var col = colSel ? colSel.value : columnNumber;
     var entry = getConfiguredColumnDefaults(col);
+    var typeLabel = document.getElementById("column-type-defaults-type-label");
     var superBuilder = document.getElementById("column-type-defaults-super-builder-area");
     var carpet = document.getElementById("column-type-defaults-carpet-area");
     var balcony = document.getElementById("column-type-defaults-balcony-area");
     var price = document.getElementById("column-type-defaults-price");
+    if (typeLabel) {
+      typeLabel.value =
+        entry && entry.layoutColumnType != null ? String(entry.layoutColumnType) : "";
+    }
     if (superBuilder) {
       superBuilder.value = entry && entry.areaSqft != null ? formatAreaForDisplay(entry.areaSqft) : "";
     }
@@ -967,12 +1020,16 @@
     updateColumnTypeDefaultsModalTitle(col);
   }
 
-  function updateColumnTypeDefaultsModalTitle(columnType) {
+  function updateColumnTypeDefaultsModalTitle(columnNumber) {
     var title = document.getElementById("column-type-defaults-modal-title");
+    var hint = document.getElementById("column-type-defaults-apply-hint");
+    if (hint && columnNumber) {
+      hint.textContent = String(columnNumber);
+    }
     if (!title) return;
-    title.textContent = columnType
-      ? "Column type defaults — " + columnType
-      : "Column type defaults";
+    title.textContent = columnNumber
+      ? "Column defaults — column " + columnNumber
+      : "Column defaults";
   }
 
   function showColumnTypeDefaultsError(message) {
@@ -987,11 +1044,11 @@
     el.classList.remove("d-none");
   }
 
-  async function openColumnTypeDefaultsModal(columnType) {
+  async function openColumnTypeDefaultsModal(columnNumber) {
     if (!isPlatformAdminEdit()) return;
     mountModalsOnBody();
     await loadColumnTypeDefaults(false);
-    populateColumnTypeDefaultsModal(columnType || null);
+    populateColumnTypeDefaultsModal(columnNumber || null);
     var unitSel = document.getElementById("column-type-defaults-area-unit");
     if (unitSel) {
       unitSel.value = getAreaUnit();
@@ -1006,13 +1063,15 @@
 
   function readColumnTypeDefaultsFormPayload() {
     var colSel = document.getElementById("column-type-defaults-column");
+    var typeLabel = document.getElementById("column-type-defaults-type-label");
     var superBuilder = document.getElementById("column-type-defaults-super-builder-area");
     var carpet = document.getElementById("column-type-defaults-carpet-area");
     var balcony = document.getElementById("column-type-defaults-balcony-area");
     var price = document.getElementById("column-type-defaults-price");
     if (!colSel) return null;
     return {
-      columnType: colSel.value,
+      columnNumber: Number(colSel.value),
+      layoutColumnType: typeLabel ? typeLabel.value.trim() : "",
       areaSqft: readAreaInputSqft(superBuilder),
       carpetAreaSqft: readAreaInputSqft(carpet),
       balconyAreaSqft: readAreaInputSqft(balcony),
@@ -1043,7 +1102,7 @@
     if (modalEl && bootstrap.Modal.getInstance(modalEl)) {
       bootstrap.Modal.getInstance(modalEl).hide();
     }
-    showGridToast("Saved column defaults for " + colSel.value, "success");
+    showGridToast("Saved column defaults for column " + colSel.value, "success");
   }
 
   async function applyColumnTypeDefaultsToFlats() {
@@ -1092,7 +1151,7 @@
   }
 
   function setAdminEditModeVisible(show) {
-    ["panel-type", "panel-super-builder-area", "panel-carpet-area", "panel-balcony-area", "panel-price"].forEach(function (id) {
+    ["panel-type", "panel-column-type", "panel-column-number", "panel-super-builder-area", "panel-carpet-area", "panel-balcony-area", "panel-price"].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.classList.toggle("d-none", show);
     });
@@ -1106,10 +1165,12 @@
   function applyFlatDataToCard(cardEl, flat) {
     if (!cardEl || !flat) return;
     if (flat.bhkType != null) cardEl.dataset.type = flat.bhkType;
-    if (flat.layoutColumnType != null) {
-      cardEl.dataset.columnType = flat.layoutColumnType;
-    } else {
-      delete cardEl.dataset.columnType;
+    if (Object.prototype.hasOwnProperty.call(flat, "layoutColumnType")) {
+      if (flat.layoutColumnType != null && flat.layoutColumnType !== "") {
+        cardEl.dataset.columnType = flat.layoutColumnType;
+      } else {
+        delete cardEl.dataset.columnType;
+      }
     }
     if (flat.areaSqft != null) cardEl.dataset.area = String(flat.areaSqft);
     if (flat.carpetAreaSqft != null) cardEl.dataset.carpetArea = String(flat.carpetAreaSqft);
@@ -1275,6 +1336,7 @@
         price.value =
           getEffectiveFlatDatasetValue(cardEl, "price", "basePrice") || cardEl.dataset.price || "";
       }
+      syncColumnTypePanelFromCard(cardEl);
       if (partner) partner.value = cardEl.dataset.partnerId || "";
       var isBooked = cardEl.dataset.status === "BOOKED";
       if (bhk) {
@@ -1306,8 +1368,8 @@
       var saveHint = document.getElementById("admin-save-hint");
       if (saveHint) {
         saveHint.textContent = isBooked
-          ? "Booked flat — unit type and floor-wide apply are locked; leave fields blank to keep current values, or enter new areas/price."
-          : "Leave fields blank to keep this unit only. Building-wide defaults are set in the Unit type defaults panel above the grid.";
+          ? "Booked flat — unit type and floor-wide apply are locked; leave area/price blank to keep current values. Column type can still be edited."
+          : "Leave area/price blank to keep this unit only. Column type is optional per flat. Building-wide defaults are set above the grid.";
       }
       var nonBookable = isNonBookableUnit(cardEl);
       var isDuplexLinked =
@@ -3905,8 +3967,8 @@
     if (titleEl) {
       titleEl.textContent = flatLabel ? "Flat " + flatLabel : "Flat details";
     }
-    document.getElementById("panel-type").textContent =
-      el.dataset.gridType || el.dataset.type || "";
+    document.getElementById("panel-type").textContent = el.dataset.type || "";
+    syncColumnTypePanelFromCard(el);
     document.getElementById("panel-floor").textContent = el.dataset.floor || "";
     setAreaPanelFromDataset(el);
     document.getElementById("panel-price").textContent =
@@ -4232,7 +4294,7 @@
       adminSave.addEventListener("click", async function () {
         if (!selectedFlatId) return;
         showAdminError("");
-        var form = readAdminForm();
+        var form = readAdminForm({ includeColumnType: !selectedParkingSlot && !selectedParkingSection });
         var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
         var res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/details", {
           method: "POST",
@@ -4256,6 +4318,7 @@
         var card = document.getElementById("flat-" + selectedFlatId);
         applyFlatDataToCard(card, flat);
         document.getElementById("panel-type").textContent = flat.bhkType || "";
+        syncColumnTypePanelFromFlat(flat);
         setAreaPanelFromFlat(flat);
         syncAdminAreaInputsFromFlat(flat);
         document.getElementById("panel-price").textContent = flat.basePrice != null ? String(flat.basePrice) : "";

@@ -7,8 +7,10 @@ public record FlatGridFlatDto(
         UUID id,
         String flatNumber,
         int floorNumber,
+        /** Sequential column position on the floor (1, 2, 3…). */
+        Integer unitNumber,
         String bhkType,
-        /** Column label (A, B, C…) for this unit position across floors. */
+        /** Optional column type label (A, B, custom) configured per column. */
         String layoutColumnType,
         BigDecimal basePrice,
         BigDecimal areaSqft,

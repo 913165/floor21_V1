@@ -238,9 +238,6 @@ public class BuildingController {
         cfg.setBhkPerFloor(ResidentialBhkTypes.countsFromBuilding(b));
         cfg.setSkippedFloorNumbers(SkippedFloorsUtil.formatForDisplay(b.getSkippedFloorNumbers()));
         long flatCount = flatService.countFlatsForBuilding(id);
-        if (flatCount > 0) {
-            flatService.ensureLayoutColumnTypes(id);
-        }
         long activeBookings = flatService.countActiveBookingsForBuilding(id);
         model.addAttribute("pageTitle", "Flat Grid — " + b.getBuildingName());
         model.addAttribute("building", b);
@@ -259,8 +256,8 @@ public class BuildingController {
             model.addAttribute("maxRemovableTopFloors", flatService.getMaxRemovableTopFloors(id));
             model.addAttribute("addFloorMix", flatService.bhkMixForTopResidentialFloor(id));
             model.addAttribute(
-                    "layoutColumnTypes",
-                    LayoutColumnTypes.typesForFlatsPerFloor(
+                    "layoutColumnNumbers",
+                    LayoutColumnTypes.columnNumbersForFlatsPerFloor(
                             b.getFlatsPerFloor() != null ? b.getFlatsPerFloor() : 0));
         }
         return "buildings/flat-grid";

@@ -116,7 +116,7 @@ class BuildingFlatTypeDefaultsTest {
                                 new BigDecimal("8000000")));
         Map<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> columnConfigured =
                 Map.of(
-                        "A",
+                        "1",
                         new BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry(
                                 new BigDecimal("920"),
                                 new BigDecimal("710"),
@@ -125,7 +125,7 @@ class BuildingFlatTypeDefaultsTest {
 
         BuildingFlatTypeDefaults.Defaults defaults =
                 BuildingFlatTypeDefaults.resolve(
-                        bhkConfigured, columnConfigured, List.of(), "2BHK", "A");
+                        bhkConfigured, columnConfigured, List.of(), "2BHK", 1);
 
         assertEquals(new BigDecimal("920"), defaults.areaSqft());
         assertEquals(new BigDecimal("710"), defaults.carpetAreaSqft());
@@ -134,14 +134,14 @@ class BuildingFlatTypeDefaultsTest {
     }
 
     @Test
-    void shouldPropagateColumnDefaultsMatchesLayoutColumnType() {
+    void shouldPropagateColumnDefaultsMatchesColumnNumber() {
         Flat flat = new Flat();
         flat.setBhkType("2BHK");
-        flat.setLayoutColumnType("A");
+        flat.setUnitNumber(2);
         flat.setParking(false);
 
-        assertEquals(true, BuildingFlatTypeDefaults.shouldPropagateColumnDefaults(flat, "A"));
-        assertEquals(false, BuildingFlatTypeDefaults.shouldPropagateColumnDefaults(flat, "B"));
+        assertEquals(true, BuildingFlatTypeDefaults.shouldPropagateColumnDefaults(flat, 2));
+        assertEquals(false, BuildingFlatTypeDefaults.shouldPropagateColumnDefaults(flat, 1));
     }
 
     @Test

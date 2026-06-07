@@ -7,7 +7,7 @@ import com.floor21.entity.Building;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** JSON map of layout column type (A, B, C…) → default areas and price on {@link Building}. */
+/** JSON map of layout column number (1, 2, 3…) → default areas and price on {@link Building}. */
 public final class BuildingColumnTypeDefaultsUtil {
 
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -31,7 +31,11 @@ public final class BuildingColumnTypeDefaultsUtil {
                 if (entry.getKey() == null || entry.getKey().isBlank() || entry.getValue() == null) {
                     continue;
                 }
-                normalized.put(LayoutColumnTypes.normalize(entry.getKey()), entry.getValue());
+                String columnKey = LayoutColumnTypes.normalizeColumnDefaultsKey(entry.getKey());
+                if (columnKey == null) {
+                    continue;
+                }
+                normalized.put(columnKey, entry.getValue());
             }
             return normalized;
         } catch (JsonProcessingException ex) {
@@ -39,14 +43,12 @@ public final class BuildingColumnTypeDefaultsUtil {
         }
     }
 
-    public static void putForColumn(
-            Building building, String columnType, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry) {
-        String normalized = LayoutColumnTypes.normalize(columnType);
-        if (normalized == null) {
-            throw new IllegalArgumentException("Column type is required.");
-        }
+    public static void putForColumnNumber(
+            Building building, int columnNumber, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry) {
+        LayoutColumnTypes.validateColumnNumber(columnNumber);
+        String key = LayoutColumnTypes.columnDefaultsKey(columnNumber);
         Map<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> map = new LinkedHashMap<>(read(building));
-        map.put(normalized, entry);
+        map.put(key, entry);
         building.setColumnTypeDefaults(toJson(map));
     }
 

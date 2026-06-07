@@ -3,15 +3,17 @@ import { waitForFlatGridReady, type NewBuildingInput } from './buildings';
 import { applyDefaultsResultToFlatCards } from './unit-type-defaults';
 
 export type ColumnTypeDefaultsInput = {
-  columnType: string;
+  columnNumber: number;
+  layoutColumnType?: string;
   areaSqft: number;
   carpetAreaSqft: number;
   balconyAreaSqft: number;
   basePrice: number;
 };
 
-export const E2E_COLUMN_A_DEFAULTS: ColumnTypeDefaultsInput = {
-  columnType: 'A',
+export const E2E_COLUMN_1_DEFAULTS: ColumnTypeDefaultsInput = {
+  columnNumber: 1,
+  layoutColumnType: 'A',
   areaSqft: 880,
   carpetAreaSqft: 680,
   balconyAreaSqft: 48,
@@ -29,7 +31,10 @@ export async function openColumnTypeDefaultsModal(page: Page) {
 }
 
 export async function fillColumnTypeDefaultsModal(page: Page, data: ColumnTypeDefaultsInput) {
-  await page.locator('#column-type-defaults-column').selectOption(data.columnType);
+  await page.locator('#column-type-defaults-column').selectOption(String(data.columnNumber));
+  if (data.layoutColumnType != null) {
+    await page.locator('#column-type-defaults-type-label').fill(data.layoutColumnType);
+  }
   await page.locator('#column-type-defaults-super-builder-area').fill(String(data.areaSqft));
   await page.locator('#column-type-defaults-carpet-area').fill(String(data.carpetAreaSqft));
   await page.locator('#column-type-defaults-balcony-area').fill(String(data.balconyAreaSqft));
@@ -67,7 +72,7 @@ export async function applyColumnTypeDefaultsToFlats(page: Page, buildingId: str
   };
 }
 
-export function expectedColumnFlatCount(building: NewBuildingInput, columnType: string): number {
+export function expectedColumnFlatCount(building: NewBuildingInput, _columnNumber: number): number {
   const residentialFloors = Math.max(
     0,
     (building.totalFloors ?? 9) - (building.parkingFloors ?? 3),
@@ -86,7 +91,7 @@ export async function configureAndApplyColumnTypeDefaults(
 
   const sampleFlat = page
     .locator(
-      `#flat-grid [data-flat-id][data-parking="false"][data-amenity="false"][data-column-type="${data.columnType}"]`,
+      `#flat-grid [data-flat-id][data-parking="false"][data-amenity="false"][data-column-number="${data.columnNumber}"]`,
     )
     .first();
   await expect(sampleFlat).toBeVisible();
@@ -95,18 +100,18 @@ export async function configureAndApplyColumnTypeDefaults(
   await openColumnTypeDefaultsModal(page);
   await fillColumnTypeDefaultsModal(page, data);
   const saved = await saveColumnTypeDefaultsConfig(page, buildingId);
-  const savedEntry = saved[data.columnType] as Record<string, unknown> | undefined;
+  const savedEntry = saved[String(data.columnNumber)] as Record<string, unknown> | undefined;
   expect(savedEntry).toBeTruthy();
   await expect(sampleFlat).toHaveAttribute('data-area', areaBeforeSave ?? '');
 
   await openColumnTypeDefaultsModal(page);
   const applyResult = await applyColumnTypeDefaultsToFlats(page, buildingId);
-  const expectedCount = expectedColumnFlatCount(building, data.columnType);
+  const expectedCount = expectedColumnFlatCount(building, data.columnNumber);
   expect(applyResult.updatedFlats?.length).toBe(expectedCount);
   await applyDefaultsResultToFlatCards(page, applyResult.updatedFlats || []);
 
   const columnFlats = page.locator(
-    `#flat-grid [data-flat-id][data-parking="false"][data-amenity="false"][data-column-type="${data.columnType}"]`,
+    `#flat-grid [data-flat-id][data-parking="false"][data-amenity="false"][data-column-number="${data.columnNumber}"]`,
   );
   await expect(columnFlats).toHaveCount(expectedCount);
   for (let i = 0; i < expectedCount; i++) {
@@ -115,5 +120,8 @@ export async function configureAndApplyColumnTypeDefaults(
     await expect(flat).toHaveAttribute('data-carpet-area', String(data.carpetAreaSqft));
     await expect(flat).toHaveAttribute('data-balcony-area', String(data.balconyAreaSqft));
     await expect(flat).toHaveAttribute('data-price', String(data.basePrice));
+    if (data.layoutColumnType) {
+      await expect(flat).toHaveAttribute('data-column-type', data.layoutColumnType);
+    }
   }
 }

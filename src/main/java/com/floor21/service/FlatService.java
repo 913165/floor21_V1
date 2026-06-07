@@ -1335,7 +1335,7 @@ public class FlatService {
         f.setUnitNumber(unit);
         f.setFlatNumber(String.format("%02d%02d", floor, unit));
         f.setBhkType(bhk);
-        f.setLayoutColumnType(LayoutColumnTypes.columnTypeForUnitNumber(unit));
+        f.setLayoutColumnType(null);
         f.setParking(false);
         f.setStatus("AVAILABLE");
         f.setAreaSqft(BigDecimal.valueOf(area));
@@ -1381,7 +1381,7 @@ public class FlatService {
         boolean typeChanged = !requestedBhk.equals(flat.getBhkType());
         BuildingFlatTypeDefaults.Defaults typeDefaults =
                 resolveBuildingTypeDefaults(
-                        flat.getBuilding(), requestedBhk, flat.getLayoutColumnType());
+                        flat.getBuilding(), requestedBhk, flat.getUnitNumber());
         if (hasActiveBooking(flatId)) {
             if (typeChanged) {
                 throw new IllegalArgumentException(
@@ -1405,6 +1405,9 @@ public class FlatService {
                             dto.balconyAreaSqft(), typeDefaults.balconyAreaSqft(), typeChanged),
                     BuildingFlatTypeDefaults.coalesceForEdit(
                             dto.basePrice(), typeDefaults.basePrice(), typeChanged));
+        }
+        if (dto.layoutColumnType() != null) {
+            flat.setLayoutColumnType(LayoutColumnTypes.normalizeTypeLabel(dto.layoutColumnType()));
         }
         flat = flatRepository.saveAndFlush(flat);
         return flat;
@@ -1541,11 +1544,11 @@ public class FlatService {
         flat.setFloorNumber(floorNumber);
         flat.setUnitNumber(nextUnit);
         flat.setFlatNumber(String.format("%02d%02d", floorNumber, nextUnit));
-        flat.setLayoutColumnType(LayoutColumnTypes.columnTypeForUnitNumber(nextUnit));
+        flat.setLayoutColumnType(null);
         flat.setCreatedAt(now);
         flat.setStatus("AVAILABLE");
         BuildingFlatTypeDefaults.Defaults typeDefaults =
-                resolveBuildingTypeDefaults(building, bhk, flat.getLayoutColumnType());
+                resolveBuildingTypeDefaults(building, bhk, nextUnit);
         FlatUnitTypes.applyToFlat(
                 flat,
                 bhk,
@@ -1638,42 +1641,40 @@ public class FlatService {
         return updated;
     }
 
-    @Transactional
-    public void ensureLayoutColumnTypes(UUID buildingId) {
+    @Transactional(readOnly = true)
+    public Map<String, ColumnTypeDefaultsDto> getColumnTypeDefaults(UUID buildingId) {
         Building building = buildingService.resolveForAccess(buildingId);
         UUID builderId = building.getBuilder().getId();
         List<Flat> flats =
                 flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
                         buildingId, builderId);
-        for (Flat flat : flats) {
-            if (FlatUnitTypes.isNonBookable(flat)) {
-                continue;
-            }
-            if (flat.getLayoutColumnType() != null && !flat.getLayoutColumnType().isBlank()) {
-                continue;
-            }
-            flat.setLayoutColumnType(LayoutColumnTypes.columnTypeForUnitNumber(flat.getUnitNumber()));
-            flatRepository.save(flat);
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public Map<String, ColumnTypeDefaultsDto> getColumnTypeDefaults(UUID buildingId) {
-        Building building = buildingService.resolveForAccess(buildingId);
         Map<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> configured =
                 BuildingColumnTypeDefaultsUtil.read(building);
         Map<String, ColumnTypeDefaultsDto> out = new LinkedHashMap<>();
-        for (Map.Entry<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> entry :
-                configured.entrySet()) {
-            BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry value = entry.getValue();
+        int columns =
+                building.getFlatsPerFloor() != null && building.getFlatsPerFloor() > 0
+                        ? building.getFlatsPerFloor()
+                        : flats.stream()
+                                .map(Flat::getUnitNumber)
+                                .filter(n -> n != null && n > 0)
+                                .max(Integer::compareTo)
+                                .orElse(0);
+        for (int column = 1; column <= columns; column++) {
+            String key = LayoutColumnTypes.columnDefaultsKey(column);
+            BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry value = configured.get(key);
+            String layoutLabel = layoutColumnTypeForColumn(flats, column);
+            if (value == null && layoutLabel == null) {
+                continue;
+            }
             out.put(
-                    entry.getKey(),
+                    key,
                     new ColumnTypeDefaultsDto(
-                            entry.getKey(),
-                            value.areaSqft(),
-                            value.carpetAreaSqft(),
-                            value.balconyAreaSqft(),
-                            value.basePrice()));
+                            column,
+                            layoutLabel,
+                            value != null ? value.areaSqft() : null,
+                            value != null ? value.carpetAreaSqft() : null,
+                            value != null ? value.balconyAreaSqft() : null,
+                            value != null ? value.basePrice() : null));
         }
         return out;
     }
@@ -1682,10 +1683,11 @@ public class FlatService {
     public Map<String, ColumnTypeDefaultsDto> saveColumnTypeDefaults(
             UUID buildingId, ColumnTypeDefaultsSaveDto dto) {
         Building building = buildingService.resolveForAccess(buildingId);
-        String columnType = validateColumnTypeDefaultsDto(dto);
+        int columnNumber = validateColumnTypeDefaultsDto(dto);
         BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry = toColumnTypeDefaultsEntry(dto);
-        BuildingColumnTypeDefaultsUtil.putForColumn(building, columnType, entry);
+        BuildingColumnTypeDefaultsUtil.putForColumnNumber(building, columnNumber, entry);
         buildingRepository.save(building);
+        propagateLayoutColumnTypeLabel(building, columnNumber, dto.layoutColumnType());
         return getColumnTypeDefaults(buildingId);
     }
 
@@ -1693,21 +1695,22 @@ public class FlatService {
     public ColumnTypeDefaultsSaveResultDto applyColumnTypeDefaultsToFlats(
             UUID buildingId, ColumnTypeDefaultsSaveDto dto) {
         Building building = buildingService.resolveForAccess(buildingId);
-        String columnType = validateColumnTypeDefaultsDto(dto);
+        int columnNumber = validateColumnTypeDefaultsDto(dto);
         BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry = toColumnTypeDefaultsEntry(dto);
+        propagateLayoutColumnTypeLabel(building, columnNumber, dto.layoutColumnType());
         List<Map<String, Object>> updatedFlats =
-                propagateColumnTypeDefaultsToFlats(building, columnType, entry);
+                propagateColumnTypeDefaultsToFlats(building, columnNumber, entry);
         return new ColumnTypeDefaultsSaveResultDto(getColumnTypeDefaults(buildingId), updatedFlats);
     }
 
-    private static String validateColumnTypeDefaultsDto(ColumnTypeDefaultsSaveDto dto) {
-        String columnType = LayoutColumnTypes.normalize(dto.columnType());
-        if (columnType == null) {
-            throw new IllegalArgumentException("Column type is required.");
+    private static int validateColumnTypeDefaultsDto(ColumnTypeDefaultsSaveDto dto) {
+        if (dto.columnNumber() == null) {
+            throw new IllegalArgumentException("Column number is required.");
         }
+        LayoutColumnTypes.validateColumnNumber(dto.columnNumber());
         validateDefaultsAreasAndPrice(
                 dto.areaSqft(), dto.carpetAreaSqft(), dto.balconyAreaSqft(), dto.basePrice());
-        return columnType;
+        return dto.columnNumber();
     }
 
     private static void validateDefaultsAreasAndPrice(
@@ -1739,7 +1742,7 @@ public class FlatService {
     }
 
     private List<Map<String, Object>> propagateColumnTypeDefaultsToFlats(
-            Building building, String columnType, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry) {
+            Building building, int columnNumber, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry) {
         UUID buildingId = building.getId();
         UUID builderId = building.getBuilder().getId();
         List<Flat> flats =
@@ -1747,7 +1750,7 @@ public class FlatService {
                         buildingId, builderId);
         List<Map<String, Object>> updated = new ArrayList<>();
         for (Flat flat : flats) {
-            if (!BuildingFlatTypeDefaults.shouldPropagateColumnDefaults(flat, columnType)) {
+            if (!BuildingFlatTypeDefaults.shouldPropagateColumnDefaults(flat, columnNumber)) {
                 continue;
             }
             BuildingFlatTypeDefaults.applyConfiguredEntry(flat, entry);
@@ -1757,8 +1760,38 @@ public class FlatService {
         return updated;
     }
 
+    private void propagateLayoutColumnTypeLabel(Building building, int columnNumber, String layoutColumnType) {
+        UUID buildingId = building.getId();
+        UUID builderId = building.getBuilder().getId();
+        String normalized = LayoutColumnTypes.normalizeTypeLabel(layoutColumnType);
+        List<Flat> flats =
+                flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
+                        buildingId, builderId);
+        for (Flat flat : flats) {
+            if (!BuildingFlatTypeDefaults.shouldPropagateColumnDefaults(flat, columnNumber)) {
+                continue;
+            }
+            flat.setLayoutColumnType(normalized);
+            flatRepository.save(flat);
+        }
+    }
+
+    private static String layoutColumnTypeForColumn(List<Flat> flats, int columnNumber) {
+        if (flats == null) {
+            return null;
+        }
+        return flats.stream()
+                .filter(f -> f.getUnitNumber() != null && f.getUnitNumber() == columnNumber)
+                .map(Flat::getLayoutColumnType)
+                .filter(t -> t != null && !t.isBlank())
+                .map(LayoutColumnTypes::normalizeTypeLabel)
+                .filter(t -> t != null && !t.isBlank())
+                .findFirst()
+                .orElse(null);
+    }
+
     private BuildingFlatTypeDefaults.Defaults resolveBuildingTypeDefaults(
-            Building building, String unitType, String columnType) {
+            Building building, String unitType, Integer columnNumber) {
         UUID buildingId = building.getId();
         UUID builderId = building.getBuilder().getId();
         List<Flat> buildingFlats =
@@ -1769,7 +1802,7 @@ public class FlatService {
                 BuildingColumnTypeDefaultsUtil.read(building),
                 buildingFlats,
                 unitType,
-                columnType);
+                columnNumber);
     }
 
     @Transactional
@@ -2088,6 +2121,7 @@ public class FlatService {
                 f.getId(),
                 f.getFlatNumber(),
                 f.getFloorNumber(),
+                f.getUnitNumber(),
                 f.getBhkType(),
                 f.getLayoutColumnType(),
                 f.getBasePrice(),

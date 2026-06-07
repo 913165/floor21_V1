@@ -30,15 +30,18 @@ public final class BuildingFlatTypeDefaults {
             Map<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> columnConfigured,
             List<Flat> buildingFlats,
             String unitType,
-            String columnType) {
+            Integer columnNumber) {
         String normalized = FlatUnitTypes.normalize(unitType);
         if (FlatUnitTypes.isParkingCode(normalized) || FlatUnitTypes.isAmenityCode(normalized)) {
             return new Defaults(null, null, null, null);
         }
-        String normalizedColumn = LayoutColumnTypes.normalize(columnType);
+        String columnKey =
+                columnNumber != null && columnNumber >= 1
+                        ? LayoutColumnTypes.columnDefaultsKey(columnNumber)
+                        : null;
         BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry columnEntry =
-                normalizedColumn != null && columnConfigured != null
-                        ? columnConfigured.get(normalizedColumn)
+                columnKey != null && columnConfigured != null
+                        ? columnConfigured.get(columnKey)
                         : null;
         BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry bhkEntry =
                 bhkConfigured != null ? bhkConfigured.get(normalized) : null;
@@ -105,11 +108,11 @@ public final class BuildingFlatTypeDefaults {
                 entry.basePrice());
     }
 
-    public static boolean shouldPropagateColumnDefaults(Flat flat, String columnType) {
-        if (flat == null || columnType == null || columnType.isBlank()) {
+    public static boolean shouldPropagateColumnDefaults(Flat flat, int columnNumber) {
+        if (flat == null || columnNumber < 1) {
             return false;
         }
-        if (!columnType.equals(LayoutColumnTypes.normalize(flat.getLayoutColumnType()))) {
+        if (flat.getUnitNumber() == null || flat.getUnitNumber() != columnNumber) {
             return false;
         }
         if (FlatUnitTypes.isDuplexSecondary(flat) || FlatUnitTypes.isMergeAbsorbed(flat)) {

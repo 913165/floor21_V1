@@ -14,6 +14,7 @@ public final class FlatAdminResponseMaps {
         map.put("flatNumber", flat.getFlatNumber());
         map.put("bhkType", flat.getBhkType());
         map.put("layoutColumnType", flat.getLayoutColumnType());
+        map.put("unitNumber", flat.getUnitNumber());
         map.put(
                 "gridTypeLabel",
                 LayoutColumnTypes.formatGridTypeLabel(flat.getBhkType(), flat.getLayoutColumnType()));
