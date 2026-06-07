@@ -643,9 +643,9 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   box-sizing: border-box;
   position: relative;
   overflow: visible;
-  width: 12.25rem;
-  min-width: 9.5rem;
-  max-width: 14.25rem;
+  width: 14.5rem;
+  min-width: 11.5rem;
+  max-width: 17rem;
   min-height: 11rem;
   border: none;
   border-radius: 0;
@@ -684,8 +684,8 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 .flat-card-row .flat-card {
   flex: 1 1 0;
   width: auto;
-  min-width: 9rem;
-  max-width: 14.25rem;
+  min-width: 11rem;
+  max-width: 17rem;
   height: auto;
 }
 
@@ -809,6 +809,15 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   display: none;
 }
 
+.flat-card-headline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
 .flat-card-owner {
   flex: 1 1 auto;
   display: flex;
@@ -816,9 +825,9 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   justify-content: flex-start;
   gap: 0.12rem;
   min-width: 0;
-  min-height: 3.15rem;
-  max-height: 3.65rem;
-  margin-top: 0.18rem;
+  min-height: 3.45rem;
+  max-height: 4.1rem;
+  margin-top: 0.12rem;
   padding-top: 0;
   border-top: none;
   text-align: left;
@@ -827,8 +836,8 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 
 .flat-card-owner.is-blank {
   opacity: 0;
-  min-height: 3.15rem;
-  max-height: 3.65rem;
+  min-height: 3.45rem;
+  max-height: 4.1rem;
   pointer-events: none;
 }
 
@@ -852,13 +861,35 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   line-height: 1.15;
 }
 
+.flat-card-partner {
+  display: flex;
+  align-items: baseline;
+  gap: 0.28rem;
+  min-width: 0;
+  flex: 0 0 auto;
+  margin-top: 0.02rem;
+}
+
+.flat-partner-label {
+  flex: 0 0 auto;
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .flat-partner-tag {
   display: block;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.62rem;
   font-weight: 600;
   color: #6366f1;
   line-height: 1.2;
-  margin-top: 0.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .flat-status-tag {
@@ -879,6 +910,17 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   color: #0f172a;
 }
 
+.flat-owner-label {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b45309;
+  line-height: 1.2;
+  margin-bottom: 0.06rem;
+}
+
 .flat-owner-detail {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -895,22 +937,30 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 
 .flat-number {
   display: block;
+  flex: 1 1 auto;
+  min-width: 0;
   font-weight: 800;
   font-size: 1.18rem;
   letter-spacing: 0.01em;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #0f172a;
 }
 
 .flat-type {
   display: block;
+  flex: 0 0 auto;
   margin-top: 0;
   font-size: 0.82rem;
-  font-weight: 500;
+  font-weight: 600;
   color: #64748b;
-  max-width: 100%;
-  overflow-wrap: anywhere;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .flat-card-row .flat-number {
@@ -931,8 +981,8 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 
 .flat-card-row .flat-card-owner,
 .flat-card-row .flat-card-owner.is-blank {
-  min-height: 3rem;
-  max-height: 3.5rem;
+  min-height: 3.35rem;
+  max-height: 3.95rem;
 }
 
 .flat-floor-plan-link {
@@ -1072,6 +1122,55 @@ button.flat-floor-plan-link {
   max-width: min(94vw, 680px);
 }
 
+.flat-details-client-panel {
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--bs-border-color-translucent, var(--bs-border-color));
+  border-left: 3px solid rgba(var(--bs-primary-rgb), 0.35);
+  border-radius: 0.375rem;
+  background: var(--bs-tertiary-bg);
+}
+
+.flat-details-client-panel__name {
+  color: var(--bs-emphasis-color, var(--bs-body-color));
+  font-weight: 600;
+}
+
+.flat-details-client-panel__header .text-muted,
+.flat-details-client-panel__meta dt,
+#flat-details-modal #panel-client-detail {
+  color: var(--bs-secondary-color);
+}
+
+.flat-details-client-panel__meta dt {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.1rem;
+}
+
+.flat-details-client-panel__meta dd {
+  color: var(--bs-body-color);
+  font-weight: 500;
+}
+
+[data-bs-theme="dark"] .flat-details-client-panel {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  border-left-color: rgba(var(--bs-primary-rgb), 0.45);
+}
+
+[data-bs-theme="dark"] .flat-details-client-panel__meta dd {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+[data-bs-theme="dark"] .flat-details-client-panel #client-info-btn {
+  --bs-btn-color: rgba(var(--bs-primary-rgb), 0.9);
+  --bs-btn-border-color: rgba(var(--bs-primary-rgb), 0.45);
+  --bs-btn-hover-bg: rgba(var(--bs-primary-rgb), 0.12);
+  --bs-btn-hover-border-color: rgba(var(--bs-primary-rgb), 0.65);
+}
+
 #flat-details-modal .modal-body {
   padding-top: 0.65rem;
   padding-bottom: 0.85rem;
@@ -1133,14 +1232,17 @@ body.modal-open .modal-backdrop {
 }
 
 .flat-card-buyertip:has(.flat-card-buyertip__row)::before {
-  content: "";
-  width: 100%;
-  height: 0;
-  order: 2;
+  content: none;
+  display: none;
+}
+
+.flat-card-buyertip__lead {
+  display: block;
+  margin-bottom: 0.18rem;
+  min-width: 0;
 }
 
 .flat-card-buyertip__title {
-  order: 0;
   display: inline;
   font-size: 0.62rem;
   font-weight: 700;
@@ -1155,7 +1257,6 @@ body.modal-open .modal-backdrop {
 }
 
 .flat-card-buyertip__name {
-  order: 1;
   display: inline;
   font-size: 0.76rem;
   font-weight: 600;
@@ -1165,12 +1266,12 @@ body.modal-open .modal-backdrop {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 9rem;
+  max-width: 100%;
+  vertical-align: bottom;
 }
 
 .flat-card-buyertip__row {
-  order: 3;
-  display: inline-flex;
+  display: flex;
   flex-direction: row;
   align-items: baseline;
   gap: 0.25rem;
@@ -1206,23 +1307,17 @@ body.modal-open .modal-backdrop {
 }
 
 .flat-card-buyertip {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: center;
-  align-items: center;
-  justify-content: flex-start;
-  column-gap: 0.5rem;
-  row-gap: 0.28rem;
+  display: block;
   box-sizing: border-box;
   position: absolute;
   left: 50%;
   bottom: calc(100% + 10px);
   transform: translate(-50%, 8px);
   z-index: 50;
-  width: 14rem;
+  width: 16rem;
   aspect-ratio: 16 / 9;
-  max-width: min(14rem, 88vw);
-  min-width: 11.5rem;
+  max-width: min(16rem, 92vw);
+  min-width: 13rem;
   padding: 0.42rem 0.55rem 0.48rem;
   font-size: 0.74rem;
   font-weight: 500;
@@ -2404,6 +2499,10 @@ body.modal-open .modal-backdrop {
   border-top: none;
 }
 
+[data-bs-theme="dark"] .flat-owner-label {
+  color: #fbbf24;
+}
+
 [data-bs-theme="dark"] .flat-card-buyertip__title {
   color: #fbbf24;
 }
@@ -2448,6 +2547,10 @@ body.modal-open .modal-backdrop {
 }
 
 [data-bs-theme="dark"] .floor-label {
+  color: #94a3b8;
+}
+
+[data-bs-theme="dark"] .flat-partner-label {
   color: #94a3b8;
 }
 

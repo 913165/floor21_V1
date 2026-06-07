@@ -319,6 +319,10 @@
       modal.classList.toggle("modal--parking-slot", slot);
       modal.classList.toggle("modal--shop-unit", shop);
     }
+    var clientDetails = document.getElementById("panel-client-details");
+    if (clientDetails && (parkingMode || shop)) {
+      clientDetails.classList.add("d-none");
+    }
     var note = document.getElementById("panel-parking-note");
     var shopNote = document.getElementById("panel-shop-note");
     var actions = document.getElementById("panel-booking-actions");
@@ -552,17 +556,21 @@
     body.className = "flat-card-body";
     var inner = document.createElement("div");
     inner.className = "flat-card-inner";
+    var headline = document.createElement("div");
+    headline.className = "flat-card-headline";
     var num = document.createElement("span");
     num.className = "flat-number";
     num.textContent = flat.flatNumber || "";
-    inner.appendChild(num);
+    headline.appendChild(num);
     var typeSpan = document.createElement("span");
     typeSpan.className = "flat-type";
     typeSpan.textContent = flat.gridTypeLabel || flat.bhkType || "";
-    inner.appendChild(typeSpan);
+    headline.appendChild(typeSpan);
+    inner.appendChild(headline);
     var owner = document.createElement("div");
     owner.className = "flat-card-owner is-blank";
     owner.innerHTML =
+      '<span class="flat-owner-label d-none">Buyer</span>' +
       '<span class="flat-owner-name"></span><span class="flat-owner-detail"></span>';
     inner.appendChild(owner);
     if (flat.bookableByCurrentUser !== false || isPlatformAdminEdit()) {
@@ -1568,20 +1576,32 @@
     }
     var inner = cardEl.querySelector(".flat-card-inner");
     if (!inner) return;
-    var tag = cardEl.querySelector(".flat-partner-tag");
-    var label = partnerName ? String(partnerName).trim() : "";
-    if (!label) {
-      if (tag) tag.remove();
+    var row = cardEl.querySelector(".flat-card-partner");
+    var name = partnerName ? String(partnerName).trim() : "";
+    if (!name) {
+      if (row) row.remove();
+      var legacyTag = inner.querySelector(".flat-partner-tag:not(.flat-card-partner .flat-partner-tag)");
+      if (legacyTag && !legacyTag.closest(".flat-card-partner")) legacyTag.remove();
       return;
     }
-    if (!tag) {
-      tag = document.createElement("span");
-      tag.className = "flat-partner-tag small";
-      var typeSpan = inner.querySelector(".flat-type");
-      if (typeSpan) inner.insertBefore(tag, typeSpan);
-      else inner.appendChild(tag);
+    if (!row) {
+      row = document.createElement("div");
+      row.className = "flat-card-partner";
+      var labelEl = document.createElement("span");
+      labelEl.className = "flat-partner-label";
+      labelEl.textContent = "Partner name:";
+      var tag = document.createElement("span");
+      tag.className = "flat-partner-tag";
+      row.appendChild(labelEl);
+      row.appendChild(tag);
+      var owner = inner.querySelector(".flat-card-owner");
+      var headline = inner.querySelector(".flat-card-headline");
+      if (owner) inner.insertBefore(row, owner);
+      else if (headline && headline.nextSibling) inner.insertBefore(row, headline.nextSibling);
+      else inner.appendChild(row);
     }
-    tag.textContent = label;
+    var tagEl = row.querySelector(".flat-partner-tag");
+    if (tagEl) tagEl.textContent = name;
   }
 
   function syncDeactivatedTag(cardEl) {
@@ -1770,14 +1790,17 @@
     if (!name || flat.status !== "BOOKED") return null;
     var tip = document.createElement("div");
     tip.className = "flat-card-buyertip";
-    var title = document.createElement("div");
+    var lead = document.createElement("div");
+    lead.className = "flat-card-buyertip__lead";
+    var title = document.createElement("span");
     title.className = "flat-card-buyertip__title";
     title.textContent = "Buyer";
-    var nameEl = document.createElement("div");
+    var nameEl = document.createElement("span");
     nameEl.className = "flat-card-buyertip__name";
     nameEl.textContent = name;
-    tip.appendChild(title);
-    tip.appendChild(nameEl);
+    lead.appendChild(title);
+    lead.appendChild(nameEl);
+    tip.appendChild(lead);
     var code = flat.bookingCode == null ? "" : String(flat.bookingCode).trim();
     var phone = flat.buyerPhone == null ? "" : String(flat.buyerPhone).trim();
     var email = flat.buyerEmail == null ? "" : String(flat.buyerEmail).trim();
@@ -1829,9 +1852,13 @@
     if (!inner) return;
     var on = inner.querySelector(".flat-owner-name");
     var od = inner.querySelector(".flat-owner-detail");
+    var label = inner.querySelector(".flat-owner-label");
     var owner = inner.querySelector(".flat-card-owner");
     var lines = ownerLinesForCard(flat, el);
     var bookable = isFlatBookableFromData(flat, el);
+    var showBuyerLabel =
+      bookable && flat.status === "BOOKED" && !!(lines.display && lines.display.trim());
+    if (label) label.classList.toggle("d-none", !showBuyerLabel);
     if (on) on.textContent = lines.display;
     if (od) {
       od.textContent = lines.detail;
@@ -4052,7 +4079,10 @@
       if (shopSlot) window.floor21SelectShop(shopSlot, false);
     } else if (selectedFlatId) {
       var selected = document.getElementById("flat-" + selectedFlatId);
-      if (selected) syncActionButtons(selected);
+      if (selected) {
+        syncActionButtons(selected);
+        syncClientDetailsPanel(selected);
+      }
     }
     scheduleDuplexLinks();
     await loadAllConfiguredParkingPlans();
@@ -4228,6 +4258,57 @@
       }
       stripNonBookableHover(card);
     });
+  }
+
+  function syncClientDetailsPanel(cardEl) {
+    var panel = document.getElementById("panel-client-details");
+    if (!panel) return;
+    var show =
+      cardEl &&
+      cardEl.dataset.status === "BOOKED" &&
+      !selectedParkingSection &&
+      !selectedParkingSlot &&
+      !selectedShopUnit;
+    var name = show ? (cardEl.dataset.ownerDisplay || "").trim() : "";
+    var hasClient = show && (name || cardEl.dataset.clientId);
+    panel.classList.toggle("d-none", !hasClient);
+    if (!hasClient) return;
+
+    var nameEl = document.getElementById("panel-client-name");
+    if (nameEl) nameEl.textContent = name || "Booked";
+
+    var detailEl = document.getElementById("panel-client-detail");
+    if (detailEl) {
+      var detail = (cardEl.dataset.ownerDetail || "").trim();
+      var phone = (cardEl.dataset.buyerPhone || "").trim();
+      var showDetail = detail && detail !== name && detail !== phone;
+      detailEl.textContent = showDetail ? detail : "";
+      detailEl.classList.toggle("d-none", !showDetail);
+    }
+
+    function setMetaRow(rowId, valId, value) {
+      var row = document.getElementById(rowId);
+      var val = document.getElementById(valId);
+      var v = (value || "").trim();
+      if (row) row.classList.toggle("d-none", !v);
+      if (val) val.textContent = v;
+    }
+
+    setMetaRow("panel-client-booking-row", "panel-client-booking", cardEl.dataset.bookingCode);
+    setMetaRow("panel-client-phone-row", "panel-client-phone", cardEl.dataset.buyerPhone);
+    setMetaRow("panel-client-email-row", "panel-client-email", cardEl.dataset.buyerEmail);
+
+    var clientInfo = document.getElementById("client-info-btn");
+    if (clientInfo) {
+      var cid = cardEl.dataset.clientId;
+      if (cid) {
+        clientInfo.href = appRoot() + "/clients/" + encodeURIComponent(cid);
+        clientInfo.classList.remove("d-none");
+      } else {
+        clientInfo.classList.add("d-none");
+        clientInfo.setAttribute("href", "#");
+      }
+    }
   }
 
   function syncActionButtons(cardEl) {
@@ -4442,19 +4523,9 @@
         book.removeAttribute("title");
       }
     }
-    var clientInfo = document.getElementById("client-info-btn");
-    if (clientInfo) {
-      var cid = actionTarget.dataset.clientId;
-      if (actionTarget.dataset.status === "BOOKED" && cid) {
-        clientInfo.href = appRoot() + "/clients/" + encodeURIComponent(cid);
-        clientInfo.classList.remove("d-none");
-      } else {
-        clientInfo.classList.add("d-none");
-        clientInfo.setAttribute("href", "#");
-      }
-    }
     syncShopSlotAdminFields(slotEl);
     syncActionButtons(actionTarget);
+    syncClientDetailsPanel(actionTarget);
     if (showModal !== false) {
       openFlatDetailsModal();
     }
@@ -4493,20 +4564,10 @@
         book.removeAttribute("title");
       }
     }
-    var clientInfo = document.getElementById("client-info-btn");
-    if (clientInfo) {
-      var cid = el.dataset.clientId;
-      if (el.dataset.status === "BOOKED" && cid) {
-        clientInfo.href = appRoot() + "/clients/" + encodeURIComponent(cid);
-        clientInfo.classList.remove("d-none");
-      } else {
-        clientInfo.classList.add("d-none");
-        clientInfo.setAttribute("href", "#");
-      }
-    }
     syncFlatLayoutPanel(el);
     applyBookingSelectionHighlight();
     syncActionButtons(el);
+    syncClientDetailsPanel(el);
     syncAdminPanel(el);
     syncFlatParkingLinksPanel(el);
     if (showModal !== false) {

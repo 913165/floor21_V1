@@ -356,8 +356,10 @@
                       data-has-layout-image=${flat.hasLayoutImage()},
                       data-bookable=${flat.bookableByCurrentUser() ? 'true' : 'false'}">
           <div class="flat-card-buyertip" th:if="${flat.bookableByCurrentUser() and flat.status() == 'BOOKED' and !#strings.isEmpty(flat.ownerDisplay())}">
-            <div class="flat-card-buyertip__title">Buyer</div>
-            <div class="flat-card-buyertip__name" th:text="${flat.ownerDisplay()}">-</div>
+            <div class="flat-card-buyertip__lead">
+              <span class="flat-card-buyertip__title">Buyer</span>
+              <span class="flat-card-buyertip__name" th:text="${flat.ownerDisplay()}">-</span>
+            </div>
             <div class="flat-card-buyertip__row" th:if="${flat.bookingCode() != null}">
               <span>Booking</span><span th:text="${flat.bookingCode()}">-</span>
             </div>
@@ -380,14 +382,20 @@
           </div>
           <div class="flat-card-body">
             <div class="flat-card-inner">
-              <span class="flat-number" th:text="${flat.flatNumber()}">0101</span>
-              <span class="flat-type" th:text="${flat.gridTypeLabel()}">2BHK</span>
-              <span class="flat-partner-tag small"
-                    th:if="${flat.assignedPartnerName() != null}"
-                    th:text="${flat.assignedPartnerName()}">Partner</span>
+              <div class="flat-card-headline">
+                <span class="flat-number" th:text="${flat.flatNumber()}">0101</span>
+                <span class="flat-type" th:text="${flat.gridTypeLabel()}">2BHK</span>
+              </div>
+              <div class="flat-card-partner"
+                   th:if="${flat.assignedPartnerName() != null}">
+                <span class="flat-partner-label">Partner name:</span>
+                <span class="flat-partner-tag" th:text="${flat.assignedPartnerName()}">Partner</span>
+              </div>
               <span class="flat-status-tag small"
                     th:if="${flat.status() == 'CANCELLED'}">Deactivated</span>
               <div class="flat-card-owner" th:classappend="${#strings.isEmpty(flat.ownerDisplay()) && #strings.isEmpty(flat.ownerDetail())} ? ' is-blank'">
+                <span class="flat-owner-label"
+                      th:classappend="${flat.bookableByCurrentUser() and flat.status() == 'BOOKED' and !#strings.isEmpty(flat.ownerDisplay())} ? '' : ' d-none'">Buyer</span>
                 <span class="flat-owner-name"
                       th:text="${flat.bookableByCurrentUser()
                         ? (flat.status() == 'CANCELLED' ? 'Deactivated' : flat.ownerDisplay())
@@ -541,6 +549,30 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body pt-2 pb-3">
+          <div id="panel-client-details" class="flat-details-client-panel d-none mb-3" aria-live="polite">
+            <div class="flat-details-client-panel__header d-flex align-items-start justify-content-between gap-2">
+              <div class="min-w-0">
+                <div class="text-muted small mb-1">Client</div>
+                <div class="flat-details-client-panel__name h6 mb-0" id="panel-client-name"></div>
+                <div class="text-muted small d-none" id="panel-client-detail"></div>
+              </div>
+              <a id="client-info-btn" href="#" class="btn btn-sm btn-outline-primary flex-shrink-0 d-none">Client info</a>
+            </div>
+            <dl class="flat-details-client-panel__meta row g-2 mb-0 mt-2 small">
+              <div class="col-sm-6 d-none" id="panel-client-booking-row">
+                <dt class="text-muted mb-0">Booking</dt>
+                <dd class="mb-0" id="panel-client-booking"></dd>
+              </div>
+              <div class="col-sm-6 d-none" id="panel-client-phone-row">
+                <dt class="text-muted mb-0">Phone</dt>
+                <dd class="mb-0" id="panel-client-phone"></dd>
+              </div>
+              <div class="col-12 d-none" id="panel-client-email-row">
+                <dt class="text-muted mb-0">Email</dt>
+                <dd class="mb-0 text-break" id="panel-client-email"></dd>
+              </div>
+            </dl>
+          </div>
           <div class="row mb-3">
             <div class="col-md-6">
               <div class="row g-2 mb-2 flat-details-type-floor">
@@ -668,7 +700,6 @@
           <div id="panel-booking-actions" class="d-flex flex-wrap gap-2 justify-content-center">
             <button type="button" class="btn btn-outline-warning" id="hold-btn">Hold / Release</button>
             <a id="book-btn" href="#" class="btn btn-success">Book this flat</a>
-            <a id="client-info-btn" href="#" class="btn btn-outline-primary d-none">Client info</a>
           </div>
           <div id="flat-admin-panel" class="border-top pt-3 mt-3 d-none" sec:authorize="hasRole('SUPER_ADMIN')">
             <h6 class="text-primary mb-2">Platform admin — layout tools</h6>
@@ -1014,7 +1045,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=basement-v2)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=client-panel-v4)}"></script>
   <script defer th:src="@{/js/ground-floor-shops.js(v=7)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=5)}"></script>
 </div>
