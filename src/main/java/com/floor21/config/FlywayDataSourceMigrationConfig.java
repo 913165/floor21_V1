@@ -54,6 +54,7 @@ public class FlywayDataSourceMigrationConfig {
                 ensureFlatsAreaBreakdownColumns(dataSource);
                 ensureFlatsLayoutImagePathColumn(dataSource);
                 ensureBuildingsSkippedFloorsColumn(dataSource);
+                ensureBuildingsUnitTypeDefaultsColumn(dataSource);
                 ensureSuper2PlatformAdmin(dataSource);
                 return bean;
             }
@@ -149,6 +150,17 @@ public class FlywayDataSourceMigrationConfig {
         } catch (Exception ex) {
             throw new IllegalStateException(
                     "Could not ensure flats.layout_image_path column exists", ex);
+        }
+    }
+
+    /** Idempotent guard when V11 is recorded in history but unit_type_defaults was never applied. */
+    private static void ensureBuildingsUnitTypeDefaultsColumn(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE buildings ADD COLUMN IF NOT EXISTS unit_type_defaults TEXT");
+        } catch (Exception ex) {
+            throw new IllegalStateException(
+                    "Could not ensure buildings.unit_type_defaults column exists", ex);
         }
     }
 

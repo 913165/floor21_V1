@@ -60,6 +60,10 @@ public class Building {
     @Column(name = "parking_floor_config", columnDefinition = "TEXT")
     private String parkingFloorConfig;
 
+    /** JSON map of unit type → default super built-up, carpet, balcony, and price. */
+    @Column(name = "unit_type_defaults", columnDefinition = "TEXT")
+    private String unitTypeDefaults;
+
     /** Comma-separated floor numbers to omit from the grid (e.g. {@code 13} or {@code 4,13}). */
     @Column(name = "skipped_floor_numbers", length = 200)
     private String skippedFloorNumbers;

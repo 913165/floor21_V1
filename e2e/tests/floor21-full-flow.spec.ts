@@ -20,7 +20,10 @@ import {
   type PlatformFlowState,
 } from '../helpers/platform-flow';
 import {
+  DEFAULT_E2E_BHK_MIX,
+  DEFAULT_E2E_BUILDING_LAYOUT,
   DEFAULT_PARKING_FIXTURES,
+  expectedFlatCountForType,
   expectedParkingFlatCount,
   expectedResidentialFlatCount,
   waitForFlatGridReady,
@@ -76,12 +79,23 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
   test('Admin — 3. Create building', async ({ page }, testInfo) => {
     loadFlow();
     await adminCreateBuilding(page, flow);
-    expect(flow.building.parkingFloors).toBe(3);
+    expect(flow.building.totalFloors).toBe(DEFAULT_E2E_BUILDING_LAYOUT.totalFloors);
+    expect(flow.building.parkingFloors).toBe(DEFAULT_E2E_BUILDING_LAYOUT.parkingFloors);
+    expect(flow.building.flatsPerFloor).toBe(DEFAULT_E2E_BUILDING_LAYOUT.flatsPerFloor);
     expect(flow.residentialFlatCount).toBe(expectedResidentialFlatCount(flow.building));
     expect(flow.parkingFlatCount).toBe(expectedParkingFlatCount(flow.building));
 
     await page.goto(`buildings/${flow.buildingId}/flats`, { waitUntil: 'commit' });
     await waitForFlatGridReady(page);
+
+    for (const bhkType of Object.keys(DEFAULT_E2E_BHK_MIX)) {
+      const expectedCount = expectedFlatCountForType(flow.building, bhkType);
+      await expect(
+        page.locator(
+          `#flat-grid [data-flat-id][data-parking="false"][data-amenity="false"][data-type="${bhkType}"]`,
+        ),
+      ).toHaveCount(expectedCount);
+    }
     for (let floor = 1; floor <= flow.building.parkingFloors!; floor++) {
       const section = page.locator(`.flat-parking-section[data-floor-number="${floor}"]`);
       await expect(section).toHaveAttribute(

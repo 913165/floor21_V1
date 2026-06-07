@@ -24,6 +24,7 @@
   var parkingLinkSlotNumber = null;
   var parkingResidentialCache = null;
   var parkingSlotsCache = null;
+  var unitTypeDefaultsCache = null;
 
   /** Bootstrap backdrop is on body; modals must be too or backdrop blocks clicks. */
   function mountModalsOnBody() {
@@ -31,6 +32,7 @@
       "flat-details-modal",
       "floor-plan-modal",
       "flat-add-modal",
+      "unit-type-defaults-modal",
       "parking-config-modal",
       "parking-link-modal",
     ].forEach(function (id) {
@@ -367,6 +369,9 @@
       "flat-add-super-builder-area",
       "flat-add-carpet-area",
       "flat-add-balcony-area",
+      "unit-type-defaults-super-builder-area",
+      "unit-type-defaults-carpet-area",
+      "unit-type-defaults-balcony-area",
       "parking-config-area",
     ].forEach(function (id) {
       var input = document.getElementById(id);
@@ -617,9 +622,21 @@
     var superBuilder = document.getElementById("panel-super-builder-area");
     var carpet = document.getElementById("panel-carpet-area");
     var balcony = document.getElementById("panel-balcony-area");
-    if (superBuilder) superBuilder.textContent = formatAreaForDisplay(el.dataset.area);
-    if (carpet) carpet.textContent = formatAreaForDisplay(el.dataset.carpetArea);
-    if (balcony) balcony.textContent = formatAreaForDisplay(el.dataset.balconyArea);
+    if (superBuilder) {
+      superBuilder.textContent = formatAreaForDisplay(
+        getEffectiveFlatDatasetValue(el, "area", "areaSqft") || el.dataset.area
+      );
+    }
+    if (carpet) {
+      carpet.textContent = formatAreaForDisplay(
+        getEffectiveFlatDatasetValue(el, "carpetArea", "carpetAreaSqft") || el.dataset.carpetArea
+      );
+    }
+    if (balcony) {
+      balcony.textContent = formatAreaForDisplay(
+        getEffectiveFlatDatasetValue(el, "balconyArea", "balconyAreaSqft") || el.dataset.balconyArea
+      );
+    }
   }
 
   function setAreaPanelFromFlat(flat) {
@@ -651,6 +668,238 @@
       balconyAreaSqft: readAreaInputSqft(balcony),
       basePrice: price && price.value.trim() !== "" ? Number(price.value.trim()) : null,
     };
+  }
+
+  async function loadUnitTypeDefaults(force) {
+    if (!isPlatformAdminEdit()) {
+      return {};
+    }
+    if (!force && unitTypeDefaultsCache) {
+      return unitTypeDefaultsCache;
+    }
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    if (!buildingId) {
+      return {};
+    }
+    var res = await fetch(appRoot() + "/buildings/" + buildingId + "/unit-type-defaults", {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      return unitTypeDefaultsCache || {};
+    }
+    unitTypeDefaultsCache = await res.json();
+    return unitTypeDefaultsCache;
+  }
+
+  function getConfiguredTypeDefaults(bhkType) {
+    if (!unitTypeDefaultsCache || !bhkType) return null;
+    return unitTypeDefaultsCache[bhkType] || null;
+  }
+
+  function isResidentialFlatCard(el) {
+    return (
+      el &&
+      el.dataset &&
+      el.dataset.flatId &&
+      el.dataset.parking !== "true" &&
+      el.dataset.amenity !== "true"
+    );
+  }
+
+  function getEffectiveFlatDatasetValue(cardEl, datasetKey, defaultsKey) {
+    if (!cardEl) return "";
+    var value = cardEl.dataset[datasetKey];
+    if (value != null && value !== "") return value;
+    if (!isResidentialFlatCard(cardEl)) return "";
+    var defaults = getConfiguredTypeDefaults(cardEl.dataset.type);
+    if (!defaults || defaults[defaultsKey] == null) return "";
+    return String(defaults[defaultsKey]);
+  }
+
+  function updateFlatAddPlaceholders() {
+    var bhkSel = document.getElementById("flat-add-bhk");
+    if (!bhkSel) return;
+    var defaults = getConfiguredTypeDefaults(bhkSel.value);
+    var superBuilderInput = document.getElementById("flat-add-super-builder-area");
+    var carpetInput = document.getElementById("flat-add-carpet-area");
+    var balconyInput = document.getElementById("flat-add-balcony-area");
+    var priceInput = document.getElementById("flat-add-price");
+    if (superBuilderInput) {
+      superBuilderInput.placeholder =
+        defaults && defaults.areaSqft != null
+          ? formatAreaForDisplay(defaults.areaSqft)
+          : "Leave blank for default";
+    }
+    if (carpetInput) {
+      carpetInput.placeholder =
+        defaults && defaults.carpetAreaSqft != null
+          ? formatAreaForDisplay(defaults.carpetAreaSqft)
+          : "Leave blank for default";
+    }
+    if (balconyInput) {
+      balconyInput.placeholder =
+        defaults && defaults.balconyAreaSqft != null
+          ? formatAreaForDisplay(defaults.balconyAreaSqft)
+          : "Leave blank for default";
+    }
+    if (priceInput) {
+      priceInput.placeholder =
+        defaults && defaults.basePrice != null ? String(defaults.basePrice) : "Leave blank for default";
+    }
+  }
+
+  function populateUnitTypeDefaultsModal(bhkType) {
+    var bhkSel = document.getElementById("unit-type-defaults-bhk");
+    if (bhkSel) {
+      if (bhkType) {
+        bhkSel.value = bhkType;
+      } else if (!bhkSel.value && bhkSel.options.length > 0) {
+        bhkSel.value = bhkSel.options[0].value;
+      }
+    }
+    var type = bhkSel ? bhkSel.value : bhkType;
+    var entry = getConfiguredTypeDefaults(type);
+    var superBuilder = document.getElementById("unit-type-defaults-super-builder-area");
+    var carpet = document.getElementById("unit-type-defaults-carpet-area");
+    var balcony = document.getElementById("unit-type-defaults-balcony-area");
+    var price = document.getElementById("unit-type-defaults-price");
+    if (superBuilder) {
+      superBuilder.value = entry && entry.areaSqft != null ? formatAreaForDisplay(entry.areaSqft) : "";
+    }
+    if (carpet) {
+      carpet.value =
+        entry && entry.carpetAreaSqft != null ? formatAreaForDisplay(entry.carpetAreaSqft) : "";
+    }
+    if (balcony) {
+      balcony.value =
+        entry && entry.balconyAreaSqft != null ? formatAreaForDisplay(entry.balconyAreaSqft) : "";
+    }
+    if (price) {
+      price.value = entry && entry.basePrice != null ? String(entry.basePrice) : "";
+    }
+    updateUnitTypeDefaultsModalTitle(type);
+  }
+
+  function updateUnitTypeDefaultsModalTitle(type) {
+    var title = document.getElementById("unit-type-defaults-modal-title");
+    if (!title) return;
+    title.textContent = type ? "Unit type defaults — " + type : "Unit type defaults";
+  }
+
+  function showUnitTypeDefaultsError(message) {
+    var el = document.getElementById("unit-type-defaults-error");
+    if (!el) return;
+    if (!message) {
+      el.textContent = "";
+      el.classList.add("d-none");
+      return;
+    }
+    el.textContent = message;
+    el.classList.remove("d-none");
+  }
+
+  async function openUnitTypeDefaultsModal(bhkType) {
+    if (!isPlatformAdminEdit()) return;
+    mountModalsOnBody();
+    await loadUnitTypeDefaults(false);
+    populateUnitTypeDefaultsModal(bhkType || null);
+    var unitSel = document.getElementById("unit-type-defaults-area-unit");
+    if (unitSel) {
+      unitSel.value = getAreaUnit();
+    }
+    updateAreaUnitLabels();
+    showUnitTypeDefaultsError("");
+    var modalEl = document.getElementById("unit-type-defaults-modal");
+    if (modalEl && typeof bootstrap !== "undefined" && bootstrap.Modal) {
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+  }
+
+  function readUnitTypeDefaultsFormPayload() {
+    var bhkSel = document.getElementById("unit-type-defaults-bhk");
+    var superBuilder = document.getElementById("unit-type-defaults-super-builder-area");
+    var carpet = document.getElementById("unit-type-defaults-carpet-area");
+    var balcony = document.getElementById("unit-type-defaults-balcony-area");
+    var price = document.getElementById("unit-type-defaults-price");
+    if (!bhkSel) return null;
+    return {
+      bhkType: bhkSel.value,
+      areaSqft: readAreaInputSqft(superBuilder),
+      carpetAreaSqft: readAreaInputSqft(carpet),
+      balconyAreaSqft: readAreaInputSqft(balcony),
+      basePrice: price && price.value.trim() !== "" ? Number(price.value.trim()) : null,
+    };
+  }
+
+  function applyUnitTypeDefaultsResultToGrid(updatedFlats) {
+    if (!updatedFlats || !updatedFlats.length) return;
+    updatedFlats.forEach(function (flat) {
+      var card = document.getElementById("flat-" + flat.id);
+      applyFlatDataToCard(card, flat);
+      if (selectedFlatId && String(selectedFlatId) === String(flat.id)) {
+        document.getElementById("panel-price").textContent =
+          flat.basePrice != null ? String(flat.basePrice) : "";
+        setAreaPanelFromFlat(flat);
+        syncAdminAreaInputsFromFlat(flat);
+        if (card) syncAdminPanel(card);
+      }
+    });
+  }
+
+  async function saveUnitTypeDefaults() {
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    var bhkSel = document.getElementById("unit-type-defaults-bhk");
+    var payload = readUnitTypeDefaultsFormPayload();
+    if (!buildingId || !bhkSel || !payload) return;
+    showUnitTypeDefaultsError("");
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    var res = await fetch(appRoot() + "/buildings/" + buildingId + "/unit-type-defaults", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      showUnitTypeDefaultsError(await parseErrorResponse(res));
+      return;
+    }
+    unitTypeDefaultsCache = await res.json();
+    updateFlatAddPlaceholders();
+    populateUnitTypeDefaultsModal(bhkSel.value);
+    var modalEl = document.getElementById("unit-type-defaults-modal");
+    if (modalEl && bootstrap.Modal.getInstance(modalEl)) {
+      bootstrap.Modal.getInstance(modalEl).hide();
+    }
+    showGridToast("Saved defaults for " + bhkSel.value, "success");
+  }
+
+  async function applyUnitTypeDefaultsToFlats() {
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    var bhkSel = document.getElementById("unit-type-defaults-bhk");
+    var payload = readUnitTypeDefaultsFormPayload();
+    if (!buildingId || !bhkSel || !payload) return;
+    showUnitTypeDefaultsError("");
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    var res = await fetch(appRoot() + "/buildings/" + buildingId + "/unit-type-defaults/apply", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      showUnitTypeDefaultsError(await parseErrorResponse(res));
+      return;
+    }
+    var data = await res.json();
+    if (data.defaults) {
+      unitTypeDefaultsCache = data.defaults;
+      updateFlatAddPlaceholders();
+    }
+    var updatedFlats = data.updatedFlats || [];
+    applyUnitTypeDefaultsResultToGrid(updatedFlats);
+    var countMsg = updatedFlats.length > 0 ? String(updatedFlats.length) : "0";
+    showGridToast("Applied to " + countMsg + " " + bhkSel.value + " flat(s)", "success");
   }
 
   function ensureAdminBhkOption(selectEl, value) {
@@ -825,10 +1074,27 @@
       var partner = document.getElementById("admin-partner");
       var currentType = cardEl.dataset.type || "2BHK";
       if (bhk) ensureAdminBhkOption(bhk, currentType);
-      if (superBuilder) superBuilder.value = formatAreaForDisplay(cardEl.dataset.area);
-      if (carpet) carpet.value = formatAreaForDisplay(cardEl.dataset.carpetArea);
-      if (balcony) balcony.value = formatAreaForDisplay(cardEl.dataset.balconyArea);
-      if (price) price.value = cardEl.dataset.price || "";
+      if (superBuilder) {
+        superBuilder.value = formatAreaForDisplay(
+          getEffectiveFlatDatasetValue(cardEl, "area", "areaSqft") || cardEl.dataset.area
+        );
+      }
+      if (carpet) {
+        carpet.value = formatAreaForDisplay(
+          getEffectiveFlatDatasetValue(cardEl, "carpetArea", "carpetAreaSqft") ||
+            cardEl.dataset.carpetArea
+        );
+      }
+      if (balcony) {
+        balcony.value = formatAreaForDisplay(
+          getEffectiveFlatDatasetValue(cardEl, "balconyArea", "balconyAreaSqft") ||
+            cardEl.dataset.balconyArea
+        );
+      }
+      if (price) {
+        price.value =
+          getEffectiveFlatDatasetValue(cardEl, "price", "basePrice") || cardEl.dataset.price || "";
+      }
       if (partner) partner.value = cardEl.dataset.partnerId || "";
       var isBooked = cardEl.dataset.status === "BOOKED";
       if (bhk) {
@@ -860,8 +1126,8 @@
       var saveHint = document.getElementById("admin-save-hint");
       if (saveHint) {
         saveHint.textContent = isBooked
-          ? "Booked flat — unit type and floor-wide apply are locked; areas and price can still be corrected."
-          : "Platform admin only. Apply to whole floor is blocked while any unit on the floor has an active booking.";
+          ? "Booked flat — unit type and floor-wide apply are locked; leave fields blank to keep current values, or enter new areas/price."
+          : "Leave fields blank to keep this unit only. Building-wide defaults are set in the Unit type defaults panel above the grid.";
       }
       var nonBookable = isNonBookableUnit(cardEl);
       var isDuplexLinked =
@@ -3463,7 +3729,8 @@
       el.dataset.gridType || el.dataset.type || "";
     document.getElementById("panel-floor").textContent = el.dataset.floor || "";
     setAreaPanelFromDataset(el);
-    document.getElementById("panel-price").textContent = el.dataset.price || "";
+    document.getElementById("panel-price").textContent =
+      getEffectiveFlatDatasetValue(el, "price", "basePrice") || el.dataset.price || "";
     var book = document.getElementById("book-btn");
     if (book) {
       book.href = appRoot() + "/bookings/new?flatId=" + encodeURIComponent(selectedFlatId);
@@ -3533,11 +3800,11 @@
   }
 
   onPageReady(function () {
+    mountModalsOnBody();
     var grid = document.getElementById("flat-grid");
     if (!grid) {
       return;
     }
-    mountModalsOnBody();
     ensureParkingGridDelegation();
     if (grid.dataset.f21Init === "true") {
       return;
@@ -3552,6 +3819,53 @@
     }
     loadSalesPartnersIntoSelect();
     initAreaUnitSelector();
+    if (isPlatformAdminEdit()) {
+      loadUnitTypeDefaults(true);
+    }
+    var flatAddBhk = document.getElementById("flat-add-bhk");
+    if (flatAddBhk) {
+      flatAddBhk.addEventListener("change", updateFlatAddPlaceholders);
+    }
+    var gridConfigureDefaults = document.getElementById("grid-configure-type-defaults-btn");
+    if (gridConfigureDefaults) {
+      gridConfigureDefaults.addEventListener("click", function () {
+        openUnitTypeDefaultsModal(null);
+      });
+    }
+    var unitDefaultsBhk = document.getElementById("unit-type-defaults-bhk");
+    if (unitDefaultsBhk) {
+      unitDefaultsBhk.addEventListener("change", function () {
+        populateUnitTypeDefaultsModal(unitDefaultsBhk.value);
+        updateUnitTypeDefaultsModalTitle(unitDefaultsBhk.value);
+      });
+    }
+    var unitDefaultsAreaUnit = document.getElementById("unit-type-defaults-area-unit");
+    if (unitDefaultsAreaUnit) {
+      unitDefaultsAreaUnit.addEventListener("change", function () {
+        var nextUnit = unitDefaultsAreaUnit.value === "sqm" ? "sqm" : "sqft";
+        var prevUnit = nextUnit === "sqm" ? "sqft" : "sqm";
+        convertAllAreaInputDisplays(prevUnit, nextUnit);
+        setAreaUnit(nextUnit);
+        var panelSel = document.getElementById("panel-area-unit");
+        if (panelSel) panelSel.value = nextUnit;
+        var addSel = document.getElementById("flat-add-area-unit");
+        if (addSel) addSel.value = nextUnit;
+        updateAreaUnitLabels();
+        refreshAreaPanelDisplayOnly();
+      });
+    }
+    var unitDefaultsSave = document.getElementById("unit-type-defaults-save");
+    if (unitDefaultsSave) {
+      unitDefaultsSave.addEventListener("click", function () {
+        saveUnitTypeDefaults();
+      });
+    }
+    var unitDefaultsApply = document.getElementById("unit-type-defaults-apply");
+    if (unitDefaultsApply) {
+      unitDefaultsApply.addEventListener("click", function () {
+        applyUnitTypeDefaultsToFlats();
+      });
+    }
     var modalEl = document.getElementById("floor-plan-modal");
     if (modalEl) {
       modalEl.addEventListener("hidden.bs.modal", function () {
@@ -3888,6 +4202,7 @@
           addUnitSel.value = getAreaUnit();
         }
         updateAreaUnitLabels();
+        updateFlatAddPlaceholders();
         var addModal = document.getElementById("flat-add-modal");
         if (addModal && window.bootstrap && bootstrap.Modal) {
           bootstrap.Modal.getOrCreateInstance(addModal).show();

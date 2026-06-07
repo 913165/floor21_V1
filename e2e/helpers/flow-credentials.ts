@@ -35,8 +35,17 @@ export function formatFlowCredentials(flow: PlatformFlowState): string {
 
   if (flow.building.parkingFloors != null && flow.building.parkingFloors > 0) {
     lines.push(
-      `  Layout:      ${flow.building.totalFloors ?? '?'} floors, ${flow.building.parkingFloors} parking floor(s), ${flow.building.flatsPerFloor ?? '?'} units/floor`,
+      `  Layout:      ${flow.building.totalFloors ?? '?'} floors (${flow.building.parkingFloors ?? 0} parking + ${Math.max(0, (flow.building.totalFloors ?? 0) - (flow.building.parkingFloors ?? 0))} residential), ${flow.building.flatsPerFloor ?? '?'} units/floor`,
     );
+    if (flow.building.bhkPerFloor && Object.keys(flow.building.bhkPerFloor).length > 0) {
+      const mix = Object.entries(flow.building.bhkPerFloor)
+        .filter(([, count]) => (count ?? 0) > 0)
+        .map(([type, count]) => `${type}×${count}`)
+        .join(', ');
+      lines.push(`  Unit mix:    ${mix} per residential floor`);
+    } else if (flow.building.twoBhkPerFloor != null) {
+      lines.push(`  Unit mix:    2BHK×${flow.building.twoBhkPerFloor} per residential floor`);
+    }
     if (flow.parkingFlatCount > 0) {
       lines.push(`  Parking slots: ${flow.parkingFlatCount}`);
       const perFloor =

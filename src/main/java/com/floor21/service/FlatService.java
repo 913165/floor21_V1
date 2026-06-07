@@ -2,6 +2,9 @@ package com.floor21.service;
 
 import com.floor21.dto.BuildingConfigDto;
 import com.floor21.dto.FlatAddToFloorDto;
+import com.floor21.dto.UnitTypeDefaultsDto;
+import com.floor21.dto.UnitTypeDefaultsSaveDto;
+import com.floor21.dto.UnitTypeDefaultsSaveResultDto;
 import com.floor21.dto.FlatAdminUpdateDto;
 import com.floor21.dto.FlatGridFlatDto;
 import com.floor21.dto.FlatGridFloorDto;
@@ -30,6 +33,9 @@ import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.security.TenantContext;
+import com.floor21.util.BuildingFlatTypeDefaults;
+import com.floor21.util.BuildingUnitTypeDefaultsUtil;
+import com.floor21.util.FlatAdminResponseMaps;
 import com.floor21.util.FlatUnitTypes;
 import com.floor21.util.ParkingFloorConfigUtil;
 import com.floor21.util.ResidentialBhkTypes;
@@ -39,6 +45,7 @@ import java.time.Instant;
 import java.util.Set;
 import java.util.Locale;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -1361,19 +1368,36 @@ public class FlatService {
         if (FlatUnitTypes.isMergeAbsorbed(flat)) {
             throw new IllegalArgumentException("Restore the floor merge before editing the linked unit.");
         }
+        String requestedBhk =
+                dto.bhkType() != null && !dto.bhkType().isBlank()
+                        ? FlatUnitTypes.normalize(dto.bhkType())
+                        : flat.getBhkType();
+        boolean typeChanged = !requestedBhk.equals(flat.getBhkType());
+        BuildingFlatTypeDefaults.Defaults typeDefaults =
+                resolveBuildingTypeDefaults(flat.getBuilding(), requestedBhk);
         if (hasActiveBooking(flatId)) {
-            if (dto.bhkType() != null && !dto.bhkType().isBlank()) {
-                String requested = FlatUnitTypes.normalize(dto.bhkType());
-                if (!requested.equals(flat.getBhkType())) {
-                    throw new IllegalArgumentException(
-                            "Cannot change unit type while an active booking exists. You can still update areas and price.");
-                }
+            if (typeChanged) {
+                throw new IllegalArgumentException(
+                        "Cannot change unit type while an active booking exists. You can still update areas and price.");
             }
             FlatUnitTypes.applyBookedFlatAdjustments(
-                    flat, dto.areaSqft(), dto.carpetAreaSqft(), dto.balconyAreaSqft(), dto.basePrice());
+                    flat,
+                    dto.areaSqft(),
+                    dto.carpetAreaSqft(),
+                    dto.balconyAreaSqft(),
+                    dto.basePrice());
         } else {
             FlatUnitTypes.applyToFlat(
-                    flat, dto.bhkType(), dto.areaSqft(), dto.carpetAreaSqft(), dto.balconyAreaSqft(), dto.basePrice());
+                    flat,
+                    requestedBhk,
+                    BuildingFlatTypeDefaults.coalesceForEdit(
+                            dto.areaSqft(), typeDefaults.areaSqft(), typeChanged),
+                    BuildingFlatTypeDefaults.coalesceForEdit(
+                            dto.carpetAreaSqft(), typeDefaults.carpetAreaSqft(), typeChanged),
+                    BuildingFlatTypeDefaults.coalesceForEdit(
+                            dto.balconyAreaSqft(), typeDefaults.balconyAreaSqft(), typeChanged),
+                    BuildingFlatTypeDefaults.coalesceForEdit(
+                            dto.basePrice(), typeDefaults.basePrice(), typeChanged));
         }
         flat = flatRepository.saveAndFlush(flat);
         return flat;
@@ -1512,9 +1536,118 @@ public class FlatService {
         flat.setFlatNumber(String.format("%02d%02d", floorNumber, nextUnit));
         flat.setCreatedAt(now);
         flat.setStatus("AVAILABLE");
+        BuildingFlatTypeDefaults.Defaults typeDefaults = resolveBuildingTypeDefaults(building, bhk);
         FlatUnitTypes.applyToFlat(
-                flat, bhk, dto.areaSqft(), dto.carpetAreaSqft(), dto.balconyAreaSqft(), dto.basePrice());
+                flat,
+                bhk,
+                BuildingFlatTypeDefaults.coalesceForAdd(dto.areaSqft(), typeDefaults.areaSqft()),
+                BuildingFlatTypeDefaults.coalesceForAdd(
+                        dto.carpetAreaSqft(), typeDefaults.carpetAreaSqft()),
+                BuildingFlatTypeDefaults.coalesceForAdd(
+                        dto.balconyAreaSqft(), typeDefaults.balconyAreaSqft()),
+                BuildingFlatTypeDefaults.coalesceForAdd(dto.basePrice(), typeDefaults.basePrice()));
         return flatRepository.save(flat);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, UnitTypeDefaultsDto> getUnitTypeDefaults(UUID buildingId) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        Map<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> configured =
+                BuildingUnitTypeDefaultsUtil.read(building);
+        Map<String, UnitTypeDefaultsDto> out = new LinkedHashMap<>();
+        for (Map.Entry<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> entry :
+                configured.entrySet()) {
+            BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry value = entry.getValue();
+            out.put(
+                    entry.getKey(),
+                    new UnitTypeDefaultsDto(
+                            entry.getKey(),
+                            value.areaSqft(),
+                            value.carpetAreaSqft(),
+                            value.balconyAreaSqft(),
+                            value.basePrice()));
+        }
+        return out;
+    }
+
+    @Transactional
+    public Map<String, UnitTypeDefaultsDto> saveUnitTypeDefaults(
+            UUID buildingId, UnitTypeDefaultsSaveDto dto) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        String bhk = validateUnitTypeDefaultsDto(dto);
+        BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry = toTypeDefaultsEntry(dto);
+        BuildingUnitTypeDefaultsUtil.putForType(building, bhk, entry);
+        buildingRepository.save(building);
+        return getUnitTypeDefaults(buildingId);
+    }
+
+    @Transactional
+    public UnitTypeDefaultsSaveResultDto applyUnitTypeDefaultsToFlats(
+            UUID buildingId, UnitTypeDefaultsSaveDto dto) {
+        Building building = buildingService.resolveForAccess(buildingId);
+        String bhk = validateUnitTypeDefaultsDto(dto);
+        BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry = toTypeDefaultsEntry(dto);
+        List<Map<String, Object>> updatedFlats = propagateUnitTypeDefaultsToFlats(building, bhk, entry);
+        return new UnitTypeDefaultsSaveResultDto(getUnitTypeDefaults(buildingId), updatedFlats);
+    }
+
+    private static String validateUnitTypeDefaultsDto(UnitTypeDefaultsSaveDto dto) {
+        String bhk = FlatUnitTypes.normalize(dto.bhkType());
+        if (FlatUnitTypes.isParkingCode(bhk) || FlatUnitTypes.isAmenityCode(bhk)) {
+            throw new IllegalArgumentException("Configure defaults for residential unit types only.");
+        }
+        if (dto.areaSqft() != null && dto.areaSqft().signum() <= 0) {
+            throw new IllegalArgumentException("Super built-up area must be greater than zero.");
+        }
+        if (dto.carpetAreaSqft() != null && dto.carpetAreaSqft().signum() <= 0) {
+            throw new IllegalArgumentException("Carpet area must be greater than zero.");
+        }
+        if (dto.balconyAreaSqft() != null && dto.balconyAreaSqft().signum() < 0) {
+            throw new IllegalArgumentException("Balcony area cannot be negative.");
+        }
+        if (dto.basePrice() != null && dto.basePrice().signum() < 0) {
+            throw new IllegalArgumentException("Price cannot be negative.");
+        }
+        return bhk;
+    }
+
+    private static BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry toTypeDefaultsEntry(
+            UnitTypeDefaultsSaveDto dto) {
+        return new BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry(
+                dto.areaSqft(),
+                dto.carpetAreaSqft(),
+                dto.balconyAreaSqft(),
+                dto.basePrice());
+    }
+
+    private List<Map<String, Object>> propagateUnitTypeDefaultsToFlats(
+            Building building, String bhk, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry) {
+        UUID buildingId = building.getId();
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> flats =
+                flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
+                        buildingId, builderId);
+        List<Map<String, Object>> updated = new ArrayList<>();
+        for (Flat flat : flats) {
+            if (!BuildingFlatTypeDefaults.shouldPropagateTypeDefaults(flat, bhk)) {
+                continue;
+            }
+            BuildingFlatTypeDefaults.applyConfiguredEntry(flat, entry);
+            flatRepository.save(flat);
+            updated.add(FlatAdminResponseMaps.fromFlat(flat));
+        }
+        return updated;
+    }
+
+    private BuildingFlatTypeDefaults.Defaults resolveBuildingTypeDefaults(
+            Building building, String unitType) {
+        UUID buildingId = building.getId();
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> buildingFlats =
+                flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
+                        buildingId, builderId);
+        return BuildingFlatTypeDefaults.resolve(
+                BuildingUnitTypeDefaultsUtil.read(building), buildingFlats, unitType);
     }
 
     @Transactional

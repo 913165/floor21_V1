@@ -7,6 +7,7 @@ import com.floor21.dto.ParkingFloorConfigDto;
 import com.floor21.dto.ParkingGridColDto;
 import com.floor21.dto.ParkingGridRowDto;
 import com.floor21.dto.ParkingLayoutDto;
+import com.floor21.dto.UnitTypeDefaultsSaveDto;
 import com.floor21.entity.Building;
 import com.floor21.entity.Flat;
 import com.floor21.security.Floor21UserPrincipal;
@@ -301,6 +302,41 @@ public class BuildingController {
         return partnerFlatAllocationService.listPartnersForBuilding(id).stream()
                 .map(u -> Map.<String, Object>of("id", u.getId(), "fullName", u.getFullName()))
                 .toList();
+    }
+
+    @GetMapping("/{id}/unit-type-defaults")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public Map<String, ?> unitTypeDefaults(@PathVariable UUID id) {
+        return flatService.getUnitTypeDefaults(id);
+    }
+
+    @PostMapping(
+            value = "/{id}/unit-type-defaults",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> saveUnitTypeDefaults(
+            @PathVariable UUID id, @Valid @RequestBody UnitTypeDefaultsSaveDto body) {
+        try {
+            return ResponseEntity.ok(flatService.saveUnitTypeDefaults(id, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/{id}/unit-type-defaults/apply",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> applyUnitTypeDefaultsToFlats(
+            @PathVariable UUID id, @Valid @RequestBody UnitTypeDefaultsSaveDto body) {
+        try {
+            return ResponseEntity.ok(flatService.applyUnitTypeDefaultsToFlats(id, body));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
     }
 
     @PostMapping("/{id}/partner-flats")

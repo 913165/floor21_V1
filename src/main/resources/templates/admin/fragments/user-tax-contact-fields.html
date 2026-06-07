@@ -15,13 +15,13 @@
     <div class="invalid-feedback">Enter a valid 10-character PAN.</div>
   </div>
   <div class="col-md-4">
-    <label class="form-label" for="user-tan">TAN <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>
+    <label class="form-label" for="user-tan">TAN <span class="text-muted small">(optional)</span></label>
     <input class="form-control text-uppercase" id="user-tan" th:field="*{tanNumber}"
-           required maxlength="10" minlength="10"
+           maxlength="10"
            pattern="[A-Za-z]{4}[0-9]{5}[A-Za-z]{1}"
            title="10-character TAN (e.g. DELH12345A)"
            placeholder="DELH12345A" autocomplete="off"/>
-    <div class="invalid-feedback">Enter a valid 10-character TAN.</div>
+    <div class="invalid-feedback">Enter a valid 10-character TAN, or leave blank.</div>
   </div>
   <div class="col-md-4">
     <label class="form-label" for="user-gst">GST number <th:block th:replace="~{admin/fragments/form-required-mark :: mark}"></th:block></label>

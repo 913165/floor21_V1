@@ -1,20 +1,79 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { waitForMainPanel } from './projects';
 
+/** Residential unit types shown on the admin building layout form. */
+export const LAYOUT_BHK_TYPES = [
+  'STUDIO',
+  '1BHK',
+  '1.5BHK',
+  '2BHK',
+  '2.5BHK',
+  '3BHK',
+  '3.5BHK',
+  '4BHK',
+  '4.5BHK',
+  '5BHK',
+  '5.5BHK',
+  '6BHK',
+  '6.5BHK',
+  '7BHK',
+] as const;
+
+/** Default E2E mix: one of each common type per residential floor (must sum to flatsPerFloor). */
+export const DEFAULT_E2E_BHK_MIX: Record<string, number> = {
+  STUDIO: 1,
+  '1BHK': 1,
+  '2BHK': 1,
+  '3BHK': 1,
+};
+
+/** 9 total floors = 3 parking + 6 residential; 4 mixed units per residential floor. */
+export const DEFAULT_E2E_BUILDING_LAYOUT = {
+  totalFloors: 9,
+  parkingFloors: 3,
+  flatsPerFloor: 4,
+  bhkPerFloor: DEFAULT_E2E_BHK_MIX,
+} as const;
+
 export type NewBuildingInput = {
   name: string;
   totalFloors?: number;
   parkingFloors?: number;
   flatsPerFloor?: number;
+  /** Per-floor unit mix; all layout types are zeroed then these counts are applied. */
+  bhkPerFloor?: Record<string, number>;
+  /** @deprecated Use bhkPerFloor instead. */
   twoBhkPerFloor?: number;
   city?: string;
   address?: string;
 };
 
-export function expectedResidentialFlatCount(data: NewBuildingInput): number {
-  const totalFloors = data.totalFloors ?? 5;
+export function resolveBhkMix(data: NewBuildingInput): Record<string, number> {
+  if (data.bhkPerFloor && Object.keys(data.bhkPerFloor).length > 0) {
+    return { ...data.bhkPerFloor };
+  }
+  if (data.twoBhkPerFloor != null) {
+    return { '2BHK': data.twoBhkPerFloor };
+  }
+  return { ...DEFAULT_E2E_BHK_MIX };
+}
+
+export function expectedFlatCountForType(data: NewBuildingInput, bhkType: string): number {
+  const totalFloors = data.totalFloors ?? DEFAULT_E2E_BUILDING_LAYOUT.totalFloors;
   const parkingFloors = data.parkingFloors ?? 0;
-  const flatsPerFloor = data.flatsPerFloor ?? 4;
+  const residentialFloors = Math.max(0, totalFloors - parkingFloors);
+  const mix = resolveBhkMix(data);
+  return (mix[bhkType] ?? 0) * residentialFloors;
+}
+
+function bhkPerFloorInput(main: Locator, bhkType: string): Locator {
+  return main.locator(`input[name="bhkPerFloor['${bhkType}']"]`);
+}
+
+export function expectedResidentialFlatCount(data: NewBuildingInput): number {
+  const totalFloors = data.totalFloors ?? DEFAULT_E2E_BUILDING_LAYOUT.totalFloors;
+  const parkingFloors = data.parkingFloors ?? DEFAULT_E2E_BUILDING_LAYOUT.parkingFloors;
+  const flatsPerFloor = data.flatsPerFloor ?? DEFAULT_E2E_BUILDING_LAYOUT.flatsPerFloor;
   return Math.max(0, totalFloors - parkingFloors) * flatsPerFloor;
 }
 
@@ -47,10 +106,7 @@ export function sampleBuildingData(index: number): NewBuildingInput {
   const stamp = Date.now();
   return {
     name: `E2E Tower ${stamp}-${index}`,
-    totalFloors: 5,
-    parkingFloors: 0,
-    flatsPerFloor: 4,
-    twoBhkPerFloor: 4,
+    ...DEFAULT_E2E_BUILDING_LAYOUT,
     city: 'Mumbai',
     address: `E2E Building Address ${index}, Andheri`,
   };
@@ -82,11 +138,18 @@ export async function fillNewBuildingForm(main: Locator, data: NewBuildingInput)
   const buildingName = main.locator('input#buildingName');
   await expect(buildingName).toBeVisible({ timeout: 15_000 });
   await buildingName.fill(data.name);
-  await main.locator('#totalFloors').fill(String(data.totalFloors ?? 5));
-  await main.locator('#parkingFloors').fill(String(data.parkingFloors ?? 0));
-  await main.locator('#flatsPerFloor').fill(String(data.flatsPerFloor ?? 4));
-  const twoBhk = main.locator('input[name="bhkPerFloor[\'2BHK\']"]');
-  await twoBhk.fill(String(data.twoBhkPerFloor ?? data.flatsPerFloor ?? 4));
+  const totalFloors = data.totalFloors ?? DEFAULT_E2E_BUILDING_LAYOUT.totalFloors;
+  const parkingFloors = data.parkingFloors ?? DEFAULT_E2E_BUILDING_LAYOUT.parkingFloors;
+  const flatsPerFloor = data.flatsPerFloor ?? DEFAULT_E2E_BUILDING_LAYOUT.flatsPerFloor;
+  const mix = resolveBhkMix({ ...data, totalFloors, parkingFloors, flatsPerFloor });
+
+  await main.locator('#totalFloors').fill(String(totalFloors));
+  await main.locator('#parkingFloors').fill(String(parkingFloors));
+  await main.locator('#flatsPerFloor').fill(String(flatsPerFloor));
+
+  for (const bhkType of LAYOUT_BHK_TYPES) {
+    await bhkPerFloorInput(main, bhkType).fill(String(mix[bhkType] ?? 0));
+  }
 
   if (data.city) {
     await main.locator('#city').fill(data.city);

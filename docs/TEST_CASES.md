@@ -37,7 +37,7 @@ There is **one login page** (`/login`) for all roles. Resolution order: active `
 - [ ] **ACC-01** Platform admin account exists and can sign in (S, Manual)
 - [ ] **ACC-02** At least one tenant project (builder company) exists (S, E2E Admin — 1)
 - [ ] **ACC-03** Two partner users + one builder admin user exist for that project (S, E2E Admin — 2, 4)
-- [ ] **ACC-04** At least one building with residential + parking floors generated (S, E2E Admin — 3)
+- [ ] **ACC-04** E2E building: **9 floors** (3 parking + 6 residential), **4 units/floor** mixed types (STUDIO, 1BHK, 2BHK, 3BHK) (S, E2E Admin — 3)
 - [ ] **ACC-05** Partners assigned to buildings and ~90% flats allocated between them (R, E2E Admin — 5)
 - [ ] **ACC-06** Optional: builder company login (legacy `builders` email) for BUILDER_ADMIN path (F, Manual)
 

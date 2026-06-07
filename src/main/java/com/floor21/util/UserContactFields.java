@@ -15,8 +15,8 @@ public final class UserContactFields {
         }
         entity.setPanNumber(normalizedPan);
 
-        String normalizedTan = IndianTaxIds.normalizeTan(requireField(form.getTanNumber(), "TAN is required."));
-        if (!IndianTaxIds.isValidTan(normalizedTan)) {
+        String normalizedTan = IndianTaxIds.normalizeTan(form.getTanNumber());
+        if (normalizedTan != null && !IndianTaxIds.isValidTan(normalizedTan)) {
             throw new IllegalArgumentException("TAN must be 10 characters (e.g. DELH12345A).");
         }
         entity.setTanNumber(normalizedTan);
