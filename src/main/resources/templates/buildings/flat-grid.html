@@ -623,7 +623,10 @@
                 <p class="text-danger small mb-0 d-none" id="panel-parking-links-error"></p>
               </div>
               <div id="panel-parking-slot-actions" class="d-none mt-2" sec:authorize="hasRole('SUPER_ADMIN')">
-                <button type="button" class="btn btn-sm btn-outline-primary" id="panel-parking-slot-link-btn">Link to residential flat</button>
+                <div class="d-flex flex-wrap gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-primary" id="panel-parking-slot-link-btn">Link to residential flat</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger d-none" id="panel-parking-slot-unlink-btn">Unlink</button>
+                </div>
                 <div class="d-flex align-items-center justify-content-between gap-2 mt-2 pt-2 border-top">
                   <div>
                     <div class="text-muted small">Orientation</div>
@@ -632,6 +635,7 @@
                   <button type="button" class="btn btn-sm btn-outline-secondary" id="panel-parking-slot-rotate">Rotate bay</button>
                 </div>
                 <p class="text-muted small mb-0 mt-1" id="panel-parking-slot-linked"></p>
+                <p class="text-danger small mb-0 mt-1 d-none" id="panel-parking-slot-link-error"></p>
               </div>
             </div>
             <div class="col-md-6">
@@ -867,6 +871,7 @@
           <p class="text-danger small mb-0 mt-2 d-none" id="parking-link-error"></p>
         </div>
         <div class="modal-footer py-2 px-3">
+          <button type="button" class="btn btn-sm btn-outline-danger d-none me-auto" id="parking-link-unlink">Unlink</button>
           <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-sm btn-primary" id="parking-link-save">Save link</button>
         </div>
