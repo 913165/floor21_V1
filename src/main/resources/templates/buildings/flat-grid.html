@@ -262,6 +262,13 @@
       <span sec:authorize="hasRole('SUPER_ADMIN')">No flat rows to display. Use Generate flats above.</span>
       <span sec:authorize="!hasRole('SUPER_ADMIN')">No flat rows to display yet.</span>
     </p>
+    <div class="flat-floor-row flat-building-snapshot-row mb-2" th:if="${!#lists.isEmpty(floors)}">
+      <div class="flat-floor-row__rail">
+        <span class="floor-label text-nowrap text-muted">Building</span>
+        <span class="flat-floor-row__divider" aria-hidden="true"></span>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="building-snapshot-btn">Building snapshot</button>
+      </div>
+    </div>
     <div th:each="floor : ${floors}" class="flat-floor-row mb-3" th:attr="data-floor-number=${floor.floorNumber()}">
       <div class="flat-floor-row__rail">
         <span class="floor-label text-nowrap" th:text="${floor.label()}">Floor</span>
@@ -1040,7 +1047,31 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=flat-card-no-roof)}"></script>
+  <div class="modal fade" id="building-snapshot-modal" tabindex="-1" aria-labelledby="building-snapshot-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+      <div class="modal-content shadow">
+        <div class="modal-header py-2 px-3">
+          <h6 class="modal-title mb-0" id="building-snapshot-modal-title">Building snapshot</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body py-3 px-3 building-snapshot-modal-body">
+          <p class="text-muted small mb-3 mb-md-2">Front elevation from your current grid — flat colours reflect availability.</p>
+          <div id="building-snapshot-root" class="building-snapshot" aria-live="polite"></div>
+        </div>
+        <div class="modal-footer py-2 px-3 flex-wrap gap-2 justify-content-between">
+          <div class="building-snapshot-legend flat-grid-legend mb-0">
+            <span class="flat-grid-legend__item"><span class="flat-grid-legend__dot flat-grid-legend__dot--available"></span>Available</span>
+            <span class="flat-grid-legend__item"><span class="flat-grid-legend__dot flat-grid-legend__dot--hold"></span>Hold</span>
+            <span class="flat-grid-legend__item"><span class="flat-grid-legend__dot flat-grid-legend__dot--booked"></span>Booked</span>
+            <span class="flat-grid-legend__item"><span class="flat-grid-legend__dot flat-grid-legend__dot--deactivated"></span>Deactivated</span>
+            <span class="flat-grid-legend__item"><span class="flat-grid-legend__dot flat-grid-legend__dot--parking"></span>Parking</span>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script defer th:src="@{/js/flat-grid.js(v=building-snapshot-v8)}"></script>
   <script defer th:src="@{/js/ground-floor-shops.js(v=7)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=5)}"></script>
 </div>
