@@ -2951,6 +2951,28 @@
     });
 
     document.addEventListener("click", function (e) {
+      var shopRowBtn = e.target.closest("[data-shop-row-action]");
+      if (shopRowBtn && !shopRowBtn.disabled) {
+        var shopRoot = shopRowBtn.closest(".flat-ground-floor-section__plan-root");
+        if (!shopRoot || !isPlatformAdminEdit()) return;
+        var shopRowAction = shopRowBtn.getAttribute("data-shop-row-action");
+        if (!shopRowAction) return;
+        if (window.floor21AdjustGroundFloorGridRow) {
+          void window.floor21AdjustGroundFloorGridRow(shopRoot, shopRowAction);
+        }
+        return;
+      }
+      var shopColBtn = e.target.closest("[data-shop-col-action]");
+      if (shopColBtn && !shopColBtn.disabled) {
+        var shopColRoot = shopColBtn.closest(".flat-ground-floor-section__plan-root");
+        if (!shopColRoot || !isPlatformAdminEdit()) return;
+        var shopColAction = shopColBtn.getAttribute("data-shop-col-action");
+        if (!shopColAction) return;
+        if (window.floor21AdjustGroundFloorGridCol) {
+          void window.floor21AdjustGroundFloorGridCol(shopColRoot, shopColAction);
+        }
+        return;
+      }
       var rowBtn = e.target.closest("[data-parking-row-action]");
       if (rowBtn && !rowBtn.disabled) {
         var rowRoot = rowBtn.closest(".flat-parking-section__plan-root");
@@ -4930,32 +4952,10 @@
           flats: [],
         };
       });
-    var groundCells = [];
-    if (groundFloor && groundFloor.configured) {
-      groundCells = snapshotPlaceFlats(groundFloor.shops || [], columnCount);
-      var gfParking = groundFloor.parkingSlotCount || 0;
-      for (var p = 0; p < gfParking; p++) {
-        var placed = false;
-        for (var c = 0; c < groundCells.length; c++) {
-          if (!groundCells[c]) {
-            groundCells[c] = { parking: true, flatNumber: "P" + (p + 1), bhkType: "PKG" };
-            placed = true;
-            break;
-          }
-        }
-        if (!placed) {
-          groundCells.push({ parking: true, flatNumber: "P" + (p + 1), bhkType: "PKG" });
-        }
-      }
-      while (groundCells.length < columnCount) {
-        groundCells.push(null);
-      }
-      groundCells = groundCells.slice(0, columnCount);
-    }
     return {
       columnCount: columnCount,
       floorRows: floorRows,
-      groundCells: groundCells,
+      hasGroundFloor: !!(groundFloor && groundFloor.configured),
       basementBands: basementBands,
     };
   }
@@ -4965,6 +4965,17 @@
     if (!modalEl) return;
     var instance = bootstrap.Modal.getInstance(modalEl);
     if (instance) instance.hide();
+  }
+
+  async function fetchGroundFloorPlan() {
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    if (!buildingId) return null;
+    var res = await fetch(appRoot() + "/buildings/" + buildingId + "/ground-floor/plan", {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    return res.json();
   }
 
   async function loadSnapshotParkingPlans(payload) {
@@ -5066,11 +5077,16 @@
 
   function snapshotApplySelection(root) {
     if (!root) return;
-    root.querySelectorAll(".bld-cell--selected, .parking-plan__slot--selected, .bld-parking-floor--selected").forEach(
-      function (el) {
-        el.classList.remove("bld-cell--selected", "parking-plan__slot--selected", "bld-parking-floor--selected");
-      }
-    );
+    root.querySelectorAll(
+      ".bld-cell--selected, .parking-plan__slot--selected, .shop-plan__slot--selected, .bld-parking-floor--selected"
+    ).forEach(function (el) {
+      el.classList.remove(
+        "bld-cell--selected",
+        "parking-plan__slot--selected",
+        "shop-plan__slot--selected",
+        "bld-parking-floor--selected"
+      );
+    });
     if (!selectedFlatId) return;
     root.querySelectorAll('.bld-cell[data-flat-id="' + selectedFlatId + '"]').forEach(function (el) {
       el.classList.add("bld-cell--selected");
@@ -5078,12 +5094,64 @@
     root.querySelectorAll('.parking-plan__slot[data-parking-flat-id="' + selectedFlatId + '"]').forEach(function (el) {
       el.classList.add("parking-plan__slot--selected");
     });
+    root.querySelectorAll('.shop-plan__slot--shop[data-shop-flat-id="' + selectedFlatId + '"]').forEach(function (el) {
+      el.classList.add("shop-plan__slot--selected");
+    });
+    root.querySelectorAll('.shop-plan__slot--parking[data-parking-flat-id="' + selectedFlatId + '"]').forEach(
+      function (el) {
+        el.classList.add("shop-plan__slot--selected");
+      }
+    );
     if (selectedParkingSection && selectedParkingFloorNumber != null) {
       root
         .querySelectorAll('.bld-parking-floor[data-floor-number="' + selectedParkingFloorNumber + '"]')
         .forEach(function (el) {
           el.classList.add("bld-parking-floor--selected");
         });
+    }
+  }
+
+  function snapshotSelectShopSlotElement(slot) {
+    var root = document.getElementById("building-snapshot-root");
+    if (root) {
+      snapshotApplySelection(root);
+      slot.classList.add("shop-plan__slot--selected");
+      var row = slot.closest(".bld-parking-floor");
+      if (row) row.classList.add("bld-parking-floor--selected");
+    }
+    var flatId = slot ? slot.getAttribute("data-shop-flat-id") : null;
+    var gridSlot = flatId
+      ? document.querySelector('.shop-plan__slot--shop[data-shop-flat-id="' + flatId + '"]')
+      : null;
+    var target = gridSlot || slot;
+    if (target && window.floor21SelectShop) {
+      window.floor21SelectShop(target, false);
+    }
+    snapshotCloseModal();
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    }
+  }
+
+  function snapshotSelectGroundParkingSlotElement(slot) {
+    var root = document.getElementById("building-snapshot-root");
+    if (root) {
+      snapshotApplySelection(root);
+      slot.classList.add("shop-plan__slot--selected");
+      var row = slot.closest(".bld-parking-floor");
+      if (row) row.classList.add("bld-parking-floor--selected");
+    }
+    var flatId = slot ? slot.getAttribute("data-parking-flat-id") : null;
+    var gridSlot = flatId
+      ? document.querySelector('.shop-plan__slot--parking[data-parking-flat-id="' + flatId + '"]')
+      : null;
+    var target = gridSlot || slot;
+    if (target && window.floor21SelectParkingSlot) {
+      window.floor21SelectParkingSlot(target, false);
+    }
+    snapshotCloseModal();
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
     }
   }
 
@@ -5098,9 +5166,7 @@
     var flatId = slot ? slot.getAttribute("data-parking-flat-id") : null;
     var gridSlot = flatId
       ? document.querySelector('.flat-parking-section .parking-plan__slot[data-parking-flat-id="' + flatId + '"]') ||
-        document.querySelector(
-          '.flat-ground-floor-section__plan-root .parking-plan__slot[data-parking-flat-id="' + flatId + '"]'
-        )
+        document.querySelector('.shop-plan__slot--parking[data-parking-flat-id="' + flatId + '"]')
       : null;
     var target = gridSlot || slot;
     if (target && window.floor21SelectParkingSlot) {
@@ -5155,6 +5221,22 @@
     if (!modalEl || modalEl.dataset.snapshotBound === "true") return;
     modalEl.dataset.snapshotBound = "true";
     modalEl.addEventListener("click", function (e) {
+      var shopSlot = e.target.closest(".bld-parking-floor .shop-plan__slot--shop[data-shop-flat-id]");
+      if (shopSlot && modalEl.contains(shopSlot)) {
+        e.preventDefault();
+        e.stopPropagation();
+        snapshotSelectShopSlotElement(shopSlot);
+        return;
+      }
+      var gfParkingSlot = e.target.closest(
+        ".bld-parking-floor .shop-plan__slot--parking[data-parking-flat-id]"
+      );
+      if (gfParkingSlot && modalEl.contains(gfParkingSlot)) {
+        e.preventDefault();
+        e.stopPropagation();
+        snapshotSelectGroundParkingSlotElement(gfParkingSlot);
+        return;
+      }
       var slot = e.target.closest(".bld-parking-floor .parking-plan__slot[data-parking-flat-id]");
       if (slot && modalEl.contains(slot)) {
         e.preventDefault();
@@ -5170,11 +5252,16 @@
     });
   }
 
-  function renderBuildingSnapshot(root, payload, parkingPlans) {
+  function renderBuildingSnapshot(root, payload, parkingPlans, groundPlan) {
     if (!root) return;
     var model = buildSnapshotElevation(payload);
     model.parkingPlans = parkingPlans || {};
-    if (!model.floorRows.length && !model.groundCells.length && !model.basementBands.length) {
+    model.groundPlan = groundPlan || null;
+    if (
+      !model.floorRows.length &&
+      !model.hasGroundFloor &&
+      !model.basementBands.length
+    ) {
       root.innerHTML = '<p class="text-muted small mb-0 text-center">No floors configured yet.</p>';
       return;
     }
@@ -5225,34 +5312,9 @@
       })
       .join("");
     var groundHtml = "";
-    if (model.groundCells.length) {
-      var gfSelected = snapshotIsRowSelected(0, false) ? " bld-row--selected" : "";
-      groundHtml =
-        '<div class="bld-building__gf"><div class="bld-row bld-row--ground' +
-        gfSelected +
-        '" data-floor-number="0" title="Ground floor">' +
-        model.groundCells
-          .map(function (flat) {
-            var cellFlat = flat;
-            if (flat && flat.parking) {
-              cellFlat = {
-                flatNumber: flat.flatNumber,
-                bhkType: "PKG",
-                parking: true,
-                cardClass: "flat-card flat-parking",
-              };
-            }
-            return renderSnapshotCell(cellFlat, {
-              isGround: true,
-              floorNumber: 0,
-              colCount: model.columnCount,
-              colIndex: 0,
-              isTopRow: false,
-              isParkingRow: !!(flat && flat.parking),
-            });
-          })
-          .join("") +
-        "</div></div>";
+    if (model.hasGroundFloor && window.floor21RenderSnapshotGroundFloorPlanHtml) {
+      var gfSelected = snapshotIsRowSelected(0, false) || selectedShopUnit;
+      groundHtml = window.floor21RenderSnapshotGroundFloorPlanHtml(model.groundPlan, gfSelected);
     }
     var bandHtml = model.basementBands
       .map(function (band) {
@@ -5312,7 +5374,11 @@
       }
       var payload = await res.json();
       var parkingPlans = await loadSnapshotParkingPlans(payload);
-      renderBuildingSnapshot(root, payload, parkingPlans);
+      var groundPlan = null;
+      if (payload.groundFloor && payload.groundFloor.configured) {
+        groundPlan = await fetchGroundFloorPlan();
+      }
+      renderBuildingSnapshot(root, payload, parkingPlans, groundPlan);
     } catch (err) {
       root.innerHTML = '<p class="text-danger small mb-0 text-center">Could not load building data.</p>';
     }
@@ -5325,6 +5391,11 @@
       fn();
     }
     document.addEventListener("turbo:load", fn);
+    document.addEventListener("turbo:frame-render", function (event) {
+      if (event.target && event.target.id === "floor21-main") {
+        fn();
+      }
+    });
   }
 
   onPageReady(function () {

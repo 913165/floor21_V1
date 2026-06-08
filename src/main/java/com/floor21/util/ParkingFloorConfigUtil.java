@@ -701,7 +701,22 @@ public final class ParkingFloorConfigUtil {
             List<GridPlacement> placements,
             List<FixturePlacement> fixtures,
             ParkingGridRowDto.Action action) {
-        int minRows = minGridRowsForSlotCount(slotCount);
+        return adjustGridRows(
+                minGridRowsForSlotCount(slotCount),
+                slotCount,
+                gridRows,
+                placements,
+                fixtures,
+                action);
+    }
+
+    public static GridRowAdjustResult adjustGridRows(
+            int minRows,
+            int slotCount,
+            int gridRows,
+            List<GridPlacement> placements,
+            List<FixturePlacement> fixtures,
+            ParkingGridRowDto.Action action) {
         List<GridPlacement> currentPlacements =
                 placements != null ? new ArrayList<>(placements) : new ArrayList<>();
         List<FixturePlacement> currentFixtures =
@@ -747,7 +762,7 @@ public final class ParkingFloorConfigUtil {
                                     + minRows
                                     + " rows for "
                                     + slotCount
-                                    + " parking slots.");
+                                    + " slots.");
                 }
                 if (rowHasAnyItem(currentPlacements, currentFixtures, 0)) {
                     throw new IllegalArgumentException(
@@ -781,7 +796,7 @@ public final class ParkingFloorConfigUtil {
                                     + minRows
                                     + " rows for "
                                     + slotCount
-                                    + " parking slots.");
+                                    + " slots.");
                 }
                 int lastRow = gridRows - 1;
                 if (rowHasAnyItem(currentPlacements, currentFixtures, lastRow)) {
@@ -823,7 +838,22 @@ public final class ParkingFloorConfigUtil {
             List<GridPlacement> placements,
             List<FixturePlacement> fixtures,
             ParkingGridColDto.Action action) {
-        int minCols = minGridColsForSlotCount(slotCount);
+        return adjustGridCols(
+                minGridColsForSlotCount(slotCount),
+                slotCount,
+                gridCols,
+                placements,
+                fixtures,
+                action);
+    }
+
+    public static GridColAdjustResult adjustGridCols(
+            int minCols,
+            int slotCount,
+            int gridCols,
+            List<GridPlacement> placements,
+            List<FixturePlacement> fixtures,
+            ParkingGridColDto.Action action) {
         List<GridPlacement> currentPlacements =
                 placements != null ? new ArrayList<>(placements) : new ArrayList<>();
         List<FixturePlacement> currentFixtures =
@@ -869,7 +899,7 @@ public final class ParkingFloorConfigUtil {
                                     + minCols
                                     + " columns for "
                                     + slotCount
-                                    + " parking slots.");
+                                    + " slots.");
                 }
                 if (colHasAnyItem(currentPlacements, currentFixtures, 0)) {
                     throw new IllegalArgumentException(
@@ -903,7 +933,7 @@ public final class ParkingFloorConfigUtil {
                                     + minCols
                                     + " columns for "
                                     + slotCount
-                                    + " parking slots.");
+                                    + " slots.");
                 }
                 int lastCol = gridCols - 1;
                 if (colHasAnyItem(currentPlacements, currentFixtures, lastCol)) {

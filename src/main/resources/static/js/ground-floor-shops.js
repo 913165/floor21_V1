@@ -178,12 +178,12 @@
     return "";
   }
 
-  function renderPlanFixture(placement, canEdit) {
+  function renderPlanFixture(placement, canEdit, snapshotReadOnly) {
     if (!placement) return "";
     var ui = fixtureUiMeta(placement.kind);
     var orientClass =
       placement.orientation === "horizontal" ? " shop-plan__fixture--horizontal" : " shop-plan__fixture--vertical";
-    var dragClass = canEdit ? " shop-plan__fixture--draggable" : "";
+    var dragClass = canEdit && !snapshotReadOnly ? " shop-plan__fixture--draggable" : "";
     var gridStyle =
       ' style="grid-column:' +
       (placement.col + 1) +
@@ -200,7 +200,7 @@
       '" data-fixture-index="' +
       placement.index +
       '"' +
-      (canEdit ? ' draggable="true"' : "") +
+      (canEdit && !snapshotReadOnly ? ' draggable="true"' : "") +
       ' title="' +
       ui.title +
       " " +
@@ -283,16 +283,17 @@
     );
   }
 
-  function renderGroundParkingSlot(slot, placement, canEdit) {
+  function renderGroundParkingSlot(slot, placement, canEdit, snapshotReadOnly) {
     if (!slot) return "";
     var linked = slot.linkedResidentialFlatNumber || "";
     var linkedClass = linked ? " shop-plan__slot--linked" : "";
-    var clickable = canEdit ? " shop-plan__slot--clickable" : "";
+    var interactive = canEdit || snapshotReadOnly;
+    var clickable = interactive ? " shop-plan__slot--clickable" : "";
     var orientClass =
       placement && placement.orientation === "horizontal"
         ? " shop-plan__slot--horizontal"
         : " shop-plan__slot--vertical";
-    var dragClass = canEdit ? " shop-plan__slot--draggable" : "";
+    var dragClass = canEdit && !snapshotReadOnly ? " shop-plan__slot--draggable" : "";
     var gridStyle = placement
       ? ' style="grid-column:' +
         (placement.col + 1) +
@@ -325,7 +326,7 @@
       ' title="' +
       title.replace(/"/g, "&quot;") +
       '"' +
-      (canEdit ? ' draggable="true"' : "") +
+      (canEdit && !snapshotReadOnly ? ' draggable="true"' : "") +
       gridStyle +
       ">" +
       '<div class="shop-plan__bay shop-plan__bay--parking">' +
@@ -484,6 +485,7 @@
       saving: false,
       plan: clonePlan(plan),
     };
+    if (canEdit) updateShopGridToolbar(rootEl);
   }
 
   function dragKeyFromEl(el) {
@@ -746,6 +748,88 @@
     renderShopPlanGrid(plan, rootEl);
   }
 
+  var SHOP_MAX_GRID_ROWS = 24;
+  var SHOP_MAX_GRID_COLS = 40;
+
+  function shopRowHasPlacement(state, row) {
+    if (!state) return false;
+    var lists = [state.shopPlacements, state.parkingPlacements];
+    var i;
+    var j;
+    for (i = 0; i < lists.length; i++) {
+      if (!lists[i]) continue;
+      for (j = 0; j < lists[i].length; j++) {
+        if (lists[i][j].row === row) return true;
+      }
+    }
+    if (state.fixtures) {
+      for (i = 0; i < state.fixtures.length; i++) {
+        if (state.fixtures[i].row === row) return true;
+      }
+    }
+    return false;
+  }
+
+  function shopColHasPlacement(state, col) {
+    if (!state) return false;
+    var lists = [state.shopPlacements, state.parkingPlacements];
+    var i;
+    var j;
+    for (i = 0; i < lists.length; i++) {
+      if (!lists[i]) continue;
+      for (j = 0; j < lists[i].length; j++) {
+        if (lists[i][j].col === col) return true;
+      }
+    }
+    if (state.fixtures) {
+      for (i = 0; i < state.fixtures.length; i++) {
+        if (state.fixtures[i].col === col) return true;
+      }
+    }
+    return false;
+  }
+
+  function shopMinGridCols(state) {
+    if (!state || !state.plan) return 1;
+    var shopCount = state.plan.shopCount || 0;
+    var parkingCount = state.plan.parkingSlotCount || 0;
+    var combined = shopCount + parkingCount;
+    if (combined <= 0) return 1;
+    return Math.max(1, Math.ceil(combined / Math.max(state.gridRows, 1)));
+  }
+
+  function updateShopGridToolbar(rootEl) {
+    if (!rootEl) return;
+    var state = rootEl._shopLayoutState;
+    if (!state) return;
+    var minRows = state.plan && state.plan.minGridRows != null ? state.plan.minGridRows : 1;
+    var minCols = shopMinGridCols(state);
+    var rows = state.gridRows;
+    var cols = state.gridCols;
+    var removeTop = rootEl.querySelector('[data-shop-row-action="REMOVE_TOP"]');
+    var removeBottom = rootEl.querySelector('[data-shop-row-action="REMOVE_BOTTOM"]');
+    var insertTop = rootEl.querySelector('[data-shop-row-action="INSERT_TOP"]');
+    var insertBottom = rootEl.querySelector('[data-shop-row-action="INSERT_BOTTOM"]');
+    var removeLeft = rootEl.querySelector('[data-shop-col-action="REMOVE_LEFT"]');
+    var removeRight = rootEl.querySelector('[data-shop-col-action="REMOVE_RIGHT"]');
+    var insertLeft = rootEl.querySelector('[data-shop-col-action="INSERT_LEFT"]');
+    var insertRight = rootEl.querySelector('[data-shop-col-action="INSERT_RIGHT"]');
+    var canRemoveTop = rows > minRows && !shopRowHasPlacement(state, 0);
+    var canRemoveBottom = rows > minRows && !shopRowHasPlacement(state, rows - 1);
+    var canInsertRow = rows < SHOP_MAX_GRID_ROWS;
+    var canRemoveLeft = cols > minCols && !shopColHasPlacement(state, 0);
+    var canRemoveRight = cols > minCols && !shopColHasPlacement(state, cols - 1);
+    var canInsertCol = cols < SHOP_MAX_GRID_COLS;
+    if (removeTop) removeTop.disabled = !canRemoveTop;
+    if (removeBottom) removeBottom.disabled = !canRemoveBottom;
+    if (insertTop) insertTop.disabled = !canInsertRow;
+    if (insertBottom) insertBottom.disabled = !canInsertRow;
+    if (removeLeft) removeLeft.disabled = !canRemoveLeft;
+    if (removeRight) removeRight.disabled = !canRemoveRight;
+    if (insertLeft) insertLeft.disabled = !canInsertCol;
+    if (insertRight) insertRight.disabled = !canInsertCol;
+  }
+
   function ensureShopGridDelegation() {
     if (window.__f21ShopGridBound) return;
     window.__f21ShopGridBound = true;
@@ -809,22 +893,6 @@
       rerenderFromState(root);
       setGridDragActive(root, false);
       void autoSaveLayout(root);
-    });
-
-    document.addEventListener("click", function (e) {
-      var rowBtn = e.target.closest("[data-shop-row-action]");
-      if (rowBtn && !rowBtn.disabled) {
-        var rowRoot = rowBtn.closest(".flat-ground-floor-section__plan-root");
-        if (!rowRoot || !isPlatformAdminEdit()) return;
-        void adjustGridRow(rowRoot, rowBtn.getAttribute("data-shop-row-action"));
-        return;
-      }
-      var colBtn = e.target.closest("[data-shop-col-action]");
-      if (colBtn && !colBtn.disabled) {
-        var colRoot = colBtn.closest(".flat-ground-floor-section__plan-root");
-        if (!colRoot || !isPlatformAdminEdit()) return;
-        void adjustGridCol(colRoot, colBtn.getAttribute("data-shop-col-action"));
-      }
     });
   }
 
@@ -1226,6 +1294,76 @@
   }
 
   window.floor21ReloadGroundFloorPlan = loadShopPlan;
+  window.floor21AdjustGroundFloorGridRow = adjustGridRow;
+  window.floor21AdjustGroundFloorGridCol = adjustGridCol;
+
+  function renderSnapshotGroundFloorPlanHtml(plan, rowSelected) {
+    if (!plan) return "";
+    var shopCount = plan.shopCount || 0;
+    var parkingCount = plan.parkingSlotCount || 0;
+    if (!shopCount && !parkingCount) return "";
+    var shopScale = shopCarScale(plan);
+    var parkingScale = parkingCarScale(plan);
+    var scale = Math.min(1.05, Math.max(shopScale, parkingScale) * 0.82);
+    var selectedCls = rowSelected ? " bld-parking-floor--selected" : "";
+    var cols = plan.gridCols || 14;
+    var rows = plan.gridRows || 8;
+    var cellsHtml = "";
+    var r;
+    var c;
+    for (r = 0; r < rows; r++) {
+      for (c = 0; c < cols; c++) {
+        cellsHtml +=
+          '<div class="shop-plan__cell" data-col="' +
+          c +
+          '" data-row="' +
+          r +
+          '" style="grid-column:' +
+          (c + 1) +
+          ";grid-row:" +
+          (r + 1) +
+          '"></div>';
+      }
+    }
+    var shopPlacements = plan.shopPlacements || plan.placements || [];
+    var shopsHtml = shopPlacements
+      .map(function (p) {
+        return renderShopPlanSlot(findShopSlot(plan, p.slotNumber), p, false);
+      })
+      .join("");
+    var parkingHtml = (plan.parkingPlacements || [])
+      .map(function (p) {
+        return renderGroundParkingSlot(findParkingSlot(plan, p.slotNumber), p, false, true);
+      })
+      .join("");
+    var fixturesHtml = (plan.fixtures || [])
+      .map(function (f) {
+        return renderPlanFixture(f, false, true);
+      })
+      .join("");
+    return (
+      '<div class="bld-parking-floor bld-parking-floor--ground' +
+      selectedCls +
+      '" data-floor-number="0" title="Ground floor">' +
+      '<div class="shop-plan__sheet shop-plan__sheet--grid bld-parking-floor__plan" style="--shop-car-scale:' +
+      scale +
+      ";--shop-parking-car-scale:" +
+      scale +
+      '">' +
+      '<div class="shop-plan__grid" style="--shop-grid-cols:' +
+      cols +
+      ";--shop-grid-rows:" +
+      rows +
+      '">' +
+      cellsHtml +
+      shopsHtml +
+      parkingHtml +
+      fixturesHtml +
+      "</div></div></div>"
+    );
+  }
+
+  window.floor21RenderSnapshotGroundFloorPlanHtml = renderSnapshotGroundFloorPlanHtml;
 
   window.floor21SyncGroundFloor = function (groundFloor) {
     updatePanelMeta(groundFloor || { configured: false, shopCount: 0 }, null);
@@ -1241,16 +1379,31 @@
       fn();
     }
     document.addEventListener("turbo:load", fn);
+    document.addEventListener("turbo:frame-render", function (event) {
+      if (event.target && event.target.id === "floor21-main") {
+        fn();
+      }
+    });
   }
 
   onPageReady(function () {
+    ensureShopGridDelegation();
+
     var section = document.getElementById("flat-ground-floor-section");
-    if (!section || section.dataset.f21GroundInit === "true") {
+    if (!section) {
+      return;
+    }
+
+    var panel = groundFloorPanel();
+    if (panel && panel.dataset.configured === "true") {
+      void loadShopPlan();
+    }
+
+    if (section.dataset.f21GroundInit === "true") {
       return;
     }
     section.dataset.f21GroundInit = "true";
 
-    ensureShopGridDelegation();
     mountModal();
 
     var parkingCarSize = document.getElementById("ground-floor-config-parking-car-size");
@@ -1264,11 +1417,6 @@
       shopSize.addEventListener("input", function () {
         syncShopSizeLabel(shopSize.value);
       });
-    }
-
-    var panel = groundFloorPanel();
-    if (panel && panel.dataset.configured === "true") {
-      void loadShopPlan();
     }
 
     document.addEventListener("click", function (e) {

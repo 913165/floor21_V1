@@ -125,6 +125,29 @@ public final class GroundFloorShopConfigUtil {
         return (int) Math.ceil((double) slotCount / cols);
     }
 
+    /** Minimum columns needed for ground floor slots given the current row count. */
+    public static int minGridColsForGroundFloorSlotCount(int slotCount, int gridRows) {
+        if (slotCount <= 0) {
+            return 1;
+        }
+        int rows = Math.max(1, gridRows);
+        return (int) Math.ceil((double) slotCount / rows);
+    }
+
+    public static int normalizeGroundFloorGridRows(int slotCount, int gridCols, Integer gridRows) {
+        int min = minGridRowsForGroundFloorSlotCount(Math.max(slotCount, 1), gridCols);
+        int value = gridRows != null ? gridRows : min;
+        if (value < min) {
+            throw new IllegalArgumentException(
+                    "Grid needs at least " + min + " rows for " + slotCount + " slots.");
+        }
+        if (value > ParkingFloorConfigUtil.MAX_GRID_ROWS) {
+            throw new IllegalArgumentException(
+                    "Grid can have at most " + ParkingFloorConfigUtil.MAX_GRID_ROWS + " rows.");
+        }
+        return value;
+    }
+
     public static List<GridPlacement> defaultGroundFloorPlacements(
             int slotCount, int gridCols, int gridRows) {
         List<GridPlacement> out = new ArrayList<>();
@@ -286,7 +309,7 @@ public final class GroundFloorShopConfigUtil {
 
                 existingShops.gridRows() != null
 
-                        ? ParkingFloorConfigUtil.normalizeGridRows(combinedSlots, existingShops.gridRows())
+                        ? normalizeGroundFloorGridRows(combinedSlots, gridCols, existingShops.gridRows())
 
                         : minGridRows;
 
@@ -531,7 +554,7 @@ public final class GroundFloorShopConfigUtil {
 
         int combined = shopCount + parkingCount;
 
-        int normalizedRows = ParkingFloorConfigUtil.normalizeGridRows(combined, gridRows);
+        int normalizedRows = normalizeGroundFloorGridRows(combined, gridCols, gridRows);
 
         assertGroundLayoutValid(
 
@@ -763,13 +786,17 @@ public final class GroundFloorShopConfigUtil {
 
         int combined = shops.slotCount() + stored.parkingSlotCount();
 
+        int gridCols =
+
+                shops.gridCols() != null ? shops.gridCols() : ParkingFloorConfigUtil.DEFAULT_GRID_COLS;
+
         int gridRows =
 
                 shops.gridRows() != null
 
                         ? shops.gridRows()
 
-                        : ParkingFloorConfigUtil.minGridRowsForSlotCount(combined);
+                        : minGridRowsForGroundFloorSlotCount(combined, gridCols);
 
         List<GridPlacement> parkingPlacements =
 
@@ -785,9 +812,13 @@ public final class GroundFloorShopConfigUtil {
 
         }
 
+        int minRows = minGridRowsForGroundFloorSlotCount(combined, gridCols);
+
         ParkingFloorConfigUtil.GridRowAdjustResult adjusted =
 
                 ParkingFloorConfigUtil.adjustGridRows(
+
+                        minRows,
 
                         combined,
 
@@ -835,6 +866,14 @@ public final class GroundFloorShopConfigUtil {
 
                 shops.gridCols() != null ? shops.gridCols() : ParkingFloorConfigUtil.DEFAULT_GRID_COLS;
 
+        int gridRows =
+
+                shops.gridRows() != null
+
+                        ? shops.gridRows()
+
+                        : minGridRowsForGroundFloorSlotCount(combined, gridCols);
+
         List<GridPlacement> parkingPlacements =
 
                 stored.parking() != null && stored.parking().placements() != null
@@ -849,9 +888,13 @@ public final class GroundFloorShopConfigUtil {
 
         }
 
+        int minCols = minGridColsForGroundFloorSlotCount(combined, gridRows);
+
         ParkingFloorConfigUtil.GridColAdjustResult adjusted =
 
                 ParkingFloorConfigUtil.adjustGridCols(
+
+                        minCols,
 
                         combined,
 
@@ -871,7 +914,9 @@ public final class GroundFloorShopConfigUtil {
 
                 adjusted.gridCols(),
 
-                shops.gridRows() != null ? shops.gridRows() : ParkingFloorConfigUtil.minGridRowsForSlotCount(combined),
+                shops.gridRows() != null
+                        ? shops.gridRows()
+                        : minGridRowsForGroundFloorSlotCount(combined, adjusted.gridCols()),
 
                 adjusted.placements(),
 
