@@ -673,7 +673,7 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   flex-wrap: nowrap;
   justify-content: flex-start;
   align-items: stretch;
-  gap: 0.65rem;
+  gap: 1.15rem;
   width: 100%;
   min-width: 0;
   overflow: visible;
@@ -690,18 +690,17 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 }
 
 .flat-card:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) {
-  min-height: 14.75rem;
+  --flat-card-border: #94a3b8;
+  min-height: 0;
+  height: auto;
+  align-self: flex-start;
+  border: 2px solid var(--flat-card-border);
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 .flat-card-roof {
-  position: relative;
-  width: 100%;
-  flex: 0 0 auto;
-  z-index: 1;
-  pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  display: none;
 }
 
 .flat-card-roof__peak {
@@ -773,8 +772,7 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 .flat-card-body {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-top: none;
-  border-radius: 0 0 10px 10px;
+  border-radius: 10px;
   padding: 0.65rem 0.65rem 0.5rem;
   flex: 1 1 auto;
   min-height: 7.75rem;
@@ -784,10 +782,24 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 }
 
 .flat-card:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) .flat-card-body {
+  flex: 0 0 auto;
   height: 7.75rem;
   min-height: 7.75rem;
   max-height: 7.75rem;
   overflow: hidden;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding-bottom: 0.4rem;
+}
+
+.flat-card:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) .flat-card-status {
+  border-radius: 0;
+  margin-top: 0;
+  flex: 0 0 auto;
+  padding: 0.28rem 0.5rem;
+  min-height: 0;
+  line-height: 1.15;
 }
 
 .flat-card-inner {
@@ -1372,8 +1384,13 @@ body.modal-open .modal-backdrop {
   transform: translateY(-2px);
 }
 
+.flat-card:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part):hover {
+  border-color: #64748b;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+}
+
 .flat-card:hover .flat-card-body {
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  box-shadow: none;
 }
 
 .flat-card--other-partner:not(.flat-parking),
@@ -1396,8 +1413,13 @@ body.modal-open .modal-backdrop {
   background: transparent !important;
 }
 
+.flat-card.flat-card--booking-selected {
+  border-color: #e8590c !important;
+  box-shadow: 0 0 0 2px rgba(232, 89, 12, 0.35);
+}
+
 .flat-card.flat-card--booking-selected .flat-card-body {
-  box-shadow: 0 0 0 2px rgba(232, 89, 12, 0.45);
+  box-shadow: none;
 }
 
 .flat-card.flat-card--booking-selected .flat-type,
@@ -1412,8 +1434,33 @@ body.modal-open .modal-backdrop {
 .flat-available {
   --flat-roof-dark: #1f9d73;
   --flat-roof-light: #5fd4a8;
-  --flat-status-bg: #ecfdf5;
-  --flat-status-fg: #059669;
+  --flat-card-fill: #d1e7dd;
+  --flat-status-bg: var(--flat-card-fill);
+  --flat-status-fg: #0f5132;
+}
+
+.flat-card.flat-available:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) {
+  background: var(--flat-card-fill);
+  --flat-card-border: #198754;
+}
+
+.flat-card.flat-available:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part)
+  .flat-card-body {
+  background: transparent;
+}
+
+.flat-card.flat-available:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part)
+  .flat-card-status {
+  background: transparent;
+  border-top: 1px solid rgba(25, 135, 84, 0.22);
+}
+
+.flat-card.flat-available.flat-card--other-partner .flat-card-body,
+.flat-card.flat-available[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(
+    .flat-merge-part
+  )
+  .flat-card-body {
+  background: transparent !important;
 }
 
 .flat-booked {
@@ -2354,12 +2401,16 @@ body.modal-open .modal-backdrop {
   filter: grayscale(0.35);
 }
 
+.flat-card--other-partner,
+.flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) {
+  --flat-card-border: #90a4ae;
+  border-style: dashed !important;
+}
+
 .flat-card--other-partner .flat-card-body,
 .flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part)
   .flat-card-body {
   background: #eceff1 !important;
-  border-color: #b0bec5 !important;
-  border-style: dashed;
 }
 
 .flat-card--other-partner:hover,
@@ -2390,9 +2441,19 @@ body.modal-open .modal-backdrop {
   font-weight: 500;
 }
 
+[data-bs-theme="dark"] .flat-card:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) {
+  --flat-card-border: #94a3b8;
+}
+
 [data-bs-theme="dark"] .flat-card-body {
   background: #1e293b;
   border-color: #334155;
+}
+
+[data-bs-theme="dark"]
+  .flat-card:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part)
+  .flat-card-body {
+  border: none;
 }
 
 [data-bs-theme="dark"] .flat-number,
@@ -2408,8 +2469,37 @@ body.modal-open .modal-backdrop {
 [data-bs-theme="dark"] .flat-available {
   --flat-roof-dark: #15803d;
   --flat-roof-light: #4ade80;
-  --flat-status-bg: rgba(25, 135, 84, 0.18);
-  --flat-status-fg: #86efac;
+  --flat-card-fill: rgba(25, 135, 84, 0.32);
+  --flat-status-bg: var(--flat-card-fill);
+  --flat-status-fg: #bbf7d0;
+}
+
+[data-bs-theme="dark"]
+  .flat-card.flat-available:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) {
+  background: var(--flat-card-fill);
+  --flat-card-border: #4ade80;
+}
+
+[data-bs-theme="dark"]
+  .flat-card.flat-available:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part)
+  .flat-card-body {
+  background: transparent;
+}
+
+[data-bs-theme="dark"]
+  .flat-card.flat-available:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part)
+  .flat-card-status {
+  background: transparent;
+  border-top-color: rgba(74, 222, 128, 0.28);
+}
+
+[data-bs-theme="dark"] .flat-card.flat-available.flat-card--other-partner .flat-card-body,
+[data-bs-theme="dark"]
+  .flat-card.flat-available[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(
+    .flat-merge-part
+  )
+  .flat-card-body {
+  background: transparent !important;
 }
 
 [data-bs-theme="dark"] .flat-booked {
@@ -2448,12 +2538,23 @@ body.modal-open .modal-backdrop {
   filter: grayscale(0.4);
 }
 
+[data-bs-theme="dark"] .flat-card--other-partner,
+[data-bs-theme="dark"]
+  .flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) {
+  --flat-card-border: #adb5bd;
+}
+
 [data-bs-theme="dark"] .flat-card--other-partner .flat-card-body,
 [data-bs-theme="dark"]
   .flat-card[data-bookable="false"]:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part)
   .flat-card-body {
   background: rgba(108, 117, 125, 0.22) !important;
-  border-color: rgba(173, 181, 189, 0.55) !important;
+}
+
+[data-bs-theme="dark"]
+  .flat-card:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part):hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 [data-bs-theme="dark"] .flat-card--other-partner:hover,
@@ -2482,8 +2583,13 @@ body.modal-open .modal-backdrop {
   background: transparent !important;
 }
 
+[data-bs-theme="dark"] .flat-card.flat-card--booking-selected {
+  border-color: #fd7e14 !important;
+  box-shadow: 0 0 0 2px rgba(253, 126, 20, 0.4);
+}
+
 [data-bs-theme="dark"] .flat-card.flat-card--booking-selected .flat-card-body {
-  box-shadow: 0 0 0 2px rgba(253, 126, 20, 0.45);
+  box-shadow: none;
 }
 
 [data-bs-theme="dark"] .flat-card.flat-card--booking-selected .flat-type,

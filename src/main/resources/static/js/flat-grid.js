@@ -521,26 +521,6 @@
     label.textContent = statusLabelForFlat(status || cardEl.dataset.status);
   }
 
-  function appendFlatCardRoof(cardEl, bhkType) {
-    var roof = document.createElement("div");
-    roof.className = "flat-card-roof";
-    roof.setAttribute("aria-hidden", "true");
-    var peak = document.createElement("div");
-    peak.className = "flat-card-roof__peak";
-    peak.innerHTML =
-      '<div class="flat-card-roof__shape"></div>' +
-      '<div class="flat-card-roof__windows"><span></span><span></span></div>';
-    roof.appendChild(peak);
-    var bricks = document.createElement("div");
-    bricks.className = "flat-card-roof__bricks";
-    if (bhkType && /^[34]/.test(String(bhkType))) {
-      bricks.classList.add("flat-card-roof__bricks--three");
-    }
-    bricks.innerHTML = "<span></span><span></span><span class=\"flat-card-roof__brick-extra\"></span>";
-    roof.appendChild(bricks);
-    cardEl.appendChild(roof);
-  }
-
   function appendFlatCardStatus(cardEl, status) {
     var statusEl = document.createElement("div");
     statusEl.className = "flat-card-status";
@@ -2112,7 +2092,6 @@
     card.id = "flat-" + flat.id;
     card.className = flat.cardClass || "flat-card flat-available";
     card.dataset.flatId = flat.id;
-    appendFlatCardRoof(card, flat.bhkType);
     card.appendChild(buildFlatCardContent(flat));
     appendFlatCardStatus(card, flat.status);
     syncFlatCardFromData(card, flat);

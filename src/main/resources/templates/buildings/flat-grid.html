@@ -370,16 +370,6 @@
               <span>Email</span><span class="flat-card-buyertip__email" th:text="${flat.buyerEmail()}">-</span>
             </div>
           </div>
-          <div class="flat-card-roof" aria-hidden="true">
-            <div class="flat-card-roof__peak">
-              <div class="flat-card-roof__shape"></div>
-              <div class="flat-card-roof__windows"><span></span><span></span></div>
-            </div>
-            <div class="flat-card-roof__bricks"
-                 th:classappend="${flat.bhkType() != null and flat.bhkType().matches('^[34].*')} ? ' flat-card-roof__bricks--three' : ''">
-              <span></span><span></span><span class="flat-card-roof__brick-extra"></span>
-            </div>
-          </div>
           <div class="flat-card-body">
             <div class="flat-card-inner">
               <div class="flat-card-headline">
@@ -1045,7 +1035,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=client-panel-v4)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=flat-card-no-roof)}"></script>
   <script defer th:src="@{/js/ground-floor-shops.js(v=7)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=5)}"></script>
 </div>
