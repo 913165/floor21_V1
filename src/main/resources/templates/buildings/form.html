@@ -19,15 +19,14 @@
       <div class="col-12" th:if="${adminBuildingsFlow}">
         <label class="form-label" for="admin-builder-id">Project <span class="text-danger">*</span></label>
         <select class="form-select" id="admin-builder-id" name="builderId" required
-                data-project-search-select
-                th:attr="data-navigate-on-select=${generateInitialLayout} ? 'true' : null">
+                data-project-search-select>
           <option value="">— Select project —</option>
           <option th:each="p : ${projects}"
                   th:value="${p.id}"
                   th:text="${p.companyName}"
                   th:selected="${selectedBuilderId != null and selectedBuilderId == p.id}"></option>
         </select>
-        <p class="form-text mb-0">Search by project name. Changing the selection reloads address defaults from the project.</p>
+        <p class="form-text mb-0">Search by project name. Changing the project updates address and city below.</p>
       </div>
       <div class="col-md-6">
         <label class="form-label" for="buildingName">Building name <span class="text-danger">*</span></label>
@@ -235,6 +234,35 @@
         }
       });
       renderColumnOrder();
+    })();
+  </script>
+  <script th:if="${adminBuildingsFlow and generateInitialLayout}">
+    (function () {
+      var select = document.getElementById("admin-builder-id");
+      var form = document.getElementById("building-layout-form");
+      if (!select || !form) return;
+
+      function applyLayoutDefaults(builderId) {
+        if (!builderId) return;
+        var root = (document.body.getAttribute("data-app-root") || "").replace(/\/+$/, "");
+        fetch(root + "/admin/projects/" + encodeURIComponent(builderId) + "/layout-defaults", {
+          headers: { Accept: "application/json" },
+        })
+          .then(function (res) {
+            return res.ok ? res.json() : null;
+          })
+          .then(function (data) {
+            if (!data) return;
+            var address = form.querySelector('[name="address"]');
+            var city = form.querySelector('[name="city"]');
+            if (address && data.address != null) address.value = data.address;
+            if (city && data.city != null) city.value = data.city;
+          });
+      }
+
+      select.addEventListener("change", function () {
+        applyLayoutDefaults(select.value);
+      });
     })();
   </script>
 </div>

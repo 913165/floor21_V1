@@ -1,6 +1,7 @@
 package com.floor21.controller;
 
 import com.floor21.dto.AdminBuilderRow;
+import com.floor21.dto.ProjectLayoutDefaultsDto;
 import com.floor21.dto.ProjectSnapshotBuildingDto;
 import com.floor21.entity.Builder;
 import com.floor21.repository.BuilderRepository;
@@ -77,6 +78,18 @@ public class AdminController {
         model.addAttribute("buildingCount", buildingRepository.countByBuilder_Id(id));
         model.addAttribute("partnerCount", userProjectAssignmentService.countForProject(id));
         return "admin/builders/form";
+    }
+
+    @GetMapping("/{id}/layout-defaults")
+    @ResponseBody
+    public ProjectLayoutDefaultsDto layoutDefaults(@PathVariable UUID id) {
+        Builder builder = builderRepository.findById(id).orElseThrow();
+        if (builder.isPlatformAdmin()) {
+            throw new IllegalArgumentException("Not a tenant project.");
+        }
+        return new ProjectLayoutDefaultsDto(
+                builder.getAddress() != null ? builder.getAddress() : "",
+                builder.getCity() != null ? builder.getCity() : "");
     }
 
     @GetMapping("/{id}/snapshot-buildings")

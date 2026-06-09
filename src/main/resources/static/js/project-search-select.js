@@ -4,9 +4,26 @@
  */
 (function () {
   var MAX_VISIBLE = 50;
+  var outsideClickBound = false;
+  var activeSelects = [];
 
   function normalize(text) {
     return (text || "").toLowerCase();
+  }
+
+  function bindOutsideClickOnce() {
+    if (outsideClickBound) {
+      return;
+    }
+    outsideClickBound = true;
+    document.addEventListener("click", function (e) {
+      if (e.target.closest(".project-search-select")) {
+        return;
+      }
+      activeSelects.forEach(function (entry) {
+        entry.endSearch();
+      });
+    });
   }
 
   function enhanceSelect(select) {
@@ -15,7 +32,6 @@
     }
     select.dataset.projectSearchEnhanced = "true";
 
-    var navigateOnSelect = select.dataset.navigateOnSelect === "true";
     var submitOnSelect = select.dataset.submitOnSelect === "true";
     var options = Array.prototype.slice.call(select.options);
 
@@ -193,15 +209,6 @@
       }
     }
 
-    function beginSearch() {
-      searching = true;
-      search.value = "";
-      search.placeholder = committedLabel
-        ? "Type to search — selected: " + committedLabel
-        : "Search projects…";
-      renderMenu();
-    }
-
     function endSearch() {
       searching = false;
       search.placeholder = "Search projects…";
@@ -209,7 +216,15 @@
       closeMenu();
     }
 
-    search.addEventListener("focus", beginSearch);
+    activeSelects.push({ wrap: wrap, endSearch: endSearch });
+    bindOutsideClickOnce();
+
+    search.addEventListener("focus", function () {
+      searching = true;
+      if (!search.value && committedLabel) {
+        search.value = committedLabel;
+      }
+    });
 
     search.addEventListener("blur", function () {
       setTimeout(function () {
@@ -257,24 +272,6 @@
       }
     });
 
-    document.addEventListener("click", function (e) {
-      if (!wrap.contains(e.target)) {
-        endSearch();
-      }
-    });
-
-    if (navigateOnSelect) {
-      select.addEventListener("change", function () {
-        var id = select.value;
-        if (!id) {
-          return;
-        }
-        var root = (document.body.getAttribute("data-app-root") || "").replace(/\/+$/, "");
-        window.location.href =
-          root + "/admin/buildings/new?builderId=" + encodeURIComponent(id);
-      });
-    }
-
     if (submitOnSelect) {
       select.addEventListener("change", function () {
         var form = select.form;
@@ -293,6 +290,7 @@
   }
 
   function initProjectSearchSelects() {
+    activeSelects = [];
     document.querySelectorAll("[data-project-search-select]").forEach(enhanceSelect);
   }
 
