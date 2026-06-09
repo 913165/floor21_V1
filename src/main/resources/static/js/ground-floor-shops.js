@@ -1297,69 +1297,89 @@
   window.floor21AdjustGroundFloorGridRow = adjustGridRow;
   window.floor21AdjustGroundFloorGridCol = adjustGridCol;
 
+  function renderSnapshotShopChip(slot) {
+    if (!slot) return "";
+    var statusClass = shopStatusClass(slot.status);
+    var title = "Shop " + slot.slotNumber + (slot.flatNumber ? " — " + slot.flatNumber : "");
+    return (
+      '<span class="bld-gf-compact__chip shop-plan__slot shop-plan__slot--shop shop-plan__slot--clickable ' +
+      statusClass +
+      '" data-shop-flat-id="' +
+      (slot.flatId || "") +
+      '" data-slot-number="' +
+      slot.slotNumber +
+      '" title="' +
+      title.replace(/"/g, "&quot;") +
+      '">' +
+      slot.slotNumber +
+      "</span>"
+    );
+  }
+
+  function renderSnapshotGroundParkingChip(slot) {
+    if (!slot) return "";
+    var linked = slot.linkedResidentialFlatNumber || "";
+    var booked = !!(linked || slot.status === "BOOKED");
+    var title = linked
+      ? "Parking " + slot.slotNumber + " — " + linked
+      : "Parking " + slot.slotNumber;
+    return (
+      '<button type="button" class="bld-parking-seat bld-parking-seat--clickable bld-parking-strip__slot shop-plan__slot shop-plan__slot--parking ' +
+      (booked ? "bld-parking-seat--booked bld-parking-strip__slot--set" : "bld-parking-seat--available bld-parking-strip__slot--open") +
+      '" data-parking-flat-id="' +
+      (slot.flatId || "") +
+      '" data-slot-number="' +
+      slot.slotNumber +
+      '" title="' +
+      title.replace(/"/g, "&quot;") +
+      '" aria-label="' +
+      title.replace(/"/g, "&quot;") +
+      '">' +
+      slot.slotNumber +
+      "</button>"
+    );
+  }
+
   function renderSnapshotGroundFloorPlanHtml(plan, rowSelected) {
     if (!plan) return "";
-    var shopCount = plan.shopCount || 0;
-    var parkingCount = plan.parkingSlotCount || 0;
-    if (!shopCount && !parkingCount) return "";
-    var shopScale = shopCarScale(plan);
-    var parkingScale = parkingCarScale(plan);
-    var scale = Math.min(1.05, Math.max(shopScale, parkingScale) * 0.82);
+    var shops = (plan.shops || plan.slots || [])
+      .slice()
+      .sort(function (a, b) {
+        return (a.slotNumber || 0) - (b.slotNumber || 0);
+      });
+    var parking = (plan.parkingSlots || [])
+      .slice()
+      .sort(function (a, b) {
+        return (a.slotNumber || 0) - (b.slotNumber || 0);
+      });
+    if (!shops.length && !parking.length) return "";
     var selectedCls = rowSelected ? " bld-parking-floor--selected" : "";
-    var cols = plan.gridCols || 14;
-    var rows = plan.gridRows || 8;
-    var cellsHtml = "";
-    var r;
-    var c;
-    for (r = 0; r < rows; r++) {
-      for (c = 0; c < cols; c++) {
-        cellsHtml +=
-          '<div class="shop-plan__cell" data-col="' +
-          c +
-          '" data-row="' +
-          r +
-          '" style="grid-column:' +
-          (c + 1) +
-          ";grid-row:" +
-          (r + 1) +
-          '"></div>';
-      }
+    var shopsHtml = shops.map(renderSnapshotShopChip).join("");
+    var parkingHtml = parking.map(renderSnapshotGroundParkingChip).join("");
+    var rowsHtml = "";
+    if (shopsHtml) {
+      rowsHtml +=
+        '<div class="bld-gf-compact__row bld-gf-compact__row--shops">' +
+        '<span class="bld-gf-compact__row-label">Shops</span>' +
+        '<div class="bld-gf-compact__chips">' +
+        shopsHtml +
+        "</div></div>";
     }
-    var shopPlacements = plan.shopPlacements || plan.placements || [];
-    var shopsHtml = shopPlacements
-      .map(function (p) {
-        return renderShopPlanSlot(findShopSlot(plan, p.slotNumber), p, false);
-      })
-      .join("");
-    var parkingHtml = (plan.parkingPlacements || [])
-      .map(function (p) {
-        return renderGroundParkingSlot(findParkingSlot(plan, p.slotNumber), p, false, true);
-      })
-      .join("");
-    var fixturesHtml = (plan.fixtures || [])
-      .map(function (f) {
-        return renderPlanFixture(f, false, true);
-      })
-      .join("");
+    if (parkingHtml) {
+      rowsHtml +=
+        '<div class="bld-gf-compact__row bld-gf-compact__row--parking">' +
+        '<span class="bld-gf-compact__row-label">Parking</span>' +
+        '<div class="bld-gf-compact__chips">' +
+        parkingHtml +
+        "</div></div>";
+    }
     return (
-      '<div class="bld-parking-floor bld-parking-floor--ground' +
+      '<div class="bld-row bld-row--ground' +
       selectedCls +
       '" data-floor-number="0" title="Ground floor">' +
-      '<div class="shop-plan__sheet shop-plan__sheet--grid bld-parking-floor__plan" style="--shop-car-scale:' +
-      scale +
-      ";--shop-parking-car-scale:" +
-      scale +
-      '">' +
-      '<div class="shop-plan__grid" style="--shop-grid-cols:' +
-      cols +
-      ";--shop-grid-rows:" +
-      rows +
-      '">' +
-      cellsHtml +
-      shopsHtml +
-      parkingHtml +
-      fixturesHtml +
-      "</div></div></div>"
+      '<div class="bld-cell bld-cell--ground-block">' +
+      rowsHtml +
+      "</div></div>"
     );
   }
 

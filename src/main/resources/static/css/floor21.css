@@ -2343,9 +2343,331 @@ body.modal-open .modal-backdrop {
 
 .building-snapshot {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
   padding: 0.5rem 0 1rem;
   overflow-x: auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+.building-snapshot__stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.building-snapshot__scene-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.bld-scene--snapshot {
+  --bld-cols: 4;
+  --bld-unit-w: 6.1rem;
+  --bld-building-w: calc(var(--bld-cols) * var(--bld-unit-w) + (var(--bld-cols) - 1) * 3px + 0.5rem);
+  align-items: stretch;
+  min-width: min(100%, 22rem);
+  padding: 0 2.5rem 0.15rem;
+}
+
+.bld-scene--snapshot .bld-scene__tree {
+  bottom: 0.15rem;
+  z-index: 2;
+}
+
+.building-snapshot__elevation {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+#building-snapshot-modal .modal-content button.pk-slot--clickable,
+#project-snapshot-modal .modal-content button.pk-slot--clickable,
+.building-snapshot button.pk-slot--clickable {
+  pointer-events: auto;
+}
+
+/* Snapshot parking floors — card layout */
+.pk-floors-section {
+  width: min(100%, var(--bld-building-w));
+  max-width: var(--bld-building-w);
+  margin: 0 auto;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.pk-section-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.3rem;
+}
+
+.pk-floors {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.pk-floor-block {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 0.22rem 0.55rem 0.26rem;
+  box-sizing: border-box;
+}
+
+.pk-floor-block--selected {
+  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.45);
+  border-color: #93c5fd;
+}
+
+.pk-floor-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.15rem;
+}
+
+.pk-floor-badge {
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.0625rem 0.45rem;
+  border-radius: 999px;
+  line-height: 1.25;
+}
+
+.pk-floor-badge--p3 {
+  background: #e6f1fb;
+  color: #0c447c;
+}
+
+.pk-floor-badge--p2 {
+  background: #eaf3de;
+  color: #3b6d11;
+}
+
+.pk-floor-badge--p1 {
+  background: #faeeda;
+  color: #854f0b;
+}
+
+.pk-floor-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #64748b;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pk-lane {
+  height: 0.14rem;
+  background: repeating-linear-gradient(
+    90deg,
+    #94a3b8 0,
+    #94a3b8 0.35rem,
+    transparent 0.35rem,
+    transparent 0.65rem
+  );
+  opacity: 0.18;
+  border-radius: 0.125rem;
+  margin: 0 0 0.12rem;
+}
+
+.pk-lane--bottom {
+  margin: 0.12rem 0 0;
+}
+
+.pk-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--pk-cols, 6), minmax(0, 1fr));
+  gap: 0.16rem;
+  width: 100%;
+}
+
+.pk-slot {
+  position: relative;
+  min-height: 1.5rem;
+  height: 100%;
+  border-radius: 0.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+  padding: 0.03rem 0.04rem 0.04rem;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.pk-slot--clickable {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+}
+
+.pk-slot--clickable:hover {
+  transform: scale(1.04);
+  z-index: 1;
+}
+
+.pk-slot--available {
+  background: #eaf3de;
+  border-color: #639922;
+}
+
+.pk-slot--booked {
+  background: #faeeda;
+  border-color: #ba7517;
+}
+
+.pk-slot--reserved {
+  background: #e6f1fb;
+  border-color: #185fa5;
+}
+
+.pk-slot--blocked,
+.pk-slot--empty {
+  background: #f1efe8;
+  border-color: #888780;
+}
+
+.pk-slot--selected {
+  box-shadow: 0 0 0 2px #0d6efd;
+  border-color: #0d6efd;
+  z-index: 2;
+}
+
+.pk-slot__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0.55rem;
+  line-height: 1;
+}
+
+.pk-slot__icon svg {
+  width: 15px;
+  height: auto;
+}
+
+.pk-slot__icon--fixture {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.pk-slot__id {
+  font-size: 0.4375rem;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pk-slot--available .pk-slot__id { color: #3b6d11; }
+.pk-slot--booked .pk-slot__id { color: #854f0b; }
+.pk-slot--reserved .pk-slot__id { color: #0c447c; }
+.pk-slot--blocked .pk-slot__id,
+.pk-slot--empty .pk-slot__id { color: #888780; }
+
+.pk-legend {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+}
+
+.pk-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.6875rem;
+  color: #64748b;
+}
+
+.pk-legend-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 0.125rem;
+  flex-shrink: 0;
+}
+
+.pk-legend-dot--available {
+  background: #eaf3de;
+  border: 1.5px solid #639922;
+}
+
+.pk-legend-dot--booked {
+  background: #faeeda;
+  border: 1.5px solid #ba7517;
+}
+
+.pk-legend-dot--reserved {
+  background: #e6f1fb;
+  border: 1.5px solid #185fa5;
+}
+
+.pk-legend-dot--blocked {
+  background: #f1efe8;
+  border: 1.5px solid #888780;
+}
+
+.project-snapshot__tower .pk-floors-section {
+  width: min(100%, var(--bld-building-w));
+  max-width: var(--bld-building-w);
+}
+
+.project-snapshot__tower .pk-slots-grid {
+  grid-template-columns: repeat(var(--pk-cols, 4), minmax(0, 1fr));
+  gap: 0.14rem;
+}
+
+.project-snapshot__tower .pk-slot {
+  min-height: 1.35rem;
+  padding: 0.02rem 0.03rem 0.03rem;
+}
+
+.project-snapshot__tower .pk-slot__icon svg {
+  width: 13px;
+  height: auto;
+}
+
+.project-snapshot__tower .pk-floor-block {
+  padding: 0.18rem 0.45rem 0.22rem;
+}
+
+.project-snapshot__tower .pk-floor-header {
+  margin-bottom: 0.12rem;
+}
+
+[data-bs-theme="dark"] .pk-section-title {
+  color: #e2e8f0;
+}
+
+[data-bs-theme="dark"] .pk-floor-block {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-bs-theme="dark"] .pk-floor-label,
+[data-bs-theme="dark"] .pk-legend-item {
+  color: #94a3b8;
 }
 
 .bld-scene {
@@ -2363,6 +2685,7 @@ body.modal-open .modal-backdrop {
   width: 2.1rem;
   height: 2.6rem;
   pointer-events: none;
+  z-index: 0;
 }
 
 .bld-scene__tree--left {
@@ -2407,7 +2730,10 @@ body.modal-open .modal-backdrop {
   --bld-rail: #d97706;
   --bld-rail-dark: #b45309;
   position: relative;
+  z-index: 1;
   width: min(100%, calc(var(--bld-cols) * var(--bld-unit-w) + (var(--bld-cols) - 1) * 3px + 0.5rem));
+  max-width: calc(var(--bld-cols) * var(--bld-unit-w) + (var(--bld-cols) - 1) * 3px + 0.5rem);
+  overflow: hidden;
   filter: drop-shadow(0 10px 18px rgba(15, 23, 42, 0.14));
 }
 
@@ -2429,15 +2755,17 @@ body.modal-open .modal-backdrop {
   border-left: 3px solid var(--bld-wall-edge);
   border-right: 3px solid var(--bld-wall-edge);
   background: var(--bld-wall);
+  overflow: hidden;
 }
 
 .bld-row {
   display: grid;
-  grid-template-columns: repeat(var(--bld-cols), var(--bld-unit-w));
+  grid-template-columns: repeat(var(--bld-cols), minmax(0, var(--bld-unit-w)));
   justify-content: center;
   gap: 3px;
   padding: 0 2px;
   background: linear-gradient(180deg, rgba(214, 200, 184, 0.35), transparent 28%);
+  min-width: 0;
 }
 
 .bld-row + .bld-row {
@@ -2446,7 +2774,9 @@ body.modal-open .modal-backdrop {
 
 .bld-cell {
   position: relative;
-  width: var(--bld-unit-w);
+  width: 100%;
+  max-width: var(--bld-unit-w);
+  min-width: 0;
   min-height: var(--bld-unit-h);
   padding: 0.1rem 0.08rem 0.08rem;
   background: var(--bld-wall);
@@ -2486,25 +2816,366 @@ body.modal-open .modal-backdrop {
 }
 
 .bld-row--parking {
-  background: linear-gradient(180deg, #d7dee8, #c5ced8);
+  background: linear-gradient(180deg, #9fb0c3 0%, #8fa3b8 100%);
+  border-top: 2px solid #64748b;
+}
+
+.bld-row--parking + .bld-row--parking {
+  border-top: 1px solid rgba(71, 85, 105, 0.55);
 }
 
 .bld-row--parking .bld-cell {
   background: transparent;
 }
 
-.bld-parking-floor {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.35rem 0.2rem;
-  border-top: 1px solid rgba(100, 116, 139, 0.35);
-  background: linear-gradient(180deg, #d7dee8, #c5ced8);
+.bld-row--parking.bld-row--selected {
+  background: linear-gradient(180deg, rgba(13, 110, 253, 0.22) 0%, #8fa3b8 100%);
 }
 
-.bld-parking-floor--selected {
-  box-shadow: inset 0 0 0 2px rgba(13, 110, 253, 0.55);
-  background: linear-gradient(180deg, rgba(13, 110, 253, 0.1), #c5ced8);
+.bld-cell--parking-col {
+  min-height: var(--bld-unit-h);
+  height: auto;
+  padding: 0.1rem 0.08rem 0.08rem;
+  background: linear-gradient(180deg, #b8c5d4 0%, #a3b3c6 100%);
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.12rem;
+  overflow: hidden;
+}
+
+.bld-cell--parking-col:first-child {
+  position: relative;
+}
+
+.bld-parking-col__label {
+  position: absolute;
+  top: 0.1rem;
+  left: 0.1rem;
+  font-size: 0.52rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1;
+}
+
+.bld-cell--parking-seatmap {
+  grid-column: 1 / -1;
+  max-width: none;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+}
+
+.bld-parking-seatmap {
+  display: grid;
+  grid-template-columns: repeat(var(--seat-cols, 6), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--seat-rows, 1), minmax(0, 1fr));
+  gap: 2px;
+  width: 100%;
+  max-width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.45rem 0.15rem 0.08rem;
+  box-sizing: border-box;
+  place-items: center;
+}
+
+.bld-parking-seat {
+  width: 100%;
+  max-width: 0.78rem;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  padding: 0;
+  border: 2px solid #0f172a;
+  border-radius: 0.22rem;
+  font-size: 0.38rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  transition: box-shadow 0.1s ease, transform 0.1s ease, border-color 0.1s ease;
+  background-color: #22c55e;
+  color: #fff;
+}
+
+.building-snapshot .bld-parking-seat,
+#building-snapshot-modal .bld-parking-seat,
+#project-snapshot-modal .bld-parking-seat {
+  border: 2px solid #0f172a;
+  background-color: #22c55e;
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .building-snapshot .bld-parking-seat,
+[data-bs-theme="dark"] #building-snapshot-modal .bld-parking-seat,
+[data-bs-theme="dark"] #project-snapshot-modal .bld-parking-seat {
+  border-color: #0f172a;
+  background-color: #22c55e;
+  color: #fff;
+}
+
+.bld-parking-seat--available,
+.building-snapshot .bld-parking-seat--available,
+#building-snapshot-modal .bld-parking-seat--available,
+#project-snapshot-modal .bld-parking-seat--available {
+  background-color: #22c55e;
+  color: #fff;
+}
+
+.bld-parking-seat--booked,
+.building-snapshot .bld-parking-seat--booked,
+#building-snapshot-modal .bld-parking-seat--booked,
+#project-snapshot-modal .bld-parking-seat--booked,
+[data-bs-theme="dark"] .building-snapshot .bld-parking-seat--booked,
+[data-bs-theme="dark"] #building-snapshot-modal .bld-parking-seat--booked,
+[data-bs-theme="dark"] #project-snapshot-modal .bld-parking-seat--booked {
+  background-color: #2563eb;
+  color: #fff;
+}
+
+.bld-parking-seat--hold,
+.building-snapshot .bld-parking-seat--hold,
+#building-snapshot-modal .bld-parking-seat--hold,
+#project-snapshot-modal .bld-parking-seat--hold {
+  background-color: #eab308;
+  color: #fff;
+}
+
+.bld-parking-seat--deactivated,
+.building-snapshot .bld-parking-seat--deactivated,
+#building-snapshot-modal .bld-parking-seat--deactivated,
+#project-snapshot-modal .bld-parking-seat--deactivated {
+  background-color: #94a3b8;
+  color: #fff;
+}
+
+.bld-parking-seat--car-lift,
+.building-snapshot .bld-parking-seat--car-lift,
+#building-snapshot-modal .bld-parking-seat--car-lift,
+#project-snapshot-modal .bld-parking-seat--car-lift {
+  background-color: #f59e0b;
+  color: #fff;
+  cursor: default;
+  font-size: 0.32rem;
+}
+
+.bld-parking-seat--passenger-lift,
+.building-snapshot .bld-parking-seat--passenger-lift,
+#building-snapshot-modal .bld-parking-seat--passenger-lift,
+#project-snapshot-modal .bld-parking-seat--passenger-lift {
+  background-color: #a855f7;
+  color: #fff;
+  cursor: default;
+  font-size: 0.32rem;
+}
+
+.bld-parking-seat--gate,
+.building-snapshot .bld-parking-seat--gate,
+#building-snapshot-modal .bld-parking-seat--gate,
+#project-snapshot-modal .bld-parking-seat--gate {
+  background-color: #64748b;
+  color: #fff;
+  cursor: default;
+  font-size: 0.32rem;
+}
+
+.bld-parking-seat--empty,
+.building-snapshot .bld-parking-seat--empty,
+#building-snapshot-modal .bld-parking-seat--empty,
+#project-snapshot-modal .bld-parking-seat--empty {
+  background-color: rgba(255, 255, 255, 0.35);
+  border: 2px solid #0f172a;
+  cursor: default;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bld-parking-seat--clickable,
+.building-snapshot .bld-parking-seat--clickable,
+#building-snapshot-modal .bld-parking-seat--clickable,
+#project-snapshot-modal .bld-parking-seat--clickable {
+  cursor: pointer;
+  border: 2px solid #0f172a;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 2;
+}
+
+.bld-parking-seat--fixture,
+.building-snapshot .bld-parking-seat--fixture,
+#building-snapshot-modal .bld-parking-seat--fixture,
+#project-snapshot-modal .bld-parking-seat--fixture {
+  border: 2px solid #0f172a;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 2;
+}
+
+.bld-parking-seat--clickable:hover {
+  transform: scale(1.06);
+  border-color: #020617;
+  box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.45);
+  z-index: 3;
+}
+
+.bld-parking-seat--selected,
+.building-snapshot .bld-parking-seat--selected,
+#building-snapshot-modal .bld-parking-seat--selected,
+#project-snapshot-modal .bld-parking-seat--selected {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 2px #0d6efd;
+}
+
+.bld-cell--ground-block {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  height: auto;
+  padding: 0.12rem 0.12rem;
+  background: linear-gradient(180deg, #ede4d4, var(--bld-wall));
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.bld-parking-strip__slot {
+  flex: 0 0 auto;
+  width: 0.58rem;
+  height: 0.58rem;
+  padding: 0;
+  border: 2px solid #0f172a;
+  border-radius: 0.22rem;
+  cursor: pointer;
+  transition: box-shadow 0.1s ease;
+  font-size: 0.38rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+}
+
+.bld-parking-strip__slot--open,
+.bld-parking-strip__slot.bld-parking-seat--available {
+  background: #22c55e;
+  color: #fff;
+}
+
+.bld-parking-strip__slot--set,
+.bld-parking-strip__slot.bld-parking-seat--booked {
+  background: #2563eb;
+  color: #fff;
+}
+
+.bld-parking-strip__slot.parking-plan__slot--clickable:hover,
+.bld-parking-strip__slot.shop-plan__slot--clickable:hover {
+  box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.5);
+  z-index: 1;
+}
+
+.bld-parking-strip__slot.shop-plan__slot--selected,
+.bld-parking-strip__slot.parking-plan__slot--selected {
+  box-shadow: 0 0 0 1px #0d6efd;
+}
+
+.bld-row--ground {
+  background: linear-gradient(180deg, rgba(214, 200, 184, 0.35), transparent 28%);
+}
+
+.bld-gf-compact__row {
+  display: grid;
+  grid-template-columns: 1.1rem 1fr;
+  align-items: center;
+  gap: 2px;
+}
+
+.bld-gf-compact__row + .bld-gf-compact__row {
+  margin-top: 0.08rem;
+  padding-top: 0.08rem;
+  border-top: 1px dashed rgba(71, 85, 105, 0.2);
+}
+
+.bld-gf-compact__row--parking .bld-gf-compact__chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 1px;
+  justify-content: center;
+}
+
+.bld-gf-compact__row-label {
+  font-size: 0.52rem;
+  font-weight: 700;
+  text-align: right;
+  color: #475569;
+  line-height: 1.1;
+}
+
+.bld-gf-compact__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+}
+
+.bld-gf-compact__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.15rem;
+  border-radius: 2px;
+  border: 1px solid;
+  font-size: 0.52rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.bld-gf-compact__chip.shop-plan__slot--available {
+  background: #d1e7dd;
+  border-color: #198754;
+  color: #0f5132;
+}
+
+.bld-gf-compact__chip.shop-plan__slot--booked {
+  background: #cfe2ff;
+  border-color: #0d6efd;
+  color: #084298;
+}
+
+.bld-gf-compact__chip.shop-plan__slot--hold {
+  background: #fff3cd;
+  border-color: #ffc107;
+  color: #664d03;
+}
+
+.bld-gf-compact__chip.shop-plan__slot--deactivated {
+  background: #e2e3e5;
+  border-color: #6c757d;
+  color: #495057;
+}
+
+.bld-gf-compact__chip.shop-plan__slot--clickable:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.35);
+}
+
+.bld-gf-compact__chip.shop-plan__slot--selected {
+  box-shadow: 0 0 0 2px #0d6efd;
 }
 
 .bld-parking-floor__plan {
@@ -3102,11 +3773,12 @@ body.modal-open .modal-backdrop {
 }
 
 .project-snapshot__tower.building-snapshot {
-  justify-content: center;
+  justify-content: flex-start;
+  align-items: stretch;
   padding: 0;
 }
 
-.project-snapshot__tower .bld-scene {
+.project-snapshot__tower .bld-scene--snapshot {
   min-width: 0;
   padding-left: 1.75rem;
   padding-right: 1.75rem;

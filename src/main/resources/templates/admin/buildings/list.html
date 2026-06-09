@@ -146,6 +146,8 @@
           <a class="btn btn-sm btn-outline-primary"
              th:href="@{/buildings/{id}/flats(id=${b.id})}"
              th:attr="data-building-id=${b.id}, title=${'Flats for ' + b.buildingName}">Flats</a>
+          <button type="button" class="btn btn-sm btn-outline-primary building-snapshot-btn"
+                  th:attr="data-building-id=${b.id}, data-building-name=${b.buildingName}">Snapshot</button>
           <form class="d-inline"
                 th:if="${bookingCounts[b.id] == null or bookingCounts[b.id] == 0}"
                 th:action="@{/admin/buildings/{id}/delete(id=${b.id})}" method="post"
@@ -202,6 +204,34 @@
       </li>
     </ul>
   </nav>
+
+  <div class="modal fade" id="building-snapshot-modal" tabindex="-1" aria-labelledby="building-snapshot-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+      <div class="modal-content shadow">
+        <div class="modal-header py-2 px-3">
+          <h6 class="modal-title mb-0" id="building-snapshot-modal-title">Building snapshot</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body py-3 px-3 building-snapshot-modal-body">
+          <p class="text-muted small mb-3 mb-md-2">Front elevation from your current grid — flat colours reflect availability.</p>
+          <div id="building-snapshot-root" class="building-snapshot" aria-live="polite"></div>
+        </div>
+        <div class="modal-footer py-2 px-3 flex-wrap gap-2 justify-content-between">
+          <div class="building-snapshot-legend flat-grid-legend mb-0">
+            <span class="flat-grid-legend__item"><span class="flat-grid-legend__dot flat-grid-legend__dot--available"></span>Available</span>
+            <span class="flat-grid-legend__item"><span class="flat-grid-legend__dot flat-grid-legend__dot--hold"></span>Hold</span>
+            <span class="flat-grid-legend__item"><span class="flat-grid-legend__dot flat-grid-legend__dot--booked"></span>Booked</span>
+            <span class="flat-grid-legend__item"><span class="flat-grid-legend__dot flat-grid-legend__dot--deactivated"></span>Deactivated</span>
+            <span class="flat-grid-legend__item"><span class="flat-grid-legend__dot flat-grid-legend__dot--parking"></span>Parking</span>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script defer th:src="@{/js/ground-floor-shops.js(v=snapshot-parking-compact-v16)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=snapshot-parking-compact-v16)}"></script>
 </div>
 </body>
 </html>
