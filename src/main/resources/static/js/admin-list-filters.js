@@ -41,6 +41,10 @@
     wireLiveSearchForm(document.getElementById("buildings-page-size-form"), null);
     wireLiveSearchForm(document.getElementById("users-filter-form"), "#user-search-q");
     wireLiveSearchForm(document.getElementById("users-page-size-form"), null);
+    wireLiveSearchForm(document.getElementById("projects-filter-form"), "#project-search-q");
+    wireLiveSearchForm(document.getElementById("projects-page-size-form"), null);
+    wireLiveSearchForm(document.getElementById("clients-filter-form"), "#client-search-q");
+    wireLiveSearchForm(document.getElementById("clients-page-size-form"), null);
   }
 
   function onPageReady(fn) {
