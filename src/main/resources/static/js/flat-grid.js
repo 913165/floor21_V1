@@ -152,6 +152,7 @@
       "ground-floor-config-modal",
       "parking-link-modal",
       "building-snapshot-modal",
+      "project-snapshot-modal",
     ].forEach(function (id) {
       var el = document.getElementById(id);
       if (el && el.parentElement !== document.body) {
@@ -3156,15 +3157,19 @@
     );
   }
 
-  async function fetchParkingPlan(floorNumber) {
-    var grid = document.getElementById("flat-grid");
-    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+  async function fetchParkingPlanForBuilding(buildingId, floorNumber) {
     if (!buildingId || floorNumber == null || floorNumber === "") return null;
     var res = await fetch(parkingPlanApiUrl(buildingId, floorNumber), {
       headers: { Accept: "application/json" },
     });
     if (!res.ok) return null;
     return res.json();
+  }
+
+  async function fetchParkingPlan(floorNumber) {
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    return fetchParkingPlanForBuilding(buildingId, floorNumber);
   }
 
   function parkingMinGridRowsForSlotCount(slotCount) {
@@ -4973,9 +4978,7 @@
     if (instance) instance.hide();
   }
 
-  async function fetchGroundFloorPlan() {
-    var grid = document.getElementById("flat-grid");
-    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+  async function fetchGroundFloorPlanForBuilding(buildingId) {
     if (!buildingId) return null;
     var res = await fetch(appRoot() + "/buildings/" + buildingId + "/ground-floor/plan", {
       headers: { Accept: "application/json" },
@@ -4984,19 +4987,50 @@
     return res.json();
   }
 
-  async function loadSnapshotParkingPlans(payload) {
+  async function fetchGroundFloorPlan() {
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    return fetchGroundFloorPlanForBuilding(buildingId);
+  }
+
+  async function loadSnapshotParkingPlansForBuilding(buildingId, payload) {
     var plans = {};
     var tasks = [];
     (payload.floors || []).forEach(function (floor) {
       if (!floor.parkingSection) return;
       tasks.push(
-        fetchParkingPlan(floor.floorNumber).then(function (plan) {
+        fetchParkingPlanForBuilding(buildingId, floor.floorNumber).then(function (plan) {
           if (plan) plans[String(floor.floorNumber)] = plan;
         })
       );
     });
     await Promise.all(tasks);
     return plans;
+  }
+
+  async function loadSnapshotParkingPlans(payload) {
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    return loadSnapshotParkingPlansForBuilding(buildingId, payload);
+  }
+
+  async function loadBuildingSnapshotData(buildingId) {
+    if (!buildingId) {
+      throw new Error("Missing building id");
+    }
+    var res = await fetch(appRoot() + "/buildings/" + buildingId + "/flats/data", {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      throw new Error("Could not load building data");
+    }
+    var payload = await res.json();
+    var parkingPlans = await loadSnapshotParkingPlansForBuilding(buildingId, payload);
+    var groundPlan = null;
+    if (payload.groundFloor && payload.groundFloor.configured) {
+      groundPlan = await fetchGroundFloorPlanForBuilding(buildingId);
+    }
+    return { payload: payload, parkingPlans: parkingPlans, groundPlan: groundPlan };
   }
 
   function renderSnapshotParkingPlanHtml(plan, floorNumber, label, rowSelected) {
@@ -5371,20 +5405,8 @@
     var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
     try {
-      var res = await fetch(appRoot() + "/buildings/" + buildingId + "/flats/data", {
-        headers: { Accept: "application/json" },
-      });
-      if (!res.ok) {
-        root.innerHTML = '<p class="text-danger small mb-0 text-center">Could not load building data.</p>';
-        return;
-      }
-      var payload = await res.json();
-      var parkingPlans = await loadSnapshotParkingPlans(payload);
-      var groundPlan = null;
-      if (payload.groundFloor && payload.groundFloor.configured) {
-        groundPlan = await fetchGroundFloorPlan();
-      }
-      renderBuildingSnapshot(root, payload, parkingPlans, groundPlan);
+      var data = await loadBuildingSnapshotData(buildingId);
+      renderBuildingSnapshot(root, data.payload, data.parkingPlans, data.groundPlan);
     } catch (err) {
       root.innerHTML = '<p class="text-danger small mb-0 text-center">Could not load building data.</p>';
     }
@@ -6199,4 +6221,8 @@
   window.loadAllConfiguredParkingPlans = loadAllConfiguredParkingPlans;
   window.floor21RefreshParkingLayoutLinks = refreshParkingLayoutLinks;
   window.openParkingConfigModal = openParkingConfigModal;
+  window.floor21BuildingSnapshot = {
+    render: renderBuildingSnapshot,
+    load: loadBuildingSnapshotData,
+  };
 })();

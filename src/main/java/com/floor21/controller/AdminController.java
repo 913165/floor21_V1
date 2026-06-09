@@ -1,6 +1,7 @@
 package com.floor21.controller;
 
 import com.floor21.dto.AdminBuilderRow;
+import com.floor21.dto.ProjectSnapshotBuildingDto;
 import com.floor21.entity.Builder;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.BuildingRepository;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -75,6 +77,18 @@ public class AdminController {
         model.addAttribute("buildingCount", buildingRepository.countByBuilder_Id(id));
         model.addAttribute("partnerCount", userProjectAssignmentService.countForProject(id));
         return "admin/builders/form";
+    }
+
+    @GetMapping("/{id}/snapshot-buildings")
+    @ResponseBody
+    public List<ProjectSnapshotBuildingDto> snapshotBuildings(@PathVariable UUID id) {
+        Builder builder = builderRepository.findById(id).orElseThrow();
+        if (builder.isPlatformAdmin()) {
+            throw new IllegalArgumentException("Not a tenant project.");
+        }
+        return buildingRepository.findByBuilder_IdOrderByBuildingNameAsc(id).stream()
+                .map(b -> new ProjectSnapshotBuildingDto(b.getId(), b.getBuildingName()))
+                .toList();
     }
 
     @PostMapping("/save")

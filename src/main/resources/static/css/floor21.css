@@ -1212,18 +1212,25 @@ button.flat-floor-plan-link {
 #parking-config-modal.modal,
 #ground-floor-config-modal.modal,
 #parking-link-modal.modal,
-#building-snapshot-modal.modal {
+#building-snapshot-modal.modal,
+#project-snapshot-modal.modal {
   z-index: 1060;
   pointer-events: auto;
 }
 
-#building-snapshot-modal.modal {
+#building-snapshot-modal.modal,
+#project-snapshot-modal.modal {
   z-index: 1070;
 }
 
 #building-snapshot-modal .modal-content,
 #building-snapshot-modal .modal-content button,
-#building-snapshot-modal .bld-cell[data-flat-id] {
+#building-snapshot-modal .bld-cell[data-flat-id],
+#project-snapshot-modal .modal-content,
+#project-snapshot-modal .modal-content button,
+#project-snapshot-modal .bld-cell[data-flat-id],
+#project-snapshot-modal .parking-plan__slot,
+#project-snapshot-modal .shop-plan__slot {
   pointer-events: auto;
 }
 
@@ -3040,6 +3047,69 @@ body.modal-open .modal-backdrop {
 
 .building-snapshot-legend {
   flex: 1 1 auto;
+}
+
+#project-snapshot-modal.modal {
+  z-index: 1070;
+  pointer-events: auto;
+}
+
+#project-snapshot-modal .modal-content,
+#project-snapshot-modal .modal-content button,
+#project-snapshot-modal .bld-cell[data-flat-id],
+#project-snapshot-modal .parking-plan__slot,
+#project-snapshot-modal .shop-plan__slot {
+  pointer-events: auto;
+}
+
+.project-snapshot-modal-body {
+  background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 42%, #f8fafc 100%);
+}
+
+[data-bs-theme="dark"] .project-snapshot-modal-body {
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 55%, #0f172a 100%);
+}
+
+.project-snapshot {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 1.25rem;
+  overflow-x: auto;
+  padding: 0.25rem 0.5rem 1rem;
+}
+
+.project-snapshot__item {
+  flex: 0 0 auto;
+  min-width: min(100%, 20rem);
+}
+
+.project-snapshot--compact .project-snapshot__item {
+  min-width: 17rem;
+}
+
+.project-snapshot--compact .project-snapshot__tower .bld-building {
+  --bld-unit-w: 5.2rem;
+  --bld-unit-h: 2rem;
+}
+
+.project-snapshot__label {
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+  color: var(--bs-body-color);
+}
+
+.project-snapshot__tower.building-snapshot {
+  justify-content: center;
+  padding: 0;
+}
+
+.project-snapshot__tower .bld-scene {
+  min-width: 0;
+  padding-left: 1.75rem;
+  padding-right: 1.75rem;
 }
 
 .flat-amenity {
