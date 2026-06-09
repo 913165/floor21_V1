@@ -31,6 +31,21 @@
   var DEFAULT_PARKING_CAR_SIZE_PERCENT = 180;
   var parkingConfigBasementMode = false;
 
+  function parkingConfigState() {
+    if (!window.__f21ParkingCfg) {
+      window.__f21ParkingCfg = { floorNumber: null, basementMode: false };
+    }
+    return window.__f21ParkingCfg;
+  }
+
+  function setParkingConfigTarget(floorNumber, basementMode) {
+    var state = parkingConfigState();
+    state.floorNumber = floorNumber != null && floorNumber !== "" ? String(floorNumber) : null;
+    state.basementMode = !!basementMode;
+    parkingConfigFloorNumber = state.floorNumber;
+    parkingConfigBasementMode = state.basementMode;
+  }
+
   function isBasementFloor(floorNumber) {
     var n = Number(floorNumber);
     return !isNaN(n) && n < 0;
@@ -55,6 +70,39 @@
     if (n === -1) return "Basement";
     if (n < 0) return "Basement " + Math.abs(n);
     return "Basement";
+  }
+
+  function basementDtoFromPlan(plan, label) {
+    if (!plan || plan.floorNumber == null || !isBasementFloor(plan.floorNumber)) return null;
+    var slots = plan.slots || [];
+    var first = slots[0];
+    var rangeLabel = "";
+    if (slots.length === 1 && first && first.flatNumber) {
+      rangeLabel = first.flatNumber;
+    } else if (slots.length > 1) {
+      var firstNum = slots[0] && slots[0].flatNumber;
+      var lastNum = slots[slots.length - 1] && slots[slots.length - 1].flatNumber;
+      if (firstNum && lastNum) {
+        rangeLabel = firstNum + " – " + lastNum;
+      }
+    }
+    return {
+      floorNumber: plan.floorNumber,
+      label: label || basementDisplayLabel(plan.floorNumber),
+      configured: true,
+      slotCount: plan.slotCount,
+      rangeLabel: rangeLabel,
+      parkingCarSizePercent: plan.carSizePercent,
+      gridRows: plan.gridRows,
+      minGridRows: plan.minGridRows,
+      carLiftCount: plan.carLiftCount,
+      passengerLiftCount: plan.passengerLiftCount,
+      gateCount: plan.gateCount,
+      hasLayoutImage: false,
+      firstFlatId: first && first.flatId,
+      areaSqft: first && first.areaSqft,
+      basePrice: null,
+    };
   }
 
   function parkingPlanApiUrl(buildingId, floorNumber) {
@@ -140,22 +188,29 @@
     );
   }
 
+  var MODAL_ROOT_IDS = [
+    "flat-details-modal",
+    "floor-plan-modal",
+    "flat-add-modal",
+    "unit-type-defaults-modal",
+    "column-type-defaults-modal",
+    "parking-config-modal",
+    "ground-floor-config-modal",
+    "parking-link-modal",
+    "building-snapshot-modal",
+    "project-snapshot-modal",
+  ];
+
   /** Bootstrap backdrop is on body; modals must be too or backdrop blocks clicks. */
   function mountModalsOnBody() {
-    [
-      "flat-details-modal",
-      "floor-plan-modal",
-      "flat-add-modal",
-      "unit-type-defaults-modal",
-      "column-type-defaults-modal",
-      "parking-config-modal",
-      "ground-floor-config-modal",
-      "parking-link-modal",
-      "building-snapshot-modal",
-      "project-snapshot-modal",
-    ].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el && el.parentElement !== document.body) {
+    MODAL_ROOT_IDS.forEach(function (id) {
+      var matches = document.querySelectorAll('[id="' + id + '"]');
+      if (!matches.length) return;
+      for (var i = 0; i < matches.length - 1; i++) {
+        matches[i].remove();
+      }
+      var el = matches[matches.length - 1];
+      if (el.parentElement !== document.body) {
         document.body.appendChild(el);
       }
     });
@@ -3316,8 +3371,7 @@
   function openParkingConfigModal(sectionEl) {
     if (!sectionEl || !isPlatformAdminEdit()) return;
     mountModalsOnBody();
-    parkingConfigBasementMode = false;
-    parkingConfigFloorNumber = sectionEl.dataset.floorNumber;
+    setParkingConfigTarget(sectionEl.dataset.floorNumber, false);
     var modalEl = document.getElementById("parking-config-modal");
     var label = document.getElementById("parking-config-floor-label");
     var slots = document.getElementById("parking-config-slots");
@@ -3370,8 +3424,7 @@
   window.floor21OpenParkingConfigModalForBasement = function (floorNumber, label, sectionEl) {
     if (!isPlatformAdminEdit()) return;
     mountModalsOnBody();
-    parkingConfigBasementMode = true;
-    parkingConfigFloorNumber = String(floorNumber != null ? floorNumber : -1);
+    setParkingConfigTarget(floorNumber != null ? floorNumber : -1, true);
     var modalEl = document.getElementById("parking-config-modal");
     var labelEl = document.getElementById("parking-config-floor-label");
     var slots = document.getElementById("parking-config-slots");
@@ -3427,14 +3480,21 @@
   };
 
   async function saveParkingConfig() {
+    var cfg = parkingConfigState();
     var grid = document.getElementById("flat-grid");
     var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    var floorNumber = cfg.floorNumber || parkingConfigFloorNumber;
     var slotsEl = document.getElementById("parking-config-slots");
     var carSizeEl = document.getElementById("parking-config-car-size");
     var carLiftCountEl = document.getElementById("parking-config-car-lift-count");
     var passengerLiftCountEl = document.getElementById("parking-config-passenger-lift-count");
     var gateCountEl = document.getElementById("parking-config-gate-count");
-    if (!buildingId || !parkingConfigFloorNumber || !slotsEl) return;
+    if (!buildingId || !floorNumber || !slotsEl) {
+      showParkingConfigError(
+        "Could not save parking configuration. Refresh the page and try again."
+      );
+      return;
+    }
     var slotCount = Number(slotsEl.value);
     if (!slotCount || slotCount < 1 || slotCount > 200) {
       showParkingConfigError("Enter a slot count between 1 and 200.");
@@ -3467,7 +3527,7 @@
     }
     showParkingConfigError("");
     var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
-    var res = await fetch(parkingConfigApiUrl(buildingId, parkingConfigFloorNumber), {
+    var res = await fetch(parkingConfigApiUrl(buildingId, floorNumber), {
       method: "POST",
       headers: headers,
       body: JSON.stringify({
@@ -3488,20 +3548,17 @@
     if (configModal && bootstrap.Modal.getInstance(configModal)) {
       bootstrap.Modal.getInstance(configModal).hide();
     }
-    var wasBasement = parkingConfigBasementMode || isBasementFloor(parkingConfigFloorNumber);
+    var wasBasement = cfg.basementMode || isBasementFloor(floorNumber);
+    var configLabelEl = document.getElementById("parking-config-floor-label");
+    var configLabel = configLabelEl ? configLabelEl.textContent.trim() : "";
+    cfg.basementMode = false;
     parkingConfigBasementMode = false;
-    invalidateParkingPlanCache(parkingConfigFloorNumber);
+    invalidateParkingPlanCache(floorNumber);
     await refreshGrid();
-    if (wasBasement && window.floor21SyncBasements) {
-      var gridPayload = await fetch(appRoot() + "/buildings/" + buildingId + "/flats/data", {
-        headers: { Accept: "application/json" },
-      }).then(function (r) {
-        return r.ok ? r.json() : null;
-      });
-      if (gridPayload && gridPayload.basements) {
-        window.floor21SyncBasements(gridPayload.basements);
-      } else if (gridPayload && gridPayload.basement && window.floor21SyncBasement) {
-        window.floor21SyncBasement(gridPayload.basement);
+    if (wasBasement && window.floor21SyncBasement) {
+      var basementDto = basementDtoFromPlan(plan, configLabel);
+      if (basementDto) {
+        window.floor21SyncBasement(basementDto);
       }
     }
     showParkingPlanInSection(plan, true);
@@ -4076,6 +4133,9 @@
         })
       );
       grid.querySelectorAll(".flat-parking-section").forEach(function (section) {
+        if (section.getAttribute("data-is-basement") === "true") {
+          return;
+        }
         var fn = section.getAttribute("data-floor-number");
         if (fn && !liveParkingFloors.has(fn)) {
           section.remove();
@@ -5727,8 +5787,26 @@
     });
   }
 
+  function ensureParkingConfigSaveBinding() {
+    if (window.__f21ParkingSaveClickHandler) {
+      document.removeEventListener("click", window.__f21ParkingSaveClickHandler, true);
+    }
+    window.__f21ParkingSaveClickHandler = function (e) {
+      var saveBtn = e.target.closest("#parking-config-save, .parking-config-save-btn");
+      if (!saveBtn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var fn = window.floor21SaveParkingConfig;
+      if (typeof fn === "function") {
+        void fn();
+      }
+    };
+    document.addEventListener("click", window.__f21ParkingSaveClickHandler, true);
+  }
+
   onPageReady(function () {
     mountModalsOnBody();
+    ensureParkingConfigSaveBinding();
     bindBuildingSnapshotInteractions();
     initBuildingSnapshotButtons();
     var grid = document.getElementById("flat-grid");
@@ -5850,12 +5928,6 @@
     if (buildingSnapshotBtn) {
       buildingSnapshotBtn.addEventListener("click", function () {
         void openBuildingSnapshotModal();
-      });
-    }
-    var parkingConfigSave = document.getElementById("parking-config-save");
-    if (parkingConfigSave) {
-      parkingConfigSave.addEventListener("click", function () {
-        saveParkingConfig();
       });
     }
     var parkingLayoutFileInput = document.getElementById("parking-layout-file-input");
@@ -6523,6 +6595,13 @@
   window.loadAllConfiguredParkingPlans = loadAllConfiguredParkingPlans;
   window.floor21RefreshParkingLayoutLinks = refreshParkingLayoutLinks;
   window.openParkingConfigModal = openParkingConfigModal;
+  window.floor21SaveParkingConfig = function () {
+    return saveParkingConfig().catch(function (err) {
+      console.error("saveParkingConfig failed", err);
+      showParkingConfigError(err && err.message ? err.message : "Save failed.");
+    });
+  };
+  ensureParkingConfigSaveBinding();
   window.floor21BuildingSnapshot = {
     render: renderBuildingSnapshot,
     load: loadBuildingSnapshotData,

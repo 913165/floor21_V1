@@ -938,6 +938,21 @@
     );
   }
 
+  function ensureGroundFloorConfigureLink(panel) {
+    if (!panel || !isPlatformAdminEdit()) return;
+    if (panel.querySelector(".ground-floor-configure-link")) return;
+    var summary = panel.querySelector(".flat-ground-floor-section__summary");
+    if (!summary) return;
+    var html =
+      '<button type="button" class="ground-floor-configure-link btn btn-link btn-sm px-0">Configure</button>';
+    var layoutLinks = panel.querySelector(".flat-ground-floor-section__layout-links");
+    if (layoutLinks) {
+      layoutLinks.insertAdjacentHTML("beforebegin", html);
+    } else {
+      summary.insertAdjacentHTML("beforeend", html);
+    }
+  }
+
   function refreshGroundFloorLayoutLinks(panel) {
     if (!panel) panel = groundFloorPanel();
     if (!panel) return;
@@ -1097,6 +1112,9 @@
     if (planPane) planPane.setAttribute("aria-hidden", configured ? "false" : "true");
     var addBtn = document.querySelector(".ground-floor-add-btn");
     if (addBtn) addBtn.classList.toggle("d-none", configured);
+    if (configured) {
+      ensureGroundFloorConfigureLink(panel);
+    }
   }
 
   async function loadShopPlan() {
@@ -1416,6 +1434,7 @@
 
     var panel = groundFloorPanel();
     if (panel && panel.dataset.configured === "true") {
+      ensureGroundFloorConfigureLink(panel);
       void loadShopPlan();
     }
 

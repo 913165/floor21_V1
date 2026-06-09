@@ -288,11 +288,9 @@
     document.addEventListener("turbo:load", fn);
   }
 
-  onPageReady(function () {
-    var container = basementsContainer();
-    if (!container || container.dataset.f21BasementInit === "true") return;
-    container.dataset.f21BasementInit = "true";
-
+  function ensureBasementClickBinding() {
+    if (window.__f21BasementClickBound) return;
+    window.__f21BasementClickBound = true;
     document.addEventListener("click", function (e) {
       var addBtn = e.target.closest(".basement-add-btn");
       if (addBtn) {
@@ -316,7 +314,12 @@
         openBasementConfigModal(panel);
       }
     });
+  }
 
+  onPageReady(function () {
+    ensureBasementClickBinding();
+    var container = basementsContainer();
+    if (!container) return;
     if (basementSections().length && window.loadAllConfiguredParkingPlans) {
       void window.loadAllConfiguredParkingPlans();
     }

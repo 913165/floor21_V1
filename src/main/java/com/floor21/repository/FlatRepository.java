@@ -89,6 +89,8 @@ public interface FlatRepository extends JpaRepository<Flat, UUID> {
     List<Flat> findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
             UUID buildingId, UUID builderId, int floorNumber);
 
+    Optional<Flat> findByBuilding_IdAndFlatNumber(UUID buildingId, String flatNumber);
+
     List<Flat> findByBuilding_IdAndBuilder_IdAndFloorNumberBetweenOrderByFloorNumberDescUnitNumberAsc(
             UUID buildingId, UUID builderId, int fromFloor, int toFloor);
 

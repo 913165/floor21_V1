@@ -620,6 +620,7 @@ public class FlatService {
             buildingRepository.save(building);
             return FlatGridGroundFloorDto.empty();
         }
+        ensureGroundParkingFlatNumbersAfterShops(buildingId, builderId, shopCount);
         while (existing.size() > shopCount) {
             Flat last = existing.remove(existing.size() - 1);
             flatRepository.delete(last);
@@ -634,7 +635,7 @@ public class FlatService {
             Flat flat = existing.get(i);
             int unit = i + 1;
             flat.setUnitNumber(unit);
-            flat.setFlatNumber(String.format("%02d%02d", GROUND_FLOOR_NUMBER, unit));
+            flat.setFlatNumber(groundFlatNumber(unit));
             flat.setAreaSqft(shopArea);
             flatRepository.save(flat);
         }
@@ -774,6 +775,8 @@ public class FlatService {
             Instant now) {
         UUID buildingId = building.getId();
         UUID builderId = builder.getId();
+        flatRepository.flush();
+        ensureGroundParkingFlatNumbersAfterShops(buildingId, builderId, shopCount);
         List<Flat> parkingFlats =
                 new ArrayList<>(
                         flatRepository
@@ -790,17 +793,67 @@ public class FlatService {
         while (parkingFlats.size() < parkingSlotCount) {
             int unit = shopCount + parkingFlats.size() + 1;
             Flat created = parkingFlat(builder, building, GROUND_FLOOR_NUMBER, unit, now);
+            created.setFlatNumber(groundFlatNumber(unit));
             created.setAreaSqft(parkingSlotArea);
             parkingFlats.add(flatRepository.save(created));
         }
-        for (int i = 0; i < parkingFlats.size(); i++) {
-            Flat flat = parkingFlats.get(i);
+        renumberGroundParkingSlots(parkingFlats, shopCount, parkingSlotArea);
+    }
+
+    private void ensureGroundParkingFlatNumbersAfterShops(
+            UUID buildingId, UUID builderId, int shopCount) {
+        if (shopCount <= 0) {
+            return;
+        }
+        List<Flat> parking =
+                flatRepository
+                        .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                buildingId, builderId, GROUND_FLOOR_NUMBER)
+                        .stream()
+                        .filter(f -> FlatUnitTypes.isParkingCode(f.getBhkType()))
+                        .toList();
+        if (parking.isEmpty()) {
+            return;
+        }
+        java.util.Set<String> shopNumbers = new java.util.HashSet<>();
+        for (int unit = 1; unit <= shopCount; unit++) {
+            shopNumbers.add(groundFlatNumber(unit));
+        }
+        boolean needsRenumber =
+                parking.stream()
+                        .anyMatch(
+                                f -> {
+                                    Integer unit = f.getUnitNumber();
+                                    return (unit != null && unit <= shopCount)
+                                            || shopNumbers.contains(f.getFlatNumber());
+                                });
+        if (!needsRenumber) {
+            return;
+        }
+        renumberGroundParkingSlots(new ArrayList<>(parking), shopCount, null);
+    }
+
+    private void renumberGroundParkingSlots(
+            List<Flat> parking, int shopCount, BigDecimal parkingSlotArea) {
+        List<Flat> ordered = new ArrayList<>(parking);
+        ordered.sort(
+                Comparator.comparing(
+                        f -> f.getUnitNumber() != null ? f.getUnitNumber() : Integer.MAX_VALUE));
+        for (int i = ordered.size() - 1; i >= 0; i--) {
+            Flat flat = ordered.get(i);
             int unit = shopCount + i + 1;
             flat.setUnitNumber(unit);
-            flat.setFlatNumber(String.format("%02d%02d", GROUND_FLOOR_NUMBER, unit));
-            flat.setAreaSqft(parkingSlotArea);
+            flat.setFlatNumber(groundFlatNumber(unit));
+            if (parkingSlotArea != null) {
+                flat.setAreaSqft(parkingSlotArea);
+            }
             flatRepository.save(flat);
         }
+        flatRepository.flush();
+    }
+
+    private static String groundFlatNumber(int unit) {
+        return String.format("%02d%02d", GROUND_FLOOR_NUMBER, unit);
     }
 
     private List<ParkingFloorConfigUtil.FixturePlacement> mapGroundFloorFixturePlacements(

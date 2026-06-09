@@ -1648,8 +1648,13 @@ body.modal-open .modal-backdrop {
   font-size: 0.58rem;
 }
 
-.flat-parking-configure-link {
+.flat-parking-configure-link,
+.ground-floor-configure-link {
   margin-top: 0.25rem;
+  display: inline-block;
+  font-size: 0.8125rem;
+  text-decoration: none;
+  flex-shrink: 0;
 }
 
 .flat-parking-layout-upload-link,
@@ -4868,6 +4873,7 @@ body.modal-open .modal-backdrop {
 .flat-ground-floor-section--split .flat-ground-floor-section__summary {
   flex: 0 0 11rem;
   max-width: 40%;
+  overflow: visible;
 }
 
 .flat-ground-floor-section__head {
