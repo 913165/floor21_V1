@@ -77,7 +77,7 @@ public record PlatformUserView(
                 builder.getActive(),
                 builder.getCreatedAt(),
                 builder.getLastLoginAt(),
-                List.of("All tenants (platform)"),
+                List.of("All projects (platform)"),
                 null,
                 "—",
                 List.of(),

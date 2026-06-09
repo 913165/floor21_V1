@@ -17,7 +17,7 @@
          th:href="@{/admin/buildings/{bid}/staff/new(bid=${building.id})}">Add partners for this building</a>
       <a class="btn btn-primary btn-sm"
          th:if="${building == null}"
-         th:href="@{/admin/projects/{id}/staff/assign(id=${builder.id})}">Add partner</a>
+         th:href="@{/admin/projects/{id}/staff/assign(id=${builder.id})}">Add owner/partner</a>
       <a class="btn btn-outline-secondary btn-sm"
          th:if="${building != null}"
          th:href="@{/admin/projects/{id}/staff(id=${builder.id})}">All builder partners</a>
@@ -34,7 +34,7 @@
     Users linked to this project. Create login accounts under User Management, then add them here as partners.
   </p>
   <p class="text-muted small" th:if="${building != null}">
-    Users with access to this building: builder admins (all buildings), unscoped executives, and partners assigned here.
+    Users with access to this building: owners (full access to this project), unscoped executives, and partners assigned here.
   </p>
 
   <div class="table-responsive card shadow-sm">
@@ -56,7 +56,7 @@
         <td th:text="${u.email()}"></td>
         <td>
           <span class="badge text-bg-secondary" th:if="${u.role() == 'EXECUTIVE'}">Sales / partner</span>
-          <span class="badge text-bg-primary" th:if="${u.role() == 'BUILDER_ADMIN'}">Builder admin</span>
+          <span class="badge text-bg-primary" th:if="${u.role() == 'BUILDER_ADMIN'}">Owner</span>
           <span th:if="${u.role() != 'EXECUTIVE' and u.role() != 'BUILDER_ADMIN'}" th:text="${u.role()}"></span>
         </td>
         <td class="small" th:text="${#strings.listJoin(u.buildingAccess(), ', ')}">?</td>

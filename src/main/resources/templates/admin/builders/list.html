@@ -136,7 +136,7 @@
         <td class="text-nowrap small"
             th:text="${b.lastLoginAt() != null ? #temporals.format(b.lastLoginAt(), 'dd MMM yyyy') : '?'}">?</td>
         <td class="text-end text-nowrap">
-          <a class="btn btn-sm btn-outline-primary" th:href="@{/admin/projects/{id}/staff(id=${b.id()})}">Partners</a>
+          <a class="btn btn-sm btn-outline-primary" th:href="@{/admin/projects/{id}/staff(id=${b.id()})}">Owner/partner</a>
           <a class="btn btn-sm btn-outline-primary"
              th:href="@{/admin/buildings(projectId=${b.id()})}">Buildings</a>
           <a class="btn btn-sm btn-outline-secondary" th:href="@{/admin/projects/{id}/edit(id=${b.id()})}">Edit</a>

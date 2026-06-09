@@ -1,5 +1,6 @@
 package com.floor21.controller;
 
+import com.floor21.dto.AssignableUserOption;
 import com.floor21.entity.Building;
 import com.floor21.entity.User;
 import com.floor21.service.AdminStaffService;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -35,7 +37,7 @@ public class AdminStaffController {
     @GetMapping("/admin/projects/{builderId}/staff")
     public String listForBuilder(@PathVariable UUID builderId, Model model) {
         var builder = adminStaffService.requireTenantBuilder(builderId);
-        model.addAttribute("pageTitle", "Partners — " + builder.getCompanyName());
+        model.addAttribute("pageTitle", "Owner/Partner List — " + builder.getCompanyName());
         model.addAttribute("builder", builder);
         model.addAttribute("building", null);
         model.addAttribute("staff", adminStaffService.listStaffViews(builderId));
@@ -46,7 +48,7 @@ public class AdminStaffController {
     public String listForBuilding(@PathVariable UUID buildingId, Model model) {
         var building = adminStaffService.requireTenantBuilding(buildingId);
         var builder = building.getBuilder();
-        model.addAttribute("pageTitle", "Partners — " + building.getBuildingName());
+        model.addAttribute("pageTitle", "Owner/Partner List — " + building.getBuildingName());
         model.addAttribute("builder", builder);
         model.addAttribute("building", building);
         model.addAttribute("staff", adminStaffService.listStaffViewsForBuilding(buildingId));
@@ -57,13 +59,23 @@ public class AdminStaffController {
     public String assignForm(@PathVariable UUID builderId, Model model) {
         var builder = adminStaffService.requireTenantBuilder(builderId);
         List<Building> layouts = adminStaffService.listBuilderBuildings(builderId);
-        model.addAttribute("pageTitle", "Add partner — " + builder.getCompanyName());
+        model.addAttribute("pageTitle", "Add owner/partner — " + builder.getCompanyName());
         model.addAttribute("builder", builder);
-        model.addAttribute("availableUsers", adminUserService.listUsersAvailableForProject(builderId));
+        model.addAttribute("availableUserCount", adminUserService.countUsersAvailableForProject(builderId));
         model.addAttribute("projectLayouts", layouts);
         model.addAttribute(
                 "assignedLayoutIds", layouts.size() == 1 ? List.of(layouts.getFirst().getId()) : List.of());
         return "admin/staff/assign";
+    }
+
+    @GetMapping("/admin/projects/{builderId}/staff/assignable-users")
+    @ResponseBody
+    public List<AssignableUserOption> assignableUsers(
+            @PathVariable UUID builderId,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "50") int limit) {
+        adminStaffService.requireTenantBuilder(builderId);
+        return adminUserService.searchUsersAvailableForProject(builderId, q, limit);
     }
 
     @PostMapping("/admin/projects/{builderId}/staff/assign")

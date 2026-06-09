@@ -1,5 +1,6 @@
 package com.floor21.service;
 
+import com.floor21.dto.AssignableUserOption;
 import com.floor21.dto.PlatformUserView;
 import com.floor21.entity.Builder;
 import com.floor21.entity.User;
@@ -191,6 +192,20 @@ public class AdminUserService {
     @Transactional(readOnly = true)
     public List<User> listUsersAvailableForProject(UUID builderId) {
         return userProjectAssignmentService.listUsersAvailableForProject(builderId);
+    }
+
+    @Transactional(readOnly = true)
+    public long countUsersAvailableForProject(UUID builderId) {
+        return userProjectAssignmentService.countUsersAvailableForProject(builderId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AssignableUserOption> searchUsersAvailableForProject(UUID builderId, String q, int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 50);
+        String term = q == null ? "" : q.trim();
+        return userProjectAssignmentService.searchUsersAvailableForProject(builderId, term, safeLimit).stream()
+                .map(AssignableUserOption::from)
+                .toList();
     }
 
     @Transactional(readOnly = true)

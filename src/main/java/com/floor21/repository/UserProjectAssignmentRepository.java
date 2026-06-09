@@ -6,6 +6,7 @@ import com.floor21.entity.UserProjectAssignment.AssignmentId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -50,6 +51,33 @@ public interface UserProjectAssignmentRepository extends JpaRepository<UserProje
             ORDER BY lower(u.fullName)
             """)
     List<User> findUsersNotOnProject(UUID builderId);
+
+    @Query(
+            """
+            SELECT u FROM User u
+            WHERE NOT EXISTS (
+                SELECT 1 FROM UserProjectAssignment a
+                WHERE a.user.id = u.id AND a.builder.id = :builderId
+            )
+            AND (
+                :q = ''
+                OR lower(u.fullName) LIKE lower(concat('%', :q, '%'))
+                OR lower(u.email) LIKE lower(concat('%', :q, '%'))
+                OR lower(coalesce(u.companyName, '')) LIKE lower(concat('%', :q, '%'))
+            )
+            ORDER BY lower(u.fullName)
+            """)
+    List<User> searchUsersNotOnProject(UUID builderId, String q, Pageable pageable);
+
+    @Query(
+            """
+            SELECT count(u) FROM User u
+            WHERE NOT EXISTS (
+                SELECT 1 FROM UserProjectAssignment a
+                WHERE a.user.id = u.id AND a.builder.id = :builderId
+            )
+            """)
+    long countUsersNotOnProject(UUID builderId);
 
     @Query(
             """

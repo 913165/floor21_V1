@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +54,18 @@ public class UserProjectAssignmentService {
     @Transactional(readOnly = true)
     public List<User> listUsersAvailableForProject(UUID builderId) {
         return assignmentRepository.findUsersNotOnProject(builderId);
+    }
+
+    @Transactional(readOnly = true)
+    public long countUsersAvailableForProject(UUID builderId) {
+        return assignmentRepository.countUsersNotOnProject(builderId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> searchUsersAvailableForProject(UUID builderId, String q, int limit) {
+        String term = q == null ? "" : q.trim();
+        return assignmentRepository.searchUsersNotOnProject(
+                builderId, term, PageRequest.of(0, limit));
     }
 
     @Transactional(readOnly = true)

@@ -1,9 +1,11 @@
 package com.floor21.service;
 
 import com.floor21.entity.Building;
+import com.floor21.entity.Builder;
 import com.floor21.entity.User;
 import com.floor21.entity.UserBuildingAssignment;
 import com.floor21.repository.BuildingRepository;
+import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.UserBuildingAssignmentRepository;
 import com.floor21.repository.UserRepository;
 import java.util.Collections;
@@ -25,6 +27,7 @@ public class StaffBuildingAccessService {
 
     private final UserRepository userRepository;
     private final BuildingRepository buildingRepository;
+    private final BuilderRepository builderRepository;
     private final UserBuildingAssignmentRepository assignmentRepository;
     private final UserProjectAssignmentService userProjectAssignmentService;
 
@@ -52,7 +55,13 @@ public class StaffBuildingAccessService {
     public List<String> describeBuildingAccess(UUID staffUserId, UUID builderId) {
         String role = userProjectAssignmentService.getRole(staffUserId, builderId);
         if (ROLE_BUILDER_ADMIN.equals(role)) {
-            return List.of("All buildings (admin)");
+            String projectName =
+                    builderRepository
+                            .findById(builderId)
+                            .map(Builder::getCompanyName)
+                            .filter(name -> name != null && !name.isBlank())
+                            .orElse("project");
+            return List.of("Full access (" + projectName + ")");
         }
         List<UserBuildingAssignment> rows =
                 assignmentRepository.findByUser_IdAndBuilding_Builder_IdOrderByBuildingName(staffUserId, builderId);
