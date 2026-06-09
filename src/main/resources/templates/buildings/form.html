@@ -18,14 +18,16 @@
     <div class="row g-3">
       <div class="col-12" th:if="${adminBuildingsFlow}">
         <label class="form-label" for="admin-builder-id">Project <span class="text-danger">*</span></label>
-        <select class="form-select" id="admin-builder-id" name="builderId" required>
+        <select class="form-select" id="admin-builder-id" name="builderId" required
+                data-project-search-select
+                th:attr="data-navigate-on-select=${generateInitialLayout} ? 'true' : null">
           <option value="">— Select project —</option>
           <option th:each="p : ${projects}"
                   th:value="${p.id}"
                   th:text="${p.companyName}"
                   th:selected="${selectedBuilderId != null and selectedBuilderId == p.id}"></option>
         </select>
-        <p class="form-text mb-0">Choose the project this building belongs to. Changing the selection reloads address defaults from the project.</p>
+        <p class="form-text mb-0">Search by project name. Changing the selection reloads address defaults from the project.</p>
       </div>
       <div class="col-md-6">
         <label class="form-label" for="buildingName">Building name <span class="text-danger">*</span></label>
@@ -233,19 +235,6 @@
         }
       });
       renderColumnOrder();
-    })();
-  </script>
-  <script th:if="${adminBuildingsFlow}">
-    (function () {
-      var sel = document.getElementById("admin-builder-id");
-      if (!sel) return;
-      sel.addEventListener("change", function () {
-        var id = sel.value;
-        if (!id) return;
-        var root = (document.body.getAttribute("data-app-root") || "").replace(/\/+$/, "");
-        window.location.href =
-          root + "/admin/buildings/new?builderId=" + encodeURIComponent(id);
-      });
     })();
   </script>
 </div>

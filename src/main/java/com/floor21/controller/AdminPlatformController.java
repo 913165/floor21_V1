@@ -80,7 +80,7 @@ public class AdminPlatformController {
     @GetMapping("/buildings/new")
     public String newBuilding(
             Model model, @RequestParam(required = false) UUID builderId) {
-        model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
+        model.addAttribute("projects", builderRepository.findAllTenantsOrderByCreatedAtDesc());
         model.addAttribute("selectedBuilderId", builderId);
         Building building = new Building();
         building.setBhkPerFloor(ResidentialBhkTypes.emptyCountMap());
@@ -119,7 +119,7 @@ public class AdminPlatformController {
         } catch (IllegalArgumentException ex) {
             mergeSubmittedBhkMix(building);
             prefillAddressFromBuilder(building, builder);
-            model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
+            model.addAttribute("projects", builderRepository.findAllTenantsOrderByCreatedAtDesc());
             model.addAttribute("selectedBuilderId", builderId);
             populateAdminBuildingLayoutForm(model, builder, building);
             model.addAttribute("errorMessage", ex.getMessage());
