@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.floor21.entity.Building;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -213,6 +214,109 @@ public final class ResidentialBhkTypes {
             return 0;
         }
         return counts.values().stream().mapToInt(v -> v != null ? Math.max(0, v) : 0).sum();
+    }
+
+    /** Default left-to-right order: all of type 1, then type 2, etc. (legacy generate behaviour). */
+    public static List<String> defaultColumnOrder(Map<String, Integer> mix) {
+        Map<String, Integer> normalized = normalizeMix(mix);
+        List<String> order = new ArrayList<>();
+        for (String type : ALL) {
+            int count = normalized.getOrDefault(type, 0);
+            for (int i = 0; i < count; i++) {
+                order.add(type);
+            }
+        }
+        return order;
+    }
+
+    public static List<String> columnOrderFromBuilding(Building building) {
+        if (building == null
+                || building.getColumnBhkOrder() == null
+                || building.getColumnBhkOrder().isBlank()) {
+            return List.of();
+        }
+        try {
+            List<String> raw = JSON.readValue(building.getColumnBhkOrder(), new TypeReference<>() {});
+            List<String> order = new ArrayList<>();
+            for (String type : raw) {
+                if (type != null && !type.isBlank()) {
+                    order.add(normalize(type));
+                }
+            }
+            return order;
+        } catch (JsonProcessingException e) {
+            return List.of();
+        }
+    }
+
+    public static void persistColumnOrderOnBuilding(Building building, List<String> order) {
+        if (building == null) {
+            return;
+        }
+        building.setColumnBhkOrder(columnOrderToJson(order));
+    }
+
+    public static String columnOrderToJson(List<String> order) {
+        if (order == null || order.isEmpty()) {
+            return null;
+        }
+        try {
+            List<String> normalized = order.stream().map(ResidentialBhkTypes::normalize).toList();
+            return JSON.writeValueAsString(normalized);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize column order", e);
+        }
+    }
+
+    public static void validateColumnOrder(List<String> order, Map<String, Integer> mix, int perFloor) {
+        if (order == null || order.isEmpty()) {
+            return;
+        }
+        if (perFloor < 1) {
+            throw new IllegalArgumentException("Flats per floor must be at least 1.");
+        }
+        if (order.size() != perFloor) {
+            throw new IllegalArgumentException(
+                    "Column order must have exactly " + perFloor + " entries (one per column).");
+        }
+        Map<String, Integer> fromOrder = emptyCountMap();
+        for (String type : order) {
+            if (type == null || type.isBlank()) {
+                throw new IllegalArgumentException("Each column must have a unit type selected.");
+            }
+            String normalized = normalize(type);
+            fromOrder.merge(normalized, 1, Integer::sum);
+        }
+        Map<String, Integer> expected = normalizeMix(mix);
+        for (String type : ALL) {
+            int expectedCount = expected.getOrDefault(type, 0);
+            int actualCount = fromOrder.getOrDefault(type, 0);
+            if (expectedCount != actualCount) {
+                throw new IllegalArgumentException(
+                        "Column order must include exactly "
+                                + expectedCount
+                                + " × "
+                                + type
+                                + " (found "
+                                + actualCount
+                                + "). Adjust column order or BHK counts.");
+            }
+        }
+    }
+
+    public static List<String> resolveColumnOrder(
+            List<String> requested, Map<String, Integer> mix, int perFloor) {
+        Map<String, Integer> normalizedMix = normalizeMix(mix);
+        if (requested != null && !requested.isEmpty()) {
+            List<String> order =
+                    requested.stream()
+                            .filter(t -> t != null && !t.isBlank())
+                            .map(ResidentialBhkTypes::normalize)
+                            .toList();
+            validateColumnOrder(order, normalizedMix, perFloor);
+            return new ArrayList<>(order);
+        }
+        return defaultColumnOrder(normalizedMix);
     }
 
     public static boolean isNamedType(String unitType) {

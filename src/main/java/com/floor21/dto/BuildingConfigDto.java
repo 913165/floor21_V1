@@ -13,6 +13,8 @@ public class BuildingConfigDto {
     @NotNull private Integer flatsPerFloor;
     /** Count of each BHK type per residential floor (keys e.g. {@code 1BHK}, {@code 1.5BHK}). */
     private Map<String, Integer> bhkPerFloor = new LinkedHashMap<>();
+    /** Optional left-to-right column order; length must equal {@link #flatsPerFloor} and match {@link #bhkPerFloor} counts. */
+    private java.util.List<String> columnBhkOrder = new java.util.ArrayList<>();
     /** Legacy fields kept for older forms; generate uses {@link #bhkPerFloor}. */
     @NotNull private Integer bhk1PerFloor;
     @NotNull private Integer bhk2PerFloor;

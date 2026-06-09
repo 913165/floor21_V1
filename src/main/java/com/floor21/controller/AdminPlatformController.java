@@ -210,6 +210,11 @@ public class AdminPlatformController {
         cfg.setBhk2PerFloor(mix.getOrDefault("2BHK", 0));
         cfg.setBhk3PerFloor(mix.getOrDefault("3BHK", 0));
         cfg.setSkippedFloorNumbers(SkippedFloorsUtil.formatForDisplay(building.getSkippedFloorNumbers()));
+        List<String> order =
+                building.getColumnOrder() != null && !building.getColumnOrder().isEmpty()
+                        ? building.getColumnOrder()
+                        : ResidentialBhkTypes.columnOrderFromBuilding(building);
+        cfg.setColumnBhkOrder(order);
         return cfg;
     }
 
@@ -227,6 +232,7 @@ public class AdminPlatformController {
                         .filter(b -> b.getBuilder() != null && !b.getBuilder().isPlatformAdmin())
                         .orElseThrow();
         building.setBhkPerFloor(ResidentialBhkTypes.countsFromBuilding(building));
+        building.setColumnOrder(ResidentialBhkTypes.columnOrderFromBuilding(building));
         building.setSkippedFloorNumbers(SkippedFloorsUtil.formatForDisplay(building.getSkippedFloorNumbers()));
         populateAdminBuildingEditLayoutForm(model, building);
         return "buildings/form";

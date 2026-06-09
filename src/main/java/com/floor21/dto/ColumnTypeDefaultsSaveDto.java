@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 
 public record ColumnTypeDefaultsSaveDto(
         @NotNull @Min(1) Integer columnNumber,
+        String bhkType,
         String layoutColumnType,
         BigDecimal areaSqft,
         BigDecimal carpetAreaSqft,

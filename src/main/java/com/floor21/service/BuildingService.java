@@ -374,6 +374,14 @@ public class BuildingService {
         entity.setFlatsPerFloor(form.getFlatsPerFloor());
         entity.setSkippedFloorNumbers(SkippedFloorsUtil.normalize(form.getSkippedFloorNumbers()));
         ResidentialBhkTypes.persistMixOnBuilding(entity, resolveFormMix(form));
+        Map<String, Integer> mix = resolveFormMix(form);
+        List<String> orderInput = form.getColumnOrder();
+        if (orderInput != null && !orderInput.isEmpty()) {
+            ResidentialBhkTypes.persistColumnOrderOnBuilding(
+                    entity,
+                    ResidentialBhkTypes.resolveColumnOrder(
+                            orderInput, mix, form.getFlatsPerFloor()));
+        }
         entity.setAddress(form.getAddress());
         entity.setCity(form.getCity());
         entity.setActive(form.getActive() != null ? form.getActive() : true);

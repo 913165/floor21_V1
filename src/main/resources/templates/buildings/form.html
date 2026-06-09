@@ -9,6 +9,7 @@
     Project: <strong th:text="${builderLabel}">—</strong>
   </p>
   <form class="card card-body shadow-sm"
+        id="building-layout-form"
         th:with="saveAction=${formAction != null ? formAction : '/buildings/save'}"
         th:action="@{${saveAction}}"
         th:object="${building}" method="post">
@@ -58,6 +59,14 @@
           <input class="form-check-input" type="checkbox" id="skip-floor-13"/>
           <label class="form-check-label small" for="skip-floor-13">Skip 13th floor</label>
         </div>
+      </div>
+      <div class="col-12" th:if="${generateInitialLayout or editLayoutFlow}" id="building-column-order-section">
+        <label class="form-label mb-1">Column order (left → right)</label>
+        <p class="text-muted small mb-2">
+          Set <strong>Flats / floor</strong> and BHK counts first — then one dropdown appears per column.
+          Example: 3×2BHK + 2×3BHK can be ordered as 3BHK, 2BHK, 3BHK, 2BHK, 3BHK instead of 2,2,2,3,3.
+        </p>
+        <div class="d-flex flex-wrap gap-2 align-items-end" id="building-column-order-fields"></div>
       </div>
       <div class="col-12">
         <p class="text-muted small mb-0" th:if="${generateInitialLayout}">
@@ -128,6 +137,102 @@
         else floors.delete(13);
         writeFloors(floors);
       });
+    })();
+  </script>
+  <script th:if="${generateInitialLayout or editLayoutFlow}" th:inline="javascript">
+    (function () {
+      var form = document.getElementById("building-layout-form");
+      var container = document.getElementById("building-column-order-fields");
+      if (!form || !container) return;
+
+      var bhkTypes = /*[[${perFloorLayoutBhkTypes}]]*/ [];
+      var savedOrder = /*[[${building.columnOrder}]]*/ [];
+
+      function parseMix() {
+        var mix = {};
+        bhkTypes.forEach(function (t) {
+          var input = form.querySelector('input[name="bhkPerFloor[\'' + t + '\']"]');
+          mix[t] = input ? Math.max(0, parseInt(input.value, 10) || 0) : 0;
+        });
+        return mix;
+      }
+
+      function defaultOrder(mix) {
+        var order = [];
+        bhkTypes.forEach(function (t) {
+          var n = mix[t] || 0;
+          for (var i = 0; i < n; i++) {
+            order.push(t);
+          }
+        });
+        return order;
+      }
+
+      function readCurrentOrder() {
+        var selects = container.querySelectorAll("select[name^='columnOrder']");
+        var order = [];
+        selects.forEach(function (sel) {
+          order.push(sel.value);
+        });
+        return order;
+      }
+
+      function renderColumnOrder() {
+        var flatsInput = form.querySelector('input[name="flatsPerFloor"]');
+        var perFloor = flatsInput ? Math.max(0, parseInt(flatsInput.value, 10) || 0) : 0;
+        var mix = parseMix();
+        var mixTotal = bhkTypes.reduce(function (s, k) {
+          return s + (mix[k] || 0);
+        }, 0);
+        var prev = readCurrentOrder();
+        var order = defaultOrder(mix);
+        if (prev.length === perFloor && mixTotal === perFloor) {
+          order = prev.slice();
+        } else if (savedOrder && savedOrder.length === perFloor && mixTotal === perFloor) {
+          order = savedOrder.slice();
+          savedOrder = null;
+        }
+        container.innerHTML = "";
+        if (perFloor <= 0 || mixTotal !== perFloor) {
+          container.innerHTML =
+            '<span class="text-muted small">Enter flats per floor and BHK counts that add up — column dropdowns will appear here.</span>';
+          return;
+        }
+        for (var c = 0; c < perFloor; c++) {
+          var wrap = document.createElement("div");
+          wrap.className = "text-center";
+          var label = document.createElement("label");
+          label.className = "form-label small mb-0 d-block";
+          label.textContent = "Col " + (c + 1);
+          var sel = document.createElement("select");
+          sel.className = "form-select form-select-sm";
+          sel.name = "columnOrder[" + c + "]";
+          sel.setAttribute("aria-label", "Column " + (c + 1) + " unit type");
+          bhkTypes.forEach(function (t) {
+            var opt = document.createElement("option");
+            opt.value = t;
+            opt.textContent = t;
+            sel.appendChild(opt);
+          });
+          sel.value = order[c] || bhkTypes[0];
+          wrap.appendChild(label);
+          wrap.appendChild(sel);
+          container.appendChild(wrap);
+        }
+      }
+
+      form.querySelectorAll('input[name="flatsPerFloor"]').forEach(function (el) {
+        el.addEventListener("input", renderColumnOrder);
+        el.addEventListener("change", renderColumnOrder);
+      });
+      bhkTypes.forEach(function (t) {
+        var input = form.querySelector('input[name="bhkPerFloor[\'' + t + '\']"]');
+        if (input) {
+          input.addEventListener("input", renderColumnOrder);
+          input.addEventListener("change", renderColumnOrder);
+        }
+      });
+      renderColumnOrder();
     })();
   </script>
   <script th:if="${adminBuildingsFlow}">

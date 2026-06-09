@@ -1837,6 +1837,7 @@ public class FlatService {
         cfg.setBhk2PerFloor(mix.getOrDefault("2BHK", 0));
         cfg.setBhk3PerFloor(mix.getOrDefault("3BHK", 0));
         cfg.setSkippedFloorNumbers(SkippedFloorsUtil.formatForDisplay(building.getSkippedFloorNumbers()));
+        cfg.setColumnBhkOrder(ResidentialBhkTypes.columnOrderFromBuilding(building));
         return cfg;
     }
 
@@ -1888,6 +1889,8 @@ public class FlatService {
                             + perFloor
                             + ").");
         }
+        List<String> columnOrder = ResidentialBhkTypes.resolveColumnOrder(cfg.getColumnBhkOrder(), mix, perFloor);
+
         flatRepository.deleteByBuilding_IdAndBuilder_Id(buildingId, builderId);
         flatRepository.flush();
 
@@ -1897,6 +1900,7 @@ public class FlatService {
         building.setParkingFloors(parking);
         building.setFlatsPerFloor(perFloor);
         ResidentialBhkTypes.persistMixOnBuilding(building, mix);
+        ResidentialBhkTypes.persistColumnOrderOnBuilding(building, columnOrder);
         building.setSkippedFloorNumbers(SkippedFloorsUtil.normalize(cfg.getSkippedFloorNumbers()));
         ParkingFloorConfigUtil.clearAll(building);
         buildingRepository.save(building);
@@ -1911,7 +1915,7 @@ public class FlatService {
             }
         }
         for (int floor : SkippedFloorsUtil.activeFloors(parking + 1, total, skipped)) {
-            appendResidentialFloorFlats(batch, builder, building, floor, mix, now);
+            appendResidentialFloorFlats(batch, builder, building, floor, columnOrder, now);
         }
         flatRepository.saveAll(batch);
     }
@@ -1986,6 +1990,11 @@ public class FlatService {
                             + perFloor
                             + ").");
         }
+        List<String> columnOrder =
+                cfg.getColumnBhkOrder() != null && !cfg.getColumnBhkOrder().isEmpty()
+                        ? ResidentialBhkTypes.resolveColumnOrder(cfg.getColumnBhkOrder(), mix, perFloor)
+                        : ResidentialBhkTypes.resolveColumnOrder(
+                                ResidentialBhkTypes.columnOrderFromBuilding(building), mix, perFloor);
 
         Builder builder = builderRepository.findById(builderId).orElseThrow();
         Instant now = Instant.now();
@@ -1994,7 +2003,7 @@ public class FlatService {
         int newTop = topFloor + additionalFloors;
         for (int floor = topFloor + 1; floor <= newTop; floor++) {
             if (!skipped.contains(floor)) {
-                appendResidentialFloorFlats(batch, builder, building, floor, mix, now);
+                appendResidentialFloorFlats(batch, builder, building, floor, columnOrder, now);
             }
         }
         flatRepository.saveAll(batch);
@@ -2003,6 +2012,7 @@ public class FlatService {
                 Math.max(building.getTotalFloors() != null ? building.getTotalFloors() : 0, newTop));
         building.setFlatsPerFloor(perFloor);
         ResidentialBhkTypes.persistMixOnBuilding(building, mix);
+        ResidentialBhkTypes.persistColumnOrderOnBuilding(building, columnOrder);
         buildingRepository.save(building);
         return additionalFloors;
     }
@@ -2105,41 +2115,20 @@ public class FlatService {
             Builder builder,
             Building building,
             int floor,
-            Map<String, Integer> mix,
+            List<String> columnOrder,
             Instant now) {
         int unit = 1;
-        for (String bhkType : ResidentialBhkTypes.all()) {
-            int count = mix.getOrDefault(bhkType, 0);
-            for (int i = 0; i < count; i++) {
-                batch.add(
-                        residentialFlat(
-                                builder,
-                                building,
-                                floor,
-                                unit++,
-                                bhkType,
-                                ResidentialBhkTypes.defaultAreaSqft(bhkType),
-                                ResidentialBhkTypes.defaultBasePrice(bhkType),
-                                now));
-            }
-        }
-        for (Map.Entry<String, Integer> entry : mix.entrySet()) {
-            if (ResidentialBhkTypes.all().contains(entry.getKey())) {
-                continue;
-            }
-            int count = entry.getValue() != null ? entry.getValue() : 0;
-            for (int i = 0; i < count; i++) {
-                batch.add(
-                        residentialFlat(
-                                builder,
-                                building,
-                                floor,
-                                unit++,
-                                entry.getKey(),
-                                ResidentialBhkTypes.defaultAreaSqft(entry.getKey()),
-                                ResidentialBhkTypes.defaultBasePrice(entry.getKey()),
-                                now));
-            }
+        for (String bhkType : columnOrder) {
+            batch.add(
+                    residentialFlat(
+                            builder,
+                            building,
+                            floor,
+                            unit++,
+                            bhkType,
+                            ResidentialBhkTypes.defaultAreaSqft(bhkType),
+                            ResidentialBhkTypes.defaultBasePrice(bhkType),
+                            now));
         }
     }
 
@@ -2503,7 +2492,7 @@ public class FlatService {
         List<Flat> flats =
                 flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
                         buildingId, builderId);
-        Map<String, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry> configured =
+        Map<String, BuildingColumnTypeDefaultsUtil.ColumnDefaultsEntry> configured =
                 BuildingColumnTypeDefaultsUtil.read(building);
         Map<String, ColumnTypeDefaultsDto> out = new LinkedHashMap<>();
         int columns =
@@ -2516,15 +2505,23 @@ public class FlatService {
                                 .orElse(0);
         for (int column = 1; column <= columns; column++) {
             String key = LayoutColumnTypes.columnDefaultsKey(column);
-            BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry value = configured.get(key);
-            String layoutLabel = layoutColumnTypeForColumn(flats, column);
-            if (value == null && layoutLabel == null) {
+            BuildingColumnTypeDefaultsUtil.ColumnDefaultsEntry value = configured.get(key);
+            String layoutLabel =
+                    value != null && value.layoutColumnType() != null
+                            ? value.layoutColumnType()
+                            : layoutColumnTypeForColumn(flats, column);
+            String bhkType =
+                    value != null && value.bhkType() != null && !value.bhkType().isBlank()
+                            ? value.bhkType()
+                            : bhkTypeForColumn(flats, column);
+            if (value == null && layoutLabel == null && bhkType == null) {
                 continue;
             }
             out.put(
                     key,
                     new ColumnTypeDefaultsDto(
                             column,
+                            bhkType,
                             layoutLabel,
                             value != null ? value.areaSqft() : null,
                             value != null ? value.carpetAreaSqft() : null,
@@ -2539,7 +2536,7 @@ public class FlatService {
             UUID buildingId, ColumnTypeDefaultsSaveDto dto) {
         Building building = buildingService.resolveForAccess(buildingId);
         int columnNumber = validateColumnTypeDefaultsDto(dto);
-        BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry = toColumnTypeDefaultsEntry(dto);
+        BuildingColumnTypeDefaultsUtil.ColumnDefaultsEntry entry = toColumnDefaultsEntry(dto);
         BuildingColumnTypeDefaultsUtil.putForColumnNumber(building, columnNumber, entry);
         buildingRepository.save(building);
         propagateLayoutColumnTypeLabel(building, columnNumber, dto.layoutColumnType());
@@ -2551,7 +2548,7 @@ public class FlatService {
             UUID buildingId, ColumnTypeDefaultsSaveDto dto) {
         Building building = buildingService.resolveForAccess(buildingId);
         int columnNumber = validateColumnTypeDefaultsDto(dto);
-        BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry = toColumnTypeDefaultsEntry(dto);
+        BuildingColumnTypeDefaultsUtil.ColumnDefaultsEntry entry = toColumnDefaultsEntry(dto);
         propagateLayoutColumnTypeLabel(building, columnNumber, dto.layoutColumnType());
         List<Map<String, Object>> updatedFlats =
                 propagateColumnTypeDefaultsToFlats(building, columnNumber, entry);
@@ -2563,6 +2560,15 @@ public class FlatService {
             throw new IllegalArgumentException("Column number is required.");
         }
         LayoutColumnTypes.validateColumnNumber(dto.columnNumber());
+        if (dto.bhkType() != null && !dto.bhkType().isBlank()) {
+            String normalized = FlatUnitTypes.normalize(dto.bhkType());
+            if (FlatUnitTypes.isParkingCode(normalized)
+                    || FlatUnitTypes.isAmenityCode(normalized)
+                    || FlatUnitTypes.isShopCode(normalized)) {
+                throw new IllegalArgumentException(
+                        "Column unit type must be a residential BHK type (e.g. 2BHK, 3BHK).");
+            }
+        }
         validateDefaultsAreasAndPrice(
                 dto.areaSqft(), dto.carpetAreaSqft(), dto.balconyAreaSqft(), dto.basePrice());
         return dto.columnNumber();
@@ -2587,9 +2593,15 @@ public class FlatService {
         }
     }
 
-    private static BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry toColumnTypeDefaultsEntry(
+    private static BuildingColumnTypeDefaultsUtil.ColumnDefaultsEntry toColumnDefaultsEntry(
             ColumnTypeDefaultsSaveDto dto) {
-        return new BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry(
+        String bhkType =
+                dto.bhkType() != null && !dto.bhkType().isBlank()
+                        ? FlatUnitTypes.normalize(dto.bhkType())
+                        : null;
+        return new BuildingColumnTypeDefaultsUtil.ColumnDefaultsEntry(
+                bhkType,
+                LayoutColumnTypes.normalizeTypeLabel(dto.layoutColumnType()),
                 dto.areaSqft(),
                 dto.carpetAreaSqft(),
                 dto.balconyAreaSqft(),
@@ -2597,18 +2609,41 @@ public class FlatService {
     }
 
     private List<Map<String, Object>> propagateColumnTypeDefaultsToFlats(
-            Building building, int columnNumber, BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry entry) {
+            Building building, int columnNumber, BuildingColumnTypeDefaultsUtil.ColumnDefaultsEntry entry) {
         UUID buildingId = building.getId();
         UUID builderId = building.getBuilder().getId();
         List<Flat> flats =
                 flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
                         buildingId, builderId);
         List<Map<String, Object>> updated = new ArrayList<>();
+        String targetBhk = entry.bhkType();
+        BuildingUnitTypeDefaultsUtil.TypeDefaultsEntry areas = entry.toTypeDefaultsEntry();
         for (Flat flat : flats) {
             if (!BuildingFlatTypeDefaults.shouldPropagateColumnDefaults(flat, columnNumber)) {
                 continue;
             }
-            BuildingFlatTypeDefaults.applyConfiguredEntry(flat, entry);
+            boolean typeChange =
+                    targetBhk != null
+                            && !targetBhk.isBlank()
+                            && !targetBhk.equals(flat.getBhkType());
+            if (typeChange && bookingRepository.countActiveByFlatId(flat.getId()) > 0) {
+                FlatUnitTypes.applyBookedFlatAdjustments(
+                        flat,
+                        entry.areaSqft(),
+                        entry.carpetAreaSqft(),
+                        entry.balconyAreaSqft(),
+                        entry.basePrice());
+            } else if (targetBhk != null && !targetBhk.isBlank()) {
+                FlatUnitTypes.applyToFlat(
+                        flat,
+                        targetBhk,
+                        entry.areaSqft(),
+                        entry.carpetAreaSqft(),
+                        entry.balconyAreaSqft(),
+                        entry.basePrice());
+            } else {
+                BuildingFlatTypeDefaults.applyConfiguredEntry(flat, areas);
+            }
             flatRepository.save(flat);
             updated.add(FlatAdminResponseMaps.fromFlat(flat));
         }
@@ -2629,6 +2664,23 @@ public class FlatService {
             flat.setLayoutColumnType(normalized);
             flatRepository.save(flat);
         }
+    }
+
+    private static String bhkTypeForColumn(List<Flat> flats, int columnNumber) {
+        if (flats == null) {
+            return null;
+        }
+        return flats.stream()
+                .filter(f -> f.getUnitNumber() != null && f.getUnitNumber() == columnNumber)
+                .filter(f -> !Boolean.TRUE.equals(f.getParking()))
+                .filter(f -> !FlatUnitTypes.isAmenityCode(f.getBhkType()))
+                .filter(f -> !FlatUnitTypes.isDuplexSecondary(f))
+                .filter(f -> !FlatUnitTypes.isMergeAbsorbed(f))
+                .map(Flat::getBhkType)
+                .filter(t -> t != null && !t.isBlank())
+                .map(FlatUnitTypes::normalize)
+                .findFirst()
+                .orElse(null);
     }
 
     private static String layoutColumnTypeForColumn(List<Flat> flats, int columnNumber) {
@@ -2654,7 +2706,7 @@ public class FlatService {
                         buildingId, builderId);
         return BuildingFlatTypeDefaults.resolve(
                 BuildingUnitTypeDefaultsUtil.read(building),
-                BuildingColumnTypeDefaultsUtil.read(building),
+                BuildingColumnTypeDefaultsUtil.readAsTypeDefaults(building),
                 buildingFlats,
                 unitType,
                 columnNumber);

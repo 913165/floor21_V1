@@ -67,6 +67,7 @@
         Generate is disabled while active bookings exist for this building.
       </p>
       <form class="row g-2 align-items-end"
+            id="generate-flats-form"
             th:action="@{/buildings/{id}/flats/generate(id=${building.id})}"
             th:object="${config}" method="post">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -97,6 +98,14 @@
             <label class="form-check-label small" for="generate-skip-floor-13">Skip 13th floor</label>
           </div>
         </div>
+        <div class="col-12" id="generate-column-order-section">
+          <label class="form-label mb-1">Column order (left → right)</label>
+          <p class="text-muted small mb-2">
+            One unit type per column — must match the BHK counts above.
+            Example: 3×2BHK + 2×3BHK can be ordered as 3BHK, 2BHK, 3BHK, 2BHK, 3BHK instead of 2,2,2,3,3.
+          </p>
+          <div class="d-flex flex-wrap gap-2 align-items-end" id="generate-column-order-fields"></div>
+        </div>
         <div class="col-12" th:if="${flatCount != null && flatCount > 0 && (activeBookingCount == null || activeBookingCount == 0)}">
           <div class="form-check">
             <input class="form-check-input" type="checkbox" name="confirmReplace" value="true" id="confirmReplace"/>
@@ -110,7 +119,7 @@
                   th:disabled="${activeBookingCount != null && activeBookingCount > 0}">Generate</button>
         </div>
       </form>
-      <p class="text-muted small mb-0 mt-2">Residential floors = total minus parking, minus any skipped floor numbers. BHK counts per floor must add up to flats per floor.</p>
+      <p class="text-muted small mb-0 mt-2">Residential floors = total minus parking, minus any skipped floor numbers. BHK counts per floor must add up to flats per floor. Column order is saved and reused when adding top floors.</p>
     </div>
   </div>
   <script>
@@ -142,6 +151,102 @@
         else floors.delete(13);
         writeFloors(floors);
       });
+    })();
+  </script>
+  <script th:inline="javascript">
+    (function () {
+      var form = document.getElementById("generate-flats-form");
+      var container = document.getElementById("generate-column-order-fields");
+      if (!form || !container) return;
+
+      var bhkTypes = /*[[${perFloorLayoutBhkTypes}]]*/ [];
+      var savedOrder = /*[[${config.columnBhkOrder}]]*/ [];
+
+      function parseMix() {
+        var mix = {};
+        bhkTypes.forEach(function (t) {
+          var input = form.querySelector('input[name="bhkPerFloor[\'' + t + '\']"]');
+          mix[t] = input ? Math.max(0, parseInt(input.value, 10) || 0) : 0;
+        });
+        return mix;
+      }
+
+      function defaultOrder(mix) {
+        var order = [];
+        bhkTypes.forEach(function (t) {
+          var n = mix[t] || 0;
+          for (var i = 0; i < n; i++) {
+            order.push(t);
+          }
+        });
+        return order;
+      }
+
+      function readCurrentOrder() {
+        var selects = container.querySelectorAll("select[name^='columnBhkOrder']");
+        var order = [];
+        selects.forEach(function (sel) {
+          order.push(sel.value);
+        });
+        return order;
+      }
+
+      function renderColumnOrder() {
+        var flatsInput = form.querySelector('input[name="flatsPerFloor"]');
+        var perFloor = flatsInput ? Math.max(0, parseInt(flatsInput.value, 10) || 0) : 0;
+        var mix = parseMix();
+        var mixTotal = bhkTypes.reduce(function (s, k) {
+          return s + (mix[k] || 0);
+        }, 0);
+        var prev = readCurrentOrder();
+        var order = defaultOrder(mix);
+        if (prev.length === perFloor && mixTotal === perFloor) {
+          order = prev.slice();
+        } else if (savedOrder && savedOrder.length === perFloor && mixTotal === perFloor) {
+          order = savedOrder.slice();
+          savedOrder = null;
+        }
+        container.innerHTML = "";
+        if (perFloor <= 0 || mixTotal !== perFloor) {
+          container.innerHTML =
+            '<span class="text-muted small">Set flats per floor and BHK counts that add up first.</span>';
+          return;
+        }
+        for (var c = 0; c < perFloor; c++) {
+          var wrap = document.createElement("div");
+          wrap.className = "text-center";
+          var label = document.createElement("label");
+          label.className = "form-label small mb-0 d-block";
+          label.textContent = "Col " + (c + 1);
+          var sel = document.createElement("select");
+          sel.className = "form-select form-select-sm";
+          sel.name = "columnBhkOrder[" + c + "]";
+          sel.setAttribute("aria-label", "Column " + (c + 1) + " unit type");
+          bhkTypes.forEach(function (t) {
+            var opt = document.createElement("option");
+            opt.value = t;
+            opt.textContent = t;
+            sel.appendChild(opt);
+          });
+          sel.value = order[c] || bhkTypes[0];
+          wrap.appendChild(label);
+          wrap.appendChild(sel);
+          container.appendChild(wrap);
+        }
+      }
+
+      form.querySelectorAll('input[name="flatsPerFloor"]').forEach(function (el) {
+        el.addEventListener("input", renderColumnOrder);
+        el.addEventListener("change", renderColumnOrder);
+      });
+      bhkTypes.forEach(function (t) {
+        var input = form.querySelector('input[name="bhkPerFloor[\'' + t + '\']"]');
+        if (input) {
+          input.addEventListener("input", renderColumnOrder);
+          input.addEventListener("change", renderColumnOrder);
+        }
+      });
+      renderColumnOrder();
     })();
   </script>
 
@@ -211,8 +316,8 @@
       </button>
       <p class="text-muted small mb-2 border-top pt-3">
         <strong>By column number (1, 2, 3…)</strong> — same vertical position on every floor
-        (e.g. x01, x02 on each floor). Column type (A, B, custom) is optional; leave blank if the building does not use types.
-        Use this when flats in the same column share area/price but differ from other columns with the same BHK.
+        (e.g. x01, x02 on each floor). Set the <strong>unit type (BHK)</strong>, optional column label (A, B, custom),
+        and area/price for that column, then <strong>Apply to column</strong> to update every flat in that column on all floors.
       </p>
       <button type="button" class="btn btn-outline-primary btn-sm" id="grid-configure-column-type-defaults-btn">
         Configure column defaults
@@ -971,7 +1076,12 @@
                     th:value="${col}"
                     th:text="${'Column ' + col + ' (position ' + col + ' on each floor)'}">Column 1</option>
           </select>
-          <label class="form-label small mb-1 mt-2" for="column-type-defaults-type-label">Column type (optional)</label>
+          <label class="form-label small mb-1 mt-2" for="column-type-defaults-bhk">Unit type (BHK)</label>
+          <select class="form-select form-select-sm" id="column-type-defaults-bhk" aria-label="Unit type">
+            <option value="">— leave unchanged —</option>
+            <option th:each="t : ${residentialBhkTypes}" th:value="${t}" th:text="${t}">2BHK</option>
+          </select>
+          <label class="form-label small mb-1 mt-2" for="column-type-defaults-type-label">Column label (optional)</label>
           <input class="form-control form-control-sm" type="text" id="column-type-defaults-type-label"
                  maxlength="10" placeholder="e.g. A, B — leave blank if not used"/>
           <div class="flat-details-area-unit d-flex align-items-center justify-content-between gap-2 mt-3 mb-1">
@@ -989,7 +1099,7 @@
           <input class="form-control form-control-sm" type="number" id="column-type-defaults-balcony-area" data-area-input="true" min="0" step="1"/>
           <label class="form-label small mb-1 mt-2" for="column-type-defaults-price">Base price</label>
           <input class="form-control form-control-sm" type="number" id="column-type-defaults-price" min="0" step="1"/>
-          <p class="text-muted small mt-2 mb-0">Save stores defaults for this column. <strong>Apply to column</strong> updates every flat in column <span id="column-type-defaults-apply-hint">1</span> (all floors) with the values above and optional type label.</p>
+          <p class="text-muted small mt-2 mb-0">Save stores defaults for this column. <strong>Apply to column</strong> updates every flat in column <span id="column-type-defaults-apply-hint">1</span> on all floors — unit type (BHK), optional label, and areas/price above. Booked flats keep their BHK type but can still receive area/price updates.</p>
           <p class="text-danger small mb-0 mt-2 d-none" id="column-type-defaults-error"></p>
         </div>
         <div class="modal-footer py-2 px-3 d-flex flex-wrap justify-content-between gap-2">
@@ -1071,7 +1181,7 @@
       </div>
     </div>
   </div>
-  <script defer th:src="@{/js/flat-grid.js(v=building-snapshot-v10)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=column-bhk-defaults-v1)}"></script>
   <script defer th:src="@{/js/ground-floor-shops.js(v=ground-grid-toolbar-v1)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=5)}"></script>
 </div>

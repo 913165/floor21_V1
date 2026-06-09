@@ -13,6 +13,7 @@ import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
@@ -80,9 +81,17 @@ public class Building {
     @Column(name = "column_type_defaults", columnDefinition = "TEXT")
     private String columnTypeDefaults;
 
+    /** JSON array of unit types left-to-right per residential floor (e.g. {@code ["3BHK","2BHK","3BHK"]}). */
+    @Column(name = "column_bhk_order", columnDefinition = "TEXT")
+    private String columnBhkOrder;
+
     /** Comma-separated floor numbers to omit from the grid (e.g. {@code 13} or {@code 4,13}). */
     @Column(name = "skipped_floor_numbers", length = 200)
     private String skippedFloorNumbers;
+
+    /** Form binding only; persisted as {@link #columnBhkOrder} JSON when layout is saved. */
+    @Transient
+    private List<String> columnOrder = new java.util.ArrayList<>();
 
     /** Bound from add/edit building form; not persisted directly. */
     @Transient

@@ -1284,11 +1284,15 @@
     }
     var col = colSel ? colSel.value : columnNumber;
     var entry = getConfiguredColumnDefaults(col);
+    var bhkSel = document.getElementById("column-type-defaults-bhk");
     var typeLabel = document.getElementById("column-type-defaults-type-label");
     var superBuilder = document.getElementById("column-type-defaults-super-builder-area");
     var carpet = document.getElementById("column-type-defaults-carpet-area");
     var balcony = document.getElementById("column-type-defaults-balcony-area");
     var price = document.getElementById("column-type-defaults-price");
+    if (bhkSel) {
+      bhkSel.value = entry && entry.bhkType != null ? String(entry.bhkType) : "";
+    }
     if (typeLabel) {
       typeLabel.value =
         entry && entry.layoutColumnType != null ? String(entry.layoutColumnType) : "";
@@ -1354,6 +1358,7 @@
   function readColumnTypeDefaultsFormPayload() {
     var colSel = document.getElementById("column-type-defaults-column");
     var typeLabel = document.getElementById("column-type-defaults-type-label");
+    var bhkSel = document.getElementById("column-type-defaults-bhk");
     var superBuilder = document.getElementById("column-type-defaults-super-builder-area");
     var carpet = document.getElementById("column-type-defaults-carpet-area");
     var balcony = document.getElementById("column-type-defaults-balcony-area");
@@ -1361,6 +1366,7 @@
     if (!colSel) return null;
     return {
       columnNumber: Number(colSel.value),
+      bhkType: bhkSel ? bhkSel.value.trim() : "",
       layoutColumnType: typeLabel ? typeLabel.value.trim() : "",
       areaSqft: readAreaInputSqft(superBuilder),
       carpetAreaSqft: readAreaInputSqft(carpet),

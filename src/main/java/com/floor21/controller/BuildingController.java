@@ -287,6 +287,7 @@ public class BuildingController {
         cfg.setBhk3PerFloor(b.getBhk3PerFloor() != null ? b.getBhk3PerFloor() : 0);
         cfg.setBhkPerFloor(ResidentialBhkTypes.countsFromBuilding(b));
         cfg.setSkippedFloorNumbers(SkippedFloorsUtil.formatForDisplay(b.getSkippedFloorNumbers()));
+        cfg.setColumnBhkOrder(ResidentialBhkTypes.columnOrderFromBuilding(b));
         long flatCount = flatService.countFlatsForBuilding(id);
         long activeBookings = flatService.countActiveBookingsForBuilding(id);
         model.addAttribute("pageTitle", "Flat Grid — " + b.getBuildingName());

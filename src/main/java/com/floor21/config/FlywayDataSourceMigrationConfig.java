@@ -57,6 +57,7 @@ public class FlywayDataSourceMigrationConfig {
                 ensureBuildingsUnitTypeDefaultsColumn(dataSource);
                 ensureLayoutColumnTypeColumns(dataSource);
                 ensureGroundFloorColumns(dataSource);
+                ensureColumnBhkOrderColumn(dataSource);
                 ensureSuper2PlatformAdmin(dataSource);
                 return bean;
             }
@@ -203,6 +204,16 @@ public class FlywayDataSourceMigrationConfig {
         } catch (Exception ex) {
             throw new IllegalStateException(
                     "Could not ensure buildings ground floor columns exist", ex);
+        }
+    }
+
+    /** Idempotent guard when V14 is recorded in history but column_bhk_order was never applied. */
+    private static void ensureColumnBhkOrderColumn(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE buildings ADD COLUMN IF NOT EXISTS column_bhk_order TEXT");
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not ensure buildings.column_bhk_order column exists", ex);
         }
     }
 
