@@ -5673,13 +5673,10 @@
     );
   }
 
-  function renderSnapshotCombinedParkingHtml(parkingLevels, statusByFlatId) {
-    if (!parkingLevels.length) return "";
-    var sorted = parkingLevels.slice().sort(function (a, b) {
-      return b.floorNumber - a.floorNumber;
-    });
+  function renderSnapshotParkingLevelsHtml(levels, statusByFlatId, sectionTitle) {
+    if (!levels.length) return "";
     var badgeIndex = 0;
-    var floorsHtml = sorted
+    var floorsHtml = levels
       .map(function (level) {
         if (level.isGroundFloor) {
           return renderSnapshotGroundFloorLevelBlock(level, statusByFlatId);
@@ -5697,13 +5694,93 @@
     if (!floorsHtml) return "";
     return (
       '<div class="pk-floors-section">' +
-      '<div class="pk-section-title">Parking Floors</div>' +
+      (sectionTitle
+        ? '<div class="pk-section-title">' + snapshotEscapeText(sectionTitle) + "</div>"
+        : "") +
       '<div class="pk-floors">' +
       floorsHtml +
-      "</div>" +
-      renderSnapshotParkingLegendHtml() +
+      "</div></div>"
+    );
+  }
+
+  function renderSnapshotSurfaceLineOnly() {
+    return (
+      '<div class="building-snapshot__surface-line-wrap" aria-hidden="true">' +
+      '<div class="building-snapshot__surface-line"></div>' +
       "</div>"
     );
+  }
+
+  function renderSnapshotSurfaceDivider() {
+    return (
+      '<div class="building-snapshot__surface-divider" aria-hidden="true">' +
+      '<div class="building-snapshot__surface-line"></div>' +
+      "</div>"
+    );
+  }
+
+  function renderSnapshotGroundFloorStrip(groundLevel, statusByFlatId) {
+    if (!groundLevel) return "";
+    var block = renderSnapshotGroundFloorLevelBlock(groundLevel, statusByFlatId);
+    if (!block) return "";
+    return (
+      '<div class="building-snapshot__ground-strip">' +
+      '<div class="building-snapshot__ground-row">' +
+      '<div class="bld-scene__tree bld-scene__tree--left" aria-hidden="true"></div>' +
+      '<div class="building-snapshot__ground-panel">' +
+      block +
+      "</div>" +
+      '<div class="bld-scene__tree bld-scene__tree--right" aria-hidden="true"></div>' +
+      "</div>" +
+      renderSnapshotSurfaceLineOnly() +
+      "</div>"
+    );
+  }
+
+  function renderSnapshotParkingSplit(parkingLevels, statusByFlatId) {
+    if (!parkingLevels.length) {
+      return {
+        aboveHtml: "",
+        groundStripHtml: "",
+        belowHtml: "",
+        legend: "",
+        showSurface: false,
+      };
+    }
+    var sorted = parkingLevels.slice().sort(function (a, b) {
+      return b.floorNumber - a.floorNumber;
+    });
+    var towerParking = sorted.filter(function (level) {
+      return level.floorNumber > 0;
+    });
+    var groundLevel =
+      sorted.find(function (level) {
+        return level.isGroundFloor || level.floorNumber === 0;
+      }) || null;
+    var below = sorted.filter(function (level) {
+      return level.floorNumber < 0;
+    });
+    return {
+      aboveHtml: renderSnapshotParkingLevelsHtml(towerParking, statusByFlatId, "Parking Floors"),
+      groundStripHtml: groundLevel
+        ? renderSnapshotGroundFloorStrip(groundLevel, statusByFlatId)
+        : "",
+      belowHtml: below.length
+        ? renderSnapshotParkingLevelsHtml(below, statusByFlatId, "Below ground")
+        : "",
+      legend: renderSnapshotParkingLegendHtml(),
+      showSurface: below.length > 0 || !!groundLevel,
+    };
+  }
+
+  function renderSnapshotSurfaceLine() {
+    return renderSnapshotSurfaceDivider();
+  }
+
+  function renderSnapshotCombinedParkingHtml(parkingLevels, statusByFlatId) {
+    var split = renderSnapshotParkingSplit(parkingLevels, statusByFlatId);
+    if (!split.aboveHtml && !split.belowHtml && !split.groundStripHtml) return "";
+    return split.aboveHtml + split.groundStripHtml + split.belowHtml + split.legend;
   }
 
   function snapshotApplySelection(root) {
@@ -5980,7 +6057,7 @@
       });
     });
     var parkingStatusByFlatId = snapshotParkingStatusByFlatId(payload, model.groundPlan);
-    var parkingBlock = renderSnapshotCombinedParkingHtml(parkingLevels, parkingStatusByFlatId);
+    var parkingSplit = renderSnapshotParkingSplit(parkingLevels, parkingStatusByFlatId);
     var towerHtml = towerParts.join("");
     var bandHtml = model.basementBands
       .filter(function (band) {
@@ -6020,15 +6097,28 @@
         '<div class="bld-building__plinth" aria-hidden="true"></div>' +
         "</div></div>"
       : "";
-    var sceneBody = elevationHtml + (parkingBlock || "");
+    var aboveSurfaceHtml = elevationHtml + (parkingSplit.aboveHtml || "");
+    var belowSurfaceHtml = parkingSplit.belowHtml || "";
+    var surfaceDivider =
+      !parkingSplit.groundStripHtml && parkingSplit.showSurface
+        ? renderSnapshotSurfaceDivider()
+        : "";
+    var sceneBody =
+      (aboveSurfaceHtml
+        ? '<div class="building-snapshot__above-surface">' + aboveSurfaceHtml + "</div>"
+        : "") +
+      (parkingSplit.groundStripHtml || "") +
+      surfaceDivider +
+      (belowSurfaceHtml
+        ? '<div class="building-snapshot__below-surface">' + belowSurfaceHtml + "</div>"
+        : "") +
+      (parkingSplit.legend || "");
     root.innerHTML =
       sceneBody
         ? '<div class="building-snapshot__stack">' +
           '<div class="bld-scene bld-scene--snapshot" style="--bld-cols:' +
           model.columnCount +
           '">' +
-          '<div class="bld-scene__tree bld-scene__tree--left" aria-hidden="true"></div>' +
-          '<div class="bld-scene__tree bld-scene__tree--right" aria-hidden="true"></div>' +
           '<div class="building-snapshot__scene-body">' +
           sceneBody +
           "</div></div></div>"
