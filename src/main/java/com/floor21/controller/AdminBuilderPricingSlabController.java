@@ -10,6 +10,7 @@ import com.floor21.service.RateSlabExcelService;
 import com.floor21.service.SlabService;
 import java.beans.PropertyEditorSupport;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -102,7 +103,10 @@ public class AdminBuilderPricingSlabController {
         model.addAttribute("selectedBuilderId", selectedBuilderId);
         model.addAttribute("buildings", buildings);
         model.addAttribute(
-                "slabs", slabService.listFilteredForPlatformAdmin(filterBuilderId, buildingId, search));
+                "slabs",
+                buildingId != null
+                        ? slabService.listFilteredForPlatformAdmin(filterBuilderId, buildingId, search)
+                        : Collections.emptyList());
         model.addAttribute("importReady", buildingId != null && selectedBuilderId != null);
         return "slabs/list";
     }
@@ -169,6 +173,18 @@ public class AdminBuilderPricingSlabController {
         return redirectList(projectId, q, buildingId);
     }
 
+    @PostMapping("/{id}/delete")
+    public String delete(
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID buildingId,
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) String q,
+            RedirectAttributes ra) {
+        slabService.deleteForPlatformAdmin(id);
+        ra.addFlashAttribute("successMessage", "Milestone deleted");
+        return redirectList(projectId, q, buildingId);
+    }
+
     private void populateFormContext(
             Model model,
             String pageTitle,
@@ -219,7 +235,7 @@ public class AdminBuilderPricingSlabController {
     public ResponseEntity<byte[]> downloadImportTemplate() throws IOException {
         byte[] body = rateSlabExcelService.buildImportTemplate();
         ContentDisposition disposition =
-                ContentDisposition.attachment().filename("rate_slabs_template.xlsx").build();
+                ContentDisposition.attachment().filename("milestone_settings_sample.xlsx").build();
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .contentType(MediaType.parseMediaType(

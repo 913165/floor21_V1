@@ -76,4 +76,10 @@ public class SlabService {
         entity.setActive(form.getActive() != null ? form.getActive() : true);
         return slabRepository.save(entity);
     }
+
+    @Transactional
+    public void deleteForPlatformAdmin(UUID id) {
+        Slab slab = slabRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Slab not found"));
+        slabRepository.delete(slab);
+    }
 }

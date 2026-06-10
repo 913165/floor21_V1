@@ -49,5 +49,42 @@
     document.addEventListener('turbo:load', fn);
   }
 
-  onPageReady(initProfileDropdown);
+  /** Bootstrap backdrop is on body; modals inside turbo-frame cannot receive clicks. */
+  function mountTurboFrameModalsOnBody() {
+    var frame = document.getElementById("floor21-main");
+    if (!frame) {
+      return;
+    }
+    frame.querySelectorAll(".modal[id]").forEach(function (modal) {
+      var id = modal.id;
+      if (!id) {
+        return;
+      }
+      document.querySelectorAll('[id="' + id + '"]').forEach(function (el) {
+        if (el !== modal) {
+          el.remove();
+        }
+      });
+      if (modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+      }
+    });
+  }
+
+  function onModalShow(event) {
+    var modal = event.target;
+    if (!modal || !modal.classList || !modal.classList.contains("modal")) {
+      return;
+    }
+    if (modal.parentElement !== document.body) {
+      document.body.appendChild(modal);
+    }
+  }
+
+  onPageReady(function () {
+    initProfileDropdown();
+    mountTurboFrameModalsOnBody();
+  });
+  document.addEventListener("turbo:render", mountTurboFrameModalsOnBody);
+  document.addEventListener("show.bs.modal", onModalShow, true);
 })();

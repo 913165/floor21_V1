@@ -1257,6 +1257,18 @@ body.modal-open .modal-backdrop {
   z-index: 1055;
 }
 
+/* Admin modals moved to body from layout.js (turbo-frame safe) */
+body > .modal {
+  z-index: 1060;
+  pointer-events: auto;
+}
+
+body > .modal .modal-content,
+body > .modal .modal-content a,
+body > .modal .modal-content button {
+  pointer-events: auto;
+}
+
 .floor-plan-modal-dialog {
   max-width: min(92vw, 560px);
 }

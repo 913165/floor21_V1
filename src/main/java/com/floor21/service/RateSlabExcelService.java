@@ -50,11 +50,20 @@ public class RateSlabExcelService {
             for (int c = 0; c < headers.length; c++) {
                 header.createCell(c).setCellValue(headers[c]);
             }
-            Row sample = sheet.createRow(1);
-            sample.createCell(0).setCellValue(1);
-            sample.createCell(1).setCellValue("Initial booking amount");
-            sample.createCell(2).setCellValue(10);
-            sample.createCell(3).setCellValue("Yes");
+            Object[][] samples = {
+                {1, "Initial booking amount", 10, "Yes"},
+                {2, "On or after execution of this Agreement", 20, "Yes"},
+                {3, "On completion of the Plinth work of the building", 15, "Yes"},
+                {4, "On or before completion 2nd Slab", 2.5, "Yes"},
+                {5, "On handing over possession of Unit or receipt of Occupancy Certificate", 5, "Yes"}
+            };
+            for (int r = 0; r < samples.length; r++) {
+                Row row = sheet.createRow(r + 1);
+                row.createCell(0).setCellValue(((Number) samples[r][0]).intValue());
+                row.createCell(1).setCellValue((String) samples[r][1]);
+                row.createCell(2).setCellValue(((Number) samples[r][2]).doubleValue());
+                row.createCell(3).setCellValue((String) samples[r][3]);
+            }
             PoiSheetSupport.autoSizeColumns(sheet, headers.length);
             wb.write(out);
             return out.toByteArray();

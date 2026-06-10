@@ -5,11 +5,15 @@
 <div th:fragment="content">
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <h1 class="h3 mb-0" th:text="${pageTitle}">Slabs</h1>
-    <a class="btn btn-primary"
-       th:if="${selectedBuildingId != null}"
-       th:href="@{/admin/builder-pricing-slabs/new(buildingId=${selectedBuildingId}, projectId=${filterProjectId}, q=${filterSearch})}">New rate slab</a>
-    <span class="btn btn-primary disabled" th:unless="${selectedBuildingId != null}"
-          title="Choose a building first">New rate slab</span>
+    <div class="d-flex flex-wrap gap-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm"
+              data-bs-toggle="modal" data-bs-target="#milestone-format-modal">Sample format</button>
+      <a class="btn btn-primary"
+         th:if="${selectedBuildingId != null}"
+         th:href="@{/admin/builder-pricing-slabs/new(buildingId=${selectedBuildingId}, projectId=${filterProjectId}, q=${filterSearch})}">New rate slab</a>
+      <span class="btn btn-primary disabled" th:unless="${selectedBuildingId != null}"
+            title="Choose a building first">New rate slab</span>
+    </div>
   </div>
   <p class="text-muted small">
     Per-building rate presets. Only <strong>Floor21</strong> super admins manage these.
@@ -64,19 +68,18 @@
   </div>
 
   <div th:if="${!importReady}" class="alert alert-info">
-    Select a <strong>project</strong> and <strong>building</strong> (use Search to narrow the list), then import rate slabs for that building.
+    Select a <strong>project</strong> and <strong>building</strong> (use Search to narrow the list), then import milestones for that building.
+    Use <button type="button" class="btn btn-link btn-sm p-0 align-baseline"
+          data-bs-toggle="modal" data-bs-target="#milestone-format-modal">Sample format</button> to see the required Excel layout.
   </div>
 
   <div th:if="${importReady}" class="card card-body shadow-sm mb-3">
     <h2 class="h6 fw-semibold mb-2">Import from Excel</h2>
-    <p class="text-muted small mb-2">
-      Upload a sheet with <strong>Sno</strong>, <strong>Slab Name</strong>, <strong>Percent (%)</strong>,
-      and <strong>Active</strong> columns. Rows are imported for the selected building.
+    <p class="text-muted small mb-3">
+      Upload a file in the <button type="button" class="btn btn-link btn-sm p-0 align-baseline"
+            data-bs-toggle="modal" data-bs-target="#milestone-format-modal">sample format</button>.
+      Milestones are imported for the selected building.
     </p>
-    <div class="d-flex flex-wrap gap-2 mb-3">
-      <a class="btn btn-outline-secondary btn-sm"
-         th:href="@{/admin/builder-pricing-slabs/import-template}">Download Excel template</a>
-    </div>
     <form th:action="@{/admin/builder-pricing-slabs/import}" method="post" enctype="multipart/form-data"
           data-turbo="false"
           class="row g-2 align-items-end"
@@ -108,7 +111,7 @@
     </form>
   </div>
 
-  <div class="table-responsive card shadow-sm">
+  <div th:if="${selectedBuildingId != null}" class="table-responsive card shadow-sm">
     <table class="table mb-0">
       <thead>
       <tr>
@@ -129,13 +132,87 @@
         <td class="text-end"
             th:text="${s.suggestedPercent != null ? T(com.floor21.util.PercentageFormatter).formatDisplay(s.suggestedPercent) : '—'}">—</td>
         <td th:text="${s.active != null and s.active} ? 'Yes' : 'No'"></td>
-        <td class="text-end">
+        <td class="text-end text-nowrap">
           <a class="btn btn-sm btn-outline-secondary"
              th:href="@{/admin/builder-pricing-slabs/{id}/edit(id=${s.id}, buildingId=${selectedBuildingId != null ? selectedBuildingId : (s.building != null ? s.building.id : null)}, projectId=${filterProjectId}, q=${filterSearch})}">Edit</a>
+          <form class="d-inline" th:action="@{/admin/builder-pricing-slabs/{id}/delete(id=${s.id})}" method="post"
+                onsubmit="return confirm('Delete this milestone?');">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" name="buildingId" th:if="${selectedBuildingId != null}" th:value="${selectedBuildingId}"/>
+            <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+            <input type="hidden" name="q" th:if="${filterSearch != null and !#strings.isEmpty(filterSearch)}" th:value="${filterSearch}"/>
+            <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+          </form>
         </td>
       </tr>
       </tbody>
     </table>
+  </div>
+
+  <div class="modal fade" id="milestone-format-modal" tabindex="-1"
+       aria-labelledby="milestone-format-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+      <div class="modal-content shadow">
+        <div class="modal-header py-2 px-3">
+          <h6 class="modal-title mb-0" id="milestone-format-modal-title">Required Excel format</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body py-3 px-3">
+          <p class="text-muted small mb-3">
+            Use these column headers in row 1. <strong>Sno</strong> is the serial number;
+            <strong>Active</strong> is Yes/No. Skip summary rows such as Total.
+          </p>
+          <div class="table-responsive border rounded">
+            <table class="table table-sm table-bordered mb-0 small">
+              <thead class="table-light">
+              <tr>
+                <th class="text-center" style="width: 4rem;">Sno</th>
+                <th>Slab Name</th>
+                <th class="text-end" style="width: 7rem;">Percent (%)</th>
+                <th class="text-center" style="width: 5rem;">Active</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr>
+                <td class="text-center text-muted">1</td>
+                <td>Initial booking amount</td>
+                <td class="text-end">10.0</td>
+                <td class="text-center">Yes</td>
+              </tr>
+              <tr>
+                <td class="text-center text-muted">2</td>
+                <td>On or after execution of this Agreement</td>
+                <td class="text-end">20.0</td>
+                <td class="text-center">Yes</td>
+              </tr>
+              <tr>
+                <td class="text-center text-muted">3</td>
+                <td>On completion of the Plinth work of the building</td>
+                <td class="text-end">15.0</td>
+                <td class="text-center">Yes</td>
+              </tr>
+              <tr>
+                <td class="text-center text-muted">4</td>
+                <td>On or before completion 2nd Slab</td>
+                <td class="text-end">2.5</td>
+                <td class="text-center">Yes</td>
+              </tr>
+              <tr class="text-muted">
+                <td class="text-center">…</td>
+                <td colspan="3">Add one row per milestone for your building</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer py-2 px-3 flex-wrap gap-2 justify-content-between">
+          <a class="btn btn-outline-primary btn-sm"
+             th:href="@{/admin/builder-pricing-slabs/import-template}"
+             data-turbo="false">Download sample Excel</a>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
