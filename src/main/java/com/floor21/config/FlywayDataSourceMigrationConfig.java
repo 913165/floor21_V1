@@ -58,6 +58,7 @@ public class FlywayDataSourceMigrationConfig {
                 ensureLayoutColumnTypeColumns(dataSource);
                 ensureGroundFloorColumns(dataSource);
                 ensureColumnBhkOrderColumn(dataSource);
+                ensureSlabMilestoneFields(dataSource);
                 ensureSuper2PlatformAdmin(dataSource);
                 return bean;
             }
@@ -214,6 +215,18 @@ public class FlywayDataSourceMigrationConfig {
             statement.execute("ALTER TABLE buildings ADD COLUMN IF NOT EXISTS column_bhk_order TEXT");
         } catch (Exception ex) {
             throw new IllegalStateException("Could not ensure buildings.column_bhk_order column exists", ex);
+        }
+    }
+
+    /** Idempotent guard when V15 is recorded in history but slab milestone columns were never applied. */
+    private static void ensureSlabMilestoneFields(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE slabs ADD COLUMN IF NOT EXISTS sort_order INTEGER");
+            statement.execute("ALTER TABLE slabs ADD COLUMN IF NOT EXISTS suggested_percent DECIMAL(9, 4)");
+        } catch (Exception ex) {
+            throw new IllegalStateException(
+                    "Could not ensure slabs.sort_order / slabs.suggested_percent columns exist", ex);
         }
     }
 
