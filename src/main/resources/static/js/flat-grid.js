@@ -4990,6 +4990,237 @@
     );
   }
 
+  function snapshotShopStatusClass(status) {
+    if (status === "BOOKED") return "shop-plan__slot--booked";
+    if (status === "HOLD") return "shop-plan__slot--hold";
+    if (status === "CANCELLED") return "shop-plan__slot--deactivated";
+    return "shop-plan__slot--available";
+  }
+
+  function renderSnapshotGroundShopChip(slot) {
+    if (!slot) return "";
+    var statusClass = snapshotShopStatusClass(slot.status);
+    var title = "Shop " + slot.slotNumber + (slot.flatNumber ? " — " + slot.flatNumber : "");
+    return (
+      '<span class="bld-gf-compact__chip shop-plan__slot shop-plan__slot--shop shop-plan__slot--clickable ' +
+      statusClass +
+      '" data-shop-flat-id="' +
+      (slot.flatId || "") +
+      '" data-slot-number="' +
+      slot.slotNumber +
+      '" title="' +
+      snapshotEscapeText(title) +
+      '">' +
+      slot.slotNumber +
+      "</span>"
+    );
+  }
+
+  function renderSnapshotGroundParkingChip(slot) {
+    if (!slot) return "";
+    var linked = slot.linkedResidentialFlatNumber || "";
+    var booked = !!(linked || slot.status === "BOOKED");
+    var title = linked
+      ? "Parking " + slot.slotNumber + " — " + linked
+      : "Parking " + slot.slotNumber;
+    return (
+      '<button type="button" class="bld-parking-seat bld-parking-seat--clickable bld-parking-strip__slot shop-plan__slot shop-plan__slot--parking ' +
+      (booked ? "bld-parking-seat--booked bld-parking-strip__slot--set" : "bld-parking-seat--available bld-parking-strip__slot--open") +
+      '" data-parking-flat-id="' +
+      (slot.flatId || "") +
+      '" data-slot-number="' +
+      slot.slotNumber +
+      '" title="' +
+      snapshotEscapeText(title) +
+      '" aria-label="' +
+      snapshotEscapeText(title) +
+      '">' +
+      slot.slotNumber +
+      "</button>"
+    );
+  }
+
+  function renderSnapshotGroundFloorRow(plan, rowSelected) {
+    if (!plan) return "";
+    var shops = (plan.shops || plan.slots || [])
+      .slice()
+      .sort(function (a, b) {
+        return (a.slotNumber || 0) - (b.slotNumber || 0);
+      });
+    var parking = (plan.parkingSlots || [])
+      .slice()
+      .sort(function (a, b) {
+        return (a.slotNumber || 0) - (b.slotNumber || 0);
+      });
+    if (!shops.length && !parking.length) return "";
+    var selectedCls = rowSelected ? " bld-row--selected" : "";
+    var shopsHtml = shops.map(renderSnapshotGroundShopChip).join("");
+    var parkingHtml = parking.map(renderSnapshotGroundParkingChip).join("");
+    var rowsHtml = "";
+    if (shopsHtml) {
+      rowsHtml +=
+        '<div class="bld-gf-compact__row bld-gf-compact__row--shops">' +
+        '<span class="bld-gf-compact__row-label">Shops</span>' +
+        '<div class="bld-gf-compact__chips">' +
+        shopsHtml +
+        "</div></div>";
+    }
+    if (parkingHtml) {
+      rowsHtml +=
+        '<div class="bld-gf-compact__row bld-gf-compact__row--parking">' +
+        '<span class="bld-gf-compact__row-label">Parking</span>' +
+        '<div class="bld-gf-compact__chips">' +
+        parkingHtml +
+        "</div></div>";
+    }
+    return (
+      '<div class="bld-row bld-row--ground' +
+      selectedCls +
+      '" data-floor-number="0" title="Ground floor">' +
+      '<div class="bld-cell bld-cell--ground-block">' +
+      rowsHtml +
+      "</div></div>"
+    );
+  }
+
+  function groundPlanFromPayload(groundFloor, groundPlan) {
+    var plan = groundPlan ? Object.assign({}, groundPlan) : null;
+    if (!groundFloor) return plan;
+    var hasShops = groundFloor.shops && groundFloor.shops.length;
+    var hasParking = (groundFloor.parkingSlotCount || 0) > 0;
+    if (!plan && (groundFloor.configured || hasShops || hasParking)) {
+      plan = { shops: [], parkingSlots: [], fixtures: [] };
+    }
+    if (!plan) return null;
+    if ((!plan.shops || !plan.shops.length) && (!plan.slots || !plan.slots.length) && hasShops) {
+      plan.shops = groundFloor.shops.map(function (flat, index) {
+        return {
+          slotNumber: flat.unitNumber != null ? flat.unitNumber : index + 1,
+          flatId: flat.id,
+          flatNumber: flat.flatNumber,
+          status: flat.status,
+        };
+      });
+    }
+    return plan;
+  }
+
+  function snapshotParkingPlanFromGroundPlan(groundPlan, groundFloor) {
+    if (!groundPlan) return null;
+    var parkingSlots = groundPlan.parkingSlots || [];
+    var slotCount = parkingSlots.length || (groundFloor && groundFloor.parkingSlotCount) || 0;
+    if (slotCount <= 0) return null;
+    var slots = parkingSlots.map(function (s, index) {
+      return {
+        slotNumber: s.slotNumber != null ? s.slotNumber : index + 1,
+        flatId: s.flatId,
+        flatNumber: s.flatNumber,
+        linkedResidentialFlatId: s.linkedResidentialFlatId,
+        linkedResidentialFlatNumber: s.linkedResidentialFlatNumber,
+        areaSqft: s.areaSqft,
+      };
+    });
+    var placements = groundPlan.parkingPlacements || [];
+    var useGrid = placements.length > 0;
+    if (!useGrid && slots.length) {
+      placements = slots.map(function (s, index) {
+        return { slotNumber: s.slotNumber, col: index, row: 0, orientation: "N" };
+      });
+    }
+    var gridCols = groundPlan.gridCols || Math.max(placements.length, 4, 1);
+    return {
+      floorNumber: 0,
+      slotCount: slots.length || slotCount,
+      slots: slots,
+      gridLayout: useGrid || slots.length > 0,
+      placements: placements,
+      fixtures: groundPlan.fixtures || [],
+      gridCols: gridCols,
+      gridRows: groundPlan.gridRows || 1,
+      minGridRows: groundPlan.minGridRows || 1,
+      carSizePercent: groundPlan.parkingCarSizePercent || DEFAULT_PARKING_CAR_SIZE_PERCENT,
+      carLiftCount: groundPlan.carLiftCount || 0,
+      passengerLiftCount: groundPlan.passengerLiftCount || 0,
+      gateCount: groundPlan.gateCount || 0,
+    };
+  }
+
+  function renderSnapshotGroundShopsPanel(groundPlan) {
+    if (!groundPlan) return "";
+    var shops = (groundPlan.shops || groundPlan.slots || [])
+      .slice()
+      .sort(function (a, b) {
+        return (a.slotNumber || 0) - (b.slotNumber || 0);
+      });
+    if (!shops.length) return "";
+    var chips = shops.map(renderSnapshotGroundShopChip).join("");
+    return (
+      '<div class="pk-ground-shops">' +
+      '<div class="bld-gf-compact__row bld-gf-compact__row--shops">' +
+      '<span class="bld-gf-compact__row-label">Shops</span>' +
+      '<div class="bld-gf-compact__chips">' +
+      chips +
+      "</div></div></div>"
+    );
+  }
+
+  function renderSnapshotGroundFloorLevelBlock(level, statusByFlatId) {
+    if (!level || !level.groundPlan) return "";
+    var shopsPanel = renderSnapshotGroundShopsPanel(level.groundPlan);
+    var parkingPlan = level.plan;
+    var parkingInner = "";
+    if (parkingPlan && parkingPlan.slotCount) {
+      var seatmap = renderSnapshotParkingSeatMap(parkingPlan, statusByFlatId, "GF", 0);
+      if (seatmap) {
+        parkingInner =
+          '<div class="pk-lane" aria-hidden="true"></div>' +
+          seatmap +
+          '<div class="pk-lane pk-lane--bottom" aria-hidden="true"></div>';
+      }
+    }
+    if (!shopsPanel && !parkingInner) return "";
+    var selectedCls = level.selected ? " pk-floor-block--selected" : "";
+    return (
+      '<div class="pk-floor-block pk-floor-block--ground' +
+      selectedCls +
+      '" data-floor-number="0" title="Ground floor">' +
+      '<div class="pk-floor-header">' +
+      '<span class="pk-floor-badge pk-floor-badge--ground">GF</span>' +
+      '<span class="pk-floor-label">Ground floor</span>' +
+      "</div>" +
+      shopsPanel +
+      parkingInner +
+      "</div>"
+    );
+  }
+
+  function renderSnapshotGroundFloorSection(groundPlan, groundFloor, statusByFlatId) {
+    if (!groundPlan && !groundFloor) return "";
+    var shopsPanel = renderSnapshotGroundShopsPanel(groundPlan);
+    var parkingPlan = snapshotParkingPlanFromGroundPlan(groundPlan, groundFloor);
+    var parkingBlock = "";
+    if (parkingPlan && parkingPlan.slotCount) {
+      parkingBlock = renderSnapshotParkingFloorBlock(
+        {
+          floorNumber: 0,
+          label: "Ground floor",
+          plan: parkingPlan,
+          selected: snapshotIsRowSelected(0, true) || selectedShopUnit,
+        },
+        statusByFlatId,
+        "pk-floor-badge--ground"
+      );
+    }
+    if (!shopsPanel && !parkingBlock) return "";
+    return (
+      '<div class="pk-floors-section pk-floors-section--ground">' +
+      '<div class="pk-section-title">Ground floor</div>' +
+      shopsPanel +
+      (parkingBlock ? '<div class="pk-ground-parking">' + parkingBlock + "</div>" : "") +
+      "</div>"
+    );
+  }
+
   function buildSnapshotElevation(payload) {
     var basements = payload.basements || [];
     var groundFloor = payload.groundFloor || null;
@@ -5016,15 +5247,22 @@
       })
       .map(function (basement) {
         return {
+          floorNumber: basement.floorNumber,
           label: basement.label || "B" + Math.abs(basement.floorNumber),
           count: basement.configured ? basement.slotCount || 0 : 0,
+          configured: basement.configured !== false,
           flats: [],
         };
       });
     return {
       columnCount: columnCount,
       floorRows: floorRows,
-      hasGroundFloor: !!(groundFloor && groundFloor.configured),
+      hasGroundFloor: !!(
+        groundFloor &&
+        (groundFloor.configured ||
+          (groundFloor.shops && groundFloor.shops.length) ||
+          (groundFloor.parkingSlotCount != null && groundFloor.parkingSlotCount > 0))
+      ),
       basementBands: basementBands,
     };
   }
@@ -5062,6 +5300,14 @@
         })
       );
     });
+    (payload.basements || []).forEach(function (basement) {
+      if (!basement || basement.configured === false) return;
+      tasks.push(
+        fetchParkingPlanForBuilding(buildingId, basement.floorNumber).then(function (plan) {
+          if (plan) plans[String(basement.floorNumber)] = plan;
+        })
+      );
+    });
     await Promise.all(tasks);
     return plans;
   }
@@ -5085,13 +5331,20 @@
     var payload = await res.json();
     var parkingPlans = await loadSnapshotParkingPlansForBuilding(buildingId, payload);
     var groundPlan = null;
-    if (payload.groundFloor && payload.groundFloor.configured) {
+    var gf = payload.groundFloor;
+    if (
+      gf &&
+      (gf.configured ||
+        (gf.shops && gf.shops.length) ||
+        (gf.parkingSlotCount != null && gf.parkingSlotCount > 0))
+    ) {
       groundPlan = await fetchGroundFloorPlanForBuilding(buildingId);
     }
     return { payload: payload, parkingPlans: parkingPlans, groundPlan: groundPlan };
   }
 
   function snapshotParkingStripLabel(label, floorNumber) {
+    if (Number(floorNumber) === 0) return "GF";
     if (label) {
       var trimmed = String(label).trim();
       if (/^parking\b/i.test(trimmed)) {
@@ -5114,7 +5367,7 @@
     });
   }
 
-  function snapshotParkingStatusByFlatId(payload) {
+  function snapshotParkingStatusByFlatId(payload, groundPlan) {
     var map = {};
     (payload.floors || []).forEach(function (floor) {
       if (!floor.parkingSection) return;
@@ -5122,6 +5375,18 @@
         if (flat && flat.id) map[String(flat.id)] = flat.status || "AVAILABLE";
       });
     });
+    var groundFloor = payload.groundFloor;
+    if (groundFloor && groundFloor.shops) {
+      groundFloor.shops.forEach(function (flat) {
+        if (flat && flat.id) map[String(flat.id)] = flat.status || "AVAILABLE";
+      });
+    }
+    if (groundPlan && groundPlan.parkingSlots) {
+      groundPlan.parkingSlots.forEach(function (slot) {
+        if (!slot || !slot.flatId) return;
+        map[String(slot.flatId)] = slot.linkedResidentialFlatId ? "HOLD" : "AVAILABLE";
+      });
+    }
     return map;
   }
 
@@ -5370,7 +5635,18 @@
     var floorCode = snapshotParkingStripLabel(level.label, level.floorNumber);
     var seatmap = renderSnapshotParkingSeatMap(level.plan, statusByFlatId, floorCode, level.floorNumber);
     if (!seatmap) return "";
-    var floorTitle = snapshotEscapeText(level.label || "Parking Level " + floorCode);
+    var levelTitle =
+      level.label ||
+      (Number(level.floorNumber) === 0
+        ? "Ground floor"
+        : isBasementFloor(level.floorNumber)
+          ? basementDisplayLabel(level.floorNumber)
+          : "Parking Level " + floorCode);
+    var floorTitle = snapshotEscapeText(levelTitle);
+    var headerLabel =
+      Number(level.floorNumber) === 0 || isBasementFloor(level.floorNumber)
+        ? floorTitle
+        : "Parking Level " + snapshotEscapeText(floorCode);
     var selectedCls = level.selected ? " pk-floor-block--selected" : "";
     return (
       '<div class="pk-floor-block' +
@@ -5386,8 +5662,8 @@
       '">' +
       snapshotEscapeText(floorCode) +
       "</span>" +
-      '<span class="pk-floor-label">Parking Level ' +
-      snapshotEscapeText(floorCode) +
+      '<span class="pk-floor-label">' +
+      headerLabel +
       "</span>" +
       "</div>" +
       '<div class="pk-lane" aria-hidden="true"></div>' +
@@ -5402,13 +5678,19 @@
     var sorted = parkingLevels.slice().sort(function (a, b) {
       return b.floorNumber - a.floorNumber;
     });
+    var badgeIndex = 0;
     var floorsHtml = sorted
-      .map(function (level, index) {
-        return renderSnapshotParkingFloorBlock(
+      .map(function (level) {
+        if (level.isGroundFloor) {
+          return renderSnapshotGroundFloorLevelBlock(level, statusByFlatId);
+        }
+        var block = renderSnapshotParkingFloorBlock(
           level,
           statusByFlatId,
-          SNAPSHOT_PK_BADGE_CLASSES[index % SNAPSHOT_PK_BADGE_CLASSES.length]
+          SNAPSHOT_PK_BADGE_CLASSES[badgeIndex % SNAPSHOT_PK_BADGE_CLASSES.length]
         );
+        if (block) badgeIndex += 1;
+        return block;
       })
       .filter(Boolean)
       .join("");
@@ -5611,7 +5893,7 @@
     if (!root) return;
     var model = buildSnapshotElevation(payload);
     model.parkingPlans = parkingPlans || {};
-    model.groundPlan = groundPlan || null;
+    model.groundPlan = groundPlanFromPayload(payload.groundFloor, groundPlan);
     var hasParkingSections = model.floorRows.some(function (row) {
       return row.parkingSection;
     });
@@ -5671,15 +5953,40 @@
         );
       })
       .filter(Boolean);
-    if (model.hasGroundFloor && window.floor21RenderSnapshotGroundFloorPlanHtml) {
-      var gfSelected = snapshotIsRowSelected(0, false) || selectedShopUnit;
-      var groundRow = window.floor21RenderSnapshotGroundFloorPlanHtml(model.groundPlan, gfSelected);
-      if (groundRow) towerParts.push(groundRow);
+    if (model.hasGroundFloor && model.groundPlan) {
+      var gfParkingPlan = snapshotParkingPlanFromGroundPlan(model.groundPlan, payload.groundFloor);
+      var gfShops = model.groundPlan.shops || model.groundPlan.slots || [];
+      if (gfShops.length || (gfParkingPlan && gfParkingPlan.slotCount)) {
+        parkingLevels.push({
+          floorNumber: 0,
+          label: "Ground floor",
+          plan: gfParkingPlan,
+          groundPlan: model.groundPlan,
+          groundFloor: payload.groundFloor,
+          isGroundFloor: true,
+          selected: snapshotIsRowSelected(0, true) || selectedShopUnit,
+        });
+      }
     }
-    var parkingStatusByFlatId = snapshotParkingStatusByFlatId(payload);
+    (payload.basements || []).forEach(function (basement) {
+      if (!basement || basement.configured === false) return;
+      var basementPlan = model.parkingPlans[String(basement.floorNumber)];
+      if (!basementPlan || !basementPlan.slotCount) return;
+      parkingLevels.push({
+        floorNumber: basement.floorNumber,
+        label: basement.label || basementDisplayLabel(basement.floorNumber),
+        plan: basementPlan,
+        selected: snapshotIsRowSelected(basement.floorNumber, true),
+      });
+    });
+    var parkingStatusByFlatId = snapshotParkingStatusByFlatId(payload, model.groundPlan);
     var parkingBlock = renderSnapshotCombinedParkingHtml(parkingLevels, parkingStatusByFlatId);
     var towerHtml = towerParts.join("");
     var bandHtml = model.basementBands
+      .filter(function (band) {
+        var plan = model.parkingPlans[String(band.floorNumber)];
+        return !(plan && plan.slotCount);
+      })
       .map(function (band) {
         return (
           '<div class="bld-band"><span class="bld-band__label">' +
@@ -5713,8 +6020,7 @@
         '<div class="bld-building__plinth" aria-hidden="true"></div>' +
         "</div></div>"
       : "";
-    var sceneBody =
-      elevationHtml + (parkingBlock || "");
+    var sceneBody = elevationHtml + (parkingBlock || "");
     root.innerHTML =
       sceneBody
         ? '<div class="building-snapshot__stack">' +

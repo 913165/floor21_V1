@@ -2467,6 +2467,49 @@ body.modal-open .modal-backdrop {
   color: #854f0b;
 }
 
+.pk-floor-badge--ground {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.pk-floors-section--ground .pk-ground-shops {
+  margin: 0.2rem 0.35rem 0.15rem;
+}
+
+.pk-floor-block--ground .pk-ground-shops .bld-gf-compact__row {
+  margin: 0;
+  padding: 0.25rem 0.35rem;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 0.3rem;
+}
+
+[data-bs-theme="dark"] .pk-floor-block--ground .pk-ground-shops .bld-gf-compact__row {
+  background: rgba(30, 41, 59, 0.45);
+  border-color: rgba(148, 163, 184, 0.18);
+}
+
+.pk-floors-section--ground {
+  margin-bottom: 0.35rem;
+}
+
+.pk-floors-section--ground .bld-gf-compact__row {
+  margin: 0;
+  padding: 0.35rem 0.45rem;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 0.35rem;
+}
+
+[data-bs-theme="dark"] .pk-floors-section--ground .bld-gf-compact__row {
+  background: rgba(30, 41, 59, 0.55);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.pk-floors-section--ground .pk-ground-parking .pk-floor-block {
+  margin-top: 0;
+}
+
 .pk-floor-label {
   font-size: 0.6875rem;
   font-weight: 500;
