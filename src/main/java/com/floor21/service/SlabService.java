@@ -31,6 +31,15 @@ public class SlabService {
     }
 
     @Transactional(readOnly = true)
+    public List<Slab> listFilteredForPlatformAdmin(UUID builderId, UUID buildingId, String search) {
+        String q = search != null ? search.trim() : "";
+        if (builderId == null && buildingId == null && q.isEmpty()) {
+            return slabRepository.findAllOrderedForAdmin();
+        }
+        return slabRepository.findFilteredForAdmin(builderId, buildingId, q.isEmpty() ? null : q);
+    }
+
+    @Transactional(readOnly = true)
     public Slab getForPlatformAdmin(UUID id) {
         return slabRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Slab not found"));
     }
@@ -59,8 +68,10 @@ public class SlabService {
         } else {
             entity.setBuilding(null);
         }
+        entity.setSortOrder(form.getSortOrder());
         entity.setSlabName(form.getSlabName());
         entity.setDescription(form.getDescription());
+        entity.setSuggestedPercent(form.getSuggestedPercent());
         entity.setRatePerSqft(form.getRatePerSqft());
         entity.setActive(form.getActive() != null ? form.getActive() : true);
         return slabRepository.save(entity);

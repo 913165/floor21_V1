@@ -1,0 +1,3 @@
+ALTER TABLE slabs
+    ADD COLUMN IF NOT EXISTS sort_order INTEGER,
+    ADD COLUMN IF NOT EXISTS suggested_percent DECIMAL(9, 4);

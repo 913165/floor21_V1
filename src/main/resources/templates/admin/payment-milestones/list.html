@@ -79,7 +79,7 @@
     <table class="table mb-0">
       <thead>
       <tr>
-        <th>Order</th>
+        <th class="text-center" style="width: 4rem;">Sr. No.</th>
         <th>Milestone</th>
         <th class="text-end">Percentage</th>
         <th>Active</th>
@@ -87,8 +87,8 @@
       </tr>
       </thead>
       <tbody>
-      <tr th:each="t : ${templates}">
-        <td th:text="${t.sortOrder}"></td>
+      <tr th:each="t, stat : ${templates}">
+        <td class="text-center text-muted" th:text="${stat.count}"></td>
         <td th:text="${t.milestoneLabel}"></td>
         <td class="text-end"
             th:text="${T(com.floor21.util.PercentageFormatter).formatDisplay(t.suggestedPercent)}">—</td>

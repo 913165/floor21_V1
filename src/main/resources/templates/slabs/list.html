@@ -3,27 +3,141 @@
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <h1 class="h3 mb-0" th:text="${pageTitle}">Slabs</h1>
-    <a class="btn btn-primary" th:href="@{/admin/builder-pricing-slabs/new}">New rate slab</a>
+    <a class="btn btn-primary"
+       th:if="${selectedBuildingId != null}"
+       th:href="@{/admin/builder-pricing-slabs/new(buildingId=${selectedBuildingId}, projectId=${filterProjectId}, q=${filterSearch})}">New rate slab</a>
+    <span class="btn btn-primary disabled" th:unless="${selectedBuildingId != null}"
+          title="Choose a building first">New rate slab</span>
   </div>
-  <p class="text-muted small">Per-builder rate presets. Only <strong>Floor21</strong> super admins manage these. For buyer instalment schedules, use <strong>Admin → Payment milestones</strong> and <strong>Slabs (payment schedule)</strong>.</p>
+  <p class="text-muted small">
+    Per-building rate presets. Only <strong>Floor21</strong> super admins manage these.
+    For buyer instalment schedules, use <strong>Admin → Payment milestones</strong> and
+    <strong>Slabs (payment schedule)</strong>.
+  </p>
+
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <form class="row g-2 align-items-end mb-3" method="get" th:action="@{/admin/builder-pricing-slabs}"
+        id="slabs-filter-form"
+        data-turbo-frame="floor21-main" data-turbo-action="advance">
+    <div class="col-md-3 col-lg-3">
+      <label class="form-label small mb-1" for="filterProject">Project</label>
+      <select class="form-select form-select-sm" id="filterProject" name="projectId"
+              data-project-search-select data-submit-on-select="true">
+        <option value="">All projects</option>
+        <option th:each="p : ${projects}"
+                th:value="${p.id}"
+                th:text="${p.companyName}"
+                th:selected="${filterProjectId != null and filterProjectId == p.id}"></option>
+      </select>
+    </div>
+    <div class="col-md-4 col-lg-4">
+      <label class="form-label small mb-1" for="slabs-search-q">Search</label>
+      <input class="form-control form-control-sm" id="slabs-search-q" name="q" th:value="${filterSearch}"
+             placeholder="Project, building, city, slab name…" autocomplete="off" spellcheck="false"/>
+    </div>
+    <div class="col-md-4 col-lg-3">
+      <label class="form-label small mb-1" for="filterBuilding">Building</label>
+      <select class="form-select form-select-sm" id="filterBuilding" name="buildingId"
+              data-submit-on-select="true">
+        <option value="">Choose building…</option>
+        <option th:each="b : ${buildings}"
+                th:value="${b.id}"
+                th:attr="data-builder-id=${b.builder != null ? b.builder.id : ''}"
+                th:selected="${selectedBuildingId != null and selectedBuildingId == b.id}"
+                th:text="${(b.builder != null ? b.builder.companyName + ' — ' : '') + b.buildingName}">Building</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-outline-secondary btn-sm" type="submit">Search</button>
+      <a class="btn btn-link btn-sm"
+         th:href="@{/admin/builder-pricing-slabs}"
+         th:if="${filterProjectId != null or (filterSearch != null and !#strings.isEmpty(filterSearch)) or selectedBuildingId != null}">Clear</a>
+    </div>
+  </form>
+
+  <div th:if="${selectedBuilding != null}" class="small text-muted mb-2">
+    <span class="fw-semibold" th:text="${selectedBuilding.buildingName}">Building</span>
+  </div>
+
+  <div th:if="${!importReady}" class="alert alert-info">
+    Select a <strong>project</strong> and <strong>building</strong> (use Search to narrow the list), then import rate slabs for that building.
+  </div>
+
+  <div th:if="${importReady}" class="card card-body shadow-sm mb-3">
+    <h2 class="h6 fw-semibold mb-2">Import from Excel</h2>
+    <p class="text-muted small mb-2">
+      Upload a sheet with <strong>Sno</strong>, <strong>Slab Name</strong>, <strong>Percent (%)</strong>,
+      and <strong>Active</strong> columns. Rows are imported for the selected building.
+    </p>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <a class="btn btn-outline-secondary btn-sm"
+         th:href="@{/admin/builder-pricing-slabs/import-template}">Download Excel template</a>
+    </div>
+    <form th:action="@{/admin/builder-pricing-slabs/import}" method="post" enctype="multipart/form-data"
+          data-turbo="false"
+          class="row g-2 align-items-end"
+          id="slabs-import-form">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+      <input type="hidden" name="q" th:if="${filterSearch != null and !#strings.isEmpty(filterSearch)}" th:value="${filterSearch}"/>
+      <input type="hidden" name="buildingId" th:if="${selectedBuildingId != null}" th:value="${selectedBuildingId}"/>
+      <div class="col-md-4">
+        <label class="form-label">Building</label>
+        <p class="form-control-plaintext form-control-sm fw-semibold mb-0 py-1"
+           th:text="${selectedBuilding != null ? selectedBuilding.buildingName : '—'}">Building</p>
+        <input type="hidden" name="builderId" id="importBuilderId"
+               th:value="${selectedBuilderId}" th:if="${selectedBuilderId != null}"/>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="slabFile">Excel file (.xlsx / .xls)</label>
+        <input class="form-control form-control-sm" type="file" id="slabFile" name="file" accept=".xlsx,.xls" required/>
+      </div>
+      <div class="col-md-3">
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" name="replace" id="replaceSlabs" value="true"/>
+          <label class="form-check-label" for="replaceSlabs">Replace existing slabs for this building</label>
+        </div>
+      </div>
+      <div class="col-md-1">
+        <button class="btn btn-success btn-sm w-100" type="submit">Import</button>
+      </div>
+    </form>
+  </div>
+
   <div class="table-responsive card shadow-sm">
     <table class="table mb-0">
-      <thead><tr><th>Builder</th><th>Name</th><th>Building</th><th>Rate / sqft</th><th></th></tr></thead>
+      <thead>
+      <tr>
+        <th class="text-center" style="width: 4rem;">Sr. No.</th>
+        <th>Name</th>
+        <th class="text-end">Percent (%)</th>
+        <th>Active</th>
+        <th></th>
+      </tr>
+      </thead>
       <tbody>
-      <tr th:each="s : ${slabs}">
-        <td th:text="${s.builder != null ? s.builder.companyName : '—'}"></td>
+      <tr th:if="${#lists.isEmpty(slabs)}">
+        <td colspan="5" class="text-muted text-center py-4">No milestones match this filter.</td>
+      </tr>
+      <tr th:each="s, stat : ${slabs}">
+        <td class="text-center text-muted" th:text="${stat.count}"></td>
         <td th:text="${s.slabName}"></td>
-        <td th:text="${s.building != null ? s.building.buildingName : '—'}"></td>
-        <td th:text="${s.ratePerSqft}"></td>
+        <td class="text-end"
+            th:text="${s.suggestedPercent != null ? T(com.floor21.util.PercentageFormatter).formatDisplay(s.suggestedPercent) : '—'}">—</td>
+        <td th:text="${s.active != null and s.active} ? 'Yes' : 'No'"></td>
         <td class="text-end">
-          <a class="btn btn-sm btn-outline-secondary" th:href="@{/admin/builder-pricing-slabs/{id}/edit(id=${s.id})}">Edit</a>
+          <a class="btn btn-sm btn-outline-secondary"
+             th:href="@{/admin/builder-pricing-slabs/{id}/edit(id=${s.id}, buildingId=${selectedBuildingId != null ? selectedBuildingId : (s.building != null ? s.building.id : null)}, projectId=${filterProjectId}, q=${filterSearch})}">Edit</a>
         </td>
       </tr>
       </tbody>
     </table>
   </div>
+
 </div>
 </body>
 </html>

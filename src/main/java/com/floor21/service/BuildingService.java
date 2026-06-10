@@ -111,6 +111,15 @@ public class BuildingService {
     }
 
     @Transactional(readOnly = true)
+    public List<Building> filterForPlatformAdmin(UUID projectId, String search) {
+        String q = search != null ? search.trim() : "";
+        return listAllForPlatformAdmin().stream()
+                .filter(b -> matchesProjectFilter(b, projectId))
+                .filter(b -> matchesBuildingSearch(b, q))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public Page<Building> listBuildingsPage(
             int page, int size, String sort, String dir, UUID projectId, String search) {
         String sortKey = normalizeBuildingsSort(sort);

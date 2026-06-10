@@ -33,11 +33,17 @@ public class Slab {
     @JoinColumn(name = "building_id")
     private Building building;
 
+    @Column(name = "sort_order")
+    private Integer sortOrder;
+
     @Column(name = "slab_name", length = 100)
     private String slabName;
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "suggested_percent", precision = 9, scale = 4)
+    private BigDecimal suggestedPercent;
 
     @Column(name = "rate_per_sqft", precision = 10, scale = 2)
     private BigDecimal ratePerSqft;
