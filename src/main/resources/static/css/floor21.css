@@ -4489,6 +4489,37 @@ body > .modal .modal-content button {
   padding: 0.55rem 1rem;
 }
 
+/* Milestone setup (Clients) */
+.milestone-client-info-table th,
+.milestone-client-info-table td {
+  padding: 0.5rem 0.85rem;
+  vertical-align: middle;
+  border-color: var(--bs-border-color);
+}
+
+.milestone-client-info-table th {
+  font-weight: 500;
+  font-size: 0.8125rem;
+}
+
+.milestone-slab-header {
+  background: #1565a8 !important;
+  border-bottom: none;
+}
+
+[data-bs-theme="dark"] .milestone-slab-header {
+  background: #1a4d7a !important;
+}
+
+.milestone-slab-row--editing td {
+  background: rgba(var(--bs-primary-rgb), 0.06);
+}
+
+.milestone-date-parts input {
+  padding-left: 0.15rem;
+  padding-right: 0.15rem;
+}
+
 /* Slabs — payment schedule page */
 .slab-schedule-picker {
   border: 1px solid var(--bs-border-color);

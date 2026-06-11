@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content"
+     th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}, pct=${T(com.floor21.util.PercentageFormatter)}"
+     id="milestoneSetupPage"
+     th:attr="data-base-amount=${baseAmount != null ? baseAmount : 0},
+              data-editable=${editable}">
+
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Milestone setup (Clients)</h1>
+    <a class="btn btn-outline-secondary btn-sm" th:href="@{/clients}">Client directory</a>
+  </div>
+
+  <div class="alert alert-info py-2" th:if="${platformAdminView}">
+    Read-only for platform admin. Impersonate a partner to edit milestones, or use this screen to review schedules.
+  </div>
+
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+  <form id="milestonePickerForm" class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get"
+        th:action="@{/clients/milestone-setup}">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3" th:if="${platformAdminView}">
+        <label class="form-label" for="msProject">Project</label>
+        <select class="form-select" id="msProject" name="projectId"
+                data-project-search-select data-submit-on-select="true">
+          <option value="">All projects</option>
+          <option th:each="p : ${projects}"
+                  th:value="${p.id}"
+                  th:text="${p.companyName}"
+                  th:selected="${filterProjectId != null && filterProjectId == p.id}"></option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="msBuilding">Building</label>
+        <select class="form-select" id="msBuilding" name="buildingId" required>
+          <option value="" disabled th:selected="${selectedBuildingId == null}">Choose building…</option>
+          <option th:each="bl : ${buildings}"
+                  th:value="${bl.id}"
+                  th:selected="${selectedBuildingId != null && selectedBuildingId == bl.id}"
+                  th:text="${platformAdminView and bl.builder != null ? bl.buildingName + ' (' + bl.builder.companyName + ')' : bl.buildingName}"></option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="msClientQ">Client / flat search</label>
+        <input class="form-control" id="msClientQ" name="clientQ" type="search"
+               th:value="${clientQ}"
+               placeholder="Filter by client name, flat no., booking code…"
+               th:disabled="${selectedBuildingId == null}"/>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100" type="submit"
+                th:disabled="${selectedBuildingId == null}">Search</button>
+      </div>
+    </div>
+    <div class="row g-2 align-items-end mt-2" th:if="${selectedBuildingId != null}">
+      <div class="col-md-8">
+        <label class="form-label" for="msBooking">Client (booking)</label>
+        <select class="form-select" id="msBooking" name="bookingId">
+          <option value="" th:selected="${selectedBookingId == null}">Choose client…</option>
+          <option th:each="bk : ${bookings}"
+                  th:value="${bk.id}"
+                  th:selected="${selectedBookingId != null && selectedBookingId == bk.id}"
+                  th:text="|${bk.flat != null ? bk.flat.flatNumber : '—'} — ${bk.client.displayName()}|"></option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <button class="btn btn-outline-primary w-100" type="submit">Load client</button>
+      </div>
+    </div>
+  </form>
+
+  <th:block th:if="${selectedBooking != null}">
+  <div class="card shadow-sm mb-3 milestone-client-panel">
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0 milestone-client-info-table">
+        <tbody>
+        <tr>
+          <th class="text-muted w-25">Flat No</th>
+          <td th:text="${selectedBooking.flat != null ? selectedBooking.flat.flatNumber : '—'}">—</td>
+          <th class="text-muted w-25">Flat Amount</th>
+          <td>
+            <span class="slab-amt--base" th:text="${amt.formatAmountDisplay(baseAmount)}">0</span>
+            <span class="text-muted small" th:if="${extraExpensesTotal != null && extraExpensesTotal.signum() > 0}"
+                  th:text="| [${amt.formatAmountDisplay(extraExpensesTotal)} extra]|">[0]</span>
+          </td>
+        </tr>
+        <tr>
+          <th class="text-muted">Extra Expenses</th>
+          <td th:text="${extraExpensesTotal != null && extraExpensesTotal.signum() > 0 ? amt.formatAmountDisplay(extraExpensesTotal) : '-'}">-</td>
+          <th class="text-muted">Booked Date</th>
+          <td th:text="${selectedBooking.bookingDate != null ? #temporals.format(selectedBooking.bookingDate, 'dd-MMM-yyyy') : '—'}">—</td>
+        </tr>
+        <tr>
+          <th class="text-muted">Client</th>
+          <td colspan="3" th:text="${selectedBooking.client.displayName()}">—</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer py-2 d-flex flex-wrap align-items-center gap-3 milestone-client-actions"
+         sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">
+      <div class="form-check mb-0">
+        <input class="form-check-input" type="checkbox" id="msAllowSplStartOnly" disabled/>
+        <label class="form-check-label small text-muted" for="msAllowSplStartOnly">Allow Special Start Date change only</label>
+      </div>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="form-check mb-0">
+          <input class="form-check-input" type="checkbox" id="msSplStart" disabled/>
+          <label class="form-check-label small" for="msSplStart">Spl Start Date</label>
+        </div>
+        <span class="text-muted small">(coming soon)</span>
+      </div>
+      <form class="ms-auto" method="post" th:action="@{/clients/milestone-setup/materialize}"
+            id="msMaterializeForm"
+            onsubmit="return confirm('Rebuild milestone rows from the building template? Existing dates may be reset if you choose replace.');">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
+        <input type="hidden" name="buildingId" th:value="${selectedBuildingId}"/>
+        <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+        <input type="hidden" name="replace" value="true"/>
+        <button class="btn btn-outline-secondary btn-sm" type="submit">
+          Set Slab as per Regular Payment
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div th:if="${#lists.isEmpty(slabs)}" class="alert alert-info d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <span>
+        <span th:if="${milestoneTemplatesAvailable == null || !milestoneTemplatesAvailable}">
+          No <strong>Milestone Templates</strong> exist for this building yet. Add them under
+          <strong>Milestone Templates</strong> (name and percent per row), then reload this client.
+        </span>
+        <span th:if="${milestoneTemplatesAvailable}">
+          No milestone rows for this booking yet.
+          <span sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">
+            Click <strong>Set Slab as per Regular Payment</strong> to calculate rows from the template and booking amount.
+          </span>
+        </span>
+      </span>
+      <form sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')" method="post"
+            th:action="@{/clients/milestone-setup/materialize}">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
+        <input type="hidden" name="buildingId" th:value="${selectedBuildingId}"/>
+        <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+        <button class="btn btn-sm btn-primary" type="submit">Set Slab as per Regular Payment</button>
+      </form>
+  </div>
+
+  <form th:if="${!#lists.isEmpty(slabs)}"
+        id="scheduleSaveForm"
+        method="post"
+        th:action="@{/clients/milestone-setup/save}"
+        th:object="${saveForm}"
+        th:attr="data-booking-id=${selectedBooking.id}">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <input type="hidden" th:field="*{bookingId}"/>
+    <input type="hidden" name="buildingId" th:value="${selectedBuildingId}"/>
+    <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+
+    <div class="card shadow-sm slab-schedule-card">
+      <div class="card-header py-2 fw-semibold text-white milestone-slab-header">
+        Slab Schedule for
+        <span th:text="|${selectedBooking.flat != null ? selectedBooking.flat.flatNumber : '—'} — ${selectedBooking.client.displayName()}|">Client</span>
+        as Regular Payment
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0 slab-schedule-table f21-table-totals" id="milestoneSlabTable">
+            <thead>
+            <tr>
+              <th class="col-sno text-center">Sno</th>
+              <th class="text-center text-nowrap">Slab Date</th>
+              <th class="text-center">Slab</th>
+              <th class="text-center text-nowrap">Percent</th>
+              <th class="text-center slab-schedule-th--agreed text-nowrap">Agree Slab Amount</th>
+              <th class="text-center slab-schedule-th--extra text-nowrap">Extra Slab Amount</th>
+              <th class="text-center text-nowrap" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Action</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="slab, stat : ${slabs}"
+                class="slab-schedule-data-row milestone-slab-row"
+                th:attr="data-row-index=${stat.index}">
+              <td class="col-sno text-center" th:text="${stat.count}">1</td>
+              <td class="text-nowrap p-1">
+                <input type="hidden"
+                       th:field="*{lines[__${stat.index}__].id}"/>
+                <input type="hidden"
+                       class="js-due-date-hidden"
+                       th:field="*{lines[__${stat.index}__].dueDate}"/>
+                <div class="d-flex gap-1 justify-content-center milestone-date-parts"
+                     th:attr="data-row-index=${stat.index}">
+                  <input type="text" inputmode="numeric" maxlength="2" placeholder="DD"
+                         class="form-control form-control-sm text-center milestone-date-dd"
+                         style="width:2.5rem"
+                         th:attr="data-initial=${slab.dueDate != null ? #temporals.format(slab.dueDate, 'dd') : ''}"
+                         th:readonly="${!editable}"/>
+                  <input type="text" inputmode="numeric" maxlength="2" placeholder="MM"
+                         class="form-control form-control-sm text-center milestone-date-mm"
+                         style="width:2.5rem"
+                         th:attr="data-initial=${slab.dueDate != null ? #temporals.format(slab.dueDate, 'MM') : ''}"
+                         th:readonly="${!editable}"/>
+                  <input type="text" inputmode="numeric" maxlength="4" placeholder="YYYY"
+                         class="form-control form-control-sm text-center milestone-date-yyyy"
+                         style="width:3.25rem"
+                         th:attr="data-initial=${slab.dueDate != null ? #temporals.format(slab.dueDate, 'yyyy') : ''}"
+                         th:readonly="${!editable}"/>
+                </div>
+              </td>
+              <td class="p-1">
+                <input type="hidden" th:field="*{lines[__${stat.index}__].milestoneLabel}"/>
+                <div class="form-control form-control-sm milestone-slab-label-display bg-body-secondary border-0"
+                     th:text="${slab.milestoneLabel}">Milestone</div>
+              </td>
+              <td class="p-1 text-center" style="width:5rem">
+                <input type="hidden" th:field="*{lines[__${stat.index}__].percent}"/>
+                <span class="d-block text-end px-1 js-ms-percent-display"
+                      th:text="${pct.formatPlain(slab.percent)}">0</span>
+              </td>
+              <td class="p-1 text-end" style="width:8rem">
+                <input type="hidden" th:field="*{lines[__${stat.index}__].agreedAmount}"/>
+                <span class="d-block form-control form-control-sm text-end border-0 bg-transparent js-ms-agreed-display slab-amt--agreed"
+                      th:text="${amt.formatAmountDisplay(slab.agreedAmount)}">0</span>
+              </td>
+              <td class="p-1 text-end" style="width:7rem">
+                <input type="text" inputmode="decimal"
+                       class="form-control form-control-sm text-end js-amount-input js-ms-extra slab-amt-input--extra"
+                       th:field="*{lines[__${stat.index}__].extraAmount}"
+                       th:attr="data-amount-readonly=${!editable}"
+                       th:readonly="${!editable}"/>
+              </td>
+              <td class="text-center p-1" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">
+                <button type="button" class="btn btn-sm btn-outline-primary js-ms-edit-row">Edit</button>
+              </td>
+            </tr>
+            </tbody>
+            <tfoot class="table-light" th:if="${scheduleSummary != null}">
+            <tr>
+              <td colspan="3" class="text-end fw-semibold">Calculations</td>
+              <td class="text-end fw-semibold" id="msTotalPercent"
+                  th:text="${pct.formatPlain(scheduleSummary.totalPercent())}">0</td>
+              <td class="text-end fw-semibold slab-amt--agreed" id="msTotalAgreed"
+                  th:text="${amt.formatAmountDisplay(scheduleSummary.totalAgreedAmount())}">0</td>
+              <td class="text-end fw-semibold slab-amt--extra" id="msTotalExtra"
+                  th:text="${amt.formatAmountDisplay(scheduleSummary.totalExtraAmount())}">0</td>
+              <td sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"></td>
+            </tr>
+            <tr>
+              <td colspan="4" class="text-end small text-muted">Flat amount − agreed slabs</td>
+              <td colspan="2" class="text-end fw-semibold">
+                <span class="slab-amt--base" id="msConsideration"
+                      th:text="${amt.formatAmountDisplay(scheduleSummary.considerationTotal())}">0</span>
+                <span class="text-muted"> − </span>
+                <span class="slab-amt--agreed" id="msAgreedSum"
+                      th:text="${amt.formatAmountDisplay(scheduleSummary.totalAgreedAmount())}">0</span>
+                <span class="text-muted"> Balance </span>
+                <span id="msBalance"
+                      th:classappend="${scheduleSummary.remainingAgreedAmount() != null && scheduleSummary.remainingAgreedAmount().signum() != 0 ? 'text-danger fw-semibold' : 'text-success fw-semibold'}"
+                      th:text="${scheduleSummary.remainingAgreedAmount() != null ? amt.formatAmountDisplay(scheduleSummary.remainingAgreedAmount()) : '-'}">0</span>
+              </td>
+              <td sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"></td>
+            </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-2"
+           sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <label class="small text-muted mb-0" for="msBulkDate">Bulk slab date</label>
+          <input type="date" class="form-control form-control-sm" id="msBulkDate" style="width:auto"/>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="msBulkApply">Bulk Edit</button>
+        </div>
+        <button type="submit" class="btn btn-primary">Save schedule</button>
+      </div>
+    </div>
+  </form>
+  </th:block>
+
+  <script defer th:src="@{/js/amount-format.js(v=milestone-setup)}"></script>
+  <script defer th:src="@{/js/milestone-setup.js(v=1)}"></script>
+</div>
+</body>
+</html>

@@ -45,4 +45,14 @@ public interface SlabRepository extends JpaRepository<Slab, UUID> {
             @Param("builderId") UUID builderId,
             @Param("buildingId") UUID buildingId,
             @Param("search") String search);
+
+    @Query(
+            """
+            select s from Slab s
+            where s.building.id = :buildingId
+              and (s.active is null or s.active = true)
+              and s.suggestedPercent is not null
+            order by coalesce(s.sortOrder, 999999), s.id
+            """)
+    List<Slab> findActiveMilestonesByBuilding_Id(@Param("buildingId") UUID buildingId);
 }

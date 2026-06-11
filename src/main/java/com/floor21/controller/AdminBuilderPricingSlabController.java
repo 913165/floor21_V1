@@ -5,6 +5,8 @@ import com.floor21.entity.Slab;
 import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.BuildingRepository;
+import com.floor21.security.Floor21UserPrincipal;
+import com.floor21.security.TenantContext;
 import com.floor21.service.BuildingService;
 import com.floor21.service.RateSlabExcelService;
 import com.floor21.service.SlabService;
@@ -19,6 +21,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.WebDataBinder;
@@ -36,7 +40,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Controller
 @RequestMapping("/admin/builder-pricing-slabs")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('SUPER_ADMIN')")
 public class AdminBuilderPricingSlabController {
 
     private final SlabService slabService;
@@ -76,12 +79,37 @@ public class AdminBuilderPricingSlabController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BUILDER_ADMIN','EXECUTIVE')")
     public String list(
             @RequestParam(required = false) UUID projectId,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) UUID buildingId,
             Model model) {
         String search = q != null ? q.trim() : "";
+        boolean readonlyView = !isPlatformAdmin();
+        model.addAttribute("pageTitle", "Milestone Templates");
+        model.addAttribute("readonlyView", readonlyView);
+
+        if (readonlyView) {
+            UUID tenantBuilderId = TenantContext.requireBuilderId();
+            Building selectedBuilding = null;
+            if (buildingId != null) {
+                selectedBuilding = buildingService.getForTenant(buildingId);
+                model.addAttribute("selectedBuilding", selectedBuilding);
+            }
+            model.addAttribute("buildings", buildingService.filterForTenant(search));
+            model.addAttribute("filterSearch", search);
+            model.addAttribute("selectedBuildingId", buildingId);
+            model.addAttribute("selectedBuilderId", tenantBuilderId);
+            model.addAttribute(
+                    "slabs",
+                    buildingId != null
+                            ? slabService.listFilteredForPlatformAdmin(tenantBuilderId, buildingId, search)
+                            : Collections.emptyList());
+            model.addAttribute("importReady", false);
+            return "slabs/list";
+        }
+
         UUID filterBuilderId = projectId;
         UUID selectedBuilderId = null;
         if (buildingId != null) {
@@ -95,7 +123,6 @@ public class AdminBuilderPricingSlabController {
             }
         }
         List<Building> buildings = buildingService.filterForPlatformAdmin(projectId, search);
-        model.addAttribute("pageTitle", "Milestone settings");
         model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
         model.addAttribute("filterProjectId", projectId);
         model.addAttribute("filterSearch", search);
@@ -112,6 +139,7 @@ public class AdminBuilderPricingSlabController {
     }
 
     @GetMapping("/new")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public String form(
             @RequestParam UUID buildingId,
             @RequestParam(required = false) UUID projectId,
@@ -126,11 +154,12 @@ public class AdminBuilderPricingSlabController {
         if (building.getBuilder() != null) {
             slab.setBuilder(building.getBuilder());
         }
-        populateFormContext(model, "New rate slab", slab, building, buildingId, projectId, q);
+        populateFormContext(model, "New rate slab", slab, building, buildingId, projectId, q, false);
         return "slabs/form";
     }
 
     @GetMapping("/{id}/edit")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public String edit(
             @PathVariable UUID id,
             @RequestParam(required = false) UUID buildingId,
@@ -149,11 +178,12 @@ public class AdminBuilderPricingSlabController {
                             .findByIdWithBuilder(ctxBuildingId)
                             .orElse(null);
         }
-        populateFormContext(model, "Edit rate slab", slab, building, ctxBuildingId, projectId, q);
+        populateFormContext(model, "Edit rate slab", slab, building, ctxBuildingId, projectId, q, false);
         return "slabs/form";
     }
 
     @PostMapping("/save")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public String save(
             @ModelAttribute Slab slab,
             @RequestParam(required = false) UUID buildingId,
@@ -174,6 +204,7 @@ public class AdminBuilderPricingSlabController {
     }
 
     @PostMapping("/{id}/delete")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public String delete(
             @PathVariable UUID id,
             @RequestParam(required = false) UUID buildingId,
@@ -192,13 +223,49 @@ public class AdminBuilderPricingSlabController {
             Building building,
             UUID buildingId,
             UUID projectId,
-            String q) {
+            String q,
+            boolean readonlyView) {
         model.addAttribute("pageTitle", pageTitle);
         model.addAttribute("slab", slab);
         model.addAttribute("selectedBuilding", building);
         model.addAttribute("selectedBuildingId", buildingId);
         model.addAttribute("filterProjectId", projectId);
         model.addAttribute("filterSearch", q != null ? q.trim() : "");
+        model.addAttribute("readonlyView", readonlyView);
+    }
+
+    @GetMapping("/import-template")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BUILDER_ADMIN','EXECUTIVE')")
+    public ResponseEntity<byte[]> downloadImportTemplate() throws IOException {
+        byte[] body = rateSlabExcelService.buildImportTemplate();
+        ContentDisposition disposition =
+                ContentDisposition.attachment().filename("milestone_templates_sample.xlsx").build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(body);
+    }
+
+    @PostMapping("/import")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public String importExcel(
+            @RequestParam UUID builderId,
+            @RequestParam(required = false) UUID buildingId,
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) String q,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(name = "replace", defaultValue = "false") boolean replaceExisting,
+            RedirectAttributes ra) {
+        try {
+            int imported = rateSlabExcelService.importForBuilder(builderId, buildingId, file, replaceExisting);
+            ra.addFlashAttribute(
+                    "successMessage",
+                    "Imported " + imported + " rate slab" + (imported == 1 ? "" : "s") + " from Excel.");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return redirectList(projectId, q, buildingId);
     }
 
     private static String redirectNewForm(UUID buildingId, UUID projectId, String q) {
@@ -231,38 +298,6 @@ public class AdminBuilderPricingSlabController {
         return "redirect:" + builder.build().toUriString();
     }
 
-    @GetMapping("/import-template")
-    public ResponseEntity<byte[]> downloadImportTemplate() throws IOException {
-        byte[] body = rateSlabExcelService.buildImportTemplate();
-        ContentDisposition disposition =
-                ContentDisposition.attachment().filename("milestone_settings_sample.xlsx").build();
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                .contentType(MediaType.parseMediaType(
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .body(body);
-    }
-
-    @PostMapping("/import")
-    public String importExcel(
-            @RequestParam UUID builderId,
-            @RequestParam(required = false) UUID buildingId,
-            @RequestParam(required = false) UUID projectId,
-            @RequestParam(required = false) String q,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam(name = "replace", defaultValue = "false") boolean replaceExisting,
-            RedirectAttributes ra) {
-        try {
-            int imported = rateSlabExcelService.importForBuilder(builderId, buildingId, file, replaceExisting);
-            ra.addFlashAttribute(
-                    "successMessage",
-                    "Imported " + imported + " rate slab" + (imported == 1 ? "" : "s") + " from Excel.");
-        } catch (IllegalArgumentException ex) {
-            ra.addFlashAttribute("errorMessage", ex.getMessage());
-        }
-        return redirectList(projectId, q, buildingId);
-    }
-
     private static String redirectList(UUID projectId, String q, UUID buildingId) {
         UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/admin/builder-pricing-slabs");
         if (projectId != null) {
@@ -275,5 +310,12 @@ public class AdminBuilderPricingSlabController {
             builder.queryParam("buildingId", buildingId);
         }
         return "redirect:" + builder.build().toUriString();
+    }
+
+    private static boolean isPlatformAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null
+                && auth.getPrincipal() instanceof Floor21UserPrincipal principal
+                && principal.isSuperAdmin();
     }
 }

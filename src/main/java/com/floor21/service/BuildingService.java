@@ -111,6 +111,12 @@ public class BuildingService {
     }
 
     @Transactional(readOnly = true)
+    public List<Building> filterForTenant(String search) {
+        String q = search != null ? search.trim() : "";
+        return listForTenant().stream().filter(b -> matchesBuildingSearch(b, q)).toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<Building> filterForPlatformAdmin(UUID projectId, String search) {
         String q = search != null ? search.trim() : "";
         return listAllForPlatformAdmin().stream()

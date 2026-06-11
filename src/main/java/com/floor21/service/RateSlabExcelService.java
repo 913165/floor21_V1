@@ -44,7 +44,7 @@ public class RateSlabExcelService {
 
     public byte[] buildImportTemplate() throws IOException {
         try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            Sheet sheet = wb.createSheet("Milestone settings");
+            Sheet sheet = wb.createSheet("Milestone Templates");
             Row header = sheet.createRow(0);
             String[] headers = {"Sno", "Slab Name", "Percent (%)", "Active"};
             for (int c = 0; c < headers.length; c++) {

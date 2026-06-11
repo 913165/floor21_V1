@@ -13,6 +13,14 @@ public final class PercentageFormatter {
         if (percent == null) {
             return "\u2014";
         }
-        return percent.setScale(2, RoundingMode.HALF_UP).toPlainString() + " %";
+        return formatPlain(percent) + " %";
+    }
+
+    /** Plain percent without trailing zeros, e.g. {@code 10} or {@code 2.5}. */
+    public static String formatPlain(BigDecimal percent) {
+        if (percent == null) {
+            return "\u2014";
+        }
+        return percent.stripTrailingZeros().toPlainString();
     }
 }
