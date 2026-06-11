@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="toggle(unitId)"
+     class="floor21-area-unit-toggle"
+     th:id="${unitId}"
+     role="group"
+     aria-label="Measurement unit">
+  <button type="button"
+          class="floor21-area-unit-toggle__btn is-active"
+          data-area-unit-value="sqft"
+          aria-pressed="true">Sq ft</button>
+  <button type="button"
+          class="floor21-area-unit-toggle__btn"
+          data-area-unit-value="sqm"
+          aria-pressed="false">Sq m</button>
+</div>
+</body>
+</html>

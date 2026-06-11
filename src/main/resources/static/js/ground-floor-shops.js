@@ -1,7 +1,6 @@
 (function () {
   "use strict";
 
-  var SQFT_PER_SQM = 10.763910416709722;
   var DEFAULT_PARKING_CAR_SIZE_PERCENT = 180;
   var DEFAULT_SHOP_SIZE_PERCENT = 140;
 
@@ -29,38 +28,22 @@
     return grid ? grid.getAttribute("data-building-id") : null;
   }
 
-  function getAreaUnit() {
-    try {
-      return localStorage.getItem("floor21.areaUnit") === "sqm" ? "sqm" : "sqft";
-    } catch (e) {
-      return "sqft";
+  function formatAreaDualDisplay(sqft) {
+    return window.Floor21AreaUnit && window.Floor21AreaUnit.formatDualDisplay
+      ? window.Floor21AreaUnit.formatDualDisplay(sqft)
+      : "—";
+  }
+
+  function setAreaPair(pairId, sqftValue) {
+    if (window.Floor21AreaUnit && window.Floor21AreaUnit.setPairFromSqft) {
+      window.Floor21AreaUnit.setPairFromSqft(pairId, sqftValue);
     }
   }
 
-  function areaUnitSuffix() {
-    return getAreaUnit() === "sqm" ? " sq m" : " sq ft";
-  }
-
-  function formatAreaForDisplay(sqft) {
-    var num = Number(sqft);
-    if (isNaN(num)) return sqft;
-    if (getAreaUnit() === "sqm") {
-      return (num / SQFT_PER_SQM).toFixed(2);
-    }
-    return String(Math.round(num));
-  }
-
-  function readAreaSqft(input, unitSel) {
-    if (!input) return null;
-    var raw = input.value.trim();
-    if (raw === "") return null;
-    var num = Number(raw);
-    if (isNaN(num)) return null;
-    var unit = unitSel && unitSel.value === "sqm" ? "sqm" : "sqft";
-    if (unit === "sqm") {
-      return Math.round(num * SQFT_PER_SQM * 100) / 100;
-    }
-    return num;
+  function readAreaPair(pairId) {
+    return window.Floor21AreaUnit && window.Floor21AreaUnit.readSqftFromPair
+      ? window.Floor21AreaUnit.readSqftFromPair(pairId)
+      : null;
   }
 
   function showConfigError(message) {
@@ -245,7 +228,7 @@
       : "";
     var areaLabel =
       slot.areaSqft != null && slot.areaSqft !== ""
-        ? " · " + formatAreaForDisplay(slot.areaSqft) + areaUnitSuffix()
+        ? " · " + formatAreaDualDisplay(slot.areaSqft)
         : "";
     var title = "Shop " + slot.slotNumber + (slot.flatNumber ? " — " + slot.flatNumber : "") + areaLabel;
     return (
@@ -1162,13 +1145,8 @@
 
   function populateConfigForm(panel) {
     var countEl = document.getElementById("ground-floor-config-shop-count");
-    var areaEl = document.getElementById("ground-floor-config-area");
-    var areaUnitEl = document.getElementById("ground-floor-config-area-unit");
-    var areaLabel = document.getElementById("ground-floor-config-area-label");
     var shopSizeEl = document.getElementById("ground-floor-config-shop-size");
     var parkingCountEl = document.getElementById("ground-floor-config-parking-count");
-    var parkingAreaEl = document.getElementById("ground-floor-config-parking-area");
-    var parkingAreaLabel = document.getElementById("ground-floor-config-parking-area-label");
     var parkingCarSize = document.getElementById("ground-floor-config-parking-car-size");
     var carLiftEl = document.getElementById("ground-floor-config-car-lift-count");
     var passengerLiftEl = document.getElementById("ground-floor-config-passenger-lift-count");
@@ -1177,21 +1155,10 @@
       var existingCount = panel && panel.dataset.shopCount ? Number(panel.dataset.shopCount) : 0;
       countEl.value = existingCount > 0 ? String(existingCount) : "4";
     }
-    if (areaUnitEl) areaUnitEl.value = getAreaUnit();
-    if (areaEl) {
-      areaEl.value = formatAreaForDisplay(
-        panel && panel.dataset.shopArea ? panel.dataset.shopArea : "350"
-      );
-      areaEl.step = getAreaUnit() === "sqm" ? "0.01" : "1";
-    }
-    if (areaLabel) {
-      areaLabel.textContent =
-        areaLabel.getAttribute("data-area-label-base") + " (" + areaUnitSuffix().trim() + ")";
-    }
-    if (parkingAreaLabel) {
-      parkingAreaLabel.textContent =
-        parkingAreaLabel.getAttribute("data-area-label-base") + " (" + areaUnitSuffix().trim() + ")";
-    }
+    setAreaPair(
+      "ground-floor-config-area",
+      panel && panel.dataset.shopArea ? panel.dataset.shopArea : "350"
+    );
     if (shopSizeEl) {
       var shopSize =
         panel && panel.dataset.shopSizePercent
@@ -1206,12 +1173,10 @@
           ? panel.dataset.parkingSlotCount
           : "0";
     }
-    if (parkingAreaEl) {
-      parkingAreaEl.value = formatAreaForDisplay(
-        panel && panel.dataset.parkingSlotArea ? panel.dataset.parkingSlotArea : "150"
-      );
-      parkingAreaEl.step = getAreaUnit() === "sqm" ? "0.01" : "1";
-    }
+    setAreaPair(
+      "ground-floor-config-parking-area",
+      panel && panel.dataset.parkingSlotArea ? panel.dataset.parkingSlotArea : "150"
+    );
     if (parkingCarSize) {
       var carSize =
         panel && panel.dataset.parkingCarSizePercent
@@ -1233,6 +1198,10 @@
     if (gateEl) {
       gateEl.value = panel && panel.dataset.gateCount != null ? panel.dataset.gateCount : "1";
     }
+    if (window.Floor21AreaUnit && window.Floor21AreaUnit.bindDualAreaInputs) {
+      var modalEl = document.getElementById("ground-floor-config-modal");
+      window.Floor21AreaUnit.bindDualAreaInputs(modalEl || document);
+    }
   }
 
   function openConfigModal() {
@@ -1253,10 +1222,7 @@
   async function saveConfig() {
     var id = buildingId();
     var countEl = document.getElementById("ground-floor-config-shop-count");
-    var areaEl = document.getElementById("ground-floor-config-area");
-    var areaUnitEl = document.getElementById("ground-floor-config-area-unit");
     var parkingCountEl = document.getElementById("ground-floor-config-parking-count");
-    var parkingAreaEl = document.getElementById("ground-floor-config-parking-area");
     var parkingCarSizeEl = document.getElementById("ground-floor-config-parking-car-size");
     var shopSizeEl = document.getElementById("ground-floor-config-shop-size");
     var carLiftEl = document.getElementById("ground-floor-config-car-lift-count");
@@ -1268,7 +1234,7 @@
       showConfigError("Enter a shop count between 1 and 50.");
       return;
     }
-    var shopAreaSqft = readAreaSqft(areaEl, areaUnitEl);
+    var shopAreaSqft = readAreaPair("ground-floor-config-area");
     if (shopAreaSqft == null || shopAreaSqft <= 0) {
       showConfigError("Enter a shop area greater than zero.");
       return;
@@ -1278,7 +1244,7 @@
       showConfigError("Enter a parking slot count between 0 and 50.");
       return;
     }
-    var parkingSlotAreaSqft = readAreaSqft(parkingAreaEl, areaUnitEl);
+    var parkingSlotAreaSqft = readAreaPair("ground-floor-config-parking-area");
     if (parkingSlotCount > 0 && (parkingSlotAreaSqft == null || parkingSlotAreaSqft <= 0)) {
       showConfigError("Enter a parking slot area greater than zero.");
       return;

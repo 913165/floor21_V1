@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- pairId: base id for input, e.g. admin-super-builder-area. displayId optional for read-only line. -->
+<th:block th:fragment="field(pairId, label, displayId, editClass)">
+  <div class="floor21-area-field mb-2" th:attr="data-area-pair=${pairId}">
+    <div class="text-muted small"
+         th:id="${pairId + '-label'}"
+         th:attr="data-area-label-base=${label}"
+         th:text="${label}">Area</div>
+    <p th:if="${displayId != null and !#strings.isEmpty(displayId)}"
+       th:id="${displayId}"
+       class="floor21-area-dual-display mb-1"
+       th:attr="data-area-display-for=${pairId}">—</p>
+    <div class="floor21-area-field-edit"
+         th:classappend="${editClass != null ? ' ' + editClass : ''}">
+      <div class="floor21-area-field-edit__toolbar d-flex align-items-center justify-content-end gap-2 mb-1">
+        <div class="floor21-area-unit-toggle"
+             th:id="${pairId + '-unit'}"
+             role="group"
+             th:attr="aria-label=${label + ' measurement unit'}"
+             data-area-unit-value="sqft">
+          <button type="button"
+                  class="floor21-area-unit-toggle__btn is-active"
+                  data-area-unit-value="sqft"
+                  aria-pressed="true">Sq ft</button>
+          <button type="button"
+                  class="floor21-area-unit-toggle__btn"
+                  data-area-unit-value="sqm"
+                  aria-pressed="false">Sq m</button>
+        </div>
+      </div>
+      <input class="form-control form-control-sm"
+             type="number"
+             th:id="${pairId}"
+             data-area-input="true"
+             th:attr="data-area-pair=${pairId}"
+             min="0"
+             step="1"
+             placeholder="—"/>
+    </div>
+  </div>
+</th:block>
+</body>
+</html>

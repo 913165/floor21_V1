@@ -299,10 +299,9 @@
 
   function syncShopSlotAdminFields(slotEl) {
     if (!slotEl) return;
-    var superBuilder = document.getElementById("admin-super-builder-area");
     var price = document.getElementById("admin-price");
     var bhk = document.getElementById("admin-bhk");
-    if (superBuilder) superBuilder.value = formatAreaForDisplay(slotEl.dataset.area || slotEl.getAttribute("data-area"));
+    setAreaPair("admin-super-builder-area", slotEl.dataset.area || slotEl.getAttribute("data-area"));
     if (price) price.value = slotEl.dataset.price || slotEl.getAttribute("data-price") || "";
     if (bhk) bhk.value = "SHOP";
     showAdminError("");
@@ -432,15 +431,12 @@
       var col = document.getElementById(id);
       if (col) col.classList.toggle("d-none", parkingMode || shop);
     });
-    var areaLabel = document.getElementById("panel-super-builder-area-label");
-    if (areaLabel) {
-      if (shop) {
-        areaLabel.textContent = "Shop area (" + areaUnitSuffix() + ")";
-      } else if (parkingMode) {
-        areaLabel.textContent = "Parking slot area (" + areaUnitSuffix() + ")";
-      } else {
-        updateAreaUnitLabels();
-      }
+    if (shop) {
+      updatePanelAreaLabel("shop");
+    } else if (parkingMode) {
+      updatePanelAreaLabel("parking");
+    } else {
+      updatePanelAreaLabel();
     }
     if (section || slot || shop) {
       setAdminEditModeVisible(isPlatformAdminEdit());
@@ -491,14 +487,11 @@
 
   function syncParkingSectionAdminFields(sectionEl) {
     if (!sectionEl) return;
-    var superBuilder = document.getElementById("admin-super-builder-area");
-    var carpet = document.getElementById("admin-carpet-area");
-    var balcony = document.getElementById("admin-balcony-area");
     var price = document.getElementById("admin-price");
     var bhk = document.getElementById("admin-bhk");
-    if (superBuilder) superBuilder.value = formatAreaForDisplay(sectionEl.dataset.area);
-    if (carpet) carpet.value = "";
-    if (balcony) balcony.value = "";
+    setAreaPair("admin-super-builder-area", sectionEl.dataset.area);
+    setAreaPair("admin-carpet-area", null);
+    setAreaPair("admin-balcony-area", null);
     if (price) price.value = sectionEl.dataset.price || "";
     if (bhk) bhk.value = "PKG";
     showAdminError("");
@@ -622,147 +615,144 @@
     return body;
   }
 
-  function showAdminError(message) {
-    var el = document.getElementById("admin-error");
-    if (!el) return;
+  function adminStatusTargets() {
+    return ["flat-details-status", "admin-save-inline-status"]
+      .map(function (id) {
+        return document.getElementById(id);
+      })
+      .filter(Boolean);
+  }
+
+  function showAdminSuccess(message) {
+    var targets = adminStatusTargets();
+    if (!targets.length) return;
     if (!message) {
-      el.textContent = "";
-      el.classList.add("d-none");
+      targets.forEach(function (el) {
+        el.textContent = "";
+        el.classList.add("d-none");
+        el.classList.remove("alert-danger");
+        el.classList.add("alert-info");
+      });
       return;
     }
-    el.textContent = message;
-    el.classList.remove("d-none");
-  }
-
-  var AREA_UNIT_STORAGE_KEY = "floor21.areaUnit";
-  var SQFT_PER_SQM = 10.763910416709722;
-
-  function getAreaUnit() {
-    var sel = document.getElementById("panel-area-unit");
-    if (sel) {
-      return sel.value === "sqm" ? "sqm" : "sqft";
-    }
-    try {
-      return localStorage.getItem(AREA_UNIT_STORAGE_KEY) === "sqm" ? "sqm" : "sqft";
-    } catch (e) {
-      return "sqft";
-    }
-  }
-
-  function setAreaUnit(unit) {
-    var normalized = unit === "sqm" ? "sqm" : "sqft";
-    try {
-      localStorage.setItem(AREA_UNIT_STORAGE_KEY, normalized);
-    } catch (e) {
-      /* ignore storage errors */
-    }
-    var panelSel = document.getElementById("panel-area-unit");
-    if (panelSel && panelSel.value !== normalized) {
-      panelSel.value = normalized;
-    }
-    var addSel = document.getElementById("flat-add-area-unit");
-    if (addSel && addSel.value !== normalized) {
-      addSel.value = normalized;
-    }
-    var parkingSel = document.getElementById("parking-config-area-unit");
-    if (parkingSel && parkingSel.value !== normalized) {
-      parkingSel.value = normalized;
-    }
-    updateAreaUnitLabels();
-    refreshParkingSectionMetaDisplays();
-  }
-
-  function areaUnitSuffix() {
-    return getAreaUnit() === "sqm" ? "sq m" : "sq ft";
-  }
-
-  function formatAreaForDisplay(sqftValue) {
-    if (sqftValue == null || sqftValue === "") {
-      return "";
-    }
-    var num = Number(sqftValue);
-    if (isNaN(num)) {
-      return String(sqftValue);
-    }
-    if (getAreaUnit() === "sqm") {
-      return (num / SQFT_PER_SQM).toFixed(2);
-    }
-    var rounded = Math.round(num * 100) / 100;
-    return String(rounded);
-  }
-
-  function parseAreaInputToSqft(inputValue) {
-    if (inputValue === "" || inputValue == null) {
-      return null;
-    }
-    var num = Number(String(inputValue).trim());
-    if (isNaN(num)) {
-      return null;
-    }
-    if (getAreaUnit() === "sqm") {
-      return Math.round(num * SQFT_PER_SQM * 100) / 100;
-    }
-    return num;
-  }
-
-  function readAreaInputSqft(inputEl) {
-    if (!inputEl) return null;
-    var raw = inputEl.value.trim();
-    if (raw === "") return null;
-    return parseAreaInputToSqft(raw);
-  }
-
-  function convertAllAreaInputDisplays(fromUnit, toUnit) {
-    if (fromUnit === toUnit) return;
-    [
-      "admin-super-builder-area",
-      "admin-carpet-area",
-      "admin-balcony-area",
-      "flat-add-super-builder-area",
-      "flat-add-carpet-area",
-      "flat-add-balcony-area",
-      "unit-type-defaults-super-builder-area",
-      "unit-type-defaults-carpet-area",
-      "unit-type-defaults-balcony-area",
-      "parking-config-area",
-    ].forEach(function (id) {
-      var input = document.getElementById(id);
-      if (!input) return;
-      var raw = input.value.trim();
-      if (raw === "") return;
-      var num = Number(raw);
-      if (isNaN(num)) return;
-      if (fromUnit === "sqm" && toUnit === "sqft") {
-        input.value = String(Math.round(num * SQFT_PER_SQM * 100) / 100);
-      } else if (fromUnit === "sqft" && toUnit === "sqm") {
-        input.value = (num / SQFT_PER_SQM).toFixed(2);
-      }
+    targets.forEach(function (el) {
+      el.textContent = message;
+      el.classList.remove("d-none", "alert-danger");
+      el.classList.add("alert-info");
     });
+    var top = document.getElementById("flat-details-status");
+    if (top) {
+      var modalBody = document.querySelector("#flat-details-modal .modal-body");
+      if (modalBody) {
+        modalBody.scrollTop = 0;
+      }
+      if (typeof top.scrollIntoView === "function") {
+        top.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+    clearTimeout(window._adminSuccessHideTimer);
+    window._adminSuccessHideTimer = setTimeout(function () {
+      showAdminSuccess("");
+    }, 8000);
   }
 
-  function refreshAreaPanelDisplayOnly() {
-    if (selectedParkingSection && selectedParkingFloorNumber) {
-      var section = document.querySelector(
-        '.flat-parking-section[data-floor-number="' + selectedParkingFloorNumber + '"]'
-      );
-      if (section) setAreaPanelFromDataset(section);
+  function showAdminError(message) {
+    var errEl = document.getElementById("admin-error");
+    var statusTargets = adminStatusTargets();
+    if (!errEl && !statusTargets.length) return;
+    if (!message) {
+      if (errEl) {
+        errEl.textContent = "";
+        errEl.classList.add("d-none");
+      }
       return;
     }
-    if (selectedFlatId) {
-      var card = document.getElementById("flat-" + selectedFlatId);
-      if (card) setAreaPanelFromDataset(card);
+    showAdminSuccess("");
+    if (errEl) {
+      errEl.textContent = message;
+      errEl.classList.remove("d-none");
     }
+    statusTargets.forEach(function (el) {
+      el.textContent = message;
+      el.classList.remove("d-none", "alert-info");
+      el.classList.add("alert-danger");
+    });
+    var top = document.getElementById("flat-details-status");
+    if (top && typeof top.scrollIntoView === "function") {
+      top.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function areaUnitApi() {
+    return window.Floor21AreaUnit;
+  }
+
+  function formatAreaDualDisplay(sqftValue) {
+    var api = areaUnitApi();
+    return api ? api.formatDualDisplay(sqftValue) : "—";
+  }
+
+  function setAreaPair(pairId, sqftValue, options) {
+    var api = areaUnitApi();
+    if (api) {
+      api.setPairFromSqft(pairId, sqftValue, options || {});
+    }
+  }
+
+  function readAreaPair(pairId) {
+    var api = areaUnitApi();
+    return api ? api.readSqftFromPair(pairId) : null;
+  }
+
+  function initDualAreaFields() {
+    var api = areaUnitApi();
+    if (api) {
+      api.bindDualAreaInputs(document);
+    }
+  }
+
+  function bindDualAreaFieldsIn(root) {
+    var api = areaUnitApi();
+    if (api && root) {
+      api.bindDualAreaInputs(root);
+    }
+  }
+
+  function updatePanelAreaLabel(context) {
+    var label = document.getElementById("admin-super-builder-area-label");
+    if (!label) return;
+    var base = label.getAttribute("data-area-label-base") || "Super built-up area";
+    if (context === "shop") {
+      label.textContent = "Shop area";
+    } else if (context === "parking") {
+      label.textContent = "Parking slot area";
+    } else {
+      label.textContent = base;
+    }
+  }
+
+  function setAreaDisplayValue(el, sqftRaw) {
+    if (!el) return;
+    var pairId = el.getAttribute("data-area-display-for");
+    if (pairId) {
+      setAreaPair(pairId, sqftRaw, { updateInputs: false });
+      return;
+    }
+    if (sqftRaw == null || sqftRaw === "") {
+      el.removeAttribute("data-sqft-value");
+      el.textContent = "—";
+      return;
+    }
+    el.setAttribute("data-sqft-value", String(sqftRaw));
+    el.textContent = formatAreaDualDisplay(sqftRaw);
   }
 
   function syncAdminAreaInputsFromFlat(flat) {
     if (!flat) return;
-    var superBuilder = document.getElementById("admin-super-builder-area");
-    var carpet = document.getElementById("admin-carpet-area");
-    var balcony = document.getElementById("admin-balcony-area");
     var price = document.getElementById("admin-price");
-    if (superBuilder) superBuilder.value = formatAreaForDisplay(flat.areaSqft);
-    if (carpet) carpet.value = formatAreaForDisplay(flat.carpetAreaSqft);
-    if (balcony) balcony.value = formatAreaForDisplay(flat.balconyAreaSqft);
+    setAreaPair("admin-super-builder-area", flat.areaSqft);
+    setAreaPair("admin-carpet-area", flat.carpetAreaSqft);
+    setAreaPair("admin-balcony-area", flat.balconyAreaSqft);
     if (price) price.value = flat.basePrice != null ? String(flat.basePrice) : "";
     syncColumnTypePanelFromFlat(flat);
   }
@@ -803,27 +793,20 @@
     }
   }
 
-  function updateAreaUnitLabels() {
-    var suffix = areaUnitSuffix();
-    document.querySelectorAll("[data-area-label-base]").forEach(function (label) {
-      label.textContent = label.getAttribute("data-area-label-base") + " (" + suffix + ")";
-    });
-    var step = getAreaUnit() === "sqm" ? "0.01" : "1";
-    document.querySelectorAll("[data-area-input]").forEach(function (input) {
-      input.step = step;
-      var base = input.getAttribute("aria-label") || input.id || "Area";
-      input.setAttribute("aria-label", base + " in " + suffix);
-    });
-  }
-
   function syncAdminAreaInputsFromDataset(cardEl) {
     if (!cardEl) return;
-    var superBuilder = document.getElementById("admin-super-builder-area");
-    var carpet = document.getElementById("admin-carpet-area");
-    var balcony = document.getElementById("admin-balcony-area");
-    if (superBuilder) superBuilder.value = formatAreaForDisplay(cardEl.dataset.area);
-    if (carpet) carpet.value = formatAreaForDisplay(cardEl.dataset.carpetArea);
-    if (balcony) balcony.value = formatAreaForDisplay(cardEl.dataset.balconyArea);
+    setAreaPair(
+      "admin-super-builder-area",
+      getEffectiveFlatDatasetValue(cardEl, "area", "areaSqft") || cardEl.dataset.area
+    );
+    setAreaPair(
+      "admin-carpet-area",
+      getEffectiveFlatDatasetValue(cardEl, "carpetArea", "carpetAreaSqft") || cardEl.dataset.carpetArea
+    );
+    setAreaPair(
+      "admin-balcony-area",
+      getEffectiveFlatDatasetValue(cardEl, "balconyArea", "balconyAreaSqft") || cardEl.dataset.balconyArea
+    );
   }
 
   function refreshAreaPanelForCurrentSelection() {
@@ -850,66 +833,12 @@
     }
   }
 
-  function initAreaUnitSelector() {
-    var unit = "sqft";
-    try {
-      unit = localStorage.getItem(AREA_UNIT_STORAGE_KEY) === "sqm" ? "sqm" : "sqft";
-    } catch (e) {
-      unit = "sqft";
-    }
-    var panelSel = document.getElementById("panel-area-unit");
-    if (panelSel) {
-      panelSel.value = unit;
-      panelSel.addEventListener("change", function () {
-        var nextUnit = panelSel.value === "sqm" ? "sqm" : "sqft";
-        var prevUnit = nextUnit === "sqm" ? "sqft" : "sqm";
-        convertAllAreaInputDisplays(prevUnit, nextUnit);
-        setAreaUnit(nextUnit);
-        refreshAreaPanelDisplayOnly();
-      });
-    }
-    var addSel = document.getElementById("flat-add-area-unit");
-    if (addSel) {
-      addSel.value = unit;
-      addSel.addEventListener("change", function () {
-        var nextUnit = addSel.value === "sqm" ? "sqm" : "sqft";
-        var prevUnit = nextUnit === "sqm" ? "sqft" : "sqm";
-        convertAllAreaInputDisplays(prevUnit, nextUnit);
-        setAreaUnit(nextUnit);
-        var panelSelSync = document.getElementById("panel-area-unit");
-        if (panelSelSync && panelSelSync.value !== nextUnit) {
-          panelSelSync.value = nextUnit;
-        }
-        refreshAreaPanelDisplayOnly();
-      });
-    }
-    var parkingSel = document.getElementById("parking-config-area-unit");
-    if (parkingSel) {
-      parkingSel.value = unit;
-      parkingSel.addEventListener("change", function () {
-        var nextUnit = parkingSel.value === "sqm" ? "sqm" : "sqft";
-        var prevUnit = nextUnit === "sqm" ? "sqft" : "sqm";
-        convertAllAreaInputDisplays(prevUnit, nextUnit);
-        setAreaUnit(nextUnit);
-        refreshAreaPanelDisplayOnly();
-      });
-    }
-    updateAreaUnitLabels();
+  function initDualAreaFieldBindings() {
+    initDualAreaFields();
   }
 
   function readParkingConfigAreaSqft() {
-    var input = document.getElementById("parking-config-area");
-    var unitSel = document.getElementById("parking-config-area-unit");
-    if (!input) return null;
-    var raw = input.value.trim();
-    if (raw === "") return null;
-    var num = Number(raw);
-    if (isNaN(num)) return null;
-    var unit = unitSel && unitSel.value === "sqm" ? "sqm" : "sqft";
-    if (unit === "sqm") {
-      return Math.round(num * SQFT_PER_SQM * 100) / 100;
-    }
-    return num;
+    return readAreaPair("parking-config-area");
   }
 
   function formatParkingAreaRange(areas) {
@@ -924,10 +853,27 @@
     if (!nums.length) return "";
     var min = Math.min.apply(null, nums);
     var max = Math.max.apply(null, nums);
+    var api = areaUnitApi();
     if (min === max) {
-      return formatAreaForDisplay(min) + " " + areaUnitSuffix() + "/slot";
+      return formatAreaDualDisplay(min) + "/slot";
     }
-    return formatAreaForDisplay(min) + "–" + formatAreaForDisplay(max) + " " + areaUnitSuffix() + "/slot";
+    if (api && api.sqftToSqmNumber) {
+      var minSqft = Math.round(min * 100) / 100;
+      var maxSqft = Math.round(max * 100) / 100;
+      var minSqm = api.sqftToSqmNumber(min);
+      var maxSqm = api.sqftToSqmNumber(max);
+      return (
+        minSqft +
+        "–" +
+        maxSqft +
+        " sq ft · " +
+        minSqm.toFixed(2) +
+        "–" +
+        maxSqm.toFixed(2) +
+        " sq m/slot"
+      );
+    }
+    return min + "–" + max + " sq ft/slot";
   }
 
   function collectParkingSlotAreas(floor) {
@@ -1008,54 +954,36 @@
 
   function setAreaPanelFromDataset(el) {
     if (!el) return;
-    var superBuilder = document.getElementById("panel-super-builder-area");
-    var carpet = document.getElementById("panel-carpet-area");
-    var balcony = document.getElementById("panel-balcony-area");
-    if (superBuilder) {
-      superBuilder.textContent = formatAreaForDisplay(
-        getEffectiveFlatDatasetValue(el, "area", "areaSqft") || el.dataset.area
-      );
-    }
-    if (carpet) {
-      carpet.textContent = formatAreaForDisplay(
-        getEffectiveFlatDatasetValue(el, "carpetArea", "carpetAreaSqft") || el.dataset.carpetArea
-      );
-    }
-    if (balcony) {
-      balcony.textContent = formatAreaForDisplay(
-        getEffectiveFlatDatasetValue(el, "balconyArea", "balconyAreaSqft") || el.dataset.balconyArea
-      );
-    }
+    setAreaPair(
+      "admin-super-builder-area",
+      getEffectiveFlatDatasetValue(el, "area", "areaSqft") || el.dataset.area
+    );
+    setAreaPair(
+      "admin-carpet-area",
+      getEffectiveFlatDatasetValue(el, "carpetArea", "carpetAreaSqft") || el.dataset.carpetArea
+    );
+    setAreaPair(
+      "admin-balcony-area",
+      getEffectiveFlatDatasetValue(el, "balconyArea", "balconyAreaSqft") || el.dataset.balconyArea
+    );
   }
 
   function setAreaPanelFromFlat(flat) {
     if (!flat) return;
-    var superBuilder = document.getElementById("panel-super-builder-area");
-    var carpet = document.getElementById("panel-carpet-area");
-    var balcony = document.getElementById("panel-balcony-area");
-    if (superBuilder) {
-      superBuilder.textContent = formatAreaForDisplay(flat.areaSqft);
-    }
-    if (carpet) {
-      carpet.textContent = formatAreaForDisplay(flat.carpetAreaSqft);
-    }
-    if (balcony) {
-      balcony.textContent = formatAreaForDisplay(flat.balconyAreaSqft);
-    }
+    setAreaPair("admin-super-builder-area", flat.areaSqft);
+    setAreaPair("admin-carpet-area", flat.carpetAreaSqft);
+    setAreaPair("admin-balcony-area", flat.balconyAreaSqft);
   }
 
   function readAdminForm(options) {
     var opts = options || {};
     var bhk = document.getElementById("admin-bhk");
-    var superBuilder = document.getElementById("admin-super-builder-area");
-    var carpet = document.getElementById("admin-carpet-area");
-    var balcony = document.getElementById("admin-balcony-area");
     var price = document.getElementById("admin-price");
     var payload = {
       bhkType: bhk ? bhk.value : "",
-      areaSqft: readAreaInputSqft(superBuilder),
-      carpetAreaSqft: readAreaInputSqft(carpet),
-      balconyAreaSqft: readAreaInputSqft(balcony),
+      areaSqft: readAreaPair("admin-super-builder-area"),
+      carpetAreaSqft: readAreaPair("admin-carpet-area"),
+      balconyAreaSqft: readAreaPair("admin-balcony-area"),
       basePrice: price && price.value.trim() !== "" ? Number(price.value.trim()) : null,
     };
     if (opts.includeColumnType) {
@@ -1133,19 +1061,19 @@
     if (superBuilderInput) {
       superBuilderInput.placeholder =
         defaults && defaults.areaSqft != null
-          ? formatAreaForDisplay(defaults.areaSqft)
+          ? String(Math.round(defaults.areaSqft))
           : "Leave blank for default";
     }
     if (carpetInput) {
       carpetInput.placeholder =
         defaults && defaults.carpetAreaSqft != null
-          ? formatAreaForDisplay(defaults.carpetAreaSqft)
+          ? String(Math.round(defaults.carpetAreaSqft))
           : "Leave blank for default";
     }
     if (balconyInput) {
       balconyInput.placeholder =
         defaults && defaults.balconyAreaSqft != null
-          ? formatAreaForDisplay(defaults.balconyAreaSqft)
+          ? String(Math.round(defaults.balconyAreaSqft))
           : "Leave blank for default";
     }
     if (priceInput) {
@@ -1165,21 +1093,10 @@
     }
     var type = bhkSel ? bhkSel.value : bhkType;
     var entry = getConfiguredTypeDefaults(type);
-    var superBuilder = document.getElementById("unit-type-defaults-super-builder-area");
-    var carpet = document.getElementById("unit-type-defaults-carpet-area");
-    var balcony = document.getElementById("unit-type-defaults-balcony-area");
     var price = document.getElementById("unit-type-defaults-price");
-    if (superBuilder) {
-      superBuilder.value = entry && entry.areaSqft != null ? formatAreaForDisplay(entry.areaSqft) : "";
-    }
-    if (carpet) {
-      carpet.value =
-        entry && entry.carpetAreaSqft != null ? formatAreaForDisplay(entry.carpetAreaSqft) : "";
-    }
-    if (balcony) {
-      balcony.value =
-        entry && entry.balconyAreaSqft != null ? formatAreaForDisplay(entry.balconyAreaSqft) : "";
-    }
+    setAreaPair("unit-type-defaults-super-builder-area", entry ? entry.areaSqft : null);
+    setAreaPair("unit-type-defaults-carpet-area", entry ? entry.carpetAreaSqft : null);
+    setAreaPair("unit-type-defaults-balcony-area", entry ? entry.balconyAreaSqft : null);
     if (price) {
       price.value = entry && entry.basePrice != null ? String(entry.basePrice) : "";
     }
@@ -1209,30 +1126,23 @@
     mountModalsOnBody();
     await loadUnitTypeDefaults(false);
     populateUnitTypeDefaultsModal(bhkType || null);
-    var unitSel = document.getElementById("unit-type-defaults-area-unit");
-    if (unitSel) {
-      unitSel.value = getAreaUnit();
-    }
-    updateAreaUnitLabels();
     showUnitTypeDefaultsError("");
     var modalEl = document.getElementById("unit-type-defaults-modal");
     if (modalEl && typeof bootstrap !== "undefined" && bootstrap.Modal) {
+      bindDualAreaFieldsIn(modalEl);
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
   }
 
   function readUnitTypeDefaultsFormPayload() {
     var bhkSel = document.getElementById("unit-type-defaults-bhk");
-    var superBuilder = document.getElementById("unit-type-defaults-super-builder-area");
-    var carpet = document.getElementById("unit-type-defaults-carpet-area");
-    var balcony = document.getElementById("unit-type-defaults-balcony-area");
     var price = document.getElementById("unit-type-defaults-price");
     if (!bhkSel) return null;
     return {
       bhkType: bhkSel.value,
-      areaSqft: readAreaInputSqft(superBuilder),
-      carpetAreaSqft: readAreaInputSqft(carpet),
-      balconyAreaSqft: readAreaInputSqft(balcony),
+      areaSqft: readAreaPair("unit-type-defaults-super-builder-area"),
+      carpetAreaSqft: readAreaPair("unit-type-defaults-carpet-area"),
+      balconyAreaSqft: readAreaPair("unit-type-defaults-balcony-area"),
       basePrice: price && price.value.trim() !== "" ? Number(price.value.trim()) : null,
     };
   }
@@ -1342,9 +1252,6 @@
     var entry = getConfiguredColumnDefaults(col);
     var bhkSel = document.getElementById("column-type-defaults-bhk");
     var typeLabel = document.getElementById("column-type-defaults-type-label");
-    var superBuilder = document.getElementById("column-type-defaults-super-builder-area");
-    var carpet = document.getElementById("column-type-defaults-carpet-area");
-    var balcony = document.getElementById("column-type-defaults-balcony-area");
     var price = document.getElementById("column-type-defaults-price");
     if (bhkSel) {
       bhkSel.value = entry && entry.bhkType != null ? String(entry.bhkType) : "";
@@ -1353,17 +1260,9 @@
       typeLabel.value =
         entry && entry.layoutColumnType != null ? String(entry.layoutColumnType) : "";
     }
-    if (superBuilder) {
-      superBuilder.value = entry && entry.areaSqft != null ? formatAreaForDisplay(entry.areaSqft) : "";
-    }
-    if (carpet) {
-      carpet.value =
-        entry && entry.carpetAreaSqft != null ? formatAreaForDisplay(entry.carpetAreaSqft) : "";
-    }
-    if (balcony) {
-      balcony.value =
-        entry && entry.balconyAreaSqft != null ? formatAreaForDisplay(entry.balconyAreaSqft) : "";
-    }
+    setAreaPair("column-type-defaults-super-builder-area", entry ? entry.areaSqft : null);
+    setAreaPair("column-type-defaults-carpet-area", entry ? entry.carpetAreaSqft : null);
+    setAreaPair("column-type-defaults-balcony-area", entry ? entry.balconyAreaSqft : null);
     if (price) {
       price.value = entry && entry.basePrice != null ? String(entry.basePrice) : "";
     }
@@ -1399,14 +1298,10 @@
     mountModalsOnBody();
     await loadColumnTypeDefaults(false);
     populateColumnTypeDefaultsModal(columnNumber || null);
-    var unitSel = document.getElementById("column-type-defaults-area-unit");
-    if (unitSel) {
-      unitSel.value = getAreaUnit();
-    }
-    updateAreaUnitLabels();
     showColumnTypeDefaultsError("");
     var modalEl = document.getElementById("column-type-defaults-modal");
     if (modalEl && typeof bootstrap !== "undefined" && bootstrap.Modal) {
+      bindDualAreaFieldsIn(modalEl);
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
   }
@@ -1415,18 +1310,15 @@
     var colSel = document.getElementById("column-type-defaults-column");
     var typeLabel = document.getElementById("column-type-defaults-type-label");
     var bhkSel = document.getElementById("column-type-defaults-bhk");
-    var superBuilder = document.getElementById("column-type-defaults-super-builder-area");
-    var carpet = document.getElementById("column-type-defaults-carpet-area");
-    var balcony = document.getElementById("column-type-defaults-balcony-area");
     var price = document.getElementById("column-type-defaults-price");
     if (!colSel) return null;
     return {
       columnNumber: Number(colSel.value),
       bhkType: bhkSel ? bhkSel.value.trim() : "",
       layoutColumnType: typeLabel ? typeLabel.value.trim() : "",
-      areaSqft: readAreaInputSqft(superBuilder),
-      carpetAreaSqft: readAreaInputSqft(carpet),
-      balconyAreaSqft: readAreaInputSqft(balcony),
+      areaSqft: readAreaPair("column-type-defaults-super-builder-area"),
+      carpetAreaSqft: readAreaPair("column-type-defaults-carpet-area"),
+      balconyAreaSqft: readAreaPair("column-type-defaults-balcony-area"),
       basePrice: price && price.value.trim() !== "" ? Number(price.value.trim()) : null,
     };
   }
@@ -1675,30 +1567,11 @@
       if (panel) panel.classList.remove("d-none");
       showAdminError("");
       var bhk = document.getElementById("admin-bhk");
-      var superBuilder = document.getElementById("admin-super-builder-area");
-      var carpet = document.getElementById("admin-carpet-area");
-      var balcony = document.getElementById("admin-balcony-area");
       var price = document.getElementById("admin-price");
       var partner = document.getElementById("admin-partner");
       var currentType = cardEl.dataset.type || "2BHK";
       if (bhk) ensureAdminBhkOption(bhk, currentType);
-      if (superBuilder) {
-        superBuilder.value = formatAreaForDisplay(
-          getEffectiveFlatDatasetValue(cardEl, "area", "areaSqft") || cardEl.dataset.area
-        );
-      }
-      if (carpet) {
-        carpet.value = formatAreaForDisplay(
-          getEffectiveFlatDatasetValue(cardEl, "carpetArea", "carpetAreaSqft") ||
-            cardEl.dataset.carpetArea
-        );
-      }
-      if (balcony) {
-        balcony.value = formatAreaForDisplay(
-          getEffectiveFlatDatasetValue(cardEl, "balconyArea", "balconyAreaSqft") ||
-            cardEl.dataset.balconyArea
-        );
-      }
+      syncAdminAreaInputsFromDataset(cardEl);
       if (price) {
         price.value =
           getEffectiveFlatDatasetValue(cardEl, "price", "basePrice") || cardEl.dataset.price || "";
@@ -1714,9 +1587,11 @@
           bhk.removeAttribute("title");
         }
       }
-      [superBuilder, carpet, balcony, price].forEach(function (input) {
+      ["admin-super-builder-area", "admin-carpet-area", "admin-balcony-area"].forEach(function (id) {
+        var input = document.getElementById(id);
         if (input) input.disabled = false;
       });
+      if (price) price.disabled = false;
       var adminApplyFloor = document.getElementById("admin-apply-floor-btn");
       if (adminApplyFloor) {
         adminApplyFloor.disabled = isBooked;
@@ -2533,7 +2408,7 @@
     var dragClass = canLink && !snapshotReadOnly ? " parking-plan__slot--draggable" : "";
     var areaLabel =
       slot.areaSqft != null && slot.areaSqft !== ""
-        ? " · " + formatAreaForDisplay(slot.areaSqft) + " " + areaUnitSuffix()
+        ? " · " + formatAreaDualDisplay(slot.areaSqft)
         : "";
     var title = linked
       ? "Slot " + slotNumber + " — linked to flat " + linked + areaLabel
@@ -3407,16 +3282,8 @@
     if (gateCount) {
       gateCount.value = sectionEl.dataset.gateCount != null ? sectionEl.dataset.gateCount : "1";
     }
-    var parkingAreaUnit = document.getElementById("parking-config-area-unit");
-    if (parkingAreaUnit) {
-      parkingAreaUnit.value = getAreaUnit();
-    }
-    var parkingArea = document.getElementById("parking-config-area");
-    if (parkingArea) {
-      var sqftArea = sectionEl.dataset.area || "150";
-      parkingArea.value = formatAreaForDisplay(sqftArea);
-    }
-    updateAreaUnitLabels();
+    setAreaPair("parking-config-area", sectionEl.dataset.area || "150");
+    bindDualAreaFieldsIn(modalEl);
     showParkingConfigError("");
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
@@ -3458,8 +3325,7 @@
       if (gateCount) {
         gateCount.value = sectionEl.dataset.gateCount != null ? sectionEl.dataset.gateCount : "1";
       }
-      var parkingArea = document.getElementById("parking-config-area");
-      if (parkingArea) parkingArea.value = formatAreaForDisplay(sectionEl.dataset.area || "150");
+      setAreaPair("parking-config-area", sectionEl.dataset.area || "150");
     } else {
       if (slots) slots.value = "4";
       if (carSize) {
@@ -3469,12 +3335,9 @@
       if (carLiftCount) carLiftCount.value = "1";
       if (passengerLiftCount) passengerLiftCount.value = "0";
       if (gateCount) gateCount.value = "1";
-      var parkingAreaNew = document.getElementById("parking-config-area");
-      if (parkingAreaNew) parkingAreaNew.value = formatAreaForDisplay("150");
+      setAreaPair("parking-config-area", "150");
     }
-    var parkingAreaUnit = document.getElementById("parking-config-area-unit");
-    if (parkingAreaUnit) parkingAreaUnit.value = getAreaUnit();
-    updateAreaUnitLabels();
+    bindDualAreaFieldsIn(modalEl);
     showParkingConfigError("");
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   };
@@ -4442,15 +4305,15 @@
   function openFlatDetailsModal() {
     var modalEl = document.getElementById("flat-details-modal");
     if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) return;
+    bindDualAreaFieldsIn(modalEl);
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
   function syncParkingSlotAdminFields(slotEl) {
     if (!slotEl) return;
-    var superBuilder = document.getElementById("admin-super-builder-area");
     var price = document.getElementById("admin-price");
     var bhk = document.getElementById("admin-bhk");
-    if (superBuilder) superBuilder.value = formatAreaForDisplay(slotEl.dataset.area);
+    setAreaPair("admin-super-builder-area", slotEl.dataset.area);
     if (price) price.value = slotEl.dataset.price || "0";
     if (bhk) bhk.value = "PKG";
     showAdminError("");
@@ -4652,6 +4515,7 @@
     setParkingSlotMode(false);
     setParkingSectionMode(false);
     selectedFlatId = el.dataset.flatId;
+    showAdminSuccess("");
     var titleEl = document.getElementById("panel-title");
     var flatNumEl = el.querySelector(".flat-number");
     var flatLabel = flatNumEl ? flatNumEl.textContent.trim() : "";
@@ -6222,7 +6086,7 @@
       window.addEventListener("resize", scheduleDuplexLinks);
     }
     loadSalesPartnersIntoSelect();
-    initAreaUnitSelector();
+    initDualAreaFieldBindings();
     if (isPlatformAdminEdit()) {
       loadUnitTypeDefaults(true);
       loadColumnTypeDefaults(true);
@@ -6250,21 +6114,6 @@
         updateUnitTypeDefaultsModalTitle(unitDefaultsBhk.value);
       });
     }
-    var unitDefaultsAreaUnit = document.getElementById("unit-type-defaults-area-unit");
-    if (unitDefaultsAreaUnit) {
-      unitDefaultsAreaUnit.addEventListener("change", function () {
-        var nextUnit = unitDefaultsAreaUnit.value === "sqm" ? "sqm" : "sqft";
-        var prevUnit = nextUnit === "sqm" ? "sqft" : "sqm";
-        convertAllAreaInputDisplays(prevUnit, nextUnit);
-        setAreaUnit(nextUnit);
-        var panelSel = document.getElementById("panel-area-unit");
-        if (panelSel) panelSel.value = nextUnit;
-        var addSel = document.getElementById("flat-add-area-unit");
-        if (addSel) addSel.value = nextUnit;
-        updateAreaUnitLabels();
-        refreshAreaPanelDisplayOnly();
-      });
-    }
     var unitDefaultsSave = document.getElementById("unit-type-defaults-save");
     if (unitDefaultsSave) {
       unitDefaultsSave.addEventListener("click", function () {
@@ -6282,23 +6131,6 @@
       columnDefaultsCol.addEventListener("change", function () {
         populateColumnTypeDefaultsModal(columnDefaultsCol.value);
         updateColumnTypeDefaultsModalTitle(columnDefaultsCol.value);
-      });
-    }
-    var columnDefaultsAreaUnit = document.getElementById("column-type-defaults-area-unit");
-    if (columnDefaultsAreaUnit) {
-      columnDefaultsAreaUnit.addEventListener("change", function () {
-        var nextUnit = columnDefaultsAreaUnit.value === "sqm" ? "sqm" : "sqft";
-        var prevUnit = nextUnit === "sqm" ? "sqft" : "sqm";
-        convertAllAreaInputDisplays(prevUnit, nextUnit);
-        setAreaUnit(nextUnit);
-        var panelSel = document.getElementById("panel-area-unit");
-        if (panelSel) panelSel.value = nextUnit;
-        var addSel = document.getElementById("flat-add-area-unit");
-        if (addSel) addSel.value = nextUnit;
-        var unitDefaultsAreaUnit = document.getElementById("unit-type-defaults-area-unit");
-        if (unitDefaultsAreaUnit) unitDefaultsAreaUnit.value = nextUnit;
-        updateAreaUnitLabels();
-        refreshAreaPanelDisplayOnly();
       });
     }
     var columnDefaultsSave = document.getElementById("column-type-defaults-save");
@@ -6485,17 +6317,30 @@
     if (adminSave) {
       adminSave.addEventListener("click", async function () {
         if (!selectedFlatId) return;
+        var saveLabel = adminSave.textContent;
         showAdminError("");
+        showAdminSuccess("");
+        adminSave.disabled = true;
+        adminSave.textContent = "Saving…";
         var form = readAdminForm({
           includeColumnType: !selectedParkingSlot && !selectedParkingSection && !selectedShopUnit,
         });
         var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
-        var res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/details", {
-          method: "POST",
-          headers: headers,
-          body: JSON.stringify(form),
-        });
-        if (!res.ok) {
+        var res;
+        try {
+          res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/details", {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify(form),
+          });
+        } catch (err) {
+          showAdminError("Could not save — check your connection and try again.");
+          return;
+        } finally {
+          adminSave.disabled = false;
+          adminSave.textContent = saveLabel;
+        }
+        if (!res || !res.ok) {
           showAdminError(await parseErrorResponse(res));
           return;
         }
@@ -6507,6 +6352,7 @@
             flat.basePrice != null ? String(flat.basePrice) : "";
           setAreaPanelFromFlat(flat);
           syncShopSlotAdminFields(selectedShopSlotElement);
+          showAdminSuccess("Saved — unit type, area, and price updated.");
           return;
         }
         if (selectedParkingSlot) {
@@ -6515,8 +6361,10 @@
           setAreaPanelFromFlat(flat);
           syncParkingSlotAdminFields(selectedParkingSlotElement);
           refreshParkingSectionMetaDisplays();
+          showAdminSuccess("Saved — unit type, area, and price updated.");
           return;
         }
+        showAdminSuccess("Saved — unit type, area, and price updated.");
         var card = document.getElementById("flat-" + selectedFlatId);
         applyFlatDataToCard(card, flat);
         document.getElementById("panel-type").textContent = flat.bhkType || "";
@@ -6525,9 +6373,9 @@
         syncAdminAreaInputsFromFlat(flat);
         document.getElementById("panel-price").textContent = flat.basePrice != null ? String(flat.basePrice) : "";
         if (card) {
-          syncAdminPanel(card);
           syncActionButtons(card);
           syncFlatLayoutPanel(card);
+          syncAdminPanel(card);
         }
       });
     }
@@ -6669,30 +6517,17 @@
         if (bhkSel) {
           bhkSel.value = "2BHK";
         }
-        var superBuilderInput = document.getElementById("flat-add-super-builder-area");
-        var carpetInput = document.getElementById("flat-add-carpet-area");
-        var balconyInput = document.getElementById("flat-add-balcony-area");
-        if (superBuilderInput) {
-          superBuilderInput.value = "";
-        }
-        if (carpetInput) {
-          carpetInput.value = "";
-        }
-        if (balconyInput) {
-          balconyInput.value = "";
-        }
+        setAreaPair("flat-add-super-builder-area", null);
+        setAreaPair("flat-add-carpet-area", null);
+        setAreaPair("flat-add-balcony-area", null);
         var priceInput = document.getElementById("flat-add-price");
         if (priceInput) {
           priceInput.value = "";
         }
-        var addUnitSel = document.getElementById("flat-add-area-unit");
-        if (addUnitSel) {
-          addUnitSel.value = getAreaUnit();
-        }
-        updateAreaUnitLabels();
         updateFlatAddPlaceholders();
         var addModal = document.getElementById("flat-add-modal");
         if (addModal && window.bootstrap && bootstrap.Modal) {
+          bindDualAreaFieldsIn(addModal);
           bootstrap.Modal.getOrCreateInstance(addModal).show();
         }
       });
@@ -6706,23 +6541,17 @@
         if (!buildingId) return;
         var err = document.getElementById("flat-add-error");
         var bhkSel = document.getElementById("flat-add-bhk");
-        var superBuilderInput = document.getElementById("flat-add-super-builder-area");
-        var carpetInput = document.getElementById("flat-add-carpet-area");
-        var balconyInput = document.getElementById("flat-add-balcony-area");
         var priceInput = document.getElementById("flat-add-price");
         var payload = {
           floorNumber: parseInt(addFloorNumber, 10),
           bhkType: bhkSel ? bhkSel.value : "2BHK",
         };
-        if (superBuilderInput && superBuilderInput.value.trim()) {
-          payload.areaSqft = parseAreaInputToSqft(superBuilderInput.value);
-        }
-        if (carpetInput && carpetInput.value.trim()) {
-          payload.carpetAreaSqft = parseAreaInputToSqft(carpetInput.value);
-        }
-        if (balconyInput && balconyInput.value.trim()) {
-          payload.balconyAreaSqft = parseAreaInputToSqft(balconyInput.value);
-        }
+        var areaSqft = readAreaPair("flat-add-super-builder-area");
+        var carpetAreaSqft = readAreaPair("flat-add-carpet-area");
+        var balconyAreaSqft = readAreaPair("flat-add-balcony-area");
+        if (areaSqft != null) payload.areaSqft = areaSqft;
+        if (carpetAreaSqft != null) payload.carpetAreaSqft = carpetAreaSqft;
+        if (balconyAreaSqft != null) payload.balconyAreaSqft = balconyAreaSqft;
         if (priceInput && priceInput.value.trim()) {
           payload.basePrice = parseFloat(priceInput.value);
         }
