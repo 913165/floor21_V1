@@ -203,15 +203,25 @@
 
   /** Bootstrap backdrop is on body; modals must be too or backdrop blocks clicks. */
   function mountModalsOnBody() {
+    var main = document.getElementById("floor21-main");
     MODAL_ROOT_IDS.forEach(function (id) {
       var matches = document.querySelectorAll('[id="' + id + '"]');
       if (!matches.length) return;
-      for (var i = 0; i < matches.length - 1; i++) {
-        matches[i].remove();
+      var keep = matches[matches.length - 1];
+      if (main && matches.length > 1) {
+        Array.prototype.forEach.call(matches, function (node) {
+          if (main.contains(node)) {
+            keep = node;
+          }
+        });
       }
-      var el = matches[matches.length - 1];
-      if (el.parentElement !== document.body) {
-        document.body.appendChild(el);
+      Array.prototype.forEach.call(matches, function (node) {
+        if (node !== keep) {
+          node.remove();
+        }
+      });
+      if (keep.parentElement !== document.body) {
+        document.body.appendChild(keep);
       }
     });
   }
@@ -615,40 +625,41 @@
     return body;
   }
 
-  function adminStatusTargets() {
-    return ["flat-details-status", "admin-save-inline-status"]
-      .map(function (id) {
-        return document.getElementById(id);
-      })
-      .filter(Boolean);
+  function adminSaveStatusEl() {
+    return document.getElementById("admin-save-status");
   }
 
   function showAdminSuccess(message) {
-    var targets = adminStatusTargets();
-    if (!targets.length) return;
+    var aboveBtn = adminSaveStatusEl();
+    var top = document.getElementById("flat-details-status");
+    if (!aboveBtn && !top) return;
     if (!message) {
-      targets.forEach(function (el) {
-        el.textContent = "";
-        el.classList.add("d-none");
-        el.classList.remove("alert-danger");
-        el.classList.add("alert-info");
-      });
+      if (aboveBtn) {
+        aboveBtn.textContent = "";
+        aboveBtn.classList.add("d-none");
+        aboveBtn.classList.remove("text-danger");
+        aboveBtn.classList.add("text-primary");
+      }
+      if (top) {
+        top.textContent = "";
+        top.classList.add("d-none");
+        top.classList.remove("alert-danger");
+        top.classList.add("alert-info");
+      }
       return;
     }
-    targets.forEach(function (el) {
-      el.textContent = message;
-      el.classList.remove("d-none", "alert-danger");
-      el.classList.add("alert-info");
-    });
-    var top = document.getElementById("flat-details-status");
+    if (aboveBtn) {
+      aboveBtn.textContent = message;
+      aboveBtn.classList.remove("d-none", "text-danger");
+      aboveBtn.classList.add("text-primary");
+      if (typeof aboveBtn.scrollIntoView === "function") {
+        aboveBtn.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
     if (top) {
-      var modalBody = document.querySelector("#flat-details-modal .modal-body");
-      if (modalBody) {
-        modalBody.scrollTop = 0;
-      }
-      if (typeof top.scrollIntoView === "function") {
-        top.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      top.textContent = message;
+      top.classList.remove("d-none", "alert-danger");
+      top.classList.add("alert-info");
     }
     clearTimeout(window._adminSuccessHideTimer);
     window._adminSuccessHideTimer = setTimeout(function () {
@@ -658,8 +669,9 @@
 
   function showAdminError(message) {
     var errEl = document.getElementById("admin-error");
-    var statusTargets = adminStatusTargets();
-    if (!errEl && !statusTargets.length) return;
+    var aboveBtn = adminSaveStatusEl();
+    var top = document.getElementById("flat-details-status");
+    if (!errEl && !aboveBtn && !top) return;
     if (!message) {
       if (errEl) {
         errEl.textContent = "";
@@ -672,14 +684,18 @@
       errEl.textContent = message;
       errEl.classList.remove("d-none");
     }
-    statusTargets.forEach(function (el) {
-      el.textContent = message;
-      el.classList.remove("d-none", "alert-info");
-      el.classList.add("alert-danger");
-    });
-    var top = document.getElementById("flat-details-status");
-    if (top && typeof top.scrollIntoView === "function") {
-      top.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (aboveBtn) {
+      aboveBtn.textContent = message;
+      aboveBtn.classList.remove("d-none", "text-primary");
+      aboveBtn.classList.add("text-danger");
+      if (typeof aboveBtn.scrollIntoView === "function") {
+        aboveBtn.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+    if (top) {
+      top.textContent = message;
+      top.classList.remove("d-none", "alert-info");
+      top.classList.add("alert-danger");
     }
   }
 
@@ -6047,6 +6063,94 @@
     });
   }
 
+  function showAdminSaveProgress(message) {
+    var el = adminSaveStatusEl();
+    if (!el) return;
+    if (!message) {
+      el.textContent = "";
+      el.classList.add("d-none");
+      return;
+    }
+    clearTimeout(window._adminSuccessHideTimer);
+    el.textContent = message;
+    el.classList.remove("d-none", "text-danger");
+    el.classList.add("text-primary");
+  }
+
+  async function handleAdminSaveClick(adminSave) {
+    if (!selectedFlatId) return;
+    var saveLabel = adminSave.textContent;
+    showAdminError("");
+    showAdminSuccess("");
+    showAdminSaveProgress("Saving…");
+    adminSave.disabled = true;
+    adminSave.textContent = "Saving…";
+    var form = readAdminForm({
+      includeColumnType: !selectedParkingSlot && !selectedParkingSection && !selectedShopUnit,
+    });
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    var res;
+    try {
+      res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/details", {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify(form),
+      });
+    } catch (err) {
+      showAdminError("Could not save — check your connection and try again.");
+      return;
+    } finally {
+      adminSave.disabled = false;
+      adminSave.textContent = saveLabel;
+    }
+    if (!res || !res.ok) {
+      showAdminError(await parseErrorResponse(res));
+      return;
+    }
+    var flat = await res.json();
+    applyFlatDataToParkingSlot(selectedFlatId, flat);
+    applyFlatDataToShopSlot(selectedFlatId, flat);
+    if (selectedShopUnit) {
+      document.getElementById("panel-price").textContent =
+        flat.basePrice != null ? String(flat.basePrice) : "";
+      setAreaPanelFromFlat(flat);
+      syncShopSlotAdminFields(selectedShopSlotElement);
+      showAdminSuccess("Saved — unit type, area, and price updated.");
+      return;
+    }
+    if (selectedParkingSlot) {
+      document.getElementById("panel-price").textContent =
+        flat.basePrice != null ? String(flat.basePrice) : "";
+      setAreaPanelFromFlat(flat);
+      syncParkingSlotAdminFields(selectedParkingSlotElement);
+      refreshParkingSectionMetaDisplays();
+      showAdminSuccess("Saved — unit type, area, and price updated.");
+      return;
+    }
+    showAdminSuccess("Saved — unit type, area, and price updated.");
+    var card = document.getElementById("flat-" + selectedFlatId);
+    applyFlatDataToCard(card, flat);
+    document.getElementById("panel-type").textContent = flat.bhkType || "";
+    syncColumnTypePanelFromFlat(flat);
+    setAreaPanelFromFlat(flat);
+    syncAdminAreaInputsFromFlat(flat);
+    document.getElementById("panel-price").textContent = flat.basePrice != null ? String(flat.basePrice) : "";
+    if (card) {
+      syncActionButtons(card);
+      syncFlatLayoutPanel(card);
+      syncAdminPanel(card);
+    }
+  }
+
+  function bindAdminSaveButton() {
+    var adminSave = document.getElementById("admin-save-btn");
+    if (!adminSave || adminSave.dataset.saveBound === "true") return;
+    adminSave.dataset.saveBound = "true";
+    adminSave.addEventListener("click", function () {
+      void handleAdminSaveClick(adminSave);
+    });
+  }
+
   function ensureParkingConfigSaveBinding() {
     if (window.__f21ParkingSaveClickHandler) {
       document.removeEventListener("click", window.__f21ParkingSaveClickHandler, true);
@@ -6066,6 +6170,7 @@
 
   onPageReady(function () {
     mountModalsOnBody();
+    bindAdminSaveButton();
     ensureParkingConfigSaveBinding();
     bindBuildingSnapshotInteractions();
     initBuildingSnapshotButtons();
@@ -6309,73 +6414,6 @@
               window.alert("This flat is not assigned to you.");
             }
           }
-        }
-      });
-    }
-
-    var adminSave = document.getElementById("admin-save-btn");
-    if (adminSave) {
-      adminSave.addEventListener("click", async function () {
-        if (!selectedFlatId) return;
-        var saveLabel = adminSave.textContent;
-        showAdminError("");
-        showAdminSuccess("");
-        adminSave.disabled = true;
-        adminSave.textContent = "Saving…";
-        var form = readAdminForm({
-          includeColumnType: !selectedParkingSlot && !selectedParkingSection && !selectedShopUnit,
-        });
-        var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
-        var res;
-        try {
-          res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/details", {
-            method: "POST",
-            headers: headers,
-            body: JSON.stringify(form),
-          });
-        } catch (err) {
-          showAdminError("Could not save — check your connection and try again.");
-          return;
-        } finally {
-          adminSave.disabled = false;
-          adminSave.textContent = saveLabel;
-        }
-        if (!res || !res.ok) {
-          showAdminError(await parseErrorResponse(res));
-          return;
-        }
-        var flat = await res.json();
-        applyFlatDataToParkingSlot(selectedFlatId, flat);
-        applyFlatDataToShopSlot(selectedFlatId, flat);
-        if (selectedShopUnit) {
-          document.getElementById("panel-price").textContent =
-            flat.basePrice != null ? String(flat.basePrice) : "";
-          setAreaPanelFromFlat(flat);
-          syncShopSlotAdminFields(selectedShopSlotElement);
-          showAdminSuccess("Saved — unit type, area, and price updated.");
-          return;
-        }
-        if (selectedParkingSlot) {
-          document.getElementById("panel-price").textContent =
-            flat.basePrice != null ? String(flat.basePrice) : "";
-          setAreaPanelFromFlat(flat);
-          syncParkingSlotAdminFields(selectedParkingSlotElement);
-          refreshParkingSectionMetaDisplays();
-          showAdminSuccess("Saved — unit type, area, and price updated.");
-          return;
-        }
-        showAdminSuccess("Saved — unit type, area, and price updated.");
-        var card = document.getElementById("flat-" + selectedFlatId);
-        applyFlatDataToCard(card, flat);
-        document.getElementById("panel-type").textContent = flat.bhkType || "";
-        syncColumnTypePanelFromFlat(flat);
-        setAreaPanelFromFlat(flat);
-        syncAdminAreaInputsFromFlat(flat);
-        document.getElementById("panel-price").textContent = flat.basePrice != null ? String(flat.basePrice) : "";
-        if (card) {
-          syncActionButtons(card);
-          syncFlatLayoutPanel(card);
-          syncAdminPanel(card);
         }
       });
     }

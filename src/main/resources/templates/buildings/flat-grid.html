@@ -782,13 +782,13 @@
               </th:block>
             </div>
             <div class="col-12 d-none admin-edit-field mt-2 pt-1" id="admin-save-row" sec:authorize="hasRole('SUPER_ADMIN')">
+              <div id="admin-save-status"
+                   class="admin-save-status text-primary fw-semibold small mb-2 d-none"
+                   role="status"
+                   aria-live="polite"></div>
               <div class="d-flex flex-wrap align-items-center gap-2">
                 <button type="button" class="btn btn-sm btn-primary" id="admin-save-btn">Save unit type / area / price</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" id="admin-apply-floor-btn">Apply to whole floor</button>
-                <span id="admin-save-inline-status"
-                      class="alert alert-info py-1 px-2 small mb-0 d-none flat-details-save-notice"
-                      role="status"
-                      aria-live="polite"></span>
               </div>
               <span class="text-muted small d-block mt-1" id="admin-save-hint">Leave fields blank to keep this unit only. Building-wide defaults are set in the Unit type defaults panel above the grid.</span>
             </div>
@@ -1138,7 +1138,7 @@
     </div>
   </div>
   <script defer th:src="@{/js/floor21-area-unit.js(v=area-single-field-v1)}"></script>
-  <script defer th:src="@{/js/flat-grid.js(v=admin-save-toast-v3)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=admin-save-toast-v4)}"></script>
   <script defer th:src="@{/js/ground-floor-shops.js(v=area-single-field-v1)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=7)}"></script>
 </div>
