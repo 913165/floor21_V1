@@ -24,15 +24,6 @@
        data-nav-exclude="/bookings/payment-schedule"
        th:classappend="${#strings.startsWith(path, '/bookings') and !#strings.startsWith(path, '/bookings/payment-schedule')} ? ' is-active' : ''">Bookings</a>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/receipts}"
-       data-nav-prefix="/receipts"
-       th:classappend="${#strings.startsWith(path, '/receipts')} ? ' is-active' : ''">Receipts entry</a>
-    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/bookings/payment-schedule}"
-       data-nav-prefix="/bookings/payment-schedule"
-       th:classappend="${#strings.startsWith(path, '/bookings/payment-schedule')} ? ' is-active' : ''"
-       title="View read-only payment slab schedule for each booking">Slabs (payment schedule)</a>
-    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/brokers}"
        data-nav-prefix="/brokers"
        th:classappend="${#strings.startsWith(path, '/brokers')} ? ' is-active' : ''">Brokers</a>
@@ -50,6 +41,15 @@
        th:href="@{/clients/milestone-setup}"
        data-nav-prefix="/clients/milestone-setup"
        th:classappend="${#strings.startsWith(path, '/clients/milestone-setup')} ? ' is-active' : ''">Milestone setup (Clients)</a>
+    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/receipts}"
+       data-nav-prefix="/receipts"
+       th:classappend="${#strings.startsWith(path, '/receipts')} ? ' is-active' : ''">Payment Receipts</a>
+    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/bookings/payment-schedule}"
+       data-nav-prefix="/bookings/payment-schedule"
+       th:classappend="${#strings.startsWith(path, '/bookings/payment-schedule')} ? ' is-active' : ''"
+       title="Per-booking payment schedule and slab receipts">Payment schedule (Clients)</a>
 
     <p class="floor21-nav__section" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Finance</p>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
@@ -95,11 +95,17 @@
        th:href="@{/clients/milestone-setup}"
        data-nav-prefix="/clients/milestone-setup"
        th:classappend="${#strings.startsWith(path, '/clients/milestone-setup')} ? ' is-active' : ''">Milestone setup (Clients)</a>
-
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
-       th:href="@{/admin/payment-milestones}"
-       data-nav-prefix="/admin/payment-milestones"
-       th:classappend="${#strings.startsWith(path, '/admin/payment-milestones')} ? ' is-active' : ''">Payment milestones</a>
+       th:href="@{/receipts}"
+       data-nav-prefix="/receipts"
+       th:classappend="${#strings.startsWith(path, '/receipts')} ? ' is-active' : ''">Payment Receipts</a>
+    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/bookings/payment-schedule}"
+       data-nav-prefix="/bookings/payment-schedule"
+       th:classappend="${#strings.startsWith(path, '/bookings/payment-schedule')} ? ' is-active' : ''"
+       title="Per-booking payment schedule and slab receipts">Payment schedule (Clients)</a>
+
+    <p class="floor21-nav__section" sec:authorize="hasRole('SUPER_ADMIN')">Others</p>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/activity}"
        data-nav-prefix="/admin/activity"

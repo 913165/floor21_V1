@@ -6,7 +6,7 @@ export async function createBookingForFlat(
   flatId: string,
   clientDisplayName: string,
   bookingDate = '2026-06-15',
-) {
+): Promise<string> {
   await page.goto(`bookings/new?flatId=${flatId}`, { waitUntil: 'commit' });
   const form = await waitForMainPanel(page);
   await expect(form.getByRole('heading', { name: 'New booking' })).toBeVisible();
@@ -23,6 +23,9 @@ export async function createBookingForFlat(
 
   const detail = await waitForMainPanel(page);
   await expect(detail.locator('.alert-success').filter({ hasText: 'Booking saved' }).first()).toBeVisible();
+  const bookingId = page.url().match(/\/bookings\/([0-9a-f-]+)/i)?.[1] ?? '';
+  expect(bookingId.length).toBeGreaterThan(0);
+  return bookingId;
 }
 
 export async function expectBookingInList(page: Page, clientDisplayName: string) {

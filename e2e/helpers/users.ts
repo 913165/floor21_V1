@@ -1,6 +1,9 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { waitForMainPanel } from './projects';
 
+/** Password for all partner users created by the E2E flow (easy to remember for manual checks). */
+export const E2E_USER_PASSWORD = 'user123';
+
 export type NewUserInput = {
   fullName: string;
   companyName: string;
@@ -28,7 +31,7 @@ export function sampleUserData(index: number): NewUserInput {
     fullName: `E2E User ${stamp}-${index}`,
     companyName: `E2E Company ${stamp}-${index}`,
     email: `e2e.user.${stamp}.${index}@example.com`,
-    password: 'e2e123456',
+    password: E2E_USER_PASSWORD,
     pan,
     tan,
     gst,
@@ -96,4 +99,16 @@ export async function createUser(page: Page, user: NewUserInput): Promise<Locato
 
 export function userRow(list: Locator, user: NewUserInput) {
   return list.locator('tbody tr').filter({ hasText: user.email });
+}
+
+/** Pick a user on Add owner/partner (server-backed search combobox). */
+export async function selectAssignableUser(form: Locator, user: NewUserInput) {
+  const search = form.locator('#user-id-search');
+  await expect(search).toBeVisible();
+  await search.click();
+  await search.fill(user.email);
+  const option = form.locator('.project-search-select__option').filter({ hasText: user.email });
+  await expect(option.first()).toBeVisible({ timeout: 15_000 });
+  await option.first().click();
+  await expect(form.locator('#user-id')).not.toHaveValue('');
 }

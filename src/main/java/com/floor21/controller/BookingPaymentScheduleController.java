@@ -80,7 +80,7 @@ public class BookingPaymentScheduleController {
             @RequestParam(required = false) UUID buildingId,
             @RequestParam(required = false) UUID bookingId,
             Model model) {
-        model.addAttribute("pageTitle", "Slabs — payment schedule");
+        model.addAttribute("pageTitle", "Payment schedule (Clients)");
         model.addAttribute("buildings", buildingService.listForTenant());
         model.addAttribute("selectedBuildingId", buildingId);
         model.addAttribute("bookings", bookingPaymentSlabService.listBookingsForSchedule(buildingId));

@@ -629,18 +629,17 @@ public class BookingPaymentSlabService {
                     return false;
                 }
             }
-            syncAgreedAmountsFromPercent(bookingId);
             return false;
         }
         long existing = bookingPaymentSlabRepository.countByBooking_Id(bookingId);
         boolean created = false;
         if (existing == 0) {
             createBookingSlabsFromMilestoneSlabs(booking, templates);
+            syncAgreedAmountsFromPercent(bookingId);
             created = true;
         } else {
             syncExistingBookingSlabsFromMilestoneSlabs(booking, templates);
         }
-        syncAgreedAmountsFromPercent(bookingId);
         return created;
     }
 
@@ -837,9 +836,13 @@ public class BookingPaymentSlabService {
             entity.setMilestoneLabel(label.trim());
             entity.setPercent(line.getPercent());
             entity.setExtraAmount(line.getExtraAmount() != null ? line.getExtraAmount() : BigDecimal.ZERO);
-            BigDecimal base = baseConsideration(booking);
-            BigDecimal agreed = computeAgreedPortion(base, line.getPercent());
-            entity.setAgreedAmount(agreed != null ? agreed : line.getAgreedAmount());
+            if (line.getAgreedAmount() != null) {
+                entity.setAgreedAmount(line.getAgreedAmount());
+            } else {
+                BigDecimal base = baseConsideration(booking);
+                BigDecimal agreed = computeAgreedPortion(base, line.getPercent());
+                entity.setAgreedAmount(agreed);
+            }
             entity.setUpdatedAt(now);
             bookingPaymentSlabRepository.save(entity);
             savePaymentsForSlab(entity, line.getPayments(), now);

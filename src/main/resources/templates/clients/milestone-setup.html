@@ -181,7 +181,6 @@
               <th class="text-center text-nowrap">Percent</th>
               <th class="text-center slab-schedule-th--agreed text-nowrap">Agree Slab Amount</th>
               <th class="text-center slab-schedule-th--extra text-nowrap">Extra Slab Amount</th>
-              <th class="text-center text-nowrap" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Action</th>
             </tr>
             </thead>
             <tbody>
@@ -189,30 +188,13 @@
                 class="slab-schedule-data-row milestone-slab-row"
                 th:attr="data-row-index=${stat.index}">
               <td class="col-sno text-center" th:text="${stat.count}">1</td>
-              <td class="text-nowrap p-1">
+              <td class="text-nowrap p-1 text-center">
                 <input type="hidden"
                        th:field="*{lines[__${stat.index}__].id}"/>
-                <input type="hidden"
-                       class="js-due-date-hidden"
-                       th:field="*{lines[__${stat.index}__].dueDate}"/>
-                <div class="d-flex gap-1 justify-content-center milestone-date-parts"
-                     th:attr="data-row-index=${stat.index}">
-                  <input type="text" inputmode="numeric" maxlength="2" placeholder="DD"
-                         class="form-control form-control-sm text-center milestone-date-dd"
-                         style="width:2.5rem"
-                         th:attr="data-initial=${slab.dueDate != null ? #temporals.format(slab.dueDate, 'dd') : ''}"
-                         th:readonly="${!editable}"/>
-                  <input type="text" inputmode="numeric" maxlength="2" placeholder="MM"
-                         class="form-control form-control-sm text-center milestone-date-mm"
-                         style="width:2.5rem"
-                         th:attr="data-initial=${slab.dueDate != null ? #temporals.format(slab.dueDate, 'MM') : ''}"
-                         th:readonly="${!editable}"/>
-                  <input type="text" inputmode="numeric" maxlength="4" placeholder="YYYY"
-                         class="form-control form-control-sm text-center milestone-date-yyyy"
-                         style="width:3.25rem"
-                         th:attr="data-initial=${slab.dueDate != null ? #temporals.format(slab.dueDate, 'yyyy') : ''}"
-                         th:readonly="${!editable}"/>
-                </div>
+                <input type="date"
+                       class="form-control form-control-sm js-ms-due-date milestone-slab-date"
+                       th:field="*{lines[__${stat.index}__].dueDate}"
+                       th:readonly="${!editable}"/>
               </td>
               <td class="p-1">
                 <input type="hidden" th:field="*{lines[__${stat.index}__].milestoneLabel}"/>
@@ -225,19 +207,16 @@
                       th:text="${pct.formatPlain(slab.percent)}">0</span>
               </td>
               <td class="p-1 text-end" style="width:8rem">
-                <input type="hidden" th:field="*{lines[__${stat.index}__].agreedAmount}"/>
-                <span class="d-block form-control form-control-sm text-end border-0 bg-transparent js-ms-agreed-display slab-amt--agreed"
-                      th:text="${amt.formatAmountDisplay(slab.agreedAmount)}">0</span>
+                <input type="text" inputmode="decimal"
+                       class="form-control form-control-sm text-end js-amount-input js-ms-agreed slab-amt-input--agreed"
+                       th:field="*{lines[__${stat.index}__].agreedAmount}"
+                       th:readonly="${!editable}"/>
               </td>
               <td class="p-1 text-end" style="width:7rem">
                 <input type="text" inputmode="decimal"
                        class="form-control form-control-sm text-end js-amount-input js-ms-extra slab-amt-input--extra"
                        th:field="*{lines[__${stat.index}__].extraAmount}"
-                       th:attr="data-amount-readonly=${!editable}"
                        th:readonly="${!editable}"/>
-              </td>
-              <td class="text-center p-1" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">
-                <button type="button" class="btn btn-sm btn-outline-primary js-ms-edit-row">Edit</button>
               </td>
             </tr>
             </tbody>
@@ -250,11 +229,10 @@
                   th:text="${amt.formatAmountDisplay(scheduleSummary.totalAgreedAmount())}">0</td>
               <td class="text-end fw-semibold slab-amt--extra" id="msTotalExtra"
                   th:text="${amt.formatAmountDisplay(scheduleSummary.totalExtraAmount())}">0</td>
-              <td sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"></td>
             </tr>
             <tr>
-              <td colspan="4" class="text-end small text-muted">Flat amount − agreed slabs</td>
-              <td colspan="2" class="text-end fw-semibold">
+              <td colspan="3" class="text-end small text-muted">Flat amount − agreed slabs</td>
+              <td colspan="3" class="text-end fw-semibold">
                 <span class="slab-amt--base" id="msConsideration"
                       th:text="${amt.formatAmountDisplay(scheduleSummary.considerationTotal())}">0</span>
                 <span class="text-muted"> − </span>
@@ -265,7 +243,6 @@
                       th:classappend="${scheduleSummary.remainingAgreedAmount() != null && scheduleSummary.remainingAgreedAmount().signum() != 0 ? 'text-danger fw-semibold' : 'text-success fw-semibold'}"
                       th:text="${scheduleSummary.remainingAgreedAmount() != null ? amt.formatAmountDisplay(scheduleSummary.remainingAgreedAmount()) : '-'}">0</span>
               </td>
-              <td sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"></td>
             </tr>
             </tfoot>
           </table>
@@ -285,7 +262,7 @@
   </th:block>
 
   <script defer th:src="@{/js/amount-format.js(v=milestone-setup)}"></script>
-  <script defer th:src="@{/js/milestone-setup.js(v=1)}"></script>
+  <script defer th:src="@{/js/milestone-setup.js(v=4)}"></script>
 </div>
 </body>
 </html>

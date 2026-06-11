@@ -13,6 +13,27 @@ export type NewClientInput = {
   email1?: string;
 };
 
+/** Fixed demo buyer for receipts / payment-schedule screenshots (partner 1, first client). */
+export const E2E_PRIMARY_BUYER = {
+  firstName: 'Client1',
+  lastName: 'Buyer',
+  email: 'client1@example.com',
+} as const;
+
+export function primaryBuyerClientData(): NewClientInput {
+  return {
+    firstName: E2E_PRIMARY_BUYER.firstName,
+    lastName: E2E_PRIMARY_BUYER.lastName,
+    email1: E2E_PRIMARY_BUYER.email,
+    address1: '101 Demo Heights, Andheri West',
+    city: 'Mumbai',
+    mobile1: '9876543210',
+    panNumber: 'ABCDE1234F',
+    aadhaarNumber: '123456789012',
+    dob: '1990-01-15',
+  };
+}
+
 export function sampleClientData(stamp: number, index = 1): NewClientInput {
   const digits = String((stamp + index) % 10000).padStart(4, '0');
   return {

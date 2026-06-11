@@ -2,17 +2,18 @@
 <html xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
-<div th:fragment="content">
+<div th:fragment="content"
+     th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}">
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-    <h1 class="h3 mb-0" th:text="${pageTitle}">Receipts entry</h1>
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Payment Receipts</h1>
     <a class="btn btn-outline-secondary" th:href="@{/bookings}">Bookings</a>
   </div>
 
-  <form class="card card-body shadow-sm mb-3" method="get" th:action="@{/receipts}">
+  <form class="card card-body shadow-sm mb-3" method="get" th:action="@{/receipts}" id="receiptPickerForm">
     <div class="row g-2 align-items-end">
       <div class="col-md-4">
         <label class="form-label">Building <span class="text-muted fw-normal">(optional)</span></label>
-        <select class="form-select" name="buildingId">
+        <select class="form-select" name="buildingId" id="receiptBuilding">
           <option value="">All buildings</option>
           <option th:each="bl : ${buildings}"
                   th:value="${bl.id}"
@@ -22,7 +23,7 @@
       </div>
       <div class="col-md-5">
         <label class="form-label">Booking <span class="text-danger">*</span></label>
-        <select class="form-select" name="bookingId" required>
+        <select class="form-select" name="bookingId" id="receiptBooking" required>
           <option value="" th:selected="${selectedBookingId == null}">Choose booking…</option>
           <option th:each="bk : ${bookings}"
                   th:value="${bk.id}"
@@ -31,15 +32,52 @@
         </select>
       </div>
       <div class="col-md-3">
-        <button class="btn btn-primary w-100" type="submit">Load</button>
+        <button class="btn btn-primary w-100" type="submit">Load booking</button>
       </div>
     </div>
   </form>
+  <script>
+    (function () {
+      const building = document.getElementById('receiptBuilding');
+      const booking = document.getElementById('receiptBooking');
+      const form = document.getElementById('receiptPickerForm');
+      if (!building || !booking || !form) return;
+      building.addEventListener('change', function () {
+        booking.value = '';
+        form.submit();
+      });
+    })();
+  </script>
 
   <th:block th:if="${selectedBooking != null}">
-    <div class="card shadow-sm mb-3 border-success border-opacity-50">
-      <div class="card-header text-success fw-semibold">Booked — summary</div>
-      <div class="card-body p-0">
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+    <div class="card shadow-sm mb-3 slab-schedule-card">
+      <div class="card-header py-2 fw-semibold">Booking summary</div>
+      <div class="card-body">
+        <div class="row g-2 small mb-3">
+          <div class="col-md-2">
+            <span class="text-muted">Flat</span><br/>
+            <span class="fw-semibold" th:text="${selectedBooking.flat != null ? selectedBooking.flat.flatNumber : '—'}">—</span>
+          </div>
+          <div class="col-md-3">
+            <span class="text-muted">Building</span><br/>
+            <span th:text="${selectedBooking.flat != null && selectedBooking.flat.building != null ? selectedBooking.flat.building.buildingName : '—'}">—</span>
+          </div>
+          <div class="col-md-2">
+            <span class="text-muted">Booked</span><br/>
+            <span th:text="${selectedBooking.bookingDate}">—</span>
+          </div>
+          <div class="col-md-3">
+            <span class="text-muted">Client</span><br/>
+            <span th:text="${selectedBooking.client.displayName()}">—</span>
+          </div>
+          <div class="col-md-2">
+            <span class="text-muted">Booking code</span><br/>
+            <span th:text="${selectedBooking.bookingCode}">—</span>
+          </div>
+        </div>
         <div class="table-responsive">
           <table class="table table-sm mb-0">
             <thead class="table-light">
@@ -53,15 +91,15 @@
             <tbody>
             <tr>
               <td>Consideration / agreement</td>
-              <td class="text-end" th:text="${summary.agreementTotal}"></td>
-              <td class="text-end" th:text="${summary.agreementReceived}"></td>
-              <td class="text-end" th:text="${summary.agreementBalance}"></td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(summary.agreementTotal)}">0</td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(summary.agreementReceived)}">0</td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(summary.agreementBalance)}">0</td>
             </tr>
             <tr th:if="${summary.showGstRow}">
               <td>GST (booking)</td>
-              <td class="text-end" th:text="${summary.gstTotal}"></td>
-              <td class="text-end" th:text="${summary.gstReceived}"></td>
-              <td class="text-end" th:text="${summary.gstBalance}"></td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(summary.gstTotal)}">0</td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(summary.gstReceived)}">0</td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(summary.gstBalance)}">0</td>
             </tr>
             </tbody>
           </table>
@@ -70,140 +108,17 @@
     </div>
 
     <div class="card shadow-sm mb-3">
-      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span th:text="${editingReceipt ? 'Edit receipt' : 'New receipt'}">New receipt</span>
-        <span class="text-muted small" th:if="${latestReceiptNumber != null}">
-          Latest receipt no.: <strong th:text="${latestReceiptNumber}"></strong>
-        </span>
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 py-2">
+        <span class="fw-semibold">Payment receipts</span>
+        <button th:unless="${editingReceipt}" type="button" class="btn btn-primary btn-sm"
+                data-bs-toggle="modal" data-bs-target="#receipt-form-modal">
+          New Payment receipt
+        </button>
+        <a th:if="${editingReceipt}" class="btn btn-primary btn-sm"
+           th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, openNew=true)}">
+          New Payment receipt
+        </a>
       </div>
-      <div class="card-body">
-        <form th:action="@{/receipts/save}" th:object="${receiptForm}" method="post" class="row g-3"
-              id="receipt-entry-form"
-              th:classappend="${receiptFormValidationFailed == true} ? ' border border-danger border-2 rounded-3 p-2' : ''">
-          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-          <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
-          <input type="hidden" name="buildingId" th:value="${selectedBuildingId}" th:if="${selectedBuildingId != null}"/>
-          <input type="hidden" th:if="${receiptForm.id != null}" th:field="*{id}"/>
-
-          <div class="col-12">
-            <label class="form-label text-muted small">Flat / client</label>
-            <input class="form-control" readonly
-                   th:value="|${selectedBooking.flat != null ? selectedBooking.flat.building.buildingName : ''} — ${selectedBooking.flat != null ? selectedBooking.flat.flatNumber : '—'} — ${selectedBooking.client.displayName()}|"/>
-          </div>
-          <div class="col-md-6" th:if="${!editingReceipt}">
-            <label class="form-label">Receipt no.</label>
-            <div class="form-control bg-light small mb-0">
-              Next receipt no. for this booking (last + 1):
-              <strong th:text="${nextReceiptNumberPreview}">1</strong>
-            </div>
-          </div>
-          <div class="col-md-6" th:if="${editingReceipt}">
-            <label class="form-label">Receipt no.</label>
-            <input class="form-control" readonly th:value="${receiptForm.receiptNumber}"/>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Date <span class="text-danger">*</span></label>
-            <input class="form-control" type="date" th:field="*{receiptDate}" required/>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Cheque date</label>
-            <input class="form-control" type="date" th:field="*{chequeDate}"/>
-          </div>
-          <div class="col-md-3 d-flex align-items-end">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" th:field="*{dishonoured}" id="dishonoured"/>
-              <label class="form-check-label" for="dishonoured">Dishonoured</label>
-            </div>
-          </div>
-
-          <div class="col-12">
-            <h6 class="text-muted border-bottom pb-1 mb-2">
-              Received (breakdown) <span class="text-danger">*</span>
-            </h6>
-            <p class="small text-muted mb-2">Enter at least one amount so the receipt total is greater than zero.</p>
-          </div>
-          <div class="col-md-4 col-lg-2">
-            <label class="form-label small">Consideration</label>
-            <input class="form-control form-control-sm" type="number" step="0.01" min="0" th:field="*{amountConsideration}"/>
-          </div>
-          <div class="col-md-4 col-lg-2">
-            <label class="form-label small">Extra charges</label>
-            <input class="form-control form-control-sm" type="number" step="0.01" min="0" th:field="*{amountExtraCharges}"/>
-          </div>
-          <div class="col-md-4 col-lg-2">
-            <label class="form-label small">Interest (agreement)</label>
-            <input class="form-control form-control-sm" type="number" step="0.01" min="0" th:field="*{amountInterestAgreement}"/>
-          </div>
-          <div class="col-md-4 col-lg-2">
-            <label class="form-label small">Interest (GST)</label>
-            <input class="form-control form-control-sm" type="number" step="0.01" min="0" th:field="*{amountInterestGst}"/>
-          </div>
-          <div class="col-md-4 col-lg-2">
-            <label class="form-label small">TDS</label>
-            <input class="form-control form-control-sm" type="number" step="0.01" min="0" th:field="*{amountTds}"/>
-          </div>
-          <div class="col-md-4 col-lg-2">
-            <label class="form-label small">GST</label>
-            <input class="form-control form-control-sm" type="number" step="0.01" min="0" th:field="*{amountGstComponent}"/>
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Mode</label>
-            <select class="form-select" th:field="*{paymentMode}">
-              <option value="">—</option>
-              <option value="Cheque">Cheque</option>
-              <option value="NEFT">NEFT</option>
-              <option value="RTGS">RTGS</option>
-              <option value="IMPS">IMPS</option>
-              <option value="UPI">UPI</option>
-              <option value="Cash">Cash</option>
-              <option value="Card">Card</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Cheque / ref. no.</label>
-            <input class="form-control" th:field="*{chequeNo}" maxlength="50"/>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Bank</label>
-            <input class="form-control" th:field="*{bankName}" maxlength="100"/>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Account (deposited to)</label>
-            <select class="form-select" th:field="*{depositBank.id}">
-              <option value="">— Choose saved bank account</option>
-              <option th:each="ba : ${bankAccounts}"
-                      th:value="${ba.id}"
-                      th:text="|${ba.bankName}${(ba.branch != null && !#strings.isEmpty(ba.branch)) ? ' — ' + ba.branch : ''}${(ba.accountNumber != null && !#strings.isEmpty(ba.accountNumber)) ? ' · ' + ba.accountNumber : ''}|"></option>
-            </select>
-            <div class="form-text">
-              Manage accounts under <a th:href="@{/bank-accounts}">Bank accounts</a>.
-              Inactive accounts are not listed.
-            </div>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Other deposit label <span class="text-muted fw-normal">(optional)</span></label>
-            <input class="form-control" th:field="*{depositAccount}" maxlength="200"
-                   placeholder="Only if you leave the account dropdown empty"/>
-            <div class="form-text text-muted">Ignored when a saved bank account is selected.</div>
-          </div>
-          <div class="col-12">
-            <label class="form-label">Particulars</label>
-            <textarea class="form-control" rows="2" th:field="*{remarks}"></textarea>
-          </div>
-          <div class="col-12">
-            <button class="btn btn-primary" type="submit" th:text="${editingReceipt ? 'Update receipt' : 'Save receipt'}">Save</button>
-            <a class="btn btn-link" th:if="${editingReceipt}"
-               th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId})}">Cancel edit</a>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div class="card shadow-sm mb-3">
-      <div class="card-header"
-           th:text="|Receipt list — ${selectedBooking.client.displayName()}|">Receipt history</div>
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-sm mb-0 align-middle">
@@ -222,8 +137,8 @@
             <tbody>
             <tr th:each="r, iter : ${receiptHistory}">
               <td th:text="${iter.count}">1</td>
-              <td th:text="${r.receiptDate}"></td>
-              <td th:text="${r.receiptNumber != null && !#strings.isEmpty(r.receiptNumber)} ? ${r.receiptNumber} : '—'">—</td>
+              <td th:text="${r.receiptDate}">—</td>
+              <td th:text="${r.receiptNumber != null && !#strings.isEmpty(r.receiptNumber) ? r.receiptNumber : '—'}">—</td>
               <td class="small text-break">
                 <span th:if="${r.paymentMode != null && !#strings.isEmpty(r.paymentMode)}"
                       th:text="|${r.paymentMode} |"></span>
@@ -234,12 +149,12 @@
                 <span class="text-muted"
                       th:text="|Cons ${r.amountConsideration} + Ex ${r.amountExtraCharges} + IntA ${r.amountInterestAgreement} + IntG ${r.amountInterestGst} + TDS ${r.amountTds} + GST ${r.amountGstComponent}|"></span>
               </td>
-              <td class="text-end" th:text="${r.amount}"></td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(r.amount)}">0</td>
               <td>
                 <span th:if="${r.dishonoured != null && r.dishonoured}" class="badge text-bg-warning">Yes</span>
                 <span th:unless="${r.dishonoured != null && r.dishonoured}" class="text-muted">—</span>
               </td>
-              <td class="small" th:text="${r.enteredByDisplay != null && !#strings.isEmpty(r.enteredByDisplay)} ? ${r.enteredByDisplay} : '—'">—</td>
+              <td class="small" th:text="${r.enteredByDisplay != null && !#strings.isEmpty(r.enteredByDisplay) ? r.enteredByDisplay : '—'}">—</td>
               <td class="text-end text-nowrap">
                 <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"
                    th:href="@{/receipts/{id}/print(id=${r.id}, bookingId=${selectedBooking.id})}">Print</a>
@@ -248,13 +163,23 @@
               </td>
             </tr>
             <tr th:if="${#lists.isEmpty(receiptHistory)}">
-              <td colspan="8" class="text-muted text-center py-4">No receipts yet for this booking.</td>
+              <td colspan="8" class="text-muted text-center py-4">
+                No payment receipts yet.
+                <button th:unless="${editingReceipt}" type="button" class="btn btn-link btn-sm p-0 align-baseline"
+                        data-bs-toggle="modal" data-bs-target="#receipt-form-modal">
+                  Record the first receipt
+                </button>
+                <a th:if="${editingReceipt}" class="btn btn-link btn-sm p-0 align-baseline"
+                   th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, openNew=true)}">
+                  Record the first receipt
+                </a>.
+              </td>
             </tr>
             </tbody>
             <tfoot class="table-light" th:if="${!#lists.isEmpty(receiptHistory)}">
             <tr>
               <th colspan="4" class="text-end">Total</th>
-              <th class="text-end" th:text="${historyTotal}"></th>
+              <th class="text-end" th:text="${amt.formatAmountDisplay(historyTotal)}">0</th>
               <th colspan="3"></th>
             </tr>
             </tfoot>
@@ -262,11 +187,167 @@
         </div>
       </div>
     </div>
-    <th:block th:if="${receiptFormValidationFailed == true}">
-      <script>
-        document.getElementById('receipt-entry-form')?.scrollIntoView({behavior: 'smooth', block: 'start'});
-      </script>
-    </th:block>
+
+    <div class="modal fade" id="receipt-form-modal" tabindex="-1"
+         aria-labelledby="receipt-form-modal-title" aria-hidden="true"
+         th:attr="data-open-on-load=${openReceiptModal == true || receiptFormValidationFailed == true}">
+      <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content shadow">
+          <div class="modal-header py-2 px-3 flex-wrap gap-2">
+            <h6 class="modal-title mb-0" id="receipt-form-modal-title"
+                th:text="${editingReceipt ? 'Edit payment receipt' : 'New payment receipt'}">
+              New payment receipt
+            </h6>
+            <span class="text-muted small ms-auto me-2" th:if="${latestReceiptNumber != null}">
+              Latest receipt no.: <strong th:text="${latestReceiptNumber}"></strong>
+            </span>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body py-3 px-3">
+            <form th:action="@{/receipts/save}" th:object="${receiptForm}" method="post" class="row g-3"
+                  id="receipt-entry-form"
+                  th:classappend="${receiptFormValidationFailed == true} ? ' border border-danger border-2 rounded-3 p-2' : ''">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+              <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
+              <input type="hidden" name="buildingId" th:value="${selectedBuildingId}" th:if="${selectedBuildingId != null}"/>
+              <input type="hidden" th:if="${receiptForm.id != null}" th:field="*{id}"/>
+
+              <div class="col-md-6" th:if="${!editingReceipt}">
+                <label class="form-label">Receipt no.</label>
+                <div class="form-control bg-body-secondary small mb-0 receipt-number-preview">
+                  Next receipt no. for this booking (last + 1):
+                  <strong th:text="${nextReceiptNumberPreview}">1</strong>
+                </div>
+              </div>
+              <div class="col-md-6" th:if="${editingReceipt}">
+                <label class="form-label">Receipt no.</label>
+                <input class="form-control" readonly th:value="${receiptForm.receiptNumber}"/>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Date <span class="text-danger">*</span></label>
+                <input class="form-control" type="date" th:field="*{receiptDate}" required/>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Cheque date</label>
+                <input class="form-control" type="date" th:field="*{chequeDate}"/>
+              </div>
+              <div class="col-md-3 d-flex align-items-end">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" th:field="*{dishonoured}" id="dishonoured"/>
+                  <label class="form-check-label" for="dishonoured">Dishonoured</label>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <h6 class="text-muted border-bottom pb-1 mb-2">
+                  Received (breakdown) <span class="text-danger">*</span>
+                </h6>
+                <p class="small text-muted mb-2">Enter at least one amount so the receipt total is greater than zero.</p>
+              </div>
+              <div class="col-md-4 col-lg-2">
+                <label class="form-label small">Consideration</label>
+                <input class="form-control form-control-sm" type="number" step="0.01" min="0" th:field="*{amountConsideration}"/>
+              </div>
+              <div class="col-md-4 col-lg-2">
+                <label class="form-label small">Extra charges</label>
+                <input class="form-control form-control-sm" type="number" step="0.01" min="0" th:field="*{amountExtraCharges}"/>
+              </div>
+              <div class="col-md-4 col-lg-2">
+                <label class="form-label small">Interest (agreement)</label>
+                <input class="form-control form-control-sm" type="number" step="0.01" min="0" th:field="*{amountInterestAgreement}"/>
+              </div>
+              <div class="col-md-4 col-lg-2">
+                <label class="form-label small">Interest (GST)</label>
+                <input class="form-control form-control-sm" type="number" step="0.01" min="0" th:field="*{amountInterestGst}"/>
+              </div>
+              <div class="col-md-4 col-lg-2">
+                <label class="form-label small">TDS</label>
+                <input class="form-control form-control-sm" type="number" step="0.01" min="0" th:field="*{amountTds}"/>
+              </div>
+              <div class="col-md-4 col-lg-2">
+                <label class="form-label small">GST</label>
+                <input class="form-control form-control-sm" type="number" step="0.01" min="0" th:field="*{amountGstComponent}"/>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label">Mode</label>
+                <select class="form-select" th:field="*{paymentMode}">
+                  <option value="">—</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="NEFT">NEFT</option>
+                  <option value="RTGS">RTGS</option>
+                  <option value="IMPS">IMPS</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Card">Card</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Cheque / ref. no.</label>
+                <input class="form-control" th:field="*{chequeNo}" maxlength="50"/>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Bank</label>
+                <input class="form-control" th:field="*{bankName}" maxlength="100"/>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Account (deposited to)</label>
+                <select class="form-select" th:field="*{depositBank.id}">
+                  <option value="">— Choose saved bank account</option>
+                  <option th:each="ba : ${bankAccounts}"
+                          th:value="${ba.id}"
+                          th:text="|${ba.bankName}${(ba.branch != null && !#strings.isEmpty(ba.branch)) ? ' — ' + ba.branch : ''}${(ba.accountNumber != null && !#strings.isEmpty(ba.accountNumber)) ? ' · ' + ba.accountNumber : ''}|"></option>
+                </select>
+                <div class="form-text">
+                  Manage accounts under <a th:href="@{/bank-accounts}">Bank accounts</a>.
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Other deposit label <span class="text-muted fw-normal">(optional)</span></label>
+                <input class="form-control" th:field="*{depositAccount}" maxlength="200"
+                       placeholder="Only if you leave the account dropdown empty"/>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Particulars</label>
+                <textarea class="form-control" rows="2" th:field="*{remarks}"></textarea>
+              </div>
+              <div class="col-12 d-flex flex-wrap gap-2">
+                <button class="btn btn-primary" type="submit"
+                        th:text="${editingReceipt ? 'Update receipt' : 'Save receipt'}">Save receipt</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
+                        th:unless="${editingReceipt}">Cancel</button>
+                <a class="btn btn-outline-secondary"
+                   th:if="${editingReceipt}"
+                   th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId})}">
+                  Cancel
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        function openReceiptModalIfNeeded() {
+          var modalEl = document.getElementById('receipt-form-modal');
+          if (!modalEl || modalEl.getAttribute('data-open-on-load') !== 'true') {
+            return;
+          }
+          if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+          }
+        }
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', openReceiptModalIfNeeded);
+        } else {
+          openReceiptModalIfNeeded();
+        }
+        document.addEventListener('turbo:load', openReceiptModalIfNeeded);
+      })();
+    </script>
   </th:block>
 </div>
 </body>

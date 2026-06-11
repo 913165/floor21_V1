@@ -3,7 +3,7 @@
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content">
-  <p class="text-muted small">Floor21 platform admin only. Builders use platform <strong>Payment milestones</strong> (admin menu) and <strong>Slabs (payment schedule)</strong> for instalments.</p>
+  <p class="text-muted small">Floor21 platform admin only. Partners use <strong>Milestone setup (Clients)</strong> and <strong>Payment schedule (Clients)</strong> for per-buyer instalments.</p>
   <h1 class="h3 mb-4" th:text="${pageTitle}">Slab</h1>
   <form class="card card-body shadow-sm" th:action="@{/admin/builder-pricing-slabs/save}" th:object="${slab}" method="post">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>

@@ -1,164 +1,164 @@
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout/base :: layout(~{::content})}">
-<body>
-<div th:fragment="content">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0" th:text="${pageTitle}">Payment schedule</h1>
-    <div class="d-flex gap-2">
-      <a class="btn btn-outline-primary btn-sm"
-         th:if="${selectedBooking != null}"
-         th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId})}">Receipts entry</a>
-      <a class="btn btn-outline-secondary btn-sm" th:href="@{/bookings}">Bookings</a>
-    </div>
-  </div>
-  <p class="text-muted small">Receipt lines are calculated on each load from <strong>Receipts entry</strong> only (waterfall by slab order). Slab titles and due amounts come from payment milestones.</p>
-
-  <form id="schedulePickerForm" class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/bookings/payment-schedule}">
-    <div class="row g-2 align-items-end">
-      <div class="col-md-4">
-        <label class="form-label">Building</label>
-        <select class="form-select" name="buildingId" id="scheduleBuilding">
-          <option value="">All buildings</option>
-          <option th:each="bl : ${buildings}"
-                  th:value="${bl.id}"
-                  th:selected="${selectedBuildingId != null && selectedBuildingId == bl.id}"
-                  th:text="${bl.buildingName}"></option>
-        </select>
-      </div>
-      <div class="col-md-5">
-        <label class="form-label">Booking</label>
-        <select class="form-select" name="bookingId" id="scheduleBooking">
-          <option value="" th:selected="${selectedBookingId == null}">Choose booking…</option>
-          <option th:each="bk : ${bookings}"
-                  th:value="${bk.id}"
-                  th:selected="${selectedBookingId != null && selectedBookingId == bk.id}"
-                  th:text="${selectedBuildingId == null && bk.flat != null && bk.flat.building != null}
-                    ? |${bk.flat.building.buildingName} — ${bk.flat.flatNumber} — ${bk.client.displayName()}|
-                    : |${bk.flat != null ? bk.flat.flatNumber : '—'} — ${bk.client.displayName()}|"></option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <button class="btn btn-primary w-100" type="submit">Load booking</button>
-      </div>
-    </div>
-  </form>
-  <script>
-    (function () {
-      const building = document.getElementById('scheduleBuilding');
-      const booking = document.getElementById('scheduleBooking');
-      const form = document.getElementById('schedulePickerForm');
-      if (!building || !booking || !form) return;
-      building.addEventListener('change', function () {
-        booking.value = '';
-        form.submit();
-      });
-    })();
-  </script>
-
-  <th:block th:if="${selectedBooking != null}"
-            th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}, rowType=${T(com.floor21.dto.SlabLedgerRowType)}">
-    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
-    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-
-    <div class="card shadow-sm mb-3 slab-schedule-card">
-      <div class="card-header py-2 fw-semibold">Booking summary</div>
-      <div class="card-body row g-2 small">
-        <div class="col-md-2"><span class="text-muted">Flat</span><br/><span th:text="${selectedBooking.flat != null ? selectedBooking.flat.flatNumber : '—'}">—</span></div>
-        <div class="col-md-2"><span class="text-muted">BHK / unit type</span><br/><span class="fw-semibold" th:text="${selectedBooking.flat != null && selectedBooking.flat.bhkType != null ? selectedBooking.flat.bhkType : '—'}">—</span></div>
-        <div class="col-md-2"><span class="text-muted">Building</span><br/><span th:text="${selectedBooking.flat != null && selectedBooking.flat.building != null ? selectedBooking.flat.building.buildingName : '—'}">—</span></div>
-        <div class="col-md-3"><span class="text-muted">Consideration / flat base</span><br/><span class="slab-amt--base" th:text="${amt.formatAmountDisplay(baseAmount)}">0</span></div>
-        <div class="col-md-3"><span class="text-muted">Booked</span><br/><span th:text="${selectedBooking.bookingDate}">—</span></div>
-        <div class="col-md-6"><span class="text-muted">Client</span><br/><span th:text="${selectedBooking.client.displayName()}">—</span></div>
-        <div class="col-md-6"><span class="text-muted">Booking code</span><br/><span th:text="${selectedBooking.bookingCode}">—</span></div>
-      </div>
-    </div>
-
-    <div th:if="${#lists.isEmpty(ledgerRows)}" class="alert alert-info">
-      <p class="mb-0">No payment schedule is available for this booking. The Floor21 administrator must configure payment milestones for this building.</p>
-    </div>
-
-    <div th:if="${!#lists.isEmpty(ledgerRows)}" class="card shadow-sm slab-schedule-card slab-schedule-ledger-card">
-      <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div>
-          <span class="fw-semibold">Slab payment schedule</span>
-          <span class="text-muted small d-block">Each slab shows its title and amount. Receipt lines and Today/interest appear only after receipts are recorded for that slab.</span>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-          <a class="btn btn-primary btn-sm"
-             th:href="@{/bookings/payment-schedule/demand-draft(bookingId=${selectedBooking.id})}"
-             data-turbo="false"
-             title="Download Word document with amount due and schedule details">
-            Demand draft (Word)
-          </a>
-          <a class="btn btn-outline-success btn-sm"
-             th:href="@{/bookings/payment-schedule/export/excel(bookingId=${selectedBooking.id})}"
-             data-turbo="false"
-             title="Download slab ledger as Excel">
-            Export Excel
-          </a>
-          <a class="btn btn-outline-danger btn-sm"
-             th:href="@{/bookings/payment-schedule/export/pdf(bookingId=${selectedBooking.id})}"
-             data-turbo="false"
-             title="Download slab ledger as PDF">
-            Export PDF
-          </a>
-        </div>
-      </div>
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0 slab-schedule-table slab-schedule-ledger-table f21-table-totals">
-            <thead class="table-light">
-            <tr>
-              <th class="align-middle text-center text-nowrap">Date</th>
-              <th class="align-middle text-center">Slab</th>
-              <th class="align-middle text-center text-nowrap">Amount</th>
-              <th class="align-middle text-center text-nowrap">Receipt</th>
-              <th class="align-middle text-center text-nowrap">Balance</th>
-              <th class="align-middle text-center text-nowrap">Days</th>
-              <th class="align-middle text-center text-nowrap">Interest</th>
-              <th class="align-middle text-center">Info</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="row : ${ledgerRows}"
-                th:classappend="${row.rowType().name() == 'SLAB_TOTAL'} ? ' slab-ledger-row--milestone' : (${row.rowType().name() == 'TODAY'} ? ' slab-ledger-row--today' : ' slab-ledger-row--receipt')">
-              <td class="text-nowrap"
-                  th:text="${row.date() != null ? row.date() : '—'}">—</td>
-              <td th:classappend="${row.rowType().name() == 'SLAB_TOTAL'} ? ' slab-ledger-milestone-title' : (${row.rowType().name() == 'TODAY'} ? ' fw-semibold text-primary' : '')"
-                  th:text="${row.slabLabel() != null ? row.slabLabel() : '—'}">—</td>
-              <td class="text-end slab-amt--agreed"
-                  th:text="${row.amountDue() != null ? amt.formatAmountDisplay(row.amountDue()) : '—'}">—</td>
-              <td class="text-end"
-                  th:classappend="${row.rowType().name() == 'TODAY' and row.receiptAmount() != null} ? ' slab-amt--paid text-primary fw-semibold' : (${row.rowType().name() == 'RECEIPT'} ? ' slab-amt--paid' : '')"
-                  th:text="${row.receiptAmount() != null ? amt.formatAmountDisplay(row.receiptAmount()) : '—'}">—</td>
-              <td class="text-end"
-                  th:classappend="${row.balance() != null and row.balance().signum() > 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
-                  th:text="${row.balance() != null ? amt.formatAmountDisplay(row.balance()) : '—'}">—</td>
-              <td class="text-center text-nowrap"
-                  th:text="${row.days() != null ? row.days() : '—'}">—</td>
-              <td class="text-end"
-                  th:text="${row.interest() != null ? amt.formatAmountDisplay(row.interest()) : '—'}">—</td>
-              <td class="small text-muted"
-                  th:text="${row.info() != null ? row.info() : '—'}">—</td>
-            </tr>
-            </tbody>
-            <tfoot class="table-light" th:if="${ledgerSummary != null}">
-            <tr class="fw-semibold">
-              <td colspan="2" class="text-end">Total</td>
-              <td class="text-end slab-amt--agreed" th:text="${amt.formatAmountDisplay(ledgerSummary.totalAmountDue())}">0</td>
-              <td class="text-end slab-amt--paid" th:text="${amt.formatAmountDisplay(ledgerSummary.totalReceipts())}">0</td>
-              <td class="text-end slab-amt--balance" th:text="${amt.formatAmountDisplay(ledgerSummary.totalBalance())}">0</td>
-              <td class="text-center text-muted">—</td>
-              <td class="text-end" th:text="${amt.formatAmountDisplay(ledgerSummary.totalInterest())}">0</td>
-              <td class="text-muted">—</td>
-            </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-    </div>
-  </th:block>
-</div>
-</body>
-</html>
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Payment schedule (Clients)</h1>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-primary btn-sm"
+         th:if="${selectedBooking != null}"
+         th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId})}">Payment Receipts</a>
+      <a class="btn btn-outline-secondary btn-sm" th:href="@{/bookings}">Bookings</a>
+    </div>
+  </div>
+  <p class="text-muted small">Receipt lines are calculated on each load from <strong>Payment Receipts</strong> only (waterfall by slab order). Slab titles and due amounts come from <strong>Milestone setup (Clients)</strong> for this booking.</p>
+
+  <form id="schedulePickerForm" class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/bookings/payment-schedule}">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label">Building</label>
+        <select class="form-select" name="buildingId" id="scheduleBuilding">
+          <option value="">All buildings</option>
+          <option th:each="bl : ${buildings}"
+                  th:value="${bl.id}"
+                  th:selected="${selectedBuildingId != null && selectedBuildingId == bl.id}"
+                  th:text="${bl.buildingName}"></option>
+        </select>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label">Booking</label>
+        <select class="form-select" name="bookingId" id="scheduleBooking">
+          <option value="" th:selected="${selectedBookingId == null}">Choose booking…</option>
+          <option th:each="bk : ${bookings}"
+                  th:value="${bk.id}"
+                  th:selected="${selectedBookingId != null && selectedBookingId == bk.id}"
+                  th:text="${selectedBuildingId == null && bk.flat != null && bk.flat.building != null}
+                    ? |${bk.flat.building.buildingName} - ${bk.flat.flatNumber} - ${bk.client.displayName()}|
+                    : |${bk.flat != null ? bk.flat.flatNumber : '-'} - ${bk.client.displayName()}|"></option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary w-100" type="submit">Load booking</button>
+      </div>
+    </div>
+  </form>
+  <script>
+    (function () {
+      const building = document.getElementById('scheduleBuilding');
+      const booking = document.getElementById('scheduleBooking');
+      const form = document.getElementById('schedulePickerForm');
+      if (!building || !booking || !form) return;
+      building.addEventListener('change', function () {
+        booking.value = '';
+        form.submit();
+      });
+    })();
+  </script>
+
+  <th:block th:if="${selectedBooking != null}"
+            th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}, dash='-', rowType=${T(com.floor21.dto.SlabLedgerRowType)}">
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+    <div class="card shadow-sm mb-3 slab-schedule-card">
+      <div class="card-header py-2 fw-semibold">Booking summary</div>
+      <div class="card-body row g-2 small">
+        <div class="col-md-2"><span class="text-muted">Flat</span><br/><span th:text="${selectedBooking.flat != null ? selectedBooking.flat.flatNumber : dash}">-</span></div>
+        <div class="col-md-2"><span class="text-muted">BHK / unit type</span><br/><span class="fw-semibold" th:text="${selectedBooking.flat != null && selectedBooking.flat.bhkType != null ? selectedBooking.flat.bhkType : dash}">-</span></div>
+        <div class="col-md-2"><span class="text-muted">Building</span><br/><span th:text="${selectedBooking.flat != null && selectedBooking.flat.building != null ? selectedBooking.flat.building.buildingName : dash}">-</span></div>
+        <div class="col-md-3"><span class="text-muted">Consideration / flat base</span><br/><span class="slab-amt--base" th:text="${amt.formatAmountDisplay(baseAmount)}">0</span></div>
+        <div class="col-md-3"><span class="text-muted">Booked</span><br/><span th:text="${selectedBooking.bookingDate}">-</span></div>
+        <div class="col-md-6"><span class="text-muted">Client</span><br/><span th:text="${selectedBooking.client.displayName()}">-</span></div>
+        <div class="col-md-6"><span class="text-muted">Booking code</span><br/><span th:text="${selectedBooking.bookingCode}">-</span></div>
+      </div>
+    </div>
+
+    <div th:if="${#lists.isEmpty(ledgerRows)}" class="alert alert-info">
+      <p class="mb-0">No payment schedule is available for this booking. Set up milestones under <strong>Milestone setup (Clients)</strong> (building needs <strong>Milestone Templates</strong> first).</p>
+    </div>
+
+    <div th:if="${!#lists.isEmpty(ledgerRows)}" class="card shadow-sm slab-schedule-card slab-schedule-ledger-card">
+      <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+          <span class="fw-semibold">Slab payment schedule</span>
+          <span class="text-muted small d-block">Each slab shows its title and amount. Receipt lines and Today/interest appear only after receipts are recorded for that slab.</span>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-primary btn-sm"
+             th:href="@{/bookings/payment-schedule/demand-draft(bookingId=${selectedBooking.id})}"
+             data-turbo="false"
+             title="Download Word document with amount due and schedule details">
+            Demand draft (Word)
+          </a>
+          <a class="btn btn-outline-success btn-sm"
+             th:href="@{/bookings/payment-schedule/export/excel(bookingId=${selectedBooking.id})}"
+             data-turbo="false"
+             title="Download slab ledger as Excel">
+            Export Excel
+          </a>
+          <a class="btn btn-outline-danger btn-sm"
+             th:href="@{/bookings/payment-schedule/export/pdf(bookingId=${selectedBooking.id})}"
+             data-turbo="false"
+             title="Download slab ledger as PDF">
+            Export PDF
+          </a>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0 slab-schedule-table slab-schedule-ledger-table f21-table-totals">
+            <thead class="table-light">
+            <tr>
+              <th class="align-middle text-center text-nowrap">Date</th>
+              <th class="align-middle text-center">Slab</th>
+              <th class="align-middle text-center text-nowrap">Amount</th>
+              <th class="align-middle text-center text-nowrap">Receipt</th>
+              <th class="align-middle text-center text-nowrap">Balance</th>
+              <th class="align-middle text-center text-nowrap">Days</th>
+              <th class="align-middle text-center text-nowrap">Interest</th>
+              <th class="align-middle text-center">Info</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="row : ${ledgerRows}"
+                th:classappend="${row.rowType().name() == 'SLAB_TOTAL'} ? ' slab-ledger-row--milestone' : (${row.rowType().name() == 'TODAY'} ? ' slab-ledger-row--today' : ' slab-ledger-row--receipt')">
+              <td class="text-nowrap text-muted"
+                  th:text="${row.date() != null ? row.date() : dash}">-</td>
+              <td th:classappend="${row.rowType().name() == 'SLAB_TOTAL'} ? ' slab-ledger-milestone-title' : (${row.rowType().name() == 'TODAY'} ? ' fw-semibold text-primary' : '')"
+                  th:text="${row.slabLabel() != null ? row.slabLabel() : dash}">-</td>
+              <td class="text-end slab-amt--agreed"
+                  th:text="${row.amountDue() != null ? amt.formatAmountDisplay(row.amountDue()) : dash}">-</td>
+              <td class="text-end"
+                  th:classappend="${row.rowType().name() == 'TODAY' and row.receiptAmount() != null} ? ' slab-amt--paid text-primary fw-semibold' : (${row.rowType().name() == 'RECEIPT'} ? ' slab-amt--paid' : '')"
+                  th:text="${row.receiptAmount() != null ? amt.formatAmountDisplay(row.receiptAmount()) : dash}">-</td>
+              <td class="text-end"
+                  th:classappend="${row.balance() != null and row.balance().signum() > 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
+                  th:text="${row.balance() != null ? amt.formatAmountDisplay(row.balance()) : dash}">-</td>
+              <td class="text-center text-nowrap text-muted"
+                  th:text="${row.days() != null ? row.days() : dash}">-</td>
+              <td class="text-end text-muted"
+                  th:text="${row.interest() != null ? amt.formatAmountDisplay(row.interest()) : dash}">-</td>
+              <td class="small text-muted"
+                  th:text="${row.info() != null and !#strings.isEmpty(row.info()) ? row.info() : dash}">-</td>
+            </tr>
+            </tbody>
+            <tfoot class="table-light" th:if="${ledgerSummary != null}">
+            <tr class="fw-semibold">
+              <td colspan="2" class="text-end">Total</td>
+              <td class="text-end slab-amt--agreed" th:text="${amt.formatAmountDisplay(ledgerSummary.totalAmountDue())}">0</td>
+              <td class="text-end slab-amt--paid" th:text="${amt.formatAmountDisplay(ledgerSummary.totalReceipts())}">0</td>
+              <td class="text-end slab-amt--balance" th:text="${amt.formatAmountDisplay(ledgerSummary.totalBalance())}">0</td>
+              <td class="text-center text-muted" th:text="${dash}">-</td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(ledgerSummary.totalInterest())}">0</td>
+              <td class="text-muted" th:text="${dash}">-</td>
+            </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </th:block>
+</div>
+</body>
+</html>

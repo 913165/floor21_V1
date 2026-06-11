@@ -1,8 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
 import { expectBookingInList } from '../helpers/bookings';
+import { E2E_PRIMARY_BUYER } from '../helpers/clients';
 import { emitFlowCredentials } from '../helpers/flow-credentials';
-import { readFlowStateFile, requireFlowState, writeFlowStateFile } from '../helpers/flow-state-file';
+import {
+  readFlowStateFile,
+  requireBuildingFlow,
+  requireFlowState,
+  writeFlowStateFile,
+} from '../helpers/flow-state-file';
+import { adminImportMilestoneTemplates, ensureClientMilestoneSchedule } from '../helpers/milestones';
 import {
   adminAddPartners,
   adminAssignFlats,
@@ -15,12 +22,21 @@ import {
   allPartnersCreateClientsAndBookings,
   CLIENT_BOOKING_PERCENT,
   createPlatformFlowState,
+  expectOwnerBookableFlatCount,
   expectPartnerBookableFlatCount,
   FLAT_ASSIGN_PERCENT,
   PARKING_LINK_SAMPLE_SIZE,
   targetClientBookingCount,
+  type FlowBookingRecord,
   type PlatformFlowState,
 } from '../helpers/platform-flow';
+import {
+  createPaymentReceipt,
+  E2E_MIN_RECEIPTS_FOR_SLAB_TEST,
+  e2eReceiptAmountsForSlabWaterfall,
+  e2eReceiptDate,
+  screenshotPaymentSchedule,
+} from '../helpers/receipts';
 import {
   DEFAULT_E2E_BHK_MIX,
   DEFAULT_E2E_BUILDING_LAYOUT,
@@ -50,6 +66,7 @@ function loadFlow() {
     Object.assign(flow, saved);
     flow.clients = flow.clients ?? [];
     flow.bookings = flow.bookings ?? [];
+    flow.receipts = flow.receipts ?? [];
     flow.parkingLinks = flow.parkingLinks ?? [];
     flow.parkingFlatCount = flow.parkingFlatCount ?? 0;
     flow.residentialFlatCount = flow.residentialFlatCount ?? 0;
@@ -124,6 +141,7 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
 
   test('Admin — 3b. Configure 2BHK unit type defaults (save + apply)', async ({ page }, testInfo) => {
     loadFlow();
+    requireBuildingFlow(flow);
     await adminConfigure2BhkUnitTypeDefaults(page, flow);
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-after-unit-type-defaults');
@@ -131,6 +149,7 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
 
   test('Admin — 3c. Configure column A defaults (save + apply)', async ({ page }, testInfo) => {
     loadFlow();
+    requireBuildingFlow(flow);
     await adminConfigureColumnAUnitTypeDefaults(page, flow);
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-after-column-defaults');
@@ -156,16 +175,23 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     emitFlowCredentials(flow, testInfo, 'credentials-admin-complete');
   });
 
+  test('Admin — 5b. Import milestone templates for E2E building', async ({ page }, testInfo) => {
+    loadFlow();
+    await adminImportMilestoneTemplates(page, flow);
+    writeFlowStateFile(flow);
+    emitFlowCredentials(flow, testInfo, 'credentials-milestones-imported');
+  });
+
   test('Partner — 1. Partner 1 sees assigned flats on grid', async ({ page }) => {
     requireFlowState(flow);
     await login(page, flow.user1.email, flow.user1.password);
     await expectPartnerBookableFlatCount(page, flow.buildingId, flow.assignToUser1.length);
   });
 
-  test('Partner — 2. Partner 2 sees assigned flats on grid', async ({ page }) => {
+  test('Partner — 2. Owner sees all residential flats bookable on grid', async ({ page }) => {
     requireFlowState(flow);
     await login(page, flow.user2.email, flow.user2.password);
-    await expectPartnerBookableFlatCount(page, flow.buildingId, flow.assignToUser2.length);
+    await expectOwnerBookableFlatCount(page, flow.buildingId, flow.assignToUser2);
   });
 
   test('Partner — 3. Both partners create clients and book ≥50% of their flats', async ({ page }, testInfo) => {
@@ -224,5 +250,78 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     for (const booking of flow.bookings.filter((b) => b.partnerEmail === flow.user2.email)) {
       await expectBookingInList(page, booking.clientDisplayName);
     }
+  });
+
+  test('Partner — 6. Payment receipts (5+ slabs) + schedule screenshots', async ({ page }, testInfo) => {
+    requireFlowState(flow);
+    const primaryBuyerBooking = flow.bookings.find(
+      (b) => b.clientEmail === E2E_PRIMARY_BUYER.email,
+    );
+    const user2Booking = flow.bookings.find(
+      (b) => b.partnerEmail === flow.user2.email && b.clientEmail !== E2E_PRIMARY_BUYER.email,
+    );
+    expect(primaryBuyerBooking).toBeTruthy();
+    expect(user2Booking).toBeTruthy();
+
+    const primaryAmounts = e2eReceiptAmountsForSlabWaterfall();
+    expect(primaryAmounts.length).toBeGreaterThanOrEqual(E2E_MIN_RECEIPTS_FOR_SLAB_TEST);
+
+    flow.receipts = [];
+
+    await login(page, flow.user1.email, flow.user1.password);
+    await ensureClientMilestoneSchedule(page, flow, primaryBuyerBooking!.clientDisplayName);
+
+    for (let i = 0; i < primaryAmounts.length; i++) {
+      const amount = primaryAmounts[i];
+      const chequeNo = await createPaymentReceipt(
+        page,
+        flow,
+        primaryBuyerBooking!.clientDisplayName,
+        amount,
+        { receiptIndex: i, receiptDate: e2eReceiptDate(i) },
+      );
+      flow.receipts.push({
+        partnerEmail: primaryBuyerBooking!.partnerEmail,
+        clientDisplayName: primaryBuyerBooking!.clientDisplayName,
+        amount,
+        chequeNo,
+      });
+    }
+
+    const primaryShot = testInfo.outputPath('payment-schedule-primary-5-receipts.png');
+    await screenshotPaymentSchedule(page, flow, primaryBuyerBooking!.clientDisplayName, primaryShot);
+    await testInfo.attach(`payment-schedule-${primaryBuyerBooking!.clientDisplayName}`, {
+      path: primaryShot,
+      contentType: 'image/png',
+    });
+
+    await login(page, flow.user2.email, flow.user2.password);
+    await ensureClientMilestoneSchedule(page, flow, user2Booking!.clientDisplayName);
+    const partner2Amount = primaryAmounts[0];
+    const partner2Cheque = await createPaymentReceipt(
+      page,
+      flow,
+      user2Booking!.clientDisplayName,
+      partner2Amount,
+      { receiptIndex: primaryAmounts.length, receiptDate: e2eReceiptDate(primaryAmounts.length) },
+    );
+    flow.receipts.push({
+      partnerEmail: user2Booking!.partnerEmail,
+      clientDisplayName: user2Booking!.clientDisplayName,
+      amount: partner2Amount,
+      chequeNo: partner2Cheque,
+    });
+
+    const partner2Shot = testInfo.outputPath('payment-schedule-partner2.png');
+    await screenshotPaymentSchedule(page, flow, user2Booking!.clientDisplayName, partner2Shot);
+    await testInfo.attach(`payment-schedule-${user2Booking!.clientDisplayName}`, {
+      path: partner2Shot,
+      contentType: 'image/png',
+    });
+
+    expect(flow.receipts.length).toBeGreaterThanOrEqual(E2E_MIN_RECEIPTS_FOR_SLAB_TEST);
+
+    writeFlowStateFile(flow);
+    emitFlowCredentials(flow, testInfo, 'credentials-after-receipts');
   });
 });

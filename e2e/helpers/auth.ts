@@ -23,13 +23,25 @@ export function mainFrame(page: Page) {
 }
 
 export async function login(page: Page, email: string, password: string) {
-  await page.goto('login');
+  await page.goto('login', { waitUntil: 'commit' });
   await page.locator('#login-email').fill(email);
   await page.locator('#login-password').fill(password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await Promise.all([
+    page.waitForURL(/\/dashboard/, { timeout: 30_000 }),
+    page.getByRole('button', { name: 'Sign in' }).click(),
+  ]);
 }
 
 export async function loginAsSuperAdmin(page: Page) {
   await login(page, SUPER_ADMIN.email, SUPER_ADMIN.password);
-  await expect(page).toHaveURL(/\/dashboard/);
+}
+
+/** Reuse an existing super-admin session when already signed in. */
+export async function ensureSuperAdmin(page: Page) {
+  await page.goto('dashboard', { waitUntil: 'commit' });
+  if (page.url().includes('/login')) {
+    await loginAsSuperAdmin(page);
+  } else {
+    await expect(page).toHaveURL(/\/dashboard/);
+  }
 }

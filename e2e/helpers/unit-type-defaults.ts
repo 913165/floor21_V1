@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { waitForFlatGridReady } from './buildings';
+import { waitForMainPanel } from './projects';
 
 export type UnitTypeDefaultsInput = {
   bhkType: string;
@@ -123,6 +124,7 @@ export async function configureAndApplyUnitTypeDefaults(
   expectedFlatCount: number,
 ) {
   await page.goto(`buildings/${buildingId}/flats`, { waitUntil: 'commit' });
+  await waitForMainPanel(page);
   await waitForFlatGridReady(page);
 
   const sampleFlat = residentialFlatLocator(page, data.bhkType).first();

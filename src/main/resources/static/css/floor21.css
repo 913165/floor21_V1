@@ -307,6 +307,13 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   --f21-nav-bullet: rgba(160, 120, 90, 0.55);
 }
 
+[data-bs-theme="light"] .floor21-sidebar {
+  --f21-nav-section-bg: rgba(0, 0, 0, 0.2);
+  --f21-nav-section-text: rgba(255, 248, 240, 0.92);
+  --f21-nav-section-border: #d4a574;
+  --f21-nav-section-active-bg: rgba(201, 160, 122, 0.24);
+}
+
 [data-bs-theme="dark"] .floor21-sidebar {
   border-right-color: rgba(255, 255, 255, 0.08);
   --f21-nav-text: rgba(226, 232, 240, 0.88);
@@ -314,6 +321,10 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   --f21-nav-hover-bg: rgba(255, 255, 255, 0.06);
   --f21-nav-active-bg: rgba(255, 255, 255, 0.09);
   --f21-nav-bullet: rgba(100, 116, 139, 0.65);
+  --f21-nav-section-bg: rgba(255, 255, 255, 0.08);
+  --f21-nav-section-text: rgba(226, 232, 240, 0.92);
+  --f21-nav-section-border: rgba(94, 234, 212, 0.45);
+  --f21-nav-section-active-bg: rgba(94, 234, 212, 0.1);
 }
 
 .floor21-sidebar::after {
@@ -330,13 +341,31 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 }
 
 .floor21-nav__section {
-  margin: 0.85rem 0 0.35rem;
-  padding: 0 0.55rem;
+  margin: 0.85rem 0 0.4rem;
+  padding: 0.42rem 0.65rem;
   font-size: 0.65rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--f21-nav-muted);
+  color: var(--f21-nav-section-text);
+  background: var(--f21-nav-section-bg);
+  border-radius: 0.35rem;
+  border-left: 3px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+[data-bs-theme="light"] .floor21-nav__section {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+[data-bs-theme="dark"] .floor21-nav__section {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.floor21-nav__section.is-active {
+  border-left-color: var(--f21-nav-section-border);
+  background: var(--f21-nav-section-active-bg);
 }
 
 .floor21-nav__section:first-of-type {
@@ -4515,9 +4544,11 @@ body > .modal .modal-content button {
   background: rgba(var(--bs-primary-rgb), 0.06);
 }
 
-.milestone-date-parts input {
-  padding-left: 0.15rem;
-  padding-right: 0.15rem;
+.milestone-slab-date {
+  min-width: 9.5rem;
+  max-width: 10.5rem;
+  margin: 0 auto;
+  cursor: pointer;
 }
 
 /* Slabs — payment schedule page */
@@ -4991,6 +5022,17 @@ body > .modal .modal-content button {
   background-color: var(--bs-secondary-bg);
   color: var(--bs-body-color);
   border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] #receipt-form-modal .receipt-number-preview,
+[data-bs-theme="dark"] #receipt-form-modal .form-control[readonly] {
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] #receipt-form-modal .receipt-number-preview strong {
+  color: var(--bs-emphasis-color);
 }
 
 [data-bs-theme="dark"] .vault-deal-stat__value--register {

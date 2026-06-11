@@ -2,7 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import type { TestInfo } from '@playwright/test';
 import { SUPER_ADMIN } from './auth';
+import { E2E_PRIMARY_BUYER } from './clients';
 import type { PlatformFlowState } from './platform-flow';
+import { E2E_USER_PASSWORD } from './users';
 
 const CREDENTIALS_PATH = path.join(__dirname, '..', '.flow-credentials.txt');
 
@@ -14,17 +16,19 @@ export function formatFlowCredentials(flow: PlatformFlowState): string {
     `  Email:    ${SUPER_ADMIN.email}`,
     `  Password: ${SUPER_ADMIN.password}`,
     '',
-    'Partner users created (Admin step 2):',
-    `  User 1 — ${flow.user1.fullName} (Partner steps log in as this user):`,
+    `Partner users created (Admin step 2) — password for all: ${E2E_USER_PASSWORD}`,
+    `  User 1 — ${flow.user1.fullName} (Partner; partner steps log in as this user):`,
     `    Email:    ${flow.user1.email}`,
-    `    Password: ${flow.user1.password}`,
-    `  User 2 — ${flow.user2.fullName}:`,
+    `  User 2 — ${flow.user2.fullName} (Owner):`,
     `    Email:    ${flow.user2.email}`,
-    `    Password: ${flow.user2.password}`,
     '',
-    'Partner logins (Partner steps — both users book flats):',
-    `  Partner 1: ${flow.user1.email} / ${flow.user1.password}`,
-    `  Partner 2: ${flow.user2.email} / ${flow.user2.password}`,
+    'Partner logins (Partner steps — partner + owner both book flats):',
+    `  Partner: ${flow.user1.email} / ${E2E_USER_PASSWORD}`,
+    `  Owner:   ${flow.user2.email} / ${E2E_USER_PASSWORD}`,
+    '',
+    'Primary demo buyer (Partner 1 — first client; CRM record, no login):',
+    `  Name:  ${E2E_PRIMARY_BUYER.firstName} ${E2E_PRIMARY_BUYER.lastName}`,
+    `  Email: ${E2E_PRIMARY_BUYER.email}`,
     '',
     'Flow context:',
     `  Project:     ${flow.projectName || '(not created yet)'}`,
@@ -68,6 +72,10 @@ export function formatFlowCredentials(flow: PlatformFlowState): string {
   }
   if (flow.clients.length > 0) {
     lines.push(`  Clients created: ${flow.clients.length}`);
+    const primary = flow.clients.find((c) => c.email === E2E_PRIMARY_BUYER.email);
+    if (primary) {
+      lines.push(`  Primary buyer booking client: ${primary.displayName} (${primary.email})`);
+    }
   }
   if (flow.bookings.length > 0) {
     const byPartner = (email: string) => flow.bookings.filter((b) => b.partnerEmail === email).length;
@@ -85,6 +93,12 @@ export function formatFlowCredentials(flow: PlatformFlowState): string {
 
   if (flow.parkingLinks.length > 0) {
     lines.push(`  Parking links: ${flow.parkingLinks.length} (random sample of booked flats)`);
+  }
+  if (flow.receipts?.length > 0) {
+    lines.push(`  Payment receipts: ${flow.receipts.length}`);
+    for (const r of flow.receipts) {
+      lines.push(`    ${r.clientDisplayName}: ₹${r.amount.toLocaleString('en-IN')} (${r.chequeNo})`);
+    }
   }
 
   return lines.join('\n');

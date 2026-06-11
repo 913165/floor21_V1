@@ -8,7 +8,13 @@ export function uniqueProjectName(label = 'E2E Project'): string {
 export async function waitForMainPanel(page: Page): Promise<Locator> {
   const main = mainPanel(page);
   await main.waitFor({ state: 'attached', timeout: 15_000 });
-  await expect(main).not.toHaveAttribute('aria-busy', 'true', { timeout: 15_000 });
+  await page.waitForFunction(
+    () => {
+      const frame = document.getElementById('floor21-main');
+      return frame != null && frame.getAttribute('aria-busy') !== 'true';
+    },
+    { timeout: 30_000 },
+  );
   return main;
 }
 
@@ -59,13 +65,13 @@ export async function createProject(
   await submitProjectForm(main);
 
   const list = await waitForMainPanel(page);
-  await expect(page).toHaveURL(/\/admin\/projects/);
-  await expect(list.getByText('Project saved')).toBeVisible();
+  await expect(list.getByText('Project saved')).toBeVisible({ timeout: 30_000 });
+  await expect(list.getByRole('heading', { name: 'Projects' })).toBeVisible();
 
-  const row = list.locator('tbody tr').filter({ hasText: data.name });
+  const row = list.locator('tbody tr').filter({ hasText: data.name }).first();
   await expect(row).toBeVisible();
   const projectId = projectIdFromPartnersLink(
-    await row.getByRole('link', { name: 'Partners' }).getAttribute('href'),
+    await row.getByRole('link', { name: /owner\/partner/i }).getAttribute('href'),
   );
   return { projectId, list };
 }

@@ -11,10 +11,10 @@ export default defineConfig({
   testDir: './tests',
   testMatch: 'floor21-full-flow.spec.ts',
   fullyParallel: false,
+  /** Serial flow shares .flow-state.json — always single worker (CLI + UI). */
   workers: 1,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  retries: process.env.CI ? 2 : 1,
   reporter: [['html', { open: 'never' }], ['list']],
   use: {
     baseURL,

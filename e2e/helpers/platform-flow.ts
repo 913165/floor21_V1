@@ -11,7 +11,12 @@ import {
   type NewBuildingInput,
 } from './buildings';
 import { createBookingForFlat } from './bookings';
-import { createClient, sampleClientData, type NewClientInput } from './clients';
+import {
+  createClient,
+  primaryBuyerClientData,
+  sampleClientData,
+  type NewClientInput,
+} from './clients';
 import {
   expectResidentialFlatShowsParkingLink,
   linkParkingSlotToResidentialFlat,
@@ -21,8 +26,8 @@ import {
   pickRandomSample,
 } from './parking';
 import { createProject, uniqueProjectName, waitForMainPanel } from './projects';
-import { createUser, sampleUserData, type NewUserInput } from './users';
-import { login, loginAsSuperAdmin } from './auth';
+import { createUser, sampleUserData, selectAssignableUser, type NewUserInput } from './users';
+import { ensureSuperAdmin, login, loginAsSuperAdmin } from './auth';
 import {
   configureAndApplyColumnTypeDefaults,
   E2E_COLUMN_1_DEFAULTS,
@@ -45,13 +50,23 @@ export type FlowClientRecord = {
   firstName: string;
   lastName: string;
   displayName: string;
+  email?: string;
 };
 
 export type FlowBookingRecord = {
   partnerEmail: string;
   flatId: string;
   clientDisplayName: string;
+  clientEmail?: string;
   bookingCode: string;
+  bookingId: string;
+};
+
+export type FlowReceiptRecord = {
+  partnerEmail: string;
+  clientDisplayName: string;
+  amount: number;
+  chequeNo: string;
 };
 
 export type FlowParkingLinkRecord = {
@@ -76,6 +91,7 @@ export type PlatformFlowState = {
   assignToUser2: string[];
   clients: FlowClientRecord[];
   bookings: FlowBookingRecord[];
+  receipts: FlowReceiptRecord[];
   parkingLinks: FlowParkingLinkRecord[];
   clientFirstName: string;
   clientLastName: string;
@@ -114,6 +130,7 @@ export function createPlatformFlowState(): PlatformFlowState {
     assignToUser2: [],
     clients: [],
     bookings: [],
+    receipts: [],
     parkingLinks: [],
     clientFirstName: `E2E Client ${stamp}`,
     clientLastName: 'Buyer',
@@ -173,7 +190,7 @@ export async function adminConfigureColumnAUnitTypeDefaults(page: Page, flow: Pl
 }
 
 export async function adminConfigure2BhkUnitTypeDefaults(page: Page, flow: PlatformFlowState) {
-  await loginAsSuperAdmin(page);
+  await ensureSuperAdmin(page);
   const defaults = flow.unitTypeDefaults2Bhk ?? E2E_2BHK_UNIT_DEFAULTS;
   const expectedCount = expectedFlatCountForType(flow.building, defaults.bhkType);
   await configureAndApplyUnitTypeDefaults(page, flow.buildingId, defaults, expectedCount);
@@ -182,8 +199,8 @@ export async function adminConfigure2BhkUnitTypeDefaults(page: Page, flow: Platf
 
 export async function adminAddPartners(page: Page, flow: PlatformFlowState) {
   await loginAsSuperAdmin(page);
-  await addPartnerToProject(page, flow.projectId, flow.user1, flow.buildingId);
-  await addPartnerToProject(page, flow.projectId, flow.user2, flow.buildingId);
+  await addPartnerToProject(page, flow.projectId, flow.user1, 'EXECUTIVE', flow.buildingId);
+  await addPartnerToProject(page, flow.projectId, flow.user2, 'BUILDER_ADMIN');
 }
 
 export async function adminAssignFlats(page: Page, flow: PlatformFlowState) {
@@ -242,11 +259,14 @@ export async function partnerCreateClientsAndBookings(
   const clientIndexOffset = partner.email === flow.user2.email ? 100 : 0;
 
   for (let i = 0; i < target; i++) {
-    const client: NewClientInput = {
-      ...sampleClientData(flow.stamp, clientIndexOffset + i + 1),
-      firstName: `${clientIdPrefix} C${i + 1}`,
-      lastName: 'Buyer',
-    };
+    const client: NewClientInput =
+      i === 0 && partner.email === flow.user1.email
+        ? primaryBuyerClientData()
+        : {
+            ...sampleClientData(flow.stamp, clientIndexOffset + i + 1),
+            firstName: `${clientIdPrefix} C${i + 1}`,
+            lastName: 'Buyer',
+          };
     await createClient(page, client);
     const displayName = `${client.firstName} ${client.lastName}`.trim();
     clients.push({
@@ -254,10 +274,11 @@ export async function partnerCreateClientsAndBookings(
       firstName: client.firstName,
       lastName: client.lastName,
       displayName,
+      email: client.email1,
     });
 
     const flatId = assignedFlatIds[i];
-    await createBookingForFlat(page, flatId, displayName);
+    const bookingId = await createBookingForFlat(page, flatId, displayName);
 
     const bookingHeading = page.getByRole('heading', { name: /^Booking / });
     await expect(bookingHeading).toBeVisible();
@@ -268,7 +289,9 @@ export async function partnerCreateClientsAndBookings(
       partnerEmail: partner.email,
       flatId,
       clientDisplayName: displayName,
+      clientEmail: client.email1,
       bookingCode,
+      bookingId,
     });
   }
 
@@ -364,6 +387,30 @@ export async function expectPartnerBookableFlatCount(
   await expect(bookable).toHaveCount(expectedBookable);
 }
 
+/** Owner (BUILDER_ADMIN) bypasses partner allocation — all residential flats are bookable. */
+export async function expectOwnerBookableFlatCount(
+  page: Page,
+  buildingId: string,
+  assignedFlatIds: string[],
+) {
+  await page.goto(`buildings/${buildingId}/flats`, { waitUntil: 'commit' });
+  const grid = await waitForMainPanel(page);
+  await expect(grid.locator('#flat-grid')).toBeVisible();
+
+  const residential = grid.locator(
+    '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"]',
+  );
+  const bookable = grid.locator(
+    '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"][data-bookable="true"]',
+  );
+  const residentialCount = await residential.count();
+  await expect(bookable).toHaveCount(residentialCount);
+
+  for (const flatId of assignedFlatIds) {
+    await expect(grid.locator(`#flat-${flatId}`)).toHaveAttribute('data-bookable', 'true');
+  }
+}
+
 export async function assignFlatToPartner(page: Page, flatId: string, partnerName: string) {
   const modal = await openFlatDetailsForFlat(page, flatId);
   const partnerSelect = modal.locator('#admin-partner');
@@ -403,23 +450,26 @@ async function addPartnerToProject(
   page: Page,
   projectId: string,
   user: NewUserInput,
-  buildingId: string,
+  role: 'BUILDER_ADMIN' | 'EXECUTIVE',
+  buildingId?: string,
 ) {
   await page.goto(`admin/projects/${projectId}/staff/assign`, { waitUntil: 'commit' });
   const form = await waitForMainPanel(page);
-  await expect(form.getByRole('heading', { name: /Add partner/ })).toBeVisible();
+  await expect(form.getByRole('heading', { name: /Add owner\/partner/i })).toBeVisible();
 
-  await form.locator('#user-id').selectOption({ label: `${user.fullName} (${user.email})` });
-  await form.locator('#assign-role').selectOption('EXECUTIVE');
+  await selectAssignableUser(form, user);
+  await form.locator('#assign-role').selectOption(role);
 
-  const buildingSelect = form.locator('#layout-ids-select');
-  if (await buildingSelect.isVisible()) {
-    await buildingSelect.selectOption(buildingId);
+  if (role === 'EXECUTIVE' && buildingId) {
+    const buildingSelect = form.locator('#layout-ids-select');
+    if (await buildingSelect.isVisible()) {
+      await buildingSelect.selectOption(buildingId);
+    }
   }
 
   await Promise.all([
     page.waitForURL(new RegExp(`/admin/projects/${projectId}/staff`), { timeout: 20_000 }),
-    form.getByRole('button', { name: 'Add partner' }).click(),
+    form.getByRole('button', { name: /Add owner\/partner/i }).click(),
   ]);
 
   const list = await waitForMainPanel(page);

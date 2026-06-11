@@ -86,16 +86,23 @@ public class ReceiptsHubController {
             @RequestParam(required = false) UUID buildingId,
             @RequestParam(required = false) UUID bookingId,
             @RequestParam(required = false) UUID editReceiptId,
+            @RequestParam(required = false, defaultValue = "false") boolean openNew,
             Model model) {
         addPageTitleAndPicker(model, buildingId, bookingId);
         if (bookingId == null) {
             return "receipts/entry";
         }
+        addBookingWorkspace(model, buildingId, bookingId);
+        boolean editingReceipt = editReceiptId != null;
+        model.addAttribute("editReceiptId", editReceiptId);
         Receipt receiptForm =
-                editReceiptId != null
+                editingReceipt
                         ? receiptService.getForBooking(editReceiptId, bookingId)
                         : newReceiptDraft();
-        addReceiptWorkspace(model, buildingId, bookingId, receiptForm);
+        addReceiptFormWorkspace(model, bookingId, receiptForm);
+        if (editingReceipt || openNew) {
+            model.addAttribute("openReceiptModal", true);
+        }
         return "receipts/entry";
     }
 
@@ -115,8 +122,10 @@ public class ReceiptsHubController {
         } catch (IllegalArgumentException ex) {
             model.addAttribute("errorMessage", ex.getMessage());
             model.addAttribute("receiptFormValidationFailed", true);
+            model.addAttribute("openReceiptModal", true);
             try {
-                addReceiptWorkspace(model, buildingId, bookingId, receiptForm);
+                addBookingWorkspace(model, buildingId, bookingId);
+                addReceiptFormWorkspace(model, bookingId, receiptForm);
             } catch (ResourceNotFoundException e) {
                 ra.addFlashAttribute("errorMessage", ex.getMessage());
                 return redirectToEntry(bookingId, buildingId);
@@ -140,7 +149,7 @@ public class ReceiptsHubController {
     }
 
     private void addPageTitleAndPicker(Model model, UUID buildingId, UUID bookingId) {
-        model.addAttribute("pageTitle", "Receipts entry");
+        model.addAttribute("pageTitle", "Payment Receipts");
         model.addAttribute("buildings", buildingService.listForTenant());
         model.addAttribute("selectedBuildingId", buildingId);
         UUID builderId = TenantContext.requireBuilderId();
@@ -168,7 +177,7 @@ public class ReceiptsHubController {
         model.addAttribute("selectedBookingId", bookingId);
     }
 
-    private void addReceiptWorkspace(Model model, UUID buildingId, UUID bookingId, Receipt receiptForm) {
+    private void addBookingWorkspace(Model model, UUID buildingId, UUID bookingId) {
         UUID builderId = TenantContext.requireBuilderId();
         Booking booking =
                 bookingRepository
@@ -180,7 +189,6 @@ public class ReceiptsHubController {
             throw new ResourceNotFoundException("Booking not found");
         }
         model.addAttribute("selectedBooking", booking);
-        model.addAttribute("receiptForm", receiptForm);
         model.addAttribute("summary", receiptService.summarizeBooking(bookingId));
         List<Receipt> history = receiptService.listHistoryForBooking(bookingId);
         model.addAttribute("receiptHistory", history);
@@ -191,6 +199,10 @@ public class ReceiptsHubController {
                         .map(Receipt::getAmount)
                         .reduce(ZERO, BigDecimal::add));
         model.addAttribute("latestReceiptNumber", receiptService.latestReceiptNumberHint(bookingId).orElse(null));
+    }
+
+    private void addReceiptFormWorkspace(Model model, UUID bookingId, Receipt receiptForm) {
+        model.addAttribute("receiptForm", receiptForm);
         boolean editingReceipt = receiptForm.getId() != null;
         model.addAttribute("editingReceipt", editingReceipt);
         if (!editingReceipt) {

@@ -96,7 +96,11 @@ npm run test:ui
 
 Expand **Floor21 — full flow (admin + partner)**, then click ▶ on each step in order.
 
-**Admin before partner:** Partner steps read credentials from `e2e/.flow-state.json`, written after each admin step. Run **Admin — 1** through **Admin — 5** before any **Partner —** step (or run the full file top to bottom). If partner login fails with “Flow state missing”, run the admin steps first.
+**Admin before partner:** Partner steps read credentials from `e2e/.flow-state.json`, written after each admin step. Run **Admin — 1** through **Admin — 5b** before any **Partner —** step (or run the full file top to bottom). If partner login fails with “Flow state missing”, run the admin steps first.
+
+**Partner — 6 (receipts):** After bookings exist, records **5 waterfall receipts** for **Client1 Buyer** (`client1@example.com`) across milestone slabs 1–3 (₹50L consideration), plus one receipt for partner 2’s first client, then attaches **payment schedule** full-page screenshots to the Playwright report.
+
+**Passwords:** E2E-created partner users all use **`user123`**. Platform admin stays `super@floor21.com` / `super123`. Clients are CRM records only (no login).
 
 **Credentials output:** After each admin step (and before partner login), emails/passwords are printed to the terminal and Playwright UI **Log** tab, attached under **Attachments**, and saved to `e2e/.flow-credentials.txt` (open that file anytime to copy login details).
 
