@@ -408,8 +408,8 @@
     if (parkingSlotActions) parkingSlotActions.classList.toggle("d-none", !slot);
     if (flatLayoutActions) flatLayoutActions.classList.toggle("d-none", parkingMode || shop);
     if (adminPanel) adminPanel.classList.toggle("d-none", parkingMode || shop);
-    if (saveRow) {
-      saveRow.classList.toggle("d-none", !((section || slot || shop) && isPlatformAdminEdit()));
+    if (saveRow && (section || slot || shop)) {
+      saveRow.classList.toggle("d-none", !isPlatformAdminEdit());
     }
     if (saveBtn) {
       saveBtn.classList.toggle("d-none", section);
@@ -625,43 +625,30 @@
     return body;
   }
 
-  function adminSaveStatusEl() {
-    return document.getElementById("admin-save-status");
+  var ADMIN_SAVE_SUCCESS_MSG = "Saved values";
+
+  function flatDetailsStatusEl() {
+    return document.getElementById("flat-details-status");
   }
 
   function showAdminSuccess(message) {
-    var aboveBtn = adminSaveStatusEl();
-    var top = document.getElementById("flat-details-status");
-    if (!aboveBtn && !top) return;
+    var top = flatDetailsStatusEl();
+    if (!top) return;
+    clearTimeout(window._adminSuccessHideTimer);
+    window._adminSuccessHideTimer = null;
     if (!message) {
-      if (aboveBtn) {
-        aboveBtn.textContent = "";
-        aboveBtn.classList.add("d-none");
-        aboveBtn.classList.remove("text-danger");
-        aboveBtn.classList.add("text-primary");
-      }
-      if (top) {
-        top.textContent = "";
-        top.classList.add("d-none");
-        top.classList.remove("alert-danger");
-        top.classList.add("alert-info");
-      }
+      top.textContent = "";
+      top.classList.add("d-none");
+      top.classList.remove("alert-danger");
+      top.classList.add("alert-info");
       return;
     }
-    if (aboveBtn) {
-      aboveBtn.textContent = message;
-      aboveBtn.classList.remove("d-none", "text-danger");
-      aboveBtn.classList.add("text-primary");
-      if (typeof aboveBtn.scrollIntoView === "function") {
-        aboveBtn.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
+    top.textContent = message;
+    top.classList.remove("d-none", "alert-danger");
+    top.classList.add("alert-info");
+    if (typeof top.scrollIntoView === "function") {
+      top.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-    if (top) {
-      top.textContent = message;
-      top.classList.remove("d-none", "alert-danger");
-      top.classList.add("alert-info");
-    }
-    clearTimeout(window._adminSuccessHideTimer);
     window._adminSuccessHideTimer = setTimeout(function () {
       showAdminSuccess("");
     }, 8000);
@@ -669,9 +656,8 @@
 
   function showAdminError(message) {
     var errEl = document.getElementById("admin-error");
-    var aboveBtn = adminSaveStatusEl();
-    var top = document.getElementById("flat-details-status");
-    if (!errEl && !aboveBtn && !top) return;
+    var top = flatDetailsStatusEl();
+    if (!errEl && !top) return;
     if (!message) {
       if (errEl) {
         errEl.textContent = "";
@@ -684,18 +670,13 @@
       errEl.textContent = message;
       errEl.classList.remove("d-none");
     }
-    if (aboveBtn) {
-      aboveBtn.textContent = message;
-      aboveBtn.classList.remove("d-none", "text-primary");
-      aboveBtn.classList.add("text-danger");
-      if (typeof aboveBtn.scrollIntoView === "function") {
-        aboveBtn.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-    }
     if (top) {
       top.textContent = message;
       top.classList.remove("d-none", "alert-info");
       top.classList.add("alert-danger");
+      if (typeof top.scrollIntoView === "function") {
+        top.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
     }
   }
 
@@ -718,6 +699,16 @@
   function readAreaPair(pairId) {
     var api = areaUnitApi();
     return api ? api.readSqftFromPair(pairId) : null;
+  }
+
+  function persistAdminAreaUnitPrefs() {
+    var api = areaUnitApi();
+    if (!api || typeof api.persistUnitPreferenceFromControl !== "function") {
+      return;
+    }
+    ["admin-super-builder-area", "admin-carpet-area", "admin-balcony-area"].forEach(function (pairId) {
+      api.persistUnitPreferenceFromControl(pairId);
+    });
   }
 
   function initDualAreaFields() {
@@ -6064,17 +6055,25 @@
   }
 
   function showAdminSaveProgress(message) {
-    var el = adminSaveStatusEl();
-    if (!el) return;
+    var top = flatDetailsStatusEl();
+    if (!top) return;
     if (!message) {
-      el.textContent = "";
-      el.classList.add("d-none");
+      top.textContent = "";
+      top.classList.add("d-none");
+      top.classList.remove("alert-danger");
+      top.classList.add("alert-info");
       return;
     }
     clearTimeout(window._adminSuccessHideTimer);
-    el.textContent = message;
-    el.classList.remove("d-none", "text-danger");
-    el.classList.add("text-primary");
+    window._adminSuccessHideTimer = null;
+    top.textContent = message;
+    top.classList.remove("d-none", "alert-danger");
+    top.classList.add("alert-info");
+  }
+
+  function finishAdminSaveSuccess() {
+    showAdminSaveProgress("");
+    showAdminSuccess(ADMIN_SAVE_SUCCESS_MSG);
   }
 
   async function handleAdminSaveClick(adminSave) {
@@ -6082,6 +6081,7 @@
     var saveLabel = adminSave.textContent;
     showAdminError("");
     showAdminSuccess("");
+    persistAdminAreaUnitPrefs();
     showAdminSaveProgress("Saving…");
     adminSave.disabled = true;
     adminSave.textContent = "Saving…";
@@ -6097,6 +6097,7 @@
         body: JSON.stringify(form),
       });
     } catch (err) {
+      showAdminSaveProgress("");
       showAdminError("Could not save — check your connection and try again.");
       return;
     } finally {
@@ -6104,6 +6105,7 @@
       adminSave.textContent = saveLabel;
     }
     if (!res || !res.ok) {
+      showAdminSaveProgress("");
       showAdminError(await parseErrorResponse(res));
       return;
     }
@@ -6115,7 +6117,7 @@
         flat.basePrice != null ? String(flat.basePrice) : "";
       setAreaPanelFromFlat(flat);
       syncShopSlotAdminFields(selectedShopSlotElement);
-      showAdminSuccess("Saved — unit type, area, and price updated.");
+      finishAdminSaveSuccess();
       return;
     }
     if (selectedParkingSlot) {
@@ -6124,10 +6126,9 @@
       setAreaPanelFromFlat(flat);
       syncParkingSlotAdminFields(selectedParkingSlotElement);
       refreshParkingSectionMetaDisplays();
-      showAdminSuccess("Saved — unit type, area, and price updated.");
+      finishAdminSaveSuccess();
       return;
     }
-    showAdminSuccess("Saved — unit type, area, and price updated.");
     var card = document.getElementById("flat-" + selectedFlatId);
     applyFlatDataToCard(card, flat);
     document.getElementById("panel-type").textContent = flat.bhkType || "";
@@ -6140,15 +6141,20 @@
       syncFlatLayoutPanel(card);
       syncAdminPanel(card);
     }
+    finishAdminSaveSuccess();
   }
 
-  function bindAdminSaveButton() {
-    var adminSave = document.getElementById("admin-save-btn");
-    if (!adminSave || adminSave.dataset.saveBound === "true") return;
-    adminSave.dataset.saveBound = "true";
-    adminSave.addEventListener("click", function () {
-      void handleAdminSaveClick(adminSave);
-    });
+  function ensureAdminSaveClickBinding() {
+    if (window.__f21AdminSaveClickHandler) {
+      document.removeEventListener("click", window.__f21AdminSaveClickHandler, true);
+    }
+    window.__f21AdminSaveClickHandler = function (e) {
+      var btn = e.target.closest("#admin-save-btn");
+      if (!btn || btn.disabled) return;
+      e.preventDefault();
+      void handleAdminSaveClick(btn);
+    };
+    document.addEventListener("click", window.__f21AdminSaveClickHandler, true);
   }
 
   function ensureParkingConfigSaveBinding() {
@@ -6170,7 +6176,7 @@
 
   onPageReady(function () {
     mountModalsOnBody();
-    bindAdminSaveButton();
+    ensureAdminSaveClickBinding();
     ensureParkingConfigSaveBinding();
     bindBuildingSnapshotInteractions();
     initBuildingSnapshotButtons();

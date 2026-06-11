@@ -1217,15 +1217,6 @@ button.flat-floor-plan-link {
   border-width: 1px;
 }
 
-#flat-details-modal .admin-save-status:not(.d-none) {
-  display: block;
-  line-height: 1.45;
-}
-
-#flat-details-modal .admin-save-status.text-danger {
-  color: var(--bs-danger) !important;
-}
-
 #flat-details-modal .modal-body {
   padding-top: 0.65rem;
   padding-bottom: 0.85rem;
