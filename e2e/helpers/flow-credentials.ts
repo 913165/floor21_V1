@@ -90,6 +90,12 @@ export function formatFlowCredentials(flow: PlatformFlowState): string {
       `  2BHK defaults: ${d.bhkType} · ${d.areaSqft} sq ft · carpet ${d.carpetAreaSqft} · price ${d.basePrice}`,
     );
   }
+  if (flow.flatDetailsAreasTest) {
+    const d = flow.flatDetailsAreasTest;
+    lines.push(
+      `  Flat ${d.flatId} areas: ${d.superBuiltSqft} sq ft · carpet ${d.carpetSqft} · balcony ${d.balconySqm} sq m (${d.balconyAreaSqft} sq ft stored)`,
+    );
+  }
 
   if (flow.parkingLinks.length > 0) {
     lines.push(`  Parking links: ${flow.parkingLinks.length} (random sample of booked flats)`);

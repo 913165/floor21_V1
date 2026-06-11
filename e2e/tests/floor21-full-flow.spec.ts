@@ -15,6 +15,7 @@ import {
   adminAssignFlats,
   adminConfigureColumnAUnitTypeDefaults,
   adminConfigure2BhkUnitTypeDefaults,
+  adminSaveFlatDetailsAreas,
   adminCreateBuilding,
   adminCreateProject,
   adminCreateUsers,
@@ -153,6 +154,18 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     await adminConfigureColumnAUnitTypeDefaults(page, flow);
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-after-column-defaults');
+  });
+
+  test('Admin — 3d. Per-flat area save (sq m toggle, Saved values, reopen)', async ({
+    page,
+  }, testInfo) => {
+    loadFlow();
+    requireBuildingFlow(flow);
+    await adminSaveFlatDetailsAreas(page, flow);
+    expect(flow.flatDetailsAreasTest?.flatId).toBeTruthy();
+    expect(flow.flatDetailsAreasTest?.balconySqm).toBe(10);
+    writeFlowStateFile(flow);
+    emitFlowCredentials(flow, testInfo, 'credentials-after-flat-details-areas');
   });
 
   test('Admin — 4. Add partners', async ({ page }, testInfo) => {

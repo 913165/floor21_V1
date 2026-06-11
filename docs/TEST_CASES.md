@@ -231,6 +231,7 @@ There is **one login page** (`/login`) for all roles. Resolution order: active `
 | GRID-A12 | Update flat status (HOLD) | HOLD from grid/modal | Status changes; partner rules apply | R | Manual |
 | GRID-A13 | Unit type defaults (2BHK) | Save config, then Apply to all flats | Saved defaults persist; all 2BHK cards updated | S | E2E Admin — 3b |
 | GRID-A14 | Column type defaults (A) | Save config, then Apply to column | All column-A flats (vertical stack) updated | S | E2E Admin — 3c |
+| GRID-A15 | Per-flat area save (flat details) | Open 3BHK flat → set areas (balcony in sq m) → Save → leave → reopen | "Saved values" banner; sq m toggle kept; values on card and in modal after navigation | S | E2E Admin — 3d |
 
 ---
 
@@ -456,6 +457,8 @@ Applies to: Projects, Users, All buildings, Clients (where implemented).
 | E2E-02 | Admin — 2. Create 2 users | USER-03, ACC-03 |
 | E2E-03 | Admin — 3. Create building | BLD-ADM-05, GRID-01, GRID-02, ACC-04 |
 | E2E-03b | Admin — 3b. Configure 2BHK unit type defaults | GRID-A13 |
+| E2E-03c | Admin — 3c. Configure column A defaults | GRID-A14 |
+| E2E-03d | Admin — 3d. Per-flat area save (sq m toggle, Saved values, reopen) | GRID-A15 |
 | E2E-04 | Admin — 4. Add partners | STAFF-02, ACC-03 |
 | E2E-05 | Admin — 5. Assign ~90% flats between partners | GRID-A06, GRID-P01 prep, ACC-05 |
 | E2E-06 | Partner — 1. Partner 1 sees assigned flats on grid | GRID-P01 |

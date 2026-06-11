@@ -34,6 +34,11 @@ import {
   type ColumnTypeDefaultsInput,
 } from './column-type-defaults';
 import {
+  configureAndVerifyFlatDetailsAreas,
+  E2E_FLAT_DETAILS_AREAS,
+  type FlatDetailsAreasTestRecord,
+} from './flat-details-areas';
+import {
   configureAndApplyUnitTypeDefaults,
   E2E_2BHK_UNIT_DEFAULTS,
   type UnitTypeDefaultsInput,
@@ -99,6 +104,7 @@ export type PlatformFlowState = {
   bookingCode: string;
   unitTypeDefaults2Bhk?: UnitTypeDefaultsInput;
   columnTypeDefaults1?: ColumnTypeDefaultsInput;
+  flatDetailsAreasTest?: FlatDetailsAreasTestRecord;
 };
 
 export function createPlatformFlowState(): PlatformFlowState {
@@ -195,6 +201,20 @@ export async function adminConfigure2BhkUnitTypeDefaults(page: Page, flow: Platf
   const expectedCount = expectedFlatCountForType(flow.building, defaults.bhkType);
   await configureAndApplyUnitTypeDefaults(page, flow.buildingId, defaults, expectedCount);
   flow.unitTypeDefaults2Bhk = defaults;
+}
+
+export async function adminSaveFlatDetailsAreas(page: Page, flow: PlatformFlowState) {
+  await ensureSuperAdmin(page);
+  const input = flow.flatDetailsAreasTest
+    ? {
+        superBuiltSqft: flow.flatDetailsAreasTest.superBuiltSqft,
+        carpetSqft: flow.flatDetailsAreasTest.carpetSqft,
+        balconySqm: flow.flatDetailsAreasTest.balconySqm,
+        price: flow.flatDetailsAreasTest.price,
+      }
+    : E2E_FLAT_DETAILS_AREAS;
+  const record = await configureAndVerifyFlatDetailsAreas(page, flow.buildingId, input);
+  flow.flatDetailsAreasTest = record;
 }
 
 export async function adminAddPartners(page: Page, flow: PlatformFlowState) {
