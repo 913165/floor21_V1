@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class ClientService {
 
     public static final int CLIENTS_DEFAULT_PAGE_SIZE = 10;
     public static final int CLIENTS_MAX_PAGE_SIZE = 100;
+    public static final int CLIENTS_MAX_EXPORT_ROWS = 10_000;
 
     private final ClientRepository clientRepository;
     private final BuilderRepository builderRepository;
@@ -38,11 +40,30 @@ public class ClientService {
     public Page<Client> listPage(int page, int size, String q, UUID projectId) {
         int safeSize = Math.min(Math.max(size, 5), CLIENTS_MAX_PAGE_SIZE);
         int safePage = Math.max(page, 0);
+        return listClients(q, projectId, PageRequest.of(safePage, safeSize, resolveSort(q, projectId)));
+    }
+
+    /** All clients matching the current list filters (search / project), for Excel export. */
+    @Transactional(readOnly = true)
+    public List<Client> listForExport(String q, UUID projectId) {
+        Page<Client> page =
+                listClients(q, projectId, PageRequest.of(0, CLIENTS_MAX_EXPORT_ROWS, resolveSort(q, projectId)));
+        if (page.getTotalElements() > CLIENTS_MAX_EXPORT_ROWS) {
+            throw new IllegalArgumentException(
+                    "Too many clients to export ("
+                            + page.getTotalElements()
+                            + "). Narrow your search or project filter (max "
+                            + CLIENTS_MAX_EXPORT_ROWS
+                            + ").");
+        }
+        return page.getContent();
+    }
+
+    private Page<Client> listClients(String q, UUID projectId, Pageable pageable) {
         String term = q != null && !q.isBlank() ? q.trim() : null;
 
         UUID builderId = TenantContext.getBuilderIdOrNull();
         if (builderId != null) {
-            Pageable pageable = PageRequest.of(safePage, safeSize, tenantSort());
             if (term != null) {
                 return clientRepository.search(builderId, term, pageable);
             }
@@ -50,17 +71,23 @@ public class ClientService {
         }
         if (projectId != null) {
             requireTenantProject(projectId);
-            Pageable pageable = PageRequest.of(safePage, safeSize, tenantSort());
             if (term != null) {
                 return clientRepository.search(projectId, term, pageable);
             }
             return clientRepository.findByBuilder_IdOrderByFirstNameAscLastNameAsc(projectId, pageable);
         }
-        Pageable pageable = PageRequest.of(safePage, safeSize, platformSort());
         if (term != null) {
             return clientRepository.searchAllForPlatformAdmin(term, pageable);
         }
         return clientRepository.findAllForPlatformAdmin(pageable);
+    }
+
+    private Sort resolveSort(String q, UUID projectId) {
+        UUID builderId = TenantContext.getBuilderIdOrNull();
+        if (builderId != null || projectId != null) {
+            return tenantSort();
+        }
+        return platformSort();
     }
 
     /** Full tenant client list for dropdowns (e.g. booking form). */
@@ -137,7 +164,7 @@ public class ClientService {
         }
         var builder = builderRepository.findById(builderId).orElseThrow();
         entity.setBuilder(builder);
-        entity.setFirstName(form.getFirstName());
+        entity.setFirstName(form.getFirstName() != null ? form.getFirstName().trim() : "");
         entity.setLastName(form.getLastName());
         entity.setCompanyName(form.getCompanyName());
         entity.setOccupation(form.getOccupation());
@@ -151,8 +178,9 @@ public class ClientService {
         entity.setMobile2(form.getMobile2());
         entity.setEmail1(form.getEmail1());
         entity.setEmail2(form.getEmail2());
-        entity.setPanNumber(form.getPanNumber());
-        entity.setAadhaarNumber(form.getAadhaarNumber());
+        entity.setPanNumber(
+                form.getPanNumber() != null ? form.getPanNumber().trim().toUpperCase(Locale.ROOT) : null);
+        entity.setAadhaarNumber(form.getAadhaarNumber() != null ? form.getAadhaarNumber().trim() : null);
         entity.setDob(form.getDob());
         entity.setDateOfMarriage(form.getDateOfMarriage());
         entity.setCommAddress1(form.getCommAddress1());

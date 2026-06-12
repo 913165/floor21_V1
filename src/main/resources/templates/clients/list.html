@@ -25,6 +25,12 @@
                   th:selected="${pageSize == opt}">25</option>
         </select>
       </form>
+      <a class="btn btn-outline-secondary btn-sm"
+         th:href="@{/clients/export(q=${q}, projectId=${filterProjectId})}"
+         data-turbo="false">Export</a>
+      <button type="button" class="btn btn-outline-primary"
+              sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+              data-bs-toggle="modal" data-bs-target="#clients-import-modal">Import</button>
       <a class="btn btn-primary" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')" th:href="@{/clients/new}">New client</a>
     </div>
   </div>
@@ -132,6 +138,110 @@
       </li>
     </ul>
   </nav>
+
+  <div class="modal fade" id="clients-import-modal" tabindex="-1"
+       aria-labelledby="clients-import-modal-title" aria-hidden="true"
+       sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+      <div class="modal-content shadow">
+        <div class="modal-header py-2 px-3">
+          <h6 class="modal-title mb-0" id="clients-import-modal-title">Import clients from Excel</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body py-3 px-3">
+          <p class="text-muted small mb-2">
+            Use the <strong>sample Excel layout</strong> below (same as
+            <a th:href="@{/clients/import-template}" data-turbo="false">clients_import_sample.xlsx</a>).
+            Row 1 = headers; add one row per client. Up to 500 rows per file.
+          </p>
+          <p class="text-muted small mb-3">
+            All columns are optional — include whatever you have per client.
+            Completely blank rows are skipped.
+            <strong>Date of Birth</strong> accepts <code>1990-06-15</code> or <code>15/06/1990</code> when provided.
+          </p>
+
+          <h2 class="h6 fw-semibold mb-2">Sample Excel format</h2>
+          <div class="table-responsive border rounded mb-3">
+            <table class="table table-sm table-bordered mb-0 small text-nowrap">
+              <thead class="table-light">
+              <tr>
+                <th class="text-center">Sno</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Company</th>
+                <th>Occupation</th>
+                <th>Address Line 1</th>
+                <th>Address Line 2</th>
+                <th>Address Line 3</th>
+                <th>City</th>
+                <th>Phone Office</th>
+                <th>Phone Residence</th>
+                <th>Mobile 1</th>
+                <th>Mobile 2</th>
+                <th>Email 1</th>
+                <th>Email 2</th>
+                <th>PAN No</th>
+                <th>Aadhaar</th>
+                <th>Date of Birth</th>
+                <th>Date of Marriage</th>
+                <th>Particulars</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr>
+                <td class="text-center text-muted">1</td>
+                <td>Rahul</td>
+                <td>Sharma</td>
+                <td></td>
+                <td>Engineer</td>
+                <td>101 Sample Heights, Andheri West</td>
+                <td></td>
+                <td></td>
+                <td>Mumbai</td>
+                <td></td>
+                <td></td>
+                <td>9876543210</td>
+                <td></td>
+                <td>rahul.sharma@example.com</td>
+                <td></td>
+                <td>ABCDE1234F</td>
+                <td>123456789012</td>
+                <td>1990-06-15</td>
+                <td></td>
+                <td></td>
+              </tr>
+              <tr class="text-muted">
+                <td class="text-center">2</td>
+                <td colspan="19">Add more client rows below the header row in your file</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <form th:action="@{/clients/import}" method="post" enctype="multipart/form-data"
+                data-turbo="false" id="clients-import-form">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" name="q" th:if="${q != null and !#strings.isEmpty(q)}" th:value="${q}"/>
+            <input type="hidden" name="page" th:if="${clientPage != null}" th:value="${clientPage.number}"/>
+            <input type="hidden" name="size" th:value="${pageSize}"/>
+            <div class="mb-0">
+              <label class="form-label" for="clientImportFile">Excel file (.xlsx / .xls)</label>
+              <input class="form-control" type="file" id="clientImportFile" name="file" accept=".xlsx,.xls" required/>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer py-2 px-3 flex-wrap gap-2 justify-content-between">
+          <a class="btn btn-outline-primary btn-sm"
+             th:href="@{/clients/import-template}"
+             data-turbo="false">Download sample Excel</a>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            <button class="btn btn-success btn-sm" type="submit" form="clients-import-form">Import clients</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 </body>
 </html>

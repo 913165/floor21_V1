@@ -9,8 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -31,11 +30,11 @@ public class Client {
     @JoinColumn(name = "builder_id", nullable = false)
     private Builder builder;
 
-    @NotBlank(message = "First name is required.")
+    @Size(max = 100, message = "First name must be at most 100 characters.")
     @Column(name = "first_name", nullable = false, length = 100)
     private String firstName;
 
-    @NotBlank(message = "Last name is required.")
+    @Size(max = 100, message = "Last name must be at most 100 characters.")
     @Column(name = "last_name", length = 100)
     private String lastName;
 
@@ -45,7 +44,6 @@ public class Client {
     @Column(length = 100)
     private String occupation;
 
-    @NotBlank(message = "Address line 1 is required.")
     @Column(columnDefinition = "TEXT")
     private String address1;
 
@@ -55,7 +53,6 @@ public class Client {
     @Column(columnDefinition = "TEXT")
     private String address3;
 
-    @NotBlank(message = "City is required.")
     @Column(length = 100)
     private String city;
 
@@ -65,7 +62,6 @@ public class Client {
     @Column(name = "phone_residence", length = 20)
     private String phoneResidence;
 
-    @NotBlank(message = "Mobile 1 is required.")
     @Column(length = 20)
     private String mobile1;
 
@@ -78,15 +74,12 @@ public class Client {
     @Column(length = 150)
     private String email2;
 
-    @NotBlank(message = "PAN no is required.")
     @Column(name = "pan_number", length = 20)
     private String panNumber;
 
-    @NotBlank(message = "Aadhaar is required.")
     @Column(name = "aadhaar_number", length = 20)
     private String aadhaarNumber;
 
-    @NotNull(message = "Date of birth is required.")
     private LocalDate dob;
 
     @Column(name = "date_of_marriage")
@@ -123,7 +116,18 @@ public class Client {
     private Instant updatedAt;
 
     public String displayName() {
-        String ln = lastName != null ? lastName : "";
-        return (firstName + " " + ln).trim();
+        String fn = firstName != null ? firstName.trim() : "";
+        String ln = lastName != null ? lastName.trim() : "";
+        String combined = (fn + " " + ln).trim();
+        if (!combined.isEmpty()) {
+            return combined;
+        }
+        if (mobile1 != null && !mobile1.isBlank()) {
+            return mobile1.trim();
+        }
+        if (email1 != null && !email1.isBlank()) {
+            return email1.trim();
+        }
+        return "Client";
     }
 }

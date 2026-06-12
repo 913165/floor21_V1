@@ -4,105 +4,112 @@
 <body>
 <div th:fragment="content">
   <h1 class="h3 mb-4" th:text="${pageTitle}">Client</h1>
+
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
   <form class="card card-body shadow-sm" th:action="@{/clients/save}" th:object="${client}" method="post">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
     <input type="hidden" th:field="*{id}"/>
 
-    <p class="text-muted small mb-3"><span class="text-danger">*</span> Required field</p>
+    <p class="text-muted small mb-3">All fields are optional. Fill in what you have; you can complete details later.</p>
 
     <h2 class="h6 text-muted text-uppercase mb-3">Personal</h2>
     <div class="row g-3">
       <div class="col-md-4">
-        <label class="form-label">First name <span class="text-danger">*</span></label>
-        <input class="form-control" th:field="*{firstName}" required/>
+        <label class="form-label" for="firstName">First name</label>
+        <input class="form-control" id="firstName" th:field="*{firstName}" maxlength="100"
+               th:classappend="${#fields.hasErrors('firstName')} ? 'is-invalid' : ''"/>
+        <div class="invalid-feedback" th:errors="*{firstName}"></div>
       </div>
       <div class="col-md-4">
-        <label class="form-label">Last name <span class="text-danger">*</span></label>
-        <input class="form-control" th:field="*{lastName}" required/>
+        <label class="form-label" for="lastName">Last name</label>
+        <input class="form-control" id="lastName" th:field="*{lastName}" maxlength="100"
+               th:classappend="${#fields.hasErrors('lastName')} ? 'is-invalid' : ''"/>
+        <div class="invalid-feedback" th:errors="*{lastName}"></div>
       </div>
       <div class="col-md-4">
-        <label class="form-label">Company</label>
-        <input class="form-control" th:field="*{companyName}"/>
+        <label class="form-label" for="companyName">Company</label>
+        <input class="form-control" id="companyName" th:field="*{companyName}" maxlength="200"/>
       </div>
       <div class="col-md-6">
-        <label class="form-label">Occupation</label>
-        <input class="form-control" th:field="*{occupation}"/>
+        <label class="form-label" for="occupation">Occupation</label>
+        <input class="form-control" id="occupation" th:field="*{occupation}" maxlength="100"/>
       </div>
     </div>
 
     <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Address</h2>
     <div class="row g-3">
       <div class="col-12">
-        <label class="form-label">Address line 1 <span class="text-danger">*</span></label>
-        <input class="form-control" th:field="*{address1}" required/>
+        <label class="form-label" for="address1">Address line 1</label>
+        <input class="form-control" id="address1" th:field="*{address1}"/>
       </div>
       <div class="col-12">
-        <label class="form-label">Address line 2</label>
-        <input class="form-control" th:field="*{address2}"/>
+        <label class="form-label" for="address2">Address line 2</label>
+        <input class="form-control" id="address2" th:field="*{address2}"/>
       </div>
       <div class="col-12">
-        <label class="form-label">Address line 3</label>
-        <input class="form-control" th:field="*{address3}"/>
+        <label class="form-label" for="address3">Address line 3</label>
+        <input class="form-control" id="address3" th:field="*{address3}"/>
       </div>
       <div class="col-md-4">
-        <label class="form-label">City <span class="text-danger">*</span></label>
-        <input class="form-control" th:field="*{city}" required/>
+        <label class="form-label" for="city">City</label>
+        <input class="form-control" id="city" th:field="*{city}" maxlength="100"/>
       </div>
     </div>
 
     <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Contact</h2>
     <div class="row g-3">
       <div class="col-md-3">
-        <label class="form-label">Phone (office)</label>
-        <input class="form-control" th:field="*{phoneOffice}"/>
+        <label class="form-label" for="phoneOffice">Phone (office)</label>
+        <input class="form-control" id="phoneOffice" th:field="*{phoneOffice}" maxlength="20"/>
       </div>
       <div class="col-md-3">
-        <label class="form-label">Phone (residence)</label>
-        <input class="form-control" th:field="*{phoneResidence}"/>
+        <label class="form-label" for="phoneResidence">Phone (residence)</label>
+        <input class="form-control" id="phoneResidence" th:field="*{phoneResidence}" maxlength="20"/>
       </div>
       <div class="col-md-3">
-        <label class="form-label">Mobile 1 <span class="text-danger">*</span></label>
-        <input class="form-control" th:field="*{mobile1}" required/>
+        <label class="form-label" for="mobile1">Mobile 1</label>
+        <input class="form-control" id="mobile1" th:field="*{mobile1}" maxlength="20"/>
       </div>
       <div class="col-md-3">
-        <label class="form-label">Mobile 2</label>
-        <input class="form-control" th:field="*{mobile2}"/>
+        <label class="form-label" for="mobile2">Mobile 2</label>
+        <input class="form-control" id="mobile2" th:field="*{mobile2}" maxlength="20"/>
       </div>
       <div class="col-md-6">
-        <label class="form-label">Email 1</label>
-        <input class="form-control" type="email" th:field="*{email1}"/>
+        <label class="form-label" for="email1">Email 1</label>
+        <input class="form-control" id="email1" type="email" th:field="*{email1}" maxlength="150"/>
       </div>
       <div class="col-md-6">
-        <label class="form-label">Email 2</label>
-        <input class="form-control" type="email" th:field="*{email2}"/>
+        <label class="form-label" for="email2">Email 2</label>
+        <input class="form-control" id="email2" type="email" th:field="*{email2}" maxlength="150"/>
       </div>
     </div>
 
     <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Identity &amp; dates</h2>
     <div class="row g-3">
       <div class="col-md-3">
-        <label class="form-label">PAN no <span class="text-danger">*</span></label>
-        <input class="form-control text-uppercase" th:field="*{panNumber}" maxlength="20" required/>
+        <label class="form-label" for="panNumber">PAN no</label>
+        <input class="form-control text-uppercase" id="panNumber" th:field="*{panNumber}" maxlength="20"/>
       </div>
       <div class="col-md-3">
-        <label class="form-label">Aadhaar <span class="text-danger">*</span></label>
-        <input class="form-control" th:field="*{aadhaarNumber}" maxlength="20" required/>
+        <label class="form-label" for="aadhaarNumber">Aadhaar</label>
+        <input class="form-control" id="aadhaarNumber" th:field="*{aadhaarNumber}" maxlength="20"/>
       </div>
       <div class="col-md-3">
-        <label class="form-label">Date of birth <span class="text-danger">*</span></label>
-        <input class="form-control" type="date" th:field="*{dob}" required/>
+        <label class="form-label" for="dob">Date of birth</label>
+        <input class="form-control" id="dob" type="date" th:field="*{dob}"/>
       </div>
       <div class="col-md-3">
-        <label class="form-label">Date of marriage</label>
-        <input class="form-control" type="date" th:field="*{dateOfMarriage}"/>
+        <label class="form-label" for="dateOfMarriage">Date of marriage</label>
+        <input class="form-control" id="dateOfMarriage" type="date" th:field="*{dateOfMarriage}"/>
       </div>
     </div>
 
     <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Notes</h2>
     <div class="row g-3">
       <div class="col-12">
-        <label class="form-label">Particulars</label>
-        <textarea class="form-control" rows="4" th:field="*{particulars}"></textarea>
+        <label class="form-label" for="particulars">Particulars</label>
+        <textarea class="form-control" id="particulars" rows="4" th:field="*{particulars}"></textarea>
       </div>
     </div>
 
