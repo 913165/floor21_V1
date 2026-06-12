@@ -1217,6 +1217,16 @@ button.flat-floor-plan-link {
   border-width: 1px;
 }
 
+#column-type-defaults-modal .flat-details-save-notice {
+  font-weight: 600;
+  border-width: 1px;
+}
+
+#unit-type-defaults-modal .flat-details-save-notice {
+  font-weight: 600;
+  border-width: 1px;
+}
+
 #flat-details-modal .modal-body {
   padding-top: 0.65rem;
   padding-bottom: 0.85rem;
@@ -1282,8 +1292,26 @@ button.flat-floor-plan-link {
   line-height: 1.35;
 }
 
-.floor21-area-field-edit__toolbar {
-  min-height: 1.5rem;
+.floor21-area-field-edit__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.floor21-area-field-edit__input,
+.floor21-area-field-edit__row > input[data-area-input] {
+  flex: 0 0 50%;
+  width: 50%;
+  max-width: 50%;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.floor21-area-field-edit__row .floor21-area-unit-toggle {
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .floor21-area-field .floor21-area-unit-toggle {
@@ -1291,6 +1319,10 @@ button.flat-floor-plan-link {
 }
 
 /* Modals teleported to body in flat-grid.js; keep above shell (z-index 1) and backdrop */
+#parking-link-modal.modal.modal--stacked-over-details {
+  z-index: 1085;
+}
+
 #flat-details-modal.modal,
 #floor-plan-modal.modal,
 #flat-add-modal.modal,

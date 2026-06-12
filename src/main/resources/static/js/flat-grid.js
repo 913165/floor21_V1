@@ -1124,8 +1124,34 @@
       el.classList.add("d-none");
       return;
     }
+    showUnitTypeDefaultsSuccess("");
     el.textContent = message;
     el.classList.remove("d-none");
+  }
+
+  var UNIT_TYPE_DEFAULTS_APPLY_SUCCESS_MSG = "Saved values";
+
+  function showUnitTypeDefaultsSuccess(message) {
+    var top = document.getElementById("unit-type-defaults-status");
+    if (!top) return;
+    clearTimeout(window._unitTypeDefaultsSuccessHideTimer);
+    window._unitTypeDefaultsSuccessHideTimer = null;
+    if (!message) {
+      top.textContent = "";
+      top.classList.add("d-none");
+      top.classList.remove("alert-danger");
+      top.classList.add("alert-info");
+      return;
+    }
+    top.textContent = message;
+    top.classList.remove("d-none", "alert-danger");
+    top.classList.add("alert-info");
+    if (typeof top.scrollIntoView === "function") {
+      top.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    window._unitTypeDefaultsSuccessHideTimer = setTimeout(function () {
+      showUnitTypeDefaultsSuccess("");
+    }, 8000);
   }
 
   async function openUnitTypeDefaultsModal(bhkType) {
@@ -1134,6 +1160,7 @@
     await loadUnitTypeDefaults(false);
     populateUnitTypeDefaultsModal(bhkType || null);
     showUnitTypeDefaultsError("");
+    showUnitTypeDefaultsSuccess("");
     var modalEl = document.getElementById("unit-type-defaults-modal");
     if (modalEl && typeof bootstrap !== "undefined" && bootstrap.Modal) {
       bindDualAreaFieldsIn(modalEl);
@@ -1220,8 +1247,7 @@
     }
     var updatedFlats = data.updatedFlats || [];
     applyUnitTypeDefaultsResultToGrid(updatedFlats);
-    var countMsg = updatedFlats.length > 0 ? String(updatedFlats.length) : "0";
-    showGridToast("Applied to " + countMsg + " " + bhkSel.value + " flat(s)", "success");
+    showUnitTypeDefaultsSuccess(UNIT_TYPE_DEFAULTS_APPLY_SUCCESS_MSG);
   }
 
   async function loadColumnTypeDefaults(force) {
@@ -1296,8 +1322,34 @@
       el.classList.add("d-none");
       return;
     }
+    showColumnTypeDefaultsSuccess("");
     el.textContent = message;
     el.classList.remove("d-none");
+  }
+
+  var COLUMN_DEFAULTS_APPLY_SUCCESS_MSG = "Saved value";
+
+  function showColumnTypeDefaultsSuccess(message) {
+    var top = document.getElementById("column-type-defaults-status");
+    if (!top) return;
+    clearTimeout(window._columnDefaultsSuccessHideTimer);
+    window._columnDefaultsSuccessHideTimer = null;
+    if (!message) {
+      top.textContent = "";
+      top.classList.add("d-none");
+      top.classList.remove("alert-danger");
+      top.classList.add("alert-info");
+      return;
+    }
+    top.textContent = message;
+    top.classList.remove("d-none", "alert-danger");
+    top.classList.add("alert-info");
+    if (typeof top.scrollIntoView === "function") {
+      top.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    window._columnDefaultsSuccessHideTimer = setTimeout(function () {
+      showColumnTypeDefaultsSuccess("");
+    }, 8000);
   }
 
   async function openColumnTypeDefaultsModal(columnNumber) {
@@ -1306,6 +1358,7 @@
     await loadColumnTypeDefaults(false);
     populateColumnTypeDefaultsModal(columnNumber || null);
     showColumnTypeDefaultsError("");
+    showColumnTypeDefaultsSuccess("");
     var modalEl = document.getElementById("column-type-defaults-modal");
     if (modalEl && typeof bootstrap !== "undefined" && bootstrap.Modal) {
       bindDualAreaFieldsIn(modalEl);
@@ -1379,8 +1432,7 @@
     }
     var updatedFlats = data.updatedFlats || [];
     applyUnitTypeDefaultsResultToGrid(updatedFlats);
-    var countMsg = updatedFlats.length > 0 ? String(updatedFlats.length) : "0";
-    showGridToast("Applied to " + countMsg + " flat(s) in column " + colSel.value, "success");
+    showColumnTypeDefaultsSuccess(COLUMN_DEFAULTS_APPLY_SUCCESS_MSG);
   }
 
   function ensureAdminBhkOption(selectEl, value) {
@@ -3550,6 +3602,42 @@
     }
   }
 
+  function resolveSelectedParkingSlotElement() {
+    if (
+      selectedParkingSlotElement &&
+      document.body.contains(selectedParkingSlotElement)
+    ) {
+      return selectedParkingSlotElement;
+    }
+    if (selectedFlatId && selectedParkingSlot) {
+      return refreshSelectedParkingSlotElement(selectedFlatId);
+    }
+    return null;
+  }
+
+  function stackModalAboveFlatDetails(modalEl) {
+    if (!modalEl) return;
+    var detailsModal = document.getElementById("flat-details-modal");
+    if (!detailsModal || !detailsModal.classList.contains("show")) return;
+    modalEl.classList.add("modal--stacked-over-details");
+    function adjustStack() {
+      modalEl.style.zIndex = "1085";
+      var backdrops = document.querySelectorAll(".modal-backdrop");
+      if (backdrops.length) {
+        backdrops[backdrops.length - 1].style.zIndex = "1080";
+      }
+    }
+    modalEl.addEventListener("shown.bs.modal", adjustStack, { once: true });
+    modalEl.addEventListener(
+      "hidden.bs.modal",
+      function () {
+        modalEl.classList.remove("modal--stacked-over-details");
+        modalEl.style.removeProperty("z-index");
+      },
+      { once: true }
+    );
+  }
+
   async function openParkingLinkModal(slotEl) {
     if (!slotEl || !isPlatformAdminEdit()) return;
     mountModalsOnBody();
@@ -3591,6 +3679,7 @@
       select.innerHTML = '<option value="">— Not linked —</option>';
       select.disabled = true;
     }
+    stackModalAboveFlatDetails(modalEl);
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
     var options = await loadResidentialFlatOptions(false);
     if (!select) return;
@@ -6157,6 +6246,78 @@
     document.addEventListener("click", window.__f21AdminSaveClickHandler, true);
   }
 
+  function openParkingLinkModalForSelectedSlot() {
+    if (!selectedParkingSlot) return;
+    showParkingSlotLinkError("");
+    var slotEl = resolveSelectedParkingSlotElement();
+    if (!slotEl) {
+      showParkingSlotLinkError("Could not find this parking slot on the plan.");
+      return;
+    }
+    void openParkingLinkModal(slotEl);
+  }
+
+  function ensureParkingSlotPanelBindings() {
+    if (window.__f21ParkingSlotPanelClickHandler) {
+      document.removeEventListener("click", window.__f21ParkingSlotPanelClickHandler, true);
+    }
+    window.__f21ParkingSlotPanelClickHandler = function (e) {
+      var linkBtn = e.target.closest("#panel-parking-slot-link-btn");
+      if (linkBtn) {
+        e.preventDefault();
+        openParkingLinkModalForSelectedSlot();
+        return;
+      }
+      var unlinkSlotBtn = e.target.closest("#panel-parking-slot-unlink-btn");
+      if (unlinkSlotBtn) {
+        e.preventDefault();
+        void unlinkParkingFromSlotPanel();
+        return;
+      }
+      var rotateSlotBtn = e.target.closest("#panel-parking-slot-rotate");
+      if (rotateSlotBtn) {
+        e.preventDefault();
+        void rotateParkingSlotFromModal();
+        return;
+      }
+      var parkingAddBtn = e.target.closest("#panel-parking-add-btn");
+      if (parkingAddBtn) {
+        e.preventDefault();
+        void linkParkingFromFlatPanel();
+        return;
+      }
+      var parkingLinkSave = e.target.closest("#parking-link-save");
+      if (parkingLinkSave) {
+        e.preventDefault();
+        void saveParkingLink();
+        return;
+      }
+      var parkingLinkUnlink = e.target.closest("#parking-link-unlink");
+      if (parkingLinkUnlink) {
+        e.preventDefault();
+        var select = document.getElementById("parking-link-flat");
+        if (select) select.value = "";
+        void saveParkingLink();
+        return;
+      }
+      var parkingLinkRotate = e.target.closest("#parking-link-rotate");
+      if (parkingLinkRotate) {
+        e.preventDefault();
+        void rotateParkingSlotFromModal();
+        return;
+      }
+      var parkingUnlink = e.target.closest(".flat-parking-links-unlink");
+      if (parkingUnlink) {
+        e.preventDefault();
+        void unlinkParkingFromFlatPanel(
+          parkingUnlink.getAttribute("data-parking-flat-id"),
+          parkingUnlink.getAttribute("data-floor-number")
+        );
+      }
+    };
+    document.addEventListener("click", window.__f21ParkingSlotPanelClickHandler, true);
+  }
+
   function ensureParkingConfigSaveBinding() {
     if (window.__f21ParkingSaveClickHandler) {
       document.removeEventListener("click", window.__f21ParkingSaveClickHandler, true);
@@ -6178,6 +6339,7 @@
     mountModalsOnBody();
     ensureAdminSaveClickBinding();
     ensureParkingConfigSaveBinding();
+    ensureParkingSlotPanelBindings();
     bindBuildingSnapshotInteractions();
     initBuildingSnapshotButtons();
     var grid = document.getElementById("flat-grid");
@@ -6221,6 +6383,7 @@
     var unitDefaultsBhk = document.getElementById("unit-type-defaults-bhk");
     if (unitDefaultsBhk) {
       unitDefaultsBhk.addEventListener("change", function () {
+        showUnitTypeDefaultsSuccess("");
         populateUnitTypeDefaultsModal(unitDefaultsBhk.value);
         updateUnitTypeDefaultsModalTitle(unitDefaultsBhk.value);
       });
@@ -6240,6 +6403,7 @@
     var columnDefaultsCol = document.getElementById("column-type-defaults-column");
     if (columnDefaultsCol) {
       columnDefaultsCol.addEventListener("change", function () {
+        showColumnTypeDefaultsSuccess("");
         populateColumnTypeDefaultsModal(columnDefaultsCol.value);
         updateColumnTypeDefaultsModalTitle(columnDefaultsCol.value);
       });
@@ -6283,64 +6447,6 @@
     if (parkingConfigCarSize) {
       parkingConfigCarSize.addEventListener("input", function () {
         syncParkingConfigCarSizeLabel(parkingConfigCarSize.value);
-      });
-    }
-    var parkingLinkSave = document.getElementById("parking-link-save");
-    if (parkingLinkSave) {
-      parkingLinkSave.addEventListener("click", function () {
-        saveParkingLink();
-      });
-    }
-    var parkingLinkRotate = document.getElementById("parking-link-rotate");
-    if (parkingLinkRotate) {
-      parkingLinkRotate.addEventListener("click", function () {
-        rotateParkingSlotFromModal();
-      });
-    }
-    var parkingSlotRotate = document.getElementById("panel-parking-slot-rotate");
-    if (parkingSlotRotate) {
-      parkingSlotRotate.addEventListener("click", function () {
-        rotateParkingSlotFromModal();
-      });
-    }
-    var parkingSlotLinkBtn = document.getElementById("panel-parking-slot-link-btn");
-    if (parkingSlotLinkBtn) {
-      parkingSlotLinkBtn.addEventListener("click", function () {
-        if (selectedParkingSlotElement) {
-          openParkingLinkModal(selectedParkingSlotElement);
-        }
-      });
-    }
-    var parkingSlotUnlinkBtn = document.getElementById("panel-parking-slot-unlink-btn");
-    if (parkingSlotUnlinkBtn) {
-      parkingSlotUnlinkBtn.addEventListener("click", function () {
-        unlinkParkingFromSlotPanel();
-      });
-    }
-    var parkingLinkUnlink = document.getElementById("parking-link-unlink");
-    if (parkingLinkUnlink) {
-      parkingLinkUnlink.addEventListener("click", function () {
-        var select = document.getElementById("parking-link-flat");
-        if (select) select.value = "";
-        saveParkingLink();
-      });
-    }
-    var parkingAddBtn = document.getElementById("panel-parking-add-btn");
-    if (parkingAddBtn) {
-      parkingAddBtn.addEventListener("click", function () {
-        linkParkingFromFlatPanel();
-      });
-    }
-    var parkingLinksList = document.getElementById("panel-parking-links-list");
-    if (parkingLinksList) {
-      parkingLinksList.addEventListener("click", function (e) {
-        var unlink = e.target.closest(".flat-parking-links-unlink");
-        if (!unlink) return;
-        e.preventDefault();
-        unlinkParkingFromFlatPanel(
-          unlink.getAttribute("data-parking-flat-id"),
-          unlink.getAttribute("data-floor-number")
-        );
       });
     }
     var flatLayoutFileInput = document.getElementById("flat-layout-file-input");

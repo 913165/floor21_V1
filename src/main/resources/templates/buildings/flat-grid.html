@@ -1015,6 +1015,10 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body pt-2 pb-3">
+          <div id="unit-type-defaults-status"
+               class="alert alert-info py-2 small mb-2 d-none flat-details-save-notice"
+               role="status"
+               aria-live="polite"></div>
           <label class="form-label small mb-1" for="unit-type-defaults-bhk">Unit type</label>
           <select class="form-select form-select-sm" id="unit-type-defaults-bhk" aria-label="Unit type">
             <option th:each="t : ${residentialBhkTypes}" th:value="${t}" th:text="${t}">2BHK</option>
@@ -1045,6 +1049,10 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body pt-2 pb-3">
+          <div id="column-type-defaults-status"
+               class="alert alert-info py-2 small mb-2 d-none flat-details-save-notice"
+               role="status"
+               aria-live="polite"></div>
           <label class="form-label small mb-1" for="column-type-defaults-column">Column number</label>
           <select class="form-select form-select-sm" id="column-type-defaults-column" aria-label="Column number">
             <option th:each="col : ${layoutColumnNumbers}"
@@ -1134,7 +1142,7 @@
     </div>
   </div>
   <script defer th:src="@{/js/floor21-area-unit.js(v=area-unit-prefs-v2)}"></script>
-  <script defer th:src="@{/js/flat-grid.js(v=admin-save-area-unit-v1)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=unit-defaults-saved-v1)}"></script>
   <script defer th:src="@{/js/ground-floor-shops.js(v=area-single-field-v1)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=7)}"></script>
 </div>
