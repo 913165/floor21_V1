@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { waitForFlatGridReady, type NewBuildingInput } from './buildings';
+import { openAdminBuildingFlatGrid } from './nav';
 import { applyDefaultsResultToFlatCards } from './unit-type-defaults';
 
 export type ColumnTypeDefaultsInput = {
@@ -86,7 +87,7 @@ export async function configureAndApplyColumnTypeDefaults(
   building: NewBuildingInput,
   data: ColumnTypeDefaultsInput,
 ) {
-  await page.goto(`buildings/${buildingId}/flats`, { waitUntil: 'commit' });
+  await openAdminBuildingFlatGrid(page, { buildingId });
   await waitForFlatGridReady(page);
 
   const sampleFlat = page

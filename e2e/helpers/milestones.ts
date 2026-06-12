@@ -3,6 +3,7 @@ import os from 'os';
 import path from 'path';
 import { expect, type Page } from '@playwright/test';
 import { loginAsSuperAdmin } from './auth';
+import { loadMilestoneSetupForBooking, openMilestoneTemplates } from './nav';
 import type { PlatformFlowState } from './platform-flow';
 import { waitForMainPanel } from './projects';
 
@@ -14,11 +15,10 @@ export async function adminImportMilestoneTemplates(page: Page, flow: PlatformFl
   const templatePath = path.join(os.tmpdir(), `floor21-milestones-${flow.stamp}.xlsx`);
   fs.writeFileSync(templatePath, await templateResponse.body());
 
-  await page.goto(
-    `admin/builder-pricing-slabs?projectId=${flow.projectId}&buildingId=${flow.buildingId}`,
-    { waitUntil: 'commit' },
-  );
-  const panel = await waitForMainPanel(page);
+  const panel = await openMilestoneTemplates(page, {
+    projectId: flow.projectId,
+    buildingId: flow.buildingId,
+  });
   await expect(panel.getByRole('heading', { name: 'Milestone Templates' })).toBeVisible();
 
   const importForm = panel.locator('#slabs-import-form');
@@ -51,12 +51,7 @@ export async function ensureClientMilestoneSchedule(
   clientDisplayName: string,
 ) {
   const bookingId = bookingIdForClient(flow, clientDisplayName);
-  await page.goto(
-    `clients/milestone-setup?buildingId=${flow.buildingId}&bookingId=${bookingId}`,
-    { waitUntil: 'commit' },
-  );
-  let panel = await waitForMainPanel(page);
-  await expect(panel.getByRole('heading', { name: /Milestone setup/i })).toBeVisible();
+  let panel = await loadMilestoneSetupForBooking(page, flow.buildingId, bookingId);
 
   const slabRows = panel.locator('#milestoneSlabTable tbody tr');
   if ((await slabRows.count()) === 0) {

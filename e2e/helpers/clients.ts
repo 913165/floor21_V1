@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { openNewClientForm } from './nav';
 import { waitForMainPanel } from './projects';
 
 export type NewClientInput = {
@@ -50,9 +51,7 @@ export function sampleClientData(stamp: number, index = 1): NewClientInput {
 }
 
 export async function createClient(page: Page, client: NewClientInput): Promise<void> {
-  await page.goto('clients/new', { waitUntil: 'commit' });
-  const form = await waitForMainPanel(page);
-  await expect(form.getByRole('heading', { name: 'New Client' })).toBeVisible();
+  const form = await openNewClientForm(page);
 
   await form.locator('#firstName').fill(client.firstName);
   await form.locator('#lastName').fill(client.lastName);

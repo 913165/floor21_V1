@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
+import { openAdminBuildingFlatGrid } from '../helpers/nav';
 import { expectBookingInList } from '../helpers/bookings';
 import { E2E_PRIMARY_BUYER } from '../helpers/clients';
 import { emitFlowCredentials } from '../helpers/flow-credentials';
@@ -105,7 +106,10 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     expect(flow.residentialFlatCount).toBe(expectedResidentialFlatCount(flow.building));
     expect(flow.parkingFlatCount).toBe(expectedParkingFlatCount(flow.building));
 
-    await page.goto(`buildings/${flow.buildingId}/flats`, { waitUntil: 'commit' });
+    await openAdminBuildingFlatGrid(page, {
+      buildingId: flow.buildingId,
+      projectId: flow.projectId,
+    });
     await waitForFlatGridReady(page);
 
     for (const bhkType of Object.keys(DEFAULT_E2E_BHK_MIX)) {

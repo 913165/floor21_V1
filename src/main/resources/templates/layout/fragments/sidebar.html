@@ -19,6 +19,11 @@
        th:classappend="${#strings.startsWith(path, '/buildings')} ? ' is-active' : ''">Buildings</a>
     <p class="floor21-nav__section" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Sales</p>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/clients}"
+       data-nav-prefix="/clients"
+       data-nav-exclude="/clients/milestone-setup"
+       th:classappend="${#strings.startsWith(path, '/clients') and !#strings.startsWith(path, '/clients/milestone-setup')} ? ' is-active' : ''">Clients</a>
+    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bookings}"
        data-nav-prefix="/bookings"
        data-nav-exclude="/bookings/payment-schedule"
@@ -85,6 +90,11 @@
        data-nav-prefix="/admin/buildings"
        data-nav-exact="true"
        th:classappend="${path == '/admin/buildings'} ? ' is-active' : ''">All buildings</a>
+    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/clients}"
+       data-nav-prefix="/clients"
+       data-nav-exclude="/clients/milestone-setup"
+       th:classappend="${#strings.startsWith(path, '/clients') and !#strings.startsWith(path, '/clients/milestone-setup')} ? ' is-active' : ''">Clients</a>
 
     <p class="floor21-nav__section" sec:authorize="hasRole('SUPER_ADMIN')">Milestone</p>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"

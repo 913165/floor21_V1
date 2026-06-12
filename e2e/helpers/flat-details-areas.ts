@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { openFlatDetailsForFlat, waitForFlatGridReady } from './buildings';
-import { waitForMainPanel } from './projects';
+import { clickSidebarLink, openAdminBuildingFlatGrid } from './nav';
 
 const SQFT_PER_SQM = 10.763910416709722;
 
@@ -129,8 +129,7 @@ export async function configureAndVerifyFlatDetailsAreas(
   buildingId: string,
   data: FlatDetailsAreasInput = E2E_FLAT_DETAILS_AREAS,
 ): Promise<FlatDetailsAreasTestRecord> {
-  await page.goto(`buildings/${buildingId}/flats`, { waitUntil: 'commit' });
-  await waitForMainPanel(page);
+  await openAdminBuildingFlatGrid(page, { buildingId });
   await waitForFlatGridReady(page);
 
   const sampleFlat = page
@@ -160,10 +159,8 @@ export async function configureAndVerifyFlatDetailsAreas(
 
   const balconyAreaSqft = await expectFlatCardAreaAttributes(sampleFlat, data);
 
-  await page.goto('dashboard', { waitUntil: 'commit' });
-  await waitForMainPanel(page);
-  await page.goto(`buildings/${buildingId}/flats`, { waitUntil: 'commit' });
-  await waitForMainPanel(page);
+  await clickSidebarLink(page, 'Dashboard');
+  await openAdminBuildingFlatGrid(page, { buildingId });
   await waitForFlatGridReady(page);
 
   const card = page.locator(`#flat-${flatId}`);

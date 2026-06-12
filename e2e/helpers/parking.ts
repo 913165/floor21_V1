@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { defaultParkingSlotsPerFloor, openFlatDetailsForFlat, type NewBuildingInput } from './buildings';
-import { waitForMainPanel } from './projects';
+import { openBuildingFlatGrid as openBuildingFlatGridViaNav } from './nav';
 
 export type ParkingSlotLocation = {
   floor: number;
@@ -39,9 +39,7 @@ export function parkingSlotLocationForIndex(
 }
 
 export async function openBuildingFlatGrid(page: Page, buildingId: string) {
-  await page.goto(`buildings/${buildingId}/flats`, { waitUntil: 'commit' });
-  const main = await waitForMainPanel(page);
-  await expect(main.locator('#flat-grid')).toBeVisible({ timeout: 30_000 });
+  const main = await openBuildingFlatGridViaNav(page, { buildingId });
   await expect(main.locator('#flat-grid')).toHaveAttribute('data-platform-admin-edit', 'true');
   return main;
 }

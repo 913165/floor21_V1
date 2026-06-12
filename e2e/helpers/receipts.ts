@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { loadPaymentReceiptsForBooking, loadPaymentScheduleForBooking } from './nav';
 import type { PlatformFlowState } from './platform-flow';
 import { waitForMainPanel } from './projects';
 
@@ -56,11 +57,7 @@ export async function createPaymentReceipt(
   const receiptIndex = options?.receiptIndex ?? 0;
   const receiptDate = options?.receiptDate ?? e2eReceiptDate(receiptIndex);
 
-  await page.goto(
-    `receipts?buildingId=${flow.buildingId}&bookingId=${bookingId}`,
-    { waitUntil: 'commit' },
-  );
-  const loaded = await waitForMainPanel(page);
+  const loaded = await loadPaymentReceiptsForBooking(page, flow.buildingId, bookingId);
   await loaded.getByRole('button', { name: 'New Payment receipt' }).click();
   const modal = page.locator('#receipt-form-modal');
   await expect(modal).toBeVisible();
@@ -91,11 +88,7 @@ export async function screenshotPaymentSchedule(
   screenshotPath: string,
 ) {
   const bookingId = bookingIdForClient(flow, clientDisplayName);
-  await page.goto(
-    `bookings/payment-schedule?buildingId=${flow.buildingId}&bookingId=${bookingId}`,
-    { waitUntil: 'commit' },
-  );
-  const schedule = await waitForMainPanel(page);
+  const schedule = await loadPaymentScheduleForBooking(page, flow.buildingId, bookingId);
   await expect(schedule.getByText('Slab payment schedule')).toBeVisible();
   await expect(schedule.locator('.slab-schedule-ledger-table tbody tr').first()).toBeVisible();
   await page.screenshot({ path: screenshotPath, fullPage: true });

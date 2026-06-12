@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { openBookingsList, openNewBookingForm } from './nav';
 import { waitForMainPanel } from './projects';
 
 export async function createBookingForFlat(
@@ -7,9 +8,7 @@ export async function createBookingForFlat(
   clientDisplayName: string,
   bookingDate = '2026-06-15',
 ): Promise<string> {
-  await page.goto(`bookings/new?flatId=${flatId}`, { waitUntil: 'commit' });
-  const form = await waitForMainPanel(page);
-  await expect(form.getByRole('heading', { name: 'New booking' })).toBeVisible();
+  const form = await openNewBookingForm(page);
 
   await form.locator('#client\\.id').selectOption({ label: clientDisplayName });
   await form.locator('#flat\\.id').selectOption(flatId);
@@ -29,8 +28,7 @@ export async function createBookingForFlat(
 }
 
 export async function expectBookingInList(page: Page, clientDisplayName: string) {
-  await page.goto('bookings', { waitUntil: 'commit' });
-  const list = await waitForMainPanel(page);
+  const list = await openBookingsList(page);
   await expect(list.getByRole('heading', { name: 'Bookings' })).toBeVisible();
   await expect(list.locator('tbody tr').filter({ hasText: clientDisplayName }).first()).toBeVisible();
 }

@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { mainPanel } from './auth';
+import { openNewProjectForm as openNewProjectFormViaNav, openProjectsList as openProjectsListViaNav } from './nav';
 
 export function uniqueProjectName(label = 'E2E Project'): string {
   return `${label} ${Date.now()}`;
@@ -19,18 +20,11 @@ export async function waitForMainPanel(page: Page): Promise<Locator> {
 }
 
 export async function openProjectsList(page: Page): Promise<Locator> {
-  await page.locator('#floor21-sidebar').getByRole('link', { name: 'Projects' }).click();
-  const main = await waitForMainPanel(page);
-  await expect(main.getByRole('heading', { name: 'Projects' })).toBeVisible();
-  return main;
+  return openProjectsListViaNav(page);
 }
 
 export async function openNewProjectForm(page: Page): Promise<Locator> {
-  const main = await openProjectsList(page);
-  await main.getByRole('link', { name: 'New project' }).click();
-  const form = await waitForMainPanel(page);
-  await expect(form.getByRole('heading', { name: 'New project' })).toBeVisible();
-  return form;
+  return openNewProjectFormViaNav(page);
 }
 
 export async function fillNewProjectForm(

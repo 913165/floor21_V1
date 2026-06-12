@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { openNewUserForm, openUsersList } from './nav';
 import { waitForMainPanel } from './projects';
 
 /** Password for all partner users created by the E2E flow (easy to remember for manual checks). */
@@ -43,20 +44,7 @@ export function sampleUserData(index: number): NewUserInput {
   };
 }
 
-export async function openUsersList(page: Page): Promise<Locator> {
-  await page.locator('#floor21-sidebar').getByRole('link', { name: 'User Management' }).click();
-  const main = await waitForMainPanel(page);
-  await expect(main.getByRole('heading', { name: 'Users' })).toBeVisible();
-  return main;
-}
-
-export async function openNewUserForm(page: Page): Promise<Locator> {
-  const main = await openUsersList(page);
-  await main.getByRole('link', { name: 'New user' }).click();
-  const form = await waitForMainPanel(page);
-  await expect(form.getByRole('heading', { name: 'New user' })).toBeVisible();
-  return form;
-}
+export { openNewUserForm, openUsersList } from './nav';
 
 export async function fillNewUserForm(main: Locator, user: NewUserInput) {
   await main.locator('#user-full-name').fill(user.fullName);
@@ -87,8 +75,7 @@ export async function submitNewUserForm(main: Locator, page: Page) {
 }
 
 export async function createUser(page: Page, user: NewUserInput): Promise<Locator> {
-  await page.goto('admin/users/new');
-  const form = await waitForMainPanel(page);
+  const form = await openNewUserForm(page);
   await fillNewUserForm(form, user);
   await submitNewUserForm(form, page);
   const list = await waitForMainPanel(page);

@@ -1,4 +1,8 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import {
+  openAllBuildingsList as openAllBuildingsListViaNav,
+  openNewBuildingForm as openNewBuildingFormViaNav,
+} from './nav';
 import { waitForMainPanel } from './projects';
 
 /** Residential unit types shown on the admin building layout form. */
@@ -115,23 +119,14 @@ export async function openAllBuildingsList(
   page: Page,
   options?: { projectId?: string },
 ): Promise<Locator> {
-  const query = options?.projectId ? `?projectId=${options.projectId}` : '';
-  await page.goto(`admin/buildings${query}`, { waitUntil: 'commit' });
-  const main = await waitForMainPanel(page);
-  await expect(main.getByRole('heading', { name: 'All buildings' })).toBeVisible();
-  if (options?.projectId) {
-    await expect(main.locator('#filterProject')).toHaveValue(options.projectId);
-  }
-  return main;
+  return openAllBuildingsListViaNav(page, options);
 }
 
 export async function openNewBuildingForm(page: Page, projectId: string): Promise<Locator> {
-  await page.goto(`admin/buildings/new?builderId=${projectId}`, { waitUntil: 'commit' });
-  const main = await waitForMainPanel(page);
-  await expect(main.getByRole('heading', { name: /Add building layout/ })).toBeVisible();
-  await expect(main.locator('#admin-builder-id')).toHaveValue(projectId);
-  return main;
+  return openNewBuildingFormViaNav(page, projectId);
 }
+
+export { openAdminBuildingFlatGrid, openBuildingFlatGrid } from './nav';
 
 export async function fillNewBuildingForm(main: Locator, data: NewBuildingInput) {
   const buildingName = main.locator('input#buildingName');

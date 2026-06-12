@@ -106,6 +106,8 @@ Expand **Floor21 — full flow (admin + partner)**, then click ▶ on each step 
 
 **Note:** `baseURL` must include a trailing slash (`http://localhost/floor21/`) so paths resolve under the Spring context path. Use relative paths like `page.goto('login')`, not `page.goto('/login')`.
 
+**Navigation:** After login, helpers in `helpers/nav.ts` reach screens through the **sidebar** (same as manual testing). Direct `page.goto` is reserved for login and HTTP API calls (e.g. milestone template download), not for in-app tenant screens.
+
 ## Turbo frames
 
 In-app navigation updates `#floor21-main`. Use `mainPanel(page)` from `helpers/auth.ts` when asserting content inside the main panel (it is a turbo-frame, not an iframe).

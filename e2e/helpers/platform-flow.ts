@@ -25,6 +25,7 @@ import {
   parkingSlotLocationForIndex,
   pickRandomSample,
 } from './parking';
+import { openAdminBuildingFlatGrid, openProjectStaffAssign } from './nav';
 import { createProject, uniqueProjectName, waitForMainPanel } from './projects';
 import { createUser, sampleUserData, selectAssignableUser, type NewUserInput } from './users';
 import { ensureSuperAdmin, login, loginAsSuperAdmin } from './auth';
@@ -219,13 +220,16 @@ export async function adminSaveFlatDetailsAreas(page: Page, flow: PlatformFlowSt
 
 export async function adminAddPartners(page: Page, flow: PlatformFlowState) {
   await loginAsSuperAdmin(page);
-  await addPartnerToProject(page, flow.projectId, flow.user1, 'EXECUTIVE', flow.buildingId);
-  await addPartnerToProject(page, flow.projectId, flow.user2, 'BUILDER_ADMIN');
+  await addPartnerToProject(page, flow.projectId, flow.projectName, flow.user1, 'EXECUTIVE', flow.buildingId);
+  await addPartnerToProject(page, flow.projectId, flow.projectName, flow.user2, 'BUILDER_ADMIN');
 }
 
 export async function adminAssignFlats(page: Page, flow: PlatformFlowState) {
   await loginAsSuperAdmin(page);
-  await page.goto(`buildings/${flow.buildingId}/flats`, { waitUntil: 'commit' });
+  await openAdminBuildingFlatGrid(page, {
+    buildingId: flow.buildingId,
+    projectId: flow.projectId,
+  });
   await waitForFlatGridReady(page);
   const adminGrid = await waitForMainPanel(page);
   await expect(adminGrid.locator('#flat-grid')).toBeVisible();
@@ -398,9 +402,7 @@ export async function expectPartnerBookableFlatCount(
   buildingId: string,
   expectedBookable: number,
 ) {
-  await page.goto(`buildings/${buildingId}/flats`, { waitUntil: 'commit' });
-  const grid = await waitForMainPanel(page);
-  await expect(grid.locator('#flat-grid')).toBeVisible();
+  const grid = await openBuildingFlatGrid(page, buildingId);
   const bookable = grid.locator(
     '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"][data-bookable="true"]',
   );
@@ -413,9 +415,7 @@ export async function expectOwnerBookableFlatCount(
   buildingId: string,
   assignedFlatIds: string[],
 ) {
-  await page.goto(`buildings/${buildingId}/flats`, { waitUntil: 'commit' });
-  const grid = await waitForMainPanel(page);
-  await expect(grid.locator('#flat-grid')).toBeVisible();
+  const grid = await openBuildingFlatGrid(page, buildingId);
 
   const residential = grid.locator(
     '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"]',
@@ -469,13 +469,12 @@ function shuffle<T>(items: T[]): T[] {
 async function addPartnerToProject(
   page: Page,
   projectId: string,
+  projectName: string,
   user: NewUserInput,
   role: 'BUILDER_ADMIN' | 'EXECUTIVE',
   buildingId?: string,
 ) {
-  await page.goto(`admin/projects/${projectId}/staff/assign`, { waitUntil: 'commit' });
-  const form = await waitForMainPanel(page);
-  await expect(form.getByRole('heading', { name: /Add owner\/partner/i })).toBeVisible();
+  const form = await openProjectStaffAssign(page, projectName);
 
   await selectAssignableUser(form, user);
   await form.locator('#assign-role').selectOption(role);
