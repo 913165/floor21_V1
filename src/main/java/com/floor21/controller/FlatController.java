@@ -1,6 +1,7 @@
 package com.floor21.controller;
 
 import com.floor21.dto.FlatAdminUpdateDto;
+import com.floor21.dto.FlatPriceUpdateDto;
 import com.floor21.dto.FlatMergeCandidateDto;
 import com.floor21.dto.FlatMergeDto;
 import com.floor21.dto.FloorMergeSplitResult;
@@ -110,6 +111,17 @@ public class FlatController {
         } catch (IllegalStateException ex) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Could not save image. Check server disk and permissions."));
+        }
+    }
+
+    @PostMapping(value = "/flats/{id}/price", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> updatePrice(@PathVariable UUID id, @Valid @RequestBody FlatPriceUpdateDto body) {
+        try {
+            Flat flat = flatService.updateFlatPrice(id, body.basePrice());
+            return ResponseEntity.ok(flatResponse(flat));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }
     }
 

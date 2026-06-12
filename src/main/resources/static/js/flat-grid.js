@@ -406,6 +406,9 @@
     if (note) note.classList.toggle("d-none", !parkingMode);
     if (shopNote) shopNote.classList.toggle("d-none", !shop);
     if (actions) actions.classList.toggle("d-none", parkingMode);
+    if (parkingMode) {
+      hideUserPriceEditor();
+    }
     if (parkingLinks) parkingLinks.classList.toggle("d-none", parkingMode || shop);
     if (parkingSlotActions) parkingSlotActions.classList.toggle("d-none", !slot);
     if (flatLayoutActions) flatLayoutActions.classList.toggle("d-none", parkingMode || shop);
@@ -1620,6 +1623,128 @@
     }
   }
 
+  function showUserPriceError(message) {
+    var el = document.getElementById("user-price-error");
+    if (!el) return;
+    if (!message) {
+      el.textContent = "";
+      el.classList.add("d-none");
+      return;
+    }
+    el.textContent = message;
+    el.classList.remove("d-none");
+  }
+
+  function hideUserPriceEditor() {
+    var row = document.getElementById("user-price-save-row");
+    var input = document.getElementById("user-price");
+    if (row) row.classList.add("d-none");
+    if (input) input.classList.add("d-none");
+    showUserPriceError("");
+  }
+
+  function canEditUserPrice(targetEl) {
+    if (!targetEl || isPlatformAdminEdit()) return false;
+    if (!document.getElementById("user-price")) return false;
+    if (selectedParkingSlot || selectedParkingSection) return false;
+    var ds = targetEl.dataset || {};
+    if (ds.bookable !== "true") return false;
+    if (ds.parking === "true" || ds.amenity === "true") return false;
+    if (ds.duplexSecondary === "true" || ds.mergeSecondary === "true") return false;
+    return true;
+  }
+
+  function priceFromTarget(targetEl) {
+    if (!targetEl) return "";
+    return (
+      getEffectiveFlatDatasetValue(targetEl, "price", "basePrice") ||
+      targetEl.dataset.price ||
+      ""
+    );
+  }
+
+  function syncUserPricePanel(targetEl) {
+    var row = document.getElementById("user-price-save-row");
+    var input = document.getElementById("user-price");
+    var display = document.getElementById("panel-price");
+    if (!input) return;
+    var canEdit = canEditUserPrice(targetEl);
+    if (row) row.classList.toggle("d-none", !canEdit);
+    input.classList.toggle("d-none", !canEdit);
+    if (display) display.classList.toggle("d-none", canEdit);
+    if (canEdit) {
+      input.value = priceFromTarget(targetEl);
+    } else if (display && targetEl) {
+      display.textContent = priceFromTarget(targetEl);
+    }
+    showUserPriceError("");
+  }
+
+  async function handleUserPriceSaveClick(saveBtn) {
+    if (!selectedFlatId || isPlatformAdminEdit()) return;
+    var input = document.getElementById("user-price");
+    if (!input) return;
+    var raw = input.value.trim();
+    if (raw === "") {
+      showUserPriceError("Enter a price.");
+      return;
+    }
+    var price = Number(raw);
+    if (isNaN(price) || price < 0) {
+      showUserPriceError("Price must be zero or greater.");
+      return;
+    }
+    showUserPriceError("");
+    showAdminSuccess("");
+    var saveLabel = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving…";
+    var res;
+    try {
+      res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/price", {
+        method: "POST",
+        headers: Object.assign({ "Content-Type": "application/json" }, csrfHeaders()),
+        body: JSON.stringify({ basePrice: price }),
+      });
+    } catch (err) {
+      showUserPriceError("Could not save — check your connection and try again.");
+      return;
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = saveLabel;
+    }
+    if (!res || !res.ok) {
+      showUserPriceError(await parseErrorResponse(res));
+      return;
+    }
+    var flat = await res.json();
+    var card = document.getElementById("flat-" + selectedFlatId);
+    if (card) {
+      applyFlatDataToCard(card, flat);
+    }
+    applyFlatDataToShopSlot(selectedFlatId, flat);
+    applyFlatDataToParkingSlot(selectedFlatId, flat);
+    input.value = flat.basePrice != null ? String(flat.basePrice) : raw;
+    var display = document.getElementById("panel-price");
+    if (display) {
+      display.textContent = flat.basePrice != null ? String(flat.basePrice) : "";
+    }
+    showAdminSuccess(ADMIN_SAVE_SUCCESS_MSG);
+  }
+
+  function ensureUserPriceSaveBinding() {
+    if (window.__f21UserPriceSaveHandler) {
+      document.removeEventListener("click", window.__f21UserPriceSaveHandler, true);
+    }
+    window.__f21UserPriceSaveHandler = function (e) {
+      var btn = e.target.closest("#user-price-save");
+      if (!btn || btn.disabled) return;
+      e.preventDefault();
+      void handleUserPriceSaveClick(btn);
+    };
+    document.addEventListener("click", window.__f21UserPriceSaveHandler, true);
+  }
+
   function syncAdminPanel(cardEl) {
     var panel = document.getElementById("flat-admin-panel");
     var adminMode = isPlatformAdminEdit() && !!document.getElementById("admin-bhk");
@@ -1734,6 +1859,7 @@
     }
     setAdminEditModeVisible(false);
     if (panel) panel.classList.add("d-none");
+    syncUserPricePanel(cardEl);
   }
 
   function applyBookingSelectionHighlight() {
@@ -4625,6 +4751,7 @@
     syncShopSlotAdminFields(slotEl);
     syncActionButtons(actionTarget);
     syncClientDetailsPanel(actionTarget);
+    syncUserPricePanel(actionTarget);
     if (showModal !== false) {
       openFlatDetailsModal();
     }
@@ -6467,6 +6594,7 @@
   onPageReady(function () {
     mountModalsOnBody();
     ensureAdminSaveClickBinding();
+    ensureUserPriceSaveBinding();
     ensureAdminLifecycleClickBinding();
     ensureParkingConfigSaveBinding();
     ensureParkingSlotPanelBindings();

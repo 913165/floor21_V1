@@ -117,6 +117,8 @@ public class SecurityConfig {
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/flats/*/details")
                                         .hasRole("SUPER_ADMIN")
+                                        .requestMatchers(HttpMethod.POST, "/flats/*/price")
+                                        .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
                                         .requestMatchers(HttpMethod.POST, "/flats/*/partner")
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/flats/*/split-duplex")

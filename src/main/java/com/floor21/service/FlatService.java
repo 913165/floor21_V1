@@ -2336,6 +2336,27 @@ public class FlatService {
     }
 
     @Transactional
+    public Flat updateFlatPrice(UUID flatId, BigDecimal basePrice) {
+        UUID builderId = TenantContext.requireBuilderId();
+        Flat flat =
+                flatRepository
+                        .findByIdAndBuilder_Id(flatId, builderId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
+        if (flat.getBuilding() != null) {
+            TenantContext.requireBuildingAccess(flat.getBuilding().getId());
+            partnerFlatAllocationService.assertCanManageFlat(flat.getBuilding().getId(), flatId);
+        }
+        if (FlatUnitTypes.isNonBookable(flat)) {
+            throw new IllegalArgumentException("Price cannot be updated for this unit type.");
+        }
+        if (basePrice == null || basePrice.signum() < 0) {
+            throw new IllegalArgumentException("Price must be zero or greater.");
+        }
+        flat.setBasePrice(basePrice.setScale(2, RoundingMode.HALF_UP));
+        return flatRepository.save(flat);
+    }
+
+    @Transactional
     public Flat updateStatus(UUID flatId, String status) {
         UUID builderId = TenantContext.requireBuilderId();
         Flat flat =

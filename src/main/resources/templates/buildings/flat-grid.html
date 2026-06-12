@@ -776,9 +776,17 @@
               </th:block>
               </div>
               <div class="text-muted small">Price</div>
-              <p id="panel-price" class="mb-0"></p>
               <th:block sec:authorize="hasRole('SUPER_ADMIN')">
+                <p id="panel-price" class="mb-0"></p>
                 <input class="form-control form-control-sm d-none admin-edit-field" type="number" id="admin-price" min="0" step="1" aria-label="Base price" placeholder="Leave blank to keep"/>
+              </th:block>
+              <th:block sec:authorize="!hasRole('SUPER_ADMIN')">
+                <p id="panel-price" class="mb-0 d-none"></p>
+                <input class="form-control form-control-sm d-none" type="number" id="user-price" min="0" step="1" aria-label="Base price"/>
+                <div class="d-none mt-2" id="user-price-save-row">
+                  <button type="button" class="btn btn-sm btn-primary" id="user-price-save">Save price</button>
+                </div>
+                <p class="text-danger small mb-0 mt-1 d-none" id="user-price-error"></p>
               </th:block>
             </div>
             <div class="col-12 d-none admin-edit-field mt-2 pt-1" id="admin-save-row" sec:authorize="hasRole('SUPER_ADMIN')">
@@ -1147,7 +1155,7 @@
     </div>
   </div>
   <script defer th:src="@{/js/floor21-area-unit.js(v=area-unit-prefs-v2)}"></script>
-  <script defer th:src="@{/js/flat-grid.js(v=grid-mount-modals-v1)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=user-price-edit-v1)}"></script>
   <script defer th:src="@{/js/ground-floor-shops.js(v=ground-config-save-v2)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=7)}"></script>
 </div>
