@@ -463,6 +463,13 @@ public class BuildingController {
             return ResponseEntity.ok(flatService.configureGroundFloor(id, body));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            return ResponseEntity.badRequest()
+                    .body(
+                            Map.of(
+                                    "error",
+                                    "Could not save ground floor — shop or parking numbers conflict."
+                                            + " Save again; if it persists, adjust shop count and retry."));
         }
     }
 

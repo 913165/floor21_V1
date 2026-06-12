@@ -57,6 +57,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -620,7 +621,17 @@ public class FlatService {
             buildingRepository.save(building);
             return FlatGridGroundFloorDto.empty();
         }
-        ensureGroundParkingFlatNumbersAfterShops(buildingId, builderId, shopCount);
+        int parkingSlotCount = dto.parkingSlotCount() != null ? dto.parkingSlotCount() : 0;
+        if (parkingSlotCount < 0 || parkingSlotCount > MAX_GROUND_FLOOR_SHOPS) {
+            throw new IllegalArgumentException(
+                    "Ground parking slot count must be between 0 and " + MAX_GROUND_FLOOR_SHOPS + ".");
+        }
+        if (parkingSlotCount == 0) {
+            removeGroundFloorNonShopFlats(buildingId, builderId, existing);
+            flatRepository.flush();
+        } else {
+            ensureGroundParkingFlatNumbersAfterShops(buildingId, builderId, shopCount);
+        }
         while (existing.size() > shopCount) {
             Flat last = existing.remove(existing.size() - 1);
             flatRepository.delete(last);
@@ -629,15 +640,15 @@ public class FlatService {
         while (existing.size() < shopCount) {
             int unit = existing.size() + 1;
             Flat created = shopFlat(builder, building, unit, shopArea, now);
+            created.setFlatNumber(provisionalFlatNumber());
             existing.add(flatRepository.save(created));
         }
-        for (int i = 0; i < existing.size(); i++) {
-            Flat flat = existing.get(i);
-            int unit = i + 1;
-            flat.setUnitNumber(unit);
-            flat.setFlatNumber(groundFlatNumber(unit));
-            flat.setAreaSqft(shopArea);
-            flatRepository.save(flat);
+        prepareGroundFloorForShopRenumber(
+                buildingId, builderId, existing, parkingSlotCount);
+        if (shopsNeedFlatRenumber(existing, shopCount)) {
+            renumberGroundShopsInPlace(existing, shopArea);
+        } else {
+            updateGroundShopAreas(existing, shopArea);
         }
         int carLiftCount =
                 dto.carLiftCount() != null
@@ -649,11 +660,6 @@ public class FlatService {
                 dto.gateCount() != null
                         ? dto.gateCount()
                         : ParkingFloorConfigUtil.resolveGateCountFromDto(null, true);
-        int parkingSlotCount = dto.parkingSlotCount() != null ? dto.parkingSlotCount() : 0;
-        if (parkingSlotCount < 0 || parkingSlotCount > MAX_GROUND_FLOOR_SHOPS) {
-            throw new IllegalArgumentException(
-                    "Ground parking slot count must be between 0 and " + MAX_GROUND_FLOOR_SHOPS + ".");
-        }
         BigDecimal parkingSlotArea =
                 dto.parkingSlotAreaSqft() != null && dto.parkingSlotAreaSqft().signum() > 0
                         ? dto.parkingSlotAreaSqft().setScale(2, RoundingMode.HALF_UP)
@@ -776,7 +782,9 @@ public class FlatService {
         UUID buildingId = building.getId();
         UUID builderId = builder.getId();
         flatRepository.flush();
-        ensureGroundParkingFlatNumbersAfterShops(buildingId, builderId, shopCount);
+        if (parkingSlotCount > 0) {
+            ensureGroundParkingFlatNumbersAfterShops(buildingId, builderId, shopCount);
+        }
         List<Flat> parkingFlats =
                 new ArrayList<>(
                         flatRepository
@@ -793,7 +801,7 @@ public class FlatService {
         while (parkingFlats.size() < parkingSlotCount) {
             int unit = shopCount + parkingFlats.size() + 1;
             Flat created = parkingFlat(builder, building, GROUND_FLOOR_NUMBER, unit, now);
-            created.setFlatNumber(groundFlatNumber(unit));
+            created.setFlatNumber(provisionalFlatNumber());
             created.setAreaSqft(parkingSlotArea);
             parkingFlats.add(flatRepository.save(created));
         }
@@ -835,11 +843,15 @@ public class FlatService {
 
     private void renumberGroundParkingSlots(
             List<Flat> parking, int shopCount, BigDecimal parkingSlotArea) {
+        if (parking.isEmpty()) {
+            return;
+        }
         List<Flat> ordered = new ArrayList<>(parking);
         ordered.sort(
                 Comparator.comparing(
                         f -> f.getUnitNumber() != null ? f.getUnitNumber() : Integer.MAX_VALUE));
-        for (int i = ordered.size() - 1; i >= 0; i--) {
+        assignStagingFlatNumbers(ordered);
+        for (int i = 0; i < ordered.size(); i++) {
             Flat flat = ordered.get(i);
             int unit = shopCount + i + 1;
             flat.setUnitNumber(unit);
@@ -850,6 +862,88 @@ public class FlatService {
             flatRepository.save(flat);
         }
         flatRepository.flush();
+    }
+
+    /** Remove parking and any other non-shop units on ground floor when parking is disabled. */
+    private void removeGroundFloorNonShopFlats(
+            UUID buildingId, UUID builderId, List<Flat> retainingShops) {
+        Set<UUID> keepIds = new HashSet<>();
+        for (Flat shop : retainingShops) {
+            if (shop.getId() != null) {
+                keepIds.add(shop.getId());
+            }
+        }
+        flatRepository
+                .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                        buildingId, builderId, GROUND_FLOOR_NUMBER)
+                .stream()
+                .filter(f -> !keepIds.contains(f.getId()))
+                .forEach(flatRepository::delete);
+    }
+
+    /** Drop stray ground-floor rows that would block shop numbers 0001..00NN. */
+    private void prepareGroundFloorForShopRenumber(
+            UUID buildingId, UUID builderId, List<Flat> retainingShops, int parkingSlotCount) {
+        Set<UUID> keepIds = new HashSet<>();
+        for (Flat shop : retainingShops) {
+            if (shop.getId() != null) {
+                keepIds.add(shop.getId());
+            }
+        }
+        flatRepository
+                .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                        buildingId, builderId, GROUND_FLOOR_NUMBER)
+                .stream()
+                .filter(f -> !keepIds.contains(f.getId()))
+                .filter(
+                        f ->
+                                parkingSlotCount <= 0
+                                        || !FlatUnitTypes.isParkingCode(f.getBhkType()))
+                .forEach(flatRepository::delete);
+        flatRepository.flush();
+    }
+
+    private boolean shopsNeedFlatRenumber(List<Flat> shops, int shopCount) {
+        if (shops.size() != shopCount) {
+            return true;
+        }
+        for (int i = 0; i < shops.size(); i++) {
+            int expectedUnit = i + 1;
+            Flat flat = shops.get(i);
+            if (flat.getUnitNumber() == null || flat.getUnitNumber() != expectedUnit) {
+                return true;
+            }
+            if (!groundFlatNumber(expectedUnit).equals(flat.getFlatNumber())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void updateGroundShopAreas(List<Flat> shops, BigDecimal shopArea) {
+        for (Flat flat : shops) {
+            flat.setAreaSqft(shopArea);
+            flatRepository.save(flat);
+        }
+        flatRepository.flush();
+    }
+
+    /** Avoid unique (building_id, flat_number) violations while reassigning numbers in place. */
+    private void assignStagingFlatNumbers(List<Flat> flats) {
+        for (Flat flat : flats) {
+            flat.setFlatNumber(stagingFlatNumber(flat));
+            flatRepository.save(flat);
+        }
+        flatRepository.flush();
+    }
+
+    private static String stagingFlatNumber(Flat flat) {
+        String compact = flat.getId().toString().replace("-", "");
+        return "T" + compact.substring(0, Math.min(18, compact.length()));
+    }
+
+    private static String provisionalFlatNumber() {
+        return "P" + UUID.randomUUID().toString().replace("-", "").substring(0, 18);
     }
 
     private static String groundFlatNumber(int unit) {
@@ -2369,9 +2463,129 @@ public class FlatService {
         if ("BOOKED".equals(flat.getStatus())) {
             throw new IllegalArgumentException("Cannot remove a booked flat. Cancel the booking first.");
         }
+        UUID buildingId = flat.getBuilding().getId();
+        UUID builderId = flat.getBuilder().getId();
+        int floorNumber = flat.getFloorNumber();
+        int removedUnit = flat.getUnitNumber();
         partnerFlatAllocationService.clearAssignmentForFlat(flatId);
         buildingFloorPlanService.deleteStoredWebPath(flat.getLayoutImagePath());
         flatRepository.delete(flat);
+        flatRepository.flush();
+        if (floorNumber == GROUND_FLOOR_NUMBER) {
+            renumberGroundFloorAfterRemoval(buildingId, builderId, removedUnit, flat);
+            return;
+        }
+        renumberFloorUnitsAfterRemoval(buildingId, builderId, floorNumber, removedUnit);
+    }
+
+    /**
+     * After a residential unit is removed, shift later units on the same floor down (e.g.
+     * 0904→0903) while keeping each flat's own type, area, price, and status.
+     */
+    private void renumberFloorUnitsAfterRemoval(
+            UUID buildingId, UUID builderId, int floorNumber, int removedUnit) {
+        List<Flat> toShift =
+                flatRepository
+                        .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                buildingId, builderId, floorNumber)
+                        .stream()
+                        .filter(f -> f.getUnitNumber() != null && f.getUnitNumber() > removedUnit)
+                        .sorted(Comparator.comparing(Flat::getUnitNumber).reversed())
+                        .toList();
+        if (toShift.isEmpty()) {
+            return;
+        }
+        for (Flat f : toShift) {
+            int newUnit = f.getUnitNumber() - 1;
+            f.setUnitNumber(newUnit);
+            f.setFlatNumber(flatNumberForFloorUnit(floorNumber, newUnit));
+        }
+        flatRepository.saveAll(toShift);
+        flatRepository.flush();
+    }
+
+    /** Ground floor shops and parking use separate unit ranges; keep them in sync after removal. */
+    private void renumberGroundFloorAfterRemoval(
+            UUID buildingId, UUID builderId, int removedUnit, Flat removedFlat) {
+        if (FlatUnitTypes.isShopCode(removedFlat.getBhkType())) {
+            List<Flat> shops =
+                    flatRepository
+                            .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                    buildingId, builderId, GROUND_FLOOR_NUMBER)
+                            .stream()
+                            .filter(f -> FlatUnitTypes.isShopCode(f.getBhkType()))
+                            .filter(f -> f.getUnitNumber() != null && f.getUnitNumber() > removedUnit)
+                            .sorted(Comparator.comparing(Flat::getUnitNumber).reversed())
+                            .toList();
+            if (!shops.isEmpty()) {
+                assignStagingFlatNumbers(shops);
+                for (Flat shop : shops) {
+                    int newUnit = shop.getUnitNumber() - 1;
+                    shop.setUnitNumber(newUnit);
+                    shop.setFlatNumber(groundFlatNumber(newUnit));
+                }
+                flatRepository.saveAll(shops);
+                flatRepository.flush();
+            }
+            int shopCount =
+                    (int)
+                            flatRepository
+                                    .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                            buildingId, builderId, GROUND_FLOOR_NUMBER)
+                                    .stream()
+                                    .filter(f -> FlatUnitTypes.isShopCode(f.getBhkType()))
+                                    .count();
+            if (shopCount > 0) {
+                ensureGroundParkingFlatNumbersAfterShops(buildingId, builderId, shopCount);
+            }
+            return;
+        }
+        if (FlatUnitTypes.isParkingCode(removedFlat.getBhkType())) {
+            int shopCount =
+                    (int)
+                            flatRepository
+                                    .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                            buildingId, builderId, GROUND_FLOOR_NUMBER)
+                                    .stream()
+                                    .filter(f -> FlatUnitTypes.isShopCode(f.getBhkType()))
+                                    .count();
+            List<Flat> parking =
+                    flatRepository
+                            .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                    buildingId, builderId, GROUND_FLOOR_NUMBER)
+                            .stream()
+                            .filter(f -> FlatUnitTypes.isParkingCode(f.getBhkType()))
+                            .toList();
+            if (shopCount > 0 && !parking.isEmpty()) {
+                renumberGroundParkingSlots(new ArrayList<>(parking), shopCount, null);
+            }
+        }
+    }
+
+    private void renumberGroundShopsInPlace(List<Flat> shops, BigDecimal shopArea) {
+        if (shops.isEmpty()) {
+            return;
+        }
+        assignStagingFlatNumbers(shops);
+        for (int i = 0; i < shops.size(); i++) {
+            Flat flat = shops.get(i);
+            int unit = i + 1;
+            flat.setUnitNumber(unit);
+            flat.setFlatNumber(groundFlatNumber(unit));
+            flat.setAreaSqft(shopArea);
+            flatRepository.save(flat);
+        }
+        flatRepository.flush();
+    }
+
+    private static String flatNumberForFloorUnit(int floorNumber, int unit) {
+        if (floorNumber == GROUND_FLOOR_NUMBER) {
+            return groundFlatNumber(unit);
+        }
+        if (ParkingFloorConfigUtil.isBasementFloor(floorNumber)) {
+            return ParkingFloorConfigUtil.basementFlatNumber(floorNumber, unit);
+        }
+        return String.format("%02d%02d", floorNumber, unit);
     }
 
     @Transactional

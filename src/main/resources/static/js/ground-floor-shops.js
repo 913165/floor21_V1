@@ -46,16 +46,70 @@
       : null;
   }
 
-  function showConfigError(message) {
-    var el = document.getElementById("ground-floor-config-error");
+  function readConfigAreaSqft(pairId) {
+    var modal = configModalEl();
+    var areaUnit = window.Floor21AreaUnit;
+    if (!modal || !areaUnit) return readAreaPair(pairId);
+    var input = modal.querySelector("#" + pairId);
+    if (!input) return readAreaPair(pairId);
+    var unit = areaUnit.readUnitFromControl(modal.querySelector("#" + pairId + "-unit"));
+    var raw = input.value.trim();
+    if (raw === "") return null;
+    var num = Number(raw);
+    if (isNaN(num)) return null;
+    return unit === "sqm" ? areaUnit.sqmToSqftNumber(num) : num;
+  }
+
+  var GROUND_CONFIG_SUCCESS_MSG = "Saved values";
+
+  function configModalEl() {
+    var matches = document.querySelectorAll("#ground-floor-config-modal");
+    if (!matches.length) return null;
+    return matches[matches.length - 1];
+  }
+
+  function configEl(id) {
+    var modal = configModalEl();
+    if (!modal) return document.getElementById(id);
+    return modal.querySelector("#" + id);
+  }
+
+  function showConfigStatus(message, tone) {
+    var el = configEl("ground-floor-config-status");
     if (!el) return;
+    clearTimeout(window._groundConfigSuccessHideTimer);
+    window._groundConfigSuccessHideTimer = null;
     if (!message) {
       el.textContent = "";
       el.classList.add("d-none");
+      el.classList.remove("alert-danger");
+      el.classList.add("alert-info");
       return;
     }
     el.textContent = message;
     el.classList.remove("d-none");
+    el.classList.remove("alert-info", "alert-danger");
+    el.classList.add(tone === "error" ? "alert-danger" : "alert-info");
+    if (typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    if (tone !== "error") {
+      window._groundConfigSuccessHideTimer = setTimeout(function () {
+        showConfigStatus("", "success");
+      }, 8000);
+    }
+  }
+
+  function showConfigError(message) {
+    if (!message) {
+      showConfigStatus("", "success");
+      return;
+    }
+    showConfigStatus(message, "error");
+  }
+
+  function showConfigSuccess(message) {
+    showConfigStatus(message, "success");
   }
 
   function showLayoutError(rootEl, message) {
@@ -641,7 +695,13 @@
   async function parseErrorResponse(res) {
     try {
       var body = await res.json();
-      return body.error || "Request failed.";
+      if (body && body.error) return body.error;
+      if (body && body.message) return body.message;
+      if (body && body.errors && body.errors.length) {
+        var first = body.errors[0];
+        return (first && (first.defaultMessage || first.message)) || "Request failed.";
+      }
+      return "Request failed.";
     } catch (e) {
       return "Request failed.";
     }
@@ -1126,31 +1186,50 @@
     );
   }
 
+  function ensureConfigModalMounted() {
+    if (typeof window.floor21MountGridModals === "function") {
+      window.floor21MountGridModals();
+      return;
+    }
+    mountModal();
+  }
+
   function mountModal() {
-    var modal = document.getElementById("ground-floor-config-modal");
-    if (modal && modal.parentElement !== document.body) {
-      document.body.appendChild(modal);
+    var matches = document.querySelectorAll("#ground-floor-config-modal");
+    if (!matches.length) return;
+    var main = document.getElementById("floor21-main");
+    var keep = matches[matches.length - 1];
+    if (main && matches.length > 1) {
+      Array.prototype.forEach.call(matches, function (node) {
+        if (main.contains(node)) keep = node;
+      });
+    }
+    Array.prototype.forEach.call(matches, function (node) {
+      if (node !== keep) node.remove();
+    });
+    if (keep.parentElement !== document.body) {
+      document.body.appendChild(keep);
     }
   }
 
   function syncParkingCarSizeLabel(value) {
-    var label = document.getElementById("ground-floor-config-parking-car-size-value");
+    var label = configEl("ground-floor-config-parking-car-size-value");
     if (label) label.textContent = String(value);
   }
 
   function syncShopSizeLabel(value) {
-    var label = document.getElementById("ground-floor-config-shop-size-value");
+    var label = configEl("ground-floor-config-shop-size-value");
     if (label) label.textContent = String(value);
   }
 
   function populateConfigForm(panel) {
-    var countEl = document.getElementById("ground-floor-config-shop-count");
-    var shopSizeEl = document.getElementById("ground-floor-config-shop-size");
-    var parkingCountEl = document.getElementById("ground-floor-config-parking-count");
-    var parkingCarSize = document.getElementById("ground-floor-config-parking-car-size");
-    var carLiftEl = document.getElementById("ground-floor-config-car-lift-count");
-    var passengerLiftEl = document.getElementById("ground-floor-config-passenger-lift-count");
-    var gateEl = document.getElementById("ground-floor-config-gate-count");
+    var countEl = configEl("ground-floor-config-shop-count");
+    var shopSizeEl = configEl("ground-floor-config-shop-size");
+    var parkingCountEl = configEl("ground-floor-config-parking-count");
+    var parkingCarSize = configEl("ground-floor-config-parking-car-size");
+    var carLiftEl = configEl("ground-floor-config-car-lift-count");
+    var passengerLiftEl = configEl("ground-floor-config-passenger-lift-count");
+    var gateEl = configEl("ground-floor-config-gate-count");
     if (countEl) {
       var existingCount = panel && panel.dataset.shopCount ? Number(panel.dataset.shopCount) : 0;
       countEl.value = existingCount > 0 ? String(existingCount) : "4";
@@ -1199,42 +1278,46 @@
       gateEl.value = panel && panel.dataset.gateCount != null ? panel.dataset.gateCount : "1";
     }
     if (window.Floor21AreaUnit && window.Floor21AreaUnit.bindDualAreaInputs) {
-      var modalEl = document.getElementById("ground-floor-config-modal");
-      window.Floor21AreaUnit.bindDualAreaInputs(modalEl || document);
+      window.Floor21AreaUnit.bindDualAreaInputs(configModalEl() || document);
     }
   }
 
   function openConfigModal() {
     if (!isPlatformAdminEdit()) return;
-    mountModal();
-    var modalEl = document.getElementById("ground-floor-config-modal");
+    ensureConfigModalMounted();
+    var modalEl = configModalEl();
     var panel = groundFloorPanel();
-    var countEl = document.getElementById("ground-floor-config-shop-count");
+    var countEl = configEl("ground-floor-config-shop-count");
     if (!modalEl || typeof bootstrap === "undefined" || !bootstrap.Modal) return;
     populateConfigForm(panel);
     showConfigError("");
+    showConfigSuccess("");
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
     window.setTimeout(function () {
       if (countEl) countEl.focus();
     }, 150);
   }
 
-  async function saveConfig() {
+  async function saveConfig(saveBtn) {
+    ensureConfigModalMounted();
     var id = buildingId();
-    var countEl = document.getElementById("ground-floor-config-shop-count");
-    var parkingCountEl = document.getElementById("ground-floor-config-parking-count");
-    var parkingCarSizeEl = document.getElementById("ground-floor-config-parking-car-size");
-    var shopSizeEl = document.getElementById("ground-floor-config-shop-size");
-    var carLiftEl = document.getElementById("ground-floor-config-car-lift-count");
-    var passengerLiftEl = document.getElementById("ground-floor-config-passenger-lift-count");
-    var gateEl = document.getElementById("ground-floor-config-gate-count");
-    if (!id || !countEl) return;
+    var countEl = configEl("ground-floor-config-shop-count");
+    var parkingCountEl = configEl("ground-floor-config-parking-count");
+    var parkingCarSizeEl = configEl("ground-floor-config-parking-car-size");
+    var shopSizeEl = configEl("ground-floor-config-shop-size");
+    var carLiftEl = configEl("ground-floor-config-car-lift-count");
+    var passengerLiftEl = configEl("ground-floor-config-passenger-lift-count");
+    var gateEl = configEl("ground-floor-config-gate-count");
+    if (!id || !countEl) {
+      showConfigError("Could not save — building not found. Refresh the page and try again.");
+      return;
+    }
     var shopCount = Number(countEl.value);
     if (!shopCount || shopCount < 1 || shopCount > 50) {
       showConfigError("Enter a shop count between 1 and 50.");
       return;
     }
-    var shopAreaSqft = readAreaPair("ground-floor-config-area");
+    var shopAreaSqft = readConfigAreaSqft("ground-floor-config-area");
     if (shopAreaSqft == null || shopAreaSqft <= 0) {
       showConfigError("Enter a shop area greater than zero.");
       return;
@@ -1244,37 +1327,70 @@
       showConfigError("Enter a parking slot count between 0 and 50.");
       return;
     }
-    var parkingSlotAreaSqft = readAreaPair("ground-floor-config-parking-area");
+    var parkingSlotAreaSqft = readConfigAreaSqft("ground-floor-config-parking-area");
     if (parkingSlotCount > 0 && (parkingSlotAreaSqft == null || parkingSlotAreaSqft <= 0)) {
       showConfigError("Enter a parking slot area greater than zero.");
       return;
     }
     showConfigError("");
-    var res = await fetch(appRoot() + "/buildings/" + id + "/ground-floor-config", {
-      method: "POST",
-      headers: Object.assign({ "Content-Type": "application/json" }, csrfHeaders()),
-      body: JSON.stringify({
-        shopCount: shopCount,
-        shopAreaSqft: shopAreaSqft,
-        carLiftCount: carLiftEl ? Number(carLiftEl.value) : 1,
-        passengerLiftCount: passengerLiftEl ? Number(passengerLiftEl.value) : 0,
-        gateCount: gateEl ? Number(gateEl.value) : 1,
-        parkingSlotCount: parkingSlotCount,
-        parkingSlotAreaSqft: parkingSlotCount > 0 ? parkingSlotAreaSqft : null,
-        parkingCarSizePercent: parkingCarSizeEl ? Number(parkingCarSizeEl.value) : 180,
-        shopSizePercent: shopSizeEl ? Number(shopSizeEl.value) : DEFAULT_SHOP_SIZE_PERCENT,
-      }),
-    });
-    if (!res.ok) {
+    showConfigStatus("Saving…", "success");
+    var saveLabel = saveBtn ? saveBtn.textContent : "Save";
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving…";
+    }
+    var res;
+    try {
+      res = await fetch(appRoot() + "/buildings/" + id + "/ground-floor-config", {
+        method: "POST",
+        headers: Object.assign({ "Content-Type": "application/json" }, csrfHeaders()),
+        body: JSON.stringify({
+          shopCount: shopCount,
+          shopAreaSqft: shopAreaSqft,
+          carLiftCount: carLiftEl ? Number(carLiftEl.value) : 1,
+          passengerLiftCount: passengerLiftEl ? Number(passengerLiftEl.value) : 0,
+          gateCount: gateEl ? Number(gateEl.value) : 1,
+          parkingSlotCount: parkingSlotCount,
+          parkingSlotAreaSqft: parkingSlotCount > 0 ? parkingSlotAreaSqft : null,
+          parkingCarSizePercent: parkingCarSizeEl ? Number(parkingCarSizeEl.value) : 180,
+          shopSizePercent: shopSizeEl ? Number(shopSizeEl.value) : DEFAULT_SHOP_SIZE_PERCENT,
+        }),
+      });
+    } catch (err) {
+      showConfigError("Could not save — check your connection and try again.");
+      return;
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = saveLabel;
+      }
+    }
+    if (!res || !res.ok) {
       showConfigError(await parseErrorResponse(res));
       return;
     }
     var groundFloor = await res.json();
-    var modalEl = document.getElementById("ground-floor-config-modal");
-    if (modalEl && bootstrap.Modal) {
-      bootstrap.Modal.getOrCreateInstance(modalEl).hide();
-    }
+    showConfigSuccess(GROUND_CONFIG_SUCCESS_MSG);
     window.floor21SyncGroundFloor(groundFloor);
+    if (typeof window.floor21RefreshGrid === "function") {
+      await window.floor21RefreshGrid();
+    }
+  }
+
+  function ensureGroundFloorConfigSaveBinding() {
+    if (window.__f21GroundConfigSaveHandler) {
+      document.removeEventListener("click", window.__f21GroundConfigSaveHandler, true);
+    }
+    window.__f21GroundConfigSaveHandler = function (e) {
+      var btn = e.target.closest("#ground-floor-config-save");
+      if (!btn || btn.disabled) return;
+      var modal = configModalEl();
+      if (modal && !modal.contains(btn)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      void saveConfig(btn);
+    };
+    document.addEventListener("click", window.__f21GroundConfigSaveHandler, true);
   }
 
   window.floor21ReloadGroundFloorPlan = loadShopPlan;
@@ -1392,6 +1508,8 @@
 
   onPageReady(function () {
     ensureShopGridDelegation();
+    ensureConfigModalMounted();
+    ensureGroundFloorConfigSaveBinding();
 
     var section = document.getElementById("flat-ground-floor-section");
     if (!section) {
@@ -1409,20 +1527,16 @@
     }
     section.dataset.f21GroundInit = "true";
 
-    mountModal();
-
-    var parkingCarSize = document.getElementById("ground-floor-config-parking-car-size");
-    if (parkingCarSize) {
-      parkingCarSize.addEventListener("input", function () {
-        syncParkingCarSizeLabel(parkingCarSize.value);
-      });
-    }
-    var shopSize = document.getElementById("ground-floor-config-shop-size");
-    if (shopSize) {
-      shopSize.addEventListener("input", function () {
-        syncShopSizeLabel(shopSize.value);
-      });
-    }
+    document.addEventListener("input", function (e) {
+      if (!e.target || !e.target.id) return;
+      var modal = configModalEl();
+      if (!modal || !modal.contains(e.target)) return;
+      if (e.target.id === "ground-floor-config-parking-car-size") {
+        syncParkingCarSizeLabel(e.target.value);
+      } else if (e.target.id === "ground-floor-config-shop-size") {
+        syncShopSizeLabel(e.target.value);
+      }
+    });
 
     document.addEventListener("click", function (e) {
       var addBtn = e.target.closest(".ground-floor-add-btn");
@@ -1483,11 +1597,7 @@
       });
     }
 
-    var saveBtn = document.getElementById("ground-floor-config-save");
-    if (saveBtn) {
-      saveBtn.addEventListener("click", function () {
-        void saveConfig();
-      });
-    }
   });
+
+  ensureGroundFloorConfigSaveBinding();
 })();

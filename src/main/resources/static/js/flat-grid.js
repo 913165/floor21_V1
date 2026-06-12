@@ -226,6 +226,8 @@
     });
   }
 
+  window.floor21MountGridModals = mountModalsOnBody;
+
   function isPlatformAdminEdit() {
     var grid = document.getElementById("flat-grid");
     return grid && grid.getAttribute("data-platform-admin-edit") === "true";
@@ -1998,6 +2000,13 @@
 
   function syncFlatCardFromData(el, flat) {
     if (!el || !flat) return;
+    var numEl = el.querySelector(".flat-number");
+    if (numEl && flat.flatNumber != null) {
+      numEl.textContent = flat.flatNumber;
+    }
+    if (flat.unitNumber != null) {
+      el.dataset.columnNumber = String(flat.unitNumber);
+    }
     el.dataset.status = flat.status;
     el.dataset.type = flat.bhkType;
     el.dataset.floor = flat.floorNumber;
@@ -4053,6 +4062,24 @@
     if (addBtn) addBtn.classList.remove("d-none");
   }
 
+  function reorderFloorCards(floorNumber) {
+    var floorRow = findFloorRow(floorNumber);
+    if (!floorRow) return;
+    var row = floorRow.querySelector(".flat-card-row");
+    if (!row) return;
+    var cards = Array.prototype.slice.call(row.querySelectorAll(".flat-card"));
+    cards.sort(function (a, b) {
+      var an = a.querySelector(".flat-number");
+      var bn = b.querySelector(".flat-number");
+      var at = an ? an.textContent.trim() : "";
+      var bt = bn ? bn.textContent.trim() : "";
+      return at.localeCompare(bt, undefined, { numeric: true });
+    });
+    cards.forEach(function (card) {
+      row.appendChild(card);
+    });
+  }
+
   function syncGridFromData(floors) {
     var liveIds = new Set();
     floors.forEach(function (floor) {
@@ -4074,6 +4101,7 @@
         }
         syncFlatCardFromData(el, flat);
       });
+      reorderFloorCards(floor.floorNumber);
     });
 
     var grid = document.getElementById("flat-grid");
@@ -6246,6 +6274,107 @@
     document.addEventListener("click", window.__f21AdminSaveClickHandler, true);
   }
 
+  async function handleAdminDeleteClick() {
+    if (!selectedFlatId) return;
+    var card = document.getElementById("flat-" + selectedFlatId);
+    var label =
+      card && card.querySelector(".flat-number")
+        ? card.querySelector(".flat-number").textContent
+        : selectedFlatId;
+    var isInactive = card && card.dataset.status === "CANCELLED";
+    var confirmMsg = isInactive
+      ? "Activate flat " + label + " and make it available again?"
+      : "Deactivate flat " + label + "? You can activate it later.";
+    if (!window.confirm(confirmMsg)) return;
+    showAdminError("");
+    var headers = Object.assign({}, csrfHeaders());
+    var res;
+    try {
+      res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/activation", {
+        method: "POST",
+        headers: headers,
+      });
+    } catch (err) {
+      showAdminError("Could not update flat — check your connection and try again.");
+      return;
+    }
+    if (!res.ok) {
+      showAdminError(await parseErrorResponse(res));
+      return;
+    }
+    await refreshGrid();
+    var updated = document.getElementById("flat-" + selectedFlatId);
+    if (updated) {
+      window.floor21SelectFlat(updated, false);
+    }
+  }
+
+  async function handleAdminRemoveClick() {
+    if (!selectedFlatId) return;
+    var card = document.getElementById("flat-" + selectedFlatId);
+    if (card && card.dataset.status === "BOOKED") {
+      showAdminError("Cannot delete a booked flat. Cancel the booking first.");
+      return;
+    }
+    var label =
+      card && card.querySelector(".flat-number")
+        ? card.querySelector(".flat-number").textContent
+        : selectedFlatId;
+    if (
+      !window.confirm(
+        "Permanently delete flat " + label + "? This removes the unit from the grid and cannot be undone."
+      )
+    ) {
+      return;
+    }
+    showAdminError("");
+    var flatId = selectedFlatId;
+    var headers = Object.assign({}, csrfHeaders());
+    var res;
+    try {
+      res = await fetch(appRoot() + "/flats/" + flatId, {
+        method: "DELETE",
+        headers: headers,
+      });
+    } catch (err) {
+      showAdminError("Could not delete flat — check your connection and try again.");
+      return;
+    }
+    if (!res.ok) {
+      showAdminError(await parseErrorResponse(res));
+      return;
+    }
+    var modalEl = document.getElementById("flat-details-modal");
+    if (modalEl && window.bootstrap && bootstrap.Modal) {
+      bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+    }
+    if (card) {
+      card.remove();
+    }
+    selectedFlatId = null;
+    await refreshGrid();
+  }
+
+  function ensureAdminLifecycleClickBinding() {
+    if (window.__f21AdminLifecycleClickHandler) {
+      document.removeEventListener("click", window.__f21AdminLifecycleClickHandler, true);
+    }
+    window.__f21AdminLifecycleClickHandler = function (e) {
+      var deleteBtn = e.target.closest("#admin-delete-btn");
+      if (deleteBtn && !deleteBtn.disabled && !deleteBtn.classList.contains("d-none")) {
+        e.preventDefault();
+        void handleAdminDeleteClick();
+        return;
+      }
+      var removeBtn = e.target.closest("#admin-remove-flat-btn");
+      if (removeBtn && !removeBtn.disabled && !removeBtn.classList.contains("d-none")) {
+        e.preventDefault();
+        void handleAdminRemoveClick();
+      }
+    };
+    document.addEventListener("click", window.__f21AdminLifecycleClickHandler, true);
+  }
+
   function openParkingLinkModalForSelectedSlot() {
     if (!selectedParkingSlot) return;
     showParkingSlotLinkError("");
@@ -6338,6 +6467,7 @@
   onPageReady(function () {
     mountModalsOnBody();
     ensureAdminSaveClickBinding();
+    ensureAdminLifecycleClickBinding();
     ensureParkingConfigSaveBinding();
     ensureParkingSlotPanelBindings();
     bindBuildingSnapshotInteractions();
@@ -6579,74 +6709,6 @@
           var updated = document.getElementById("flat-" + selectedFlatId);
           if (updated) window.floor21SelectFlat(updated, false);
         }
-      });
-    }
-
-    var adminDelete = document.getElementById("admin-delete-btn");
-    if (adminDelete) {
-      adminDelete.addEventListener("click", async function () {
-        if (!selectedFlatId) return;
-        var card = document.getElementById("flat-" + selectedFlatId);
-        var label = card && card.querySelector(".flat-number") ? card.querySelector(".flat-number").textContent : selectedFlatId;
-        var isInactive = card && card.dataset.status === "CANCELLED";
-        var confirmMsg = isInactive
-          ? "Activate flat " + label + " and make it available again?"
-          : "Deactivate flat " + label + "? You can activate it later.";
-        if (!window.confirm(confirmMsg)) return;
-        showAdminError("");
-        var headers = Object.assign({}, csrfHeaders());
-        var res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/activation", {
-          method: "POST",
-          headers: headers,
-        });
-        if (!res.ok) {
-          showAdminError(await parseErrorResponse(res));
-          return;
-        }
-        await refreshGrid();
-        var updated = document.getElementById("flat-" + selectedFlatId);
-        if (updated) {
-          window.floor21SelectFlat(updated, false);
-        }
-      });
-    }
-
-    var adminRemove = document.getElementById("admin-remove-flat-btn");
-    if (adminRemove) {
-      adminRemove.addEventListener("click", async function () {
-        if (!selectedFlatId) return;
-        var card = document.getElementById("flat-" + selectedFlatId);
-        if (card && card.dataset.status === "BOOKED") {
-          showAdminError("Cannot delete a booked flat. Cancel the booking first.");
-          return;
-        }
-        var label = card && card.querySelector(".flat-number") ? card.querySelector(".flat-number").textContent : selectedFlatId;
-        if (
-          !window.confirm(
-            "Permanently delete flat " + label + "? This removes the unit from the grid and cannot be undone."
-          )
-        ) {
-          return;
-        }
-        showAdminError("");
-        var headers = Object.assign({}, csrfHeaders());
-        var res = await fetch(appRoot() + "/flats/" + selectedFlatId, {
-          method: "DELETE",
-          headers: headers,
-        });
-        if (!res.ok) {
-          showAdminError(await parseErrorResponse(res));
-          return;
-        }
-        var modalEl = document.getElementById("flat-details-modal");
-        if (modalEl && window.bootstrap && bootstrap.Modal) {
-          bootstrap.Modal.getOrCreateInstance(modalEl).hide();
-        }
-        if (card) {
-          card.remove();
-        }
-        selectedFlatId = null;
-        await refreshGrid();
       });
     }
 
@@ -6968,6 +7030,7 @@
   });
 
   window.loadAllConfiguredParkingPlans = loadAllConfiguredParkingPlans;
+  window.floor21RefreshGrid = refreshGrid;
   window.floor21RefreshParkingLayoutLinks = refreshParkingLayoutLinks;
   window.openParkingConfigModal = openParkingConfigModal;
   window.floor21SaveParkingConfig = function () {
