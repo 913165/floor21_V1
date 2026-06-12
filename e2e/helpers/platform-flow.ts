@@ -40,6 +40,10 @@ import {
   type FlatDetailsAreasTestRecord,
 } from './flat-details-areas';
 import {
+  configureAndVerifyFloorSizes,
+  type FloorSizeConfigTestRecord,
+} from './floor-size-config';
+import {
   configureAndApplyUnitTypeDefaults,
   E2E_2BHK_UNIT_DEFAULTS,
   type UnitTypeDefaultsInput,
@@ -106,6 +110,7 @@ export type PlatformFlowState = {
   unitTypeDefaults2Bhk?: UnitTypeDefaultsInput;
   columnTypeDefaults1?: ColumnTypeDefaultsInput;
   flatDetailsAreasTest?: FlatDetailsAreasTestRecord;
+  floorSizeConfigTest?: FloorSizeConfigTestRecord;
 };
 
 export function createPlatformFlowState(): PlatformFlowState {
@@ -216,6 +221,12 @@ export async function adminSaveFlatDetailsAreas(page: Page, flow: PlatformFlowSt
     : E2E_FLAT_DETAILS_AREAS;
   const record = await configureAndVerifyFlatDetailsAreas(page, flow.buildingId, input);
   flow.flatDetailsAreasTest = record;
+}
+
+export async function adminConfigureFloorSizes(page: Page, flow: PlatformFlowState) {
+  await ensureSuperAdmin(page);
+  const record = await configureAndVerifyFloorSizes(page, flow.buildingId);
+  flow.floorSizeConfigTest = record;
 }
 
 export async function adminAddPartners(page: Page, flow: PlatformFlowState) {

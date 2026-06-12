@@ -177,6 +177,46 @@ Path: Vault → Booking / scope → "General income & expenses (vault only, no b
   - Expect: Same general workspace as general-vault option.
 
 ================================================================================
+4A. PLATFORM ADMIN — PARKING & GROUND-FLOOR SHOP SIZE (FLAT GRID)
+================================================================================
+Path: Building flat grid as platform admin  (/buildings/{id}/flats)
+Playwright: Admin — 3e in e2e/tests/floor21-full-flow.spec.ts
+
+Precondition: Parking floor(s) configured; ground floor shops configured (or use
+  "Add ground floor shops" on first run).
+
+4A.1 Parking floor — decrease car size
+  - Open parking floor → Configure.
+  - Move "Car size" slider down (e.g. 180% → 155%). Click Save.
+  - Expect: Modal closes; cars/slots on grid render smaller.
+  - Reopen Configure → slider still shows saved %.
+
+4A.2 Parking floor — after reload
+  - Navigate away (e.g. Dashboard) → return to flat grid.
+  - Expect: Grid still uses saved car size; Configure shows same %.
+
+4A.3 Parking floor — increase car size
+  - Configure → move slider up (e.g. 155% → 170%). Save.
+  - Expect: Grid cars/slots scale up; reopen + reload still correct.
+
+4A.4 Ground floor shops — decrease shop size
+  - Ground floor → Configure (or Add ground floor shops first).
+  - Move "Shop size" slider down (e.g. 140% → 115%). Click Save.
+  - Expect: Blue "Saved values" above Save; shop blocks on grid shrink.
+
+4A.5 Ground floor — reopen modal
+  - Close modal → Configure again.
+  - Expect: Shop size slider matches saved value; grid unchanged.
+
+4A.6 Ground floor — after reload
+  - Dashboard → flat grid again.
+  - Expect: Shop blocks still scaled; Configure shows saved %.
+
+4A.7 Ground floor — increase shop size
+  - Configure → increase slider (e.g. 115% → 125%). Save.
+  - Expect: "Saved values"; larger shops; persists after reopen + reload.
+
+================================================================================
 5. PARTNER FLAT GRID & ALLOCATION (PLATFORM ADMIN)
 ================================================================================
 Path: Building flat grid (partner sees assigned buildings only)
@@ -266,6 +306,8 @@ Path: Sidebar "Expenses" (builder admin only)
 [ ] Vault general: add income + expense → net OK → not on booking
 [ ] Partner grid: other partner + unassigned flats greyed / not bookable
 [ ] Flat details modal opens and closes
+[ ] Parking car size: decrease → save → reopen → reload → increase → save
+[ ] Ground shop size: decrease → Saved values → reopen → reload → increase → save
 [ ] Slab schedule NOT shown on Vault page
 
 ================================================================================

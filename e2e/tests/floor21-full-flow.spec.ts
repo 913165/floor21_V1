@@ -17,6 +17,7 @@ import {
   adminConfigureColumnAUnitTypeDefaults,
   adminConfigure2BhkUnitTypeDefaults,
   adminSaveFlatDetailsAreas,
+  adminConfigureFloorSizes,
   adminCreateBuilding,
   adminCreateProject,
   adminCreateUsers,
@@ -170,6 +171,20 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     expect(flow.flatDetailsAreasTest?.balconySqm).toBe(10);
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-after-flat-details-areas');
+  });
+
+  test('Admin — 3e. Parking + shop size sliders (decrease, save, reopen, reload)', async ({
+    page,
+  }, testInfo) => {
+    loadFlow();
+    requireBuildingFlow(flow);
+    await adminConfigureFloorSizes(page, flow);
+    expect(flow.floorSizeConfigTest?.parkingCarSizeDecreased).toBe(155);
+    expect(flow.floorSizeConfigTest?.parkingCarSizeIncreased).toBe(170);
+    expect(flow.floorSizeConfigTest?.shopSizeDecreased).toBe(115);
+    expect(flow.floorSizeConfigTest?.shopSizeIncreased).toBe(125);
+    writeFlowStateFile(flow);
+    emitFlowCredentials(flow, testInfo, 'credentials-after-floor-size-config');
   });
 
   test('Admin — 4. Add partners', async ({ page }, testInfo) => {

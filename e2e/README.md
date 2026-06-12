@@ -98,6 +98,8 @@ Expand **Floor21 — full flow (admin + partner)**, then click ▶ on each step 
 
 **Admin before partner:** Partner steps read credentials from `e2e/.flow-state.json`, written after each admin step. Run **Admin — 1** through **Admin — 5b** before any **Partner —** step (or run the full file top to bottom). If partner login fails with “Flow state missing”, run the admin steps first.
 
+**Admin — 3e (floor sizes):** Parking floor 1 — decrease car size to 155%, reopen Configure, reload grid, increase to 170%. Ground floor — configure shops if needed, decrease shop size to 115% (**Saved values**), reopen, reload, increase to 125%. See `helpers/floor-size-config.ts`.
+
 **Partner — 6 (receipts):** After bookings exist, records **5 waterfall receipts** for **Client1 Buyer** (`client1@example.com`) across milestone slabs 1–3 (₹50L consideration), plus one receipt for partner 2’s first client, then attaches **payment schedule** full-page screenshots to the Playwright report.
 
 **Passwords:** E2E-created partner users all use **`user123`**. Platform admin stays `super@floor21.com` / `super123`. Clients are CRM records only (no login).
