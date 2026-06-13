@@ -50,7 +50,10 @@ export async function fillNewUserForm(main: Locator, user: NewUserInput) {
   await main.locator('#user-full-name').fill(user.fullName);
   await main.locator('#user-company-name').fill(user.companyName);
   await main.locator('#user-email').fill(user.email);
-  await main.locator('#user-password').fill(user.password);
+  const password = main.locator('#user-password');
+  await password.click();
+  await password.fill(user.password);
+  await expect(password).toHaveValue(user.password);
   await main.locator('#user-pan').fill(user.pan);
   await main.locator('#user-tan').fill(user.tan);
   await main.locator('#user-gst').fill(user.gst);

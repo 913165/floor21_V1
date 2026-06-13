@@ -73,11 +73,47 @@ export async function setRangeSlider(page: Page, selector: string, value: number
   await expect(slider).toHaveValue(String(value));
 }
 
+async function isBootstrapModalOpen(page: Page, modalId: string): Promise<boolean> {
+  return (await page.locator(`#${modalId}.modal.show`).count()) > 0;
+}
+
+/** Dismiss an open Bootstrap modal via the header X (aria-label Close). */
+async function dismissBootstrapModal(page: Page, modalId: string): Promise<void> {
+  const modal = page.locator(`#${modalId}.modal.show`).last();
+  if ((await modal.count()) === 0) {
+    return;
+  }
+  const closeBtn = modal.locator('.modal-header .btn-close');
+  await expect(closeBtn).toBeVisible({ timeout: 10_000 });
+  await closeBtn.scrollIntoViewIfNeeded();
+  await closeBtn.click();
+  await expect(page.locator(`#${modalId}`).first()).not.toHaveClass(/show/, { timeout: 10_000 });
+  await expect(page.locator('.modal-backdrop')).toHaveCount(0, { timeout: 10_000 });
+}
+
+/** Ground floor save leaves the modal open with "Saved values" — dismiss via header X. */
+export async function closeGroundFloorConfigModal(page: Page): Promise<void> {
+  await dismissBootstrapModal(page, 'ground-floor-config-modal');
+}
+
+export async function closeParkingConfigModalIfOpen(page: Page): Promise<void> {
+  await dismissBootstrapModal(page, 'parking-config-modal');
+}
+
+async function waitForNoModalBackdrop(page: Page): Promise<void> {
+  await expect(page.locator('.modal-backdrop')).toHaveCount(0, { timeout: 10_000 });
+}
+
 export async function openParkingConfigureModal(page: Page, floorNumber: number): Promise<Locator> {
+  await closeParkingConfigModalIfOpen(page);
+  await closeGroundFloorConfigModal(page);
+  await waitForNoModalBackdrop(page);
   const section = page.locator(`.flat-parking-section[data-floor-number="${floorNumber}"]`);
   await expect(section).toBeVisible();
+  await section.scrollIntoViewIfNeeded();
   await expect(section).toHaveAttribute('data-configured', 'true');
   const configure = section.locator('.flat-parking-configure-link');
+  await expect(configure).toBeVisible();
   await configure.scrollIntoViewIfNeeded();
   await configure.click();
   const modal = page.locator('#parking-config-modal');
@@ -112,13 +148,19 @@ export async function expectParkingSectionCarSize(section: Locator, expectedPerc
 }
 
 export async function openGroundFloorConfigureModal(page: Page): Promise<Locator> {
+  await closeGroundFloorConfigModal(page);
+  await closeParkingConfigModalIfOpen(page);
+  await waitForNoModalBackdrop(page);
   const section = page.locator('#flat-ground-floor-section');
   await expect(section).toBeVisible();
+  await section.scrollIntoViewIfNeeded();
   const panel = section.locator('.flat-ground-floor-section__panel');
   const addBtn = section.locator('.ground-floor-add-btn');
   if (await addBtn.isVisible()) {
+    await addBtn.scrollIntoViewIfNeeded();
     await addBtn.click();
   } else {
+    await panel.locator('.ground-floor-configure-link').scrollIntoViewIfNeeded();
     await panel.locator('.ground-floor-configure-link').click();
   }
   const modal = page.locator('#ground-floor-config-modal');
@@ -166,6 +208,7 @@ export async function ensureGroundFloorShopsConfigured(
 ): Promise<Locator> {
   const section = page.locator('#flat-ground-floor-section');
   await expect(section).toBeVisible();
+  await section.scrollIntoViewIfNeeded();
   const panel = section.locator('.flat-ground-floor-section__panel');
   if ((await panel.getAttribute('data-configured')) === 'true') {
     return panel;
@@ -179,6 +222,7 @@ export async function ensureGroundFloorShopsConfigured(
   await page.locator('#ground-floor-config-gate-count').fill('0');
   await saveGroundFloorConfig(page, buildingId);
   await expectGroundFloorSavedValues(modal);
+  await closeGroundFloorConfigModal(page);
   await expect(panel).toHaveAttribute('data-configured', 'true', { timeout: 15_000 });
   await expect(panel.locator('.shop-plan__slot--shop')).toHaveCount(shopCount, { timeout: 30_000 });
   return panel;
@@ -193,8 +237,8 @@ async function navigateAwayAndBackToFlatGrid(page: Page, buildingId: string) {
 }
 
 /**
- * Parking floor: decrease car size, save, reopen + reload grid, then increase and verify again.
- * Ground floor shops: configure if needed, decrease shop size, save, reopen + reload, then increase.
+ * Ground floor shops first (add + shop size sliders), then parking floor car size.
+ * Shops exist only on ground floor — parking floors use car size only.
  */
 export async function configureAndVerifyFloorSizes(
   page: Page,
@@ -213,41 +257,7 @@ export async function configureAndVerifyFloorSizes(
   await waitForMainPanel(page);
   await waitForFlatGridReady(page);
 
-  const parkingSection = page.locator(
-    `.flat-parking-section[data-floor-number="${parkingFloor}"]`,
-  );
-  await expect(parkingSection).toBeVisible();
-  await expect(parkingSection).toHaveAttribute('data-configured', 'true');
-  await expect(parkingSection.locator('.parking-plan__slot')).toHaveCount(slotsPerFloor);
-
-  let parkingModal = await openParkingConfigureModal(page, parkingFloor);
-  await expect(page.locator('#parking-config-slots')).toHaveValue(String(slotsPerFloor));
-  await setRangeSlider(page, '#parking-config-car-size', opts.parkingDecreaseTo);
-  await expectParkingCarSizeInModal(page, opts.parkingDecreaseTo);
-  const decreasedPlan = await saveParkingConfig(page, buildingId, parkingFloor);
-  expect(Number(decreasedPlan.carSizePercent)).toBe(opts.parkingDecreaseTo);
-  await expect(parkingModal).not.toHaveClass(/show/, { timeout: 30_000 });
-  await expectParkingSectionCarSize(parkingSection, opts.parkingDecreaseTo);
-
-  parkingModal = await openParkingConfigureModal(page, parkingFloor);
-  await expectParkingCarSizeInModal(page, opts.parkingDecreaseTo);
-  await parkingModal.locator('[data-bs-dismiss="modal"]').click();
-  await expect(parkingModal).not.toHaveClass(/show/);
-
-  await navigateAwayAndBackToFlatGrid(page, buildingId);
-  const parkingSectionReloaded = page.locator(
-    `.flat-parking-section[data-floor-number="${parkingFloor}"]`,
-  );
-  await expectParkingSectionCarSize(parkingSectionReloaded, opts.parkingDecreaseTo);
-  parkingModal = await openParkingConfigureModal(page, parkingFloor);
-  await expectParkingCarSizeInModal(page, opts.parkingDecreaseTo);
-
-  await setRangeSlider(page, '#parking-config-car-size', opts.parkingIncreaseTo);
-  const increasedPlan = await saveParkingConfig(page, buildingId, parkingFloor);
-  expect(Number(increasedPlan.carSizePercent)).toBe(opts.parkingIncreaseTo);
-  await expect(parkingModal).not.toHaveClass(/show/, { timeout: 30_000 });
-  await expectParkingSectionCarSize(parkingSectionReloaded, opts.parkingIncreaseTo);
-
+  // --- Ground floor: add shops first, then shop size sliders (shops are ground-floor only) ---
   const groundPanel = await ensureGroundFloorShopsConfigured(
     page,
     buildingId,
@@ -258,12 +268,12 @@ export async function configureAndVerifyFloorSizes(
   await expectGroundFloorShopSizeInModal(page, opts.shopDecreaseTo);
   await saveGroundFloorConfig(page, buildingId);
   await expectGroundFloorSavedValues(groundModal);
+  await closeGroundFloorConfigModal(page);
   await expectGroundFloorPanelShopSize(groundPanel, opts.shopDecreaseTo);
 
   groundModal = await openGroundFloorConfigureModal(page);
   await expectGroundFloorShopSizeInModal(page, opts.shopDecreaseTo);
-  await groundModal.locator('[data-bs-dismiss="modal"]').click();
-  await expect(groundModal).not.toHaveClass(/show/);
+  await closeGroundFloorConfigModal(page);
 
   await navigateAwayAndBackToFlatGrid(page, buildingId);
   const groundPanelReloaded = page.locator('.flat-ground-floor-section__panel');
@@ -275,12 +285,58 @@ export async function configureAndVerifyFloorSizes(
   await setRangeSlider(page, '#ground-floor-config-shop-size', opts.shopIncreaseTo);
   await saveGroundFloorConfig(page, buildingId);
   await expectGroundFloorSavedValues(groundModal);
+  await closeGroundFloorConfigModal(page);
   await expectGroundFloorPanelShopSize(groundPanelReloaded, opts.shopIncreaseTo);
 
   groundModal = await openGroundFloorConfigureModal(page);
   await expectGroundFloorShopSizeInModal(page, opts.shopIncreaseTo);
-  await groundModal.locator('.btn-close').click();
-  await expect(groundModal).not.toHaveClass(/show/);
+  await closeGroundFloorConfigModal(page);
+
+  // --- Parking floor: car size only (no shops on parking floors) ---
+  const parkingSection = page.locator(
+    `.flat-parking-section[data-floor-number="${parkingFloor}"]`,
+  );
+  await parkingSection.scrollIntoViewIfNeeded();
+  await expect(parkingSection).toBeVisible();
+  await expect(parkingSection).toHaveAttribute('data-configured', 'true');
+  await expect(parkingSection.locator('.parking-plan__slot')).toHaveCount(slotsPerFloor);
+
+  let parkingModal = await openParkingConfigureModal(page, parkingFloor);
+  await expect(page.locator('#parking-config-slots')).toHaveValue(String(slotsPerFloor));
+  await expect(page.locator('#parking-config-shop-size')).toHaveCount(0);
+  await setRangeSlider(page, '#parking-config-car-size', opts.parkingDecreaseTo);
+  await expectParkingCarSizeInModal(page, opts.parkingDecreaseTo);
+  const decreasedPlan = await saveParkingConfig(page, buildingId, parkingFloor);
+  expect(Number(decreasedPlan.carSizePercent)).toBe(opts.parkingDecreaseTo);
+  if (await isBootstrapModalOpen(page, 'parking-config-modal')) {
+    await closeParkingConfigModalIfOpen(page);
+  }
+  await expectParkingSectionCarSize(parkingSection, opts.parkingDecreaseTo);
+
+  parkingModal = await openParkingConfigureModal(page, parkingFloor);
+  await expectParkingCarSizeInModal(page, opts.parkingDecreaseTo);
+  await closeParkingConfigModalIfOpen(page);
+
+  await navigateAwayAndBackToFlatGrid(page, buildingId);
+  const parkingSectionReloaded = page.locator(
+    `.flat-parking-section[data-floor-number="${parkingFloor}"]`,
+  );
+  await parkingSectionReloaded.scrollIntoViewIfNeeded();
+  await expectParkingSectionCarSize(parkingSectionReloaded, opts.parkingDecreaseTo);
+  parkingModal = await openParkingConfigureModal(page, parkingFloor);
+  await expectParkingCarSizeInModal(page, opts.parkingDecreaseTo);
+
+  await setRangeSlider(page, '#parking-config-car-size', opts.parkingIncreaseTo);
+  const increasedPlan = await saveParkingConfig(page, buildingId, parkingFloor);
+  expect(Number(increasedPlan.carSizePercent)).toBe(opts.parkingIncreaseTo);
+  if (await isBootstrapModalOpen(page, 'parking-config-modal')) {
+    await closeParkingConfigModalIfOpen(page);
+  }
+  await expectParkingSectionCarSize(parkingSectionReloaded, opts.parkingIncreaseTo);
+
+  parkingModal = await openParkingConfigureModal(page, parkingFloor);
+  await expectParkingCarSizeInModal(page, opts.parkingIncreaseTo);
+  await closeParkingConfigModalIfOpen(page);
 
   return {
     parkingFloor,

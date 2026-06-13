@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import { openNewClientForm } from './nav';
+import { closeClientsImportModalIfOpen, openNewClientForm } from './nav';
 import { waitForMainPanel } from './projects';
 
 export type NewClientInput = {
@@ -72,4 +72,5 @@ export async function createClient(page: Page, client: NewClientInput): Promise<
 
   const list = await waitForMainPanel(page);
   await expect(list.locator('.alert-success').filter({ hasText: 'Client saved' }).first()).toBeVisible();
+  await closeClientsImportModalIfOpen(page);
 }

@@ -22,8 +22,30 @@ export function mainFrame(page: Page) {
   return mainPanel(page);
 }
 
+/** End the current session so a different user can sign in. */
+export async function logoutIfAuthenticated(page: Page): Promise<void> {
+  await page.goto('dashboard', { waitUntil: 'commit' });
+  if (page.url().includes('/login')) {
+    return;
+  }
+  const profileMenu = page.locator('#profileMenu');
+  if (!(await profileMenu.isVisible())) {
+    return;
+  }
+  await profileMenu.click();
+  const logout = page.locator('form[action$="/logout"] button[type="submit"]');
+  await expect(logout).toBeVisible({ timeout: 10_000 });
+  await Promise.all([
+    page.waitForURL(/\/login/, { timeout: 30_000 }),
+    logout.click(),
+  ]);
+}
+
 export async function login(page: Page, email: string, password: string) {
-  await page.goto('login', { waitUntil: 'commit' });
+  await logoutIfAuthenticated(page);
+  if (!page.url().includes('/login')) {
+    await page.goto('login', { waitUntil: 'commit' });
+  }
   await page.locator('#login-email').fill(email);
   await page.locator('#login-password').fill(password);
   await Promise.all([

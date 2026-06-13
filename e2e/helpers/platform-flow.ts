@@ -20,12 +20,12 @@ import {
 import {
   expectResidentialFlatShowsParkingLink,
   linkParkingSlotToResidentialFlat,
-  openBuildingFlatGrid,
+  openAdminFlatGridForParking,
   PARKING_LINK_SAMPLE_SIZE,
   parkingSlotLocationForIndex,
   pickRandomSample,
 } from './parking';
-import { openAdminBuildingFlatGrid, openProjectStaffAssign } from './nav';
+import { openAdminBuildingFlatGrid, openBuildingFlatGrid, openProjectStaffAssign } from './nav';
 import { createProject, uniqueProjectName, waitForMainPanel } from './projects';
 import { createUser, sampleUserData, selectAssignableUser, type NewUserInput } from './users';
 import { ensureSuperAdmin, login, loginAsSuperAdmin } from './auth';
@@ -377,7 +377,7 @@ export async function adminLinkParkingToBookedFlats(page: Page, flow: PlatformFl
   }
 
   await loginAsSuperAdmin(page);
-  await openBuildingFlatGrid(page, flow.buildingId);
+  await openAdminFlatGridForParking(page, flow.buildingId, flow.projectId);
 
   flow.parkingLinks = [];
   const bookingsToLink = pickRandomSample(flow.bookings, PARKING_LINK_SAMPLE_SIZE);
@@ -413,7 +413,7 @@ export async function expectPartnerBookableFlatCount(
   buildingId: string,
   expectedBookable: number,
 ) {
-  const grid = await openBuildingFlatGrid(page, buildingId);
+  const grid = await openBuildingFlatGrid(page, { buildingId });
   const bookable = grid.locator(
     '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"][data-bookable="true"]',
   );
@@ -426,7 +426,7 @@ export async function expectOwnerBookableFlatCount(
   buildingId: string,
   assignedFlatIds: string[],
 ) {
-  const grid = await openBuildingFlatGrid(page, buildingId);
+  const grid = await openBuildingFlatGrid(page, { buildingId });
 
   const residential = grid.locator(
     '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"]',
@@ -445,21 +445,28 @@ export async function expectOwnerBookableFlatCount(
 export async function assignFlatToPartner(page: Page, flatId: string, partnerName: string) {
   const modal = await openFlatDetailsForFlat(page, flatId);
   const partnerSelect = modal.locator('#admin-partner');
+  await expect(partnerSelect).toBeVisible({ timeout: 15_000 });
   await expect(partnerSelect.getByRole('option', { name: partnerName })).toHaveCount(1, {
     timeout: 15_000,
   });
   await partnerSelect.selectOption({ label: partnerName });
+  await expect(partnerSelect).not.toHaveValue('');
+
+  const saveBtn = modal.locator('#admin-partner-save');
+  await saveBtn.scrollIntoViewIfNeeded();
 
   const saveResponse = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
-      response.url().includes('/flats/') &&
-      response.url().includes('/partner') &&
-      response.ok(),
+      response.url().includes(`/flats/${flatId}/partner`),
     { timeout: 30_000 },
   );
-  await modal.locator('#admin-partner-save').click();
-  await saveResponse;
+  await saveBtn.click();
+  const response = await saveResponse;
+  expect(
+    response.ok(),
+    `Partner save failed (${response.status()}): ${await response.text()}`,
+  ).toBeTruthy();
 
   const card = page.locator(`#flat-${flatId}`);
   await expect(card).toContainText(partnerName);

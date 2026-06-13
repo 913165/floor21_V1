@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { defaultParkingSlotsPerFloor, openFlatDetailsForFlat, type NewBuildingInput } from './buildings';
-import { openBuildingFlatGrid as openBuildingFlatGridViaNav } from './nav';
+import { openAdminBuildingFlatGrid, openBuildingFlatGrid as openBuildingFlatGridViaNav } from './nav';
 
 export type ParkingSlotLocation = {
   floor: number;
@@ -38,8 +38,15 @@ export function parkingSlotLocationForIndex(
   return { floor, slotNumber };
 }
 
-export async function openBuildingFlatGrid(page: Page, buildingId: string) {
-  const main = await openBuildingFlatGridViaNav(page, { buildingId });
+/** Super-admin flat grid for parking-link tests (requires platform admin edit mode). */
+export async function openAdminFlatGridForParking(
+  page: Page,
+  buildingId: string,
+  projectId?: string,
+) {
+  const main = projectId
+    ? await openAdminBuildingFlatGrid(page, { buildingId, projectId })
+    : await openBuildingFlatGridViaNav(page, { buildingId });
   await expect(main.locator('#flat-grid')).toHaveAttribute('data-platform-admin-edit', 'true');
   return main;
 }

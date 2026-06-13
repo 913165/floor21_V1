@@ -173,7 +173,7 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     emitFlowCredentials(flow, testInfo, 'credentials-after-flat-details-areas');
   });
 
-  test('Admin — 3e. Parking + shop size sliders (decrease, save, reopen, reload)', async ({
+  test('Admin — 3e. Ground floor shops + parking car size sliders (decrease, save, reopen, reload)', async ({
     page,
   }, testInfo) => {
     loadFlow();
@@ -209,6 +209,7 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
 
   test('Admin — 5b. Import milestone templates for E2E building', async ({ page }, testInfo) => {
     loadFlow();
+    requireBuildingFlow(flow);
     await adminImportMilestoneTemplates(page, flow);
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-milestones-imported');

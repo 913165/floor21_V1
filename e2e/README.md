@@ -98,7 +98,7 @@ Expand **Floor21 — full flow (admin + partner)**, then click ▶ on each step 
 
 **Admin before partner:** Partner steps read credentials from `e2e/.flow-state.json`, written after each admin step. Run **Admin — 1** through **Admin — 5b** before any **Partner —** step (or run the full file top to bottom). If partner login fails with “Flow state missing”, run the admin steps first.
 
-**Admin — 3e (floor sizes):** Parking floor 1 — decrease car size to 155%, reopen Configure, reload grid, increase to 170%. Ground floor — configure shops if needed, decrease shop size to 115% (**Saved values**), reopen, reload, increase to 125%. See `helpers/floor-size-config.ts`.
+**Admin — 3e (floor sizes):** Ground floor first — **Add ground floor** + configure shops, then shop size 115% → 125% (**Saved values**, reopen, reload). Parking floor 1 after that — car size only (155% → 170%; no shop slider). See `helpers/floor-size-config.ts`.
 
 **Partner — 6 (receipts):** After bookings exist, records **5 waterfall receipts** for **Client1 Buyer** (`client1@example.com`) across milestone slabs 1–3 (₹50L consideration), plus one receipt for partner 2’s first client, then attaches **payment schedule** full-page screenshots to the Playwright report.
 
@@ -109,6 +109,8 @@ Expand **Floor21 — full flow (admin + partner)**, then click ▶ on each step 
 **Note:** `baseURL` must include a trailing slash (`http://localhost/floor21/`) so paths resolve under the Spring context path. Use relative paths like `page.goto('login')`, not `page.goto('/login')`.
 
 **Navigation:** After login, helpers in `helpers/nav.ts` reach screens through the **sidebar** (same as manual testing). Direct `page.goto` is reserved for login and HTTP API calls (e.g. milestone template download), not for in-app tenant screens.
+
+**Modals:** If a Bootstrap modal is open (e.g. Clients **Import**), helpers dismiss it with the header **X** (`.btn-close`) before sidebar navigation so Playwright is not blocked by the backdrop.
 
 ## Turbo frames
 

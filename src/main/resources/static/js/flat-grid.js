@@ -6401,6 +6401,42 @@
     document.addEventListener("click", window.__f21AdminSaveClickHandler, true);
   }
 
+  async function handleAdminPartnerSaveClick() {
+    if (!selectedFlatId) return;
+    var partnerSel = document.getElementById("admin-partner");
+    var partnerUserId = partnerSel && partnerSel.value ? partnerSel.value : null;
+    showAdminError("");
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    var res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/partner", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({ partnerUserId: partnerUserId }),
+    });
+    if (!res.ok) {
+      showAdminError(await parseErrorResponse(res));
+      return;
+    }
+    var data = await res.json();
+    var card = document.getElementById("flat-" + selectedFlatId);
+    var pid = data.partnerUserId ? String(data.partnerUserId) : "";
+    var pname = data.partnerName ? String(data.partnerName) : "";
+    syncPartnerTag(card, pid || null, pname || null);
+    if (partnerSel) partnerSel.value = pid;
+  }
+
+  function ensureAdminPartnerSaveBinding() {
+    if (window.__f21AdminPartnerSaveHandler) {
+      document.removeEventListener("click", window.__f21AdminPartnerSaveHandler, true);
+    }
+    window.__f21AdminPartnerSaveHandler = function (e) {
+      var btn = e.target.closest("#admin-partner-save");
+      if (!btn || btn.disabled) return;
+      e.preventDefault();
+      void handleAdminPartnerSaveClick();
+    };
+    document.addEventListener("click", window.__f21AdminPartnerSaveHandler, true);
+  }
+
   async function handleAdminDeleteClick() {
     if (!selectedFlatId) return;
     var card = document.getElementById("flat-" + selectedFlatId);
@@ -6594,6 +6630,7 @@
   onPageReady(function () {
     mountModalsOnBody();
     ensureAdminSaveClickBinding();
+    ensureAdminPartnerSaveBinding();
     ensureUserPriceSaveBinding();
     ensureAdminLifecycleClickBinding();
     ensureParkingConfigSaveBinding();
@@ -6937,32 +6974,6 @@
         } finally {
           flatAddSubmit.disabled = false;
         }
-      });
-    }
-
-    var adminPartnerSave = document.getElementById("admin-partner-save");
-    if (adminPartnerSave) {
-      adminPartnerSave.addEventListener("click", async function () {
-        if (!selectedFlatId) return;
-        var partnerSel = document.getElementById("admin-partner");
-        var partnerUserId = partnerSel && partnerSel.value ? partnerSel.value : null;
-        showAdminError("");
-        var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
-        var res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/partner", {
-          method: "POST",
-          headers: headers,
-          body: JSON.stringify({ partnerUserId: partnerUserId }),
-        });
-        if (!res.ok) {
-          showAdminError(await parseErrorResponse(res));
-          return;
-        }
-        var data = await res.json();
-        var card = document.getElementById("flat-" + selectedFlatId);
-        var pid = data.partnerUserId ? String(data.partnerUserId) : "";
-        var pname = data.partnerName ? String(data.partnerName) : "";
-        syncPartnerTag(card, pid || null, pname || null);
-        if (partnerSel) partnerSel.value = pid;
       });
     }
 

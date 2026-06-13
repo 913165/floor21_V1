@@ -177,26 +177,19 @@ export async function waitForFlatGridReady(page: Page): Promise<void> {
   );
 }
 
-/** Opens flat details modal. Clicks the card — not `.flat-quick-link` (sr-only, not Playwright-actionable). */
+/** Opens flat details modal for a flat card (uses floor21SelectFlat so selectedFlatId stays in sync). */
 export async function openFlatDetailsForFlat(page: Page, flatId: string): Promise<Locator> {
   const card = page.locator(`#flat-${flatId}.flat-card`);
   await expect(card).toBeVisible();
   await card.scrollIntoViewIfNeeded();
 
   const modal = page.locator('#flat-details-modal');
-  if (await modal.isVisible()) {
-    await modal.locator('.btn-close').click();
-    await expect(modal).toBeHidden();
-  }
-
-  await card.evaluate((el) => {
-    const quick = el.querySelector('.flat-quick-link') as HTMLButtonElement | null;
-    if (quick) {
-      quick.click();
-      return;
+  await page.evaluate((id) => {
+    const cardEl = document.getElementById(`flat-${id}`);
+    if (cardEl && typeof (window as Window & { floor21SelectFlat?: (el: Element, show?: boolean) => void }).floor21SelectFlat === 'function') {
+      (window as Window & { floor21SelectFlat: (el: Element, show?: boolean) => void }).floor21SelectFlat(cardEl, true);
     }
-    (el as HTMLElement).click();
-  });
+  }, flatId);
 
   await expect(modal).toBeVisible();
   return modal;

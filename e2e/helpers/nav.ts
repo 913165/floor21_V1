@@ -1,15 +1,128 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { waitForMainPanel } from './projects';
 
+/** Project filter uses data-project-search-select + auto-submit; pick via the search UI. */
+async function applyProjectFilter(page: Page, main: Locator, projectId: string): Promise<Locator> {
+  const select = main.locator('#filterProject');
+  await expect(main.locator('#filterProject-search')).toBeVisible({ timeout: 15_000 });
+  if ((await select.inputValue()) === projectId && page.url().includes(`projectId=${projectId}`)) {
+    return main;
+  }
+
+  const label = (await select.locator(`option[value="${projectId}"]`).textContent())?.trim();
+  expect(label, `Project ${projectId} not in filter dropdown`).toBeTruthy();
+
+  const search = main.locator('#filterProject-search');
+  await search.click();
+  await search.fill(label!);
+  const option = main
+    .locator('#filterProject-menu .project-search-select__option')
+    .filter({ hasText: label! })
+    .first();
+  await expect(option).toBeVisible({ timeout: 15_000 });
+
+  await Promise.all([
+    page.waitForURL((url) => new URL(url).searchParams.get('projectId') === projectId, {
+      timeout: 30_000,
+    }),
+    option.click(),
+  ]);
+
+  const filtered = await waitForMainPanel(page);
+  await expect(filtered.locator('#filterProject')).toHaveValue(projectId);
+  return filtered;
+}
+
+function slabsFilterUrlMatches(
+  url: string,
+  projectId: string,
+  buildingId: string,
+): boolean {
+  const params = new URL(url).searchParams;
+  return params.get('projectId') === projectId && params.get('buildingId') === buildingId;
+}
+
+/** Building filter: set native selects and submit once (project + building must both reach the server). */
+async function applyBuildingFilter(
+  page: Page,
+  main: Locator,
+  projectId: string,
+  buildingId: string,
+): Promise<Locator> {
+  const form = main.locator('#slabs-filter-form');
+  const projectSelect = main.locator('#filterProject');
+  const buildingSelect = form.locator('#filterBuilding');
+  await expect(projectSelect).toHaveValue(projectId);
+  await expect(buildingSelect.locator(`option[value="${buildingId}"]`)).toHaveCount(1, {
+    timeout: 15_000,
+  });
+
+  const importForm = main.locator('#slabs-import-form');
+  if (
+    (await projectSelect.inputValue()) === projectId &&
+    (await buildingSelect.inputValue()) === buildingId &&
+    (await importForm.isVisible())
+  ) {
+    return main;
+  }
+
+  await Promise.all([
+    page.waitForURL((url) => slabsFilterUrlMatches(url, projectId, buildingId), {
+      timeout: 30_000,
+    }),
+    form.evaluate(
+      (formEl, ids) => {
+        const project = formEl.querySelector('#filterProject') as HTMLSelectElement | null;
+        const building = formEl.querySelector('#filterBuilding') as HTMLSelectElement | null;
+        if (project) {
+          project.value = ids.projectId;
+        }
+        if (building) {
+          building.value = ids.buildingId;
+        }
+        if (typeof formEl.requestSubmit === 'function') {
+          formEl.requestSubmit();
+        } else {
+          formEl.submit();
+        }
+      },
+      { projectId, buildingId },
+    ),
+  ]);
+
+  const filtered = await waitForMainPanel(page);
+  await expect(filtered.locator('#filterProject')).toHaveValue(projectId);
+  await expect(filtered.locator('#filterBuilding')).toHaveValue(buildingId);
+  await expect(filtered.locator('#slabs-import-form')).toBeVisible({ timeout: 15_000 });
+  return filtered;
+}
+
 /** Click a sidebar link and wait for the turbo main panel to finish loading. */
 export async function clickSidebarLink(page: Page, name: string | RegExp): Promise<void> {
-  const link = page.locator('#floor21-sidebar').getByRole('link', { name });
+  const sidebar = page.locator('#floor21-sidebar');
+  const link =
+    typeof name === 'string'
+      ? sidebar.getByRole('link', { name, exact: true })
+      : sidebar.getByRole('link', { name });
   await expect(link).toBeVisible();
   await link.click();
   await waitForMainPanel(page);
 }
 
+/** Dismiss the clients import modal via the header X (backdrop blocks sidebar clicks). */
+export async function closeClientsImportModalIfOpen(page: Page): Promise<void> {
+  // Turbo can leave duplicate modal markup in the frame; target the open instance only.
+  const modal = page.locator('#clients-import-modal.modal.show').last();
+  if ((await modal.count()) === 0) {
+    return;
+  }
+  await modal.locator('.btn-close').click();
+  await expect(modal).not.toHaveClass(/show/, { timeout: 10_000 });
+  await expect(page.locator('.modal-backdrop')).toHaveCount(0, { timeout: 10_000 });
+}
+
 export async function openClientsList(page: Page): Promise<Locator> {
+  await closeClientsImportModalIfOpen(page);
   await clickSidebarLink(page, 'Clients');
   const main = await waitForMainPanel(page);
   await expect(main.getByRole('heading', { name: 'Clients' })).toBeVisible();
@@ -68,9 +181,7 @@ export async function openAllBuildingsList(
   const main = await waitForMainPanel(page);
   await expect(main.getByRole('heading', { name: 'All buildings' })).toBeVisible();
   if (options?.projectId) {
-    await main.locator('#filterProject').selectOption(options.projectId);
-    await waitForMainPanel(page);
-    await expect(main.locator('#filterProject')).toHaveValue(options.projectId);
+    return applyProjectFilter(page, main, options.projectId);
   }
   return main;
 }
@@ -92,9 +203,12 @@ export async function openAdminBuildingFlatGrid(
 
 export async function openNewBuildingForm(page: Page, projectId: string): Promise<Locator> {
   const main = await openAllBuildingsList(page, { projectId });
-  await main.getByRole('link', { name: 'Add building' }).click();
+  const addBuilding = main.getByRole('link', { name: 'Add building' });
+  await expect(addBuilding).toHaveAttribute('href', new RegExp(`builderId=${projectId}`));
+  await addBuilding.click();
   const form = await waitForMainPanel(page);
   await expect(form.getByRole('heading', { name: /Add building layout/ })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`builderId=${projectId}`));
   await expect(form.locator('#admin-builder-id')).toHaveValue(projectId);
   return form;
 }
@@ -121,8 +235,11 @@ export async function openProjectStaffAssign(
   const list = await openProjectsList(page);
   const row = list.locator('tbody tr').filter({ hasText: projectName });
   await row.first().getByRole('link', { name: /owner\/partner/i }).click();
+  const staffList = await waitForMainPanel(page);
+  await expect(staffList.getByRole('heading', { name: /owner\/partner list/i })).toBeVisible();
+  await staffList.getByRole('link', { name: /add owner\/partner/i }).click();
   const form = await waitForMainPanel(page);
-  await expect(form.getByRole('heading', { name: /Add owner\/partner/i })).toBeVisible();
+  await expect(form.getByRole('heading', { name: /add owner\/partner/i })).toBeVisible();
   return form;
 }
 
@@ -136,9 +253,11 @@ export async function openUsersList(page: Page): Promise<Locator> {
 export async function openNewUserForm(page: Page): Promise<Locator> {
   const main = await openUsersList(page);
   await main.getByRole('link', { name: 'New user' }).click();
-  const form = await waitForMainPanel(page);
-  await expect(form.getByRole('heading', { name: 'New user' })).toBeVisible();
-  return form;
+  const panel = await waitForMainPanel(page);
+  await expect(panel.getByRole('heading', { name: 'New user' })).toBeVisible();
+  const userForm = panel.locator('form[action*="/admin/users/save"]').last();
+  await expect(userForm).toBeVisible();
+  return userForm;
 }
 
 export async function openMilestoneTemplates(
@@ -148,11 +267,8 @@ export async function openMilestoneTemplates(
   await clickSidebarLink(page, 'Milestone Templates');
   let panel = await waitForMainPanel(page);
   await expect(panel.getByRole('heading', { name: 'Milestone Templates' })).toBeVisible();
-  await panel.locator('#filterProject').selectOption(options.projectId);
-  panel = await waitForMainPanel(page);
-  await panel.locator('#filterBuilding').selectOption(options.buildingId);
-  panel = await waitForMainPanel(page);
-  return panel;
+  panel = await applyProjectFilter(page, panel, options.projectId);
+  return applyBuildingFilter(page, panel, options.projectId, options.buildingId);
 }
 
 export async function loadMilestoneSetupForBooking(

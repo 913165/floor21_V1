@@ -78,6 +78,13 @@ export async function createPaymentReceipt(
   await expect(
     done.locator('.alert-success').filter({ hasText: /Receipt saved/ }).first(),
   ).toBeVisible();
+
+  if (await modal.isVisible()) {
+    await modal.locator('.btn-close').click();
+    await expect(modal).not.toHaveClass(/show/, { timeout: 10_000 });
+    await expect(page.locator('.modal-backdrop')).toHaveCount(0, { timeout: 10_000 });
+  }
+
   return chequeNo;
 }
 
