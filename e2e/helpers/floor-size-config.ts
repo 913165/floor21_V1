@@ -78,7 +78,7 @@ async function isBootstrapModalOpen(page: Page, modalId: string): Promise<boolea
   return (await page.locator(`#${modalId}.modal.show`).count()) > 0;
 }
 
-/** Ground floor save leaves the modal open with "Saved values" — dismiss via footer Cancel. */
+/** Dismiss ground floor config modal via footer Close (if still open). */
 export async function closeGroundFloorConfigModal(page: Page): Promise<void> {
   await dismissBootstrapModal(page, 'ground-floor-config-modal');
 }
@@ -165,13 +165,10 @@ export async function saveGroundFloorConfig(page: Page, buildingId: string) {
   );
   await page.locator('#ground-floor-config-save').click();
   const response = await saveResponse;
+  await expect(page.locator('#ground-floor-config-modal')).not.toHaveClass(/show/, {
+    timeout: 15_000,
+  });
   return response.json();
-}
-
-export async function expectGroundFloorSavedValues(modal: Locator) {
-  const status = modal.locator('#ground-floor-config-status');
-  await expect(status).toBeVisible({ timeout: 15_000 });
-  await expect(status).toHaveText('Saved values');
 }
 
 export async function expectGroundFloorShopSizeInModal(page: Page, expectedPercent: number) {
@@ -208,8 +205,6 @@ export async function ensureGroundFloorShopsConfigured(
   await page.locator('#ground-floor-config-passenger-lift-count').fill('0');
   await page.locator('#ground-floor-config-gate-count').fill('0');
   await saveGroundFloorConfig(page, buildingId);
-  await expectGroundFloorSavedValues(modal);
-  await closeGroundFloorConfigModal(page);
   await expect(panel).toHaveAttribute('data-configured', 'true', { timeout: 15_000 });
   await expect(panel.locator('.shop-plan__slot--shop')).toHaveCount(shopCount, { timeout: 30_000 });
   return panel;
@@ -254,8 +249,6 @@ export async function configureAndVerifyFloorSizes(
   await setRangeSlider(page, '#ground-floor-config-shop-size', opts.shopDecreaseTo);
   await expectGroundFloorShopSizeInModal(page, opts.shopDecreaseTo);
   await saveGroundFloorConfig(page, buildingId);
-  await expectGroundFloorSavedValues(groundModal);
-  await closeGroundFloorConfigModal(page);
   await expectGroundFloorPanelShopSize(groundPanel, opts.shopDecreaseTo);
 
   groundModal = await openGroundFloorConfigureModal(page);
@@ -271,8 +264,6 @@ export async function configureAndVerifyFloorSizes(
 
   await setRangeSlider(page, '#ground-floor-config-shop-size', opts.shopIncreaseTo);
   await saveGroundFloorConfig(page, buildingId);
-  await expectGroundFloorSavedValues(groundModal);
-  await closeGroundFloorConfigModal(page);
   await expectGroundFloorPanelShopSize(groundPanelReloaded, opts.shopIncreaseTo);
 
   groundModal = await openGroundFloorConfigureModal(page);

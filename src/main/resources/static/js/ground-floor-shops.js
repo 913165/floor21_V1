@@ -112,6 +112,15 @@
     showConfigStatus(message, "success");
   }
 
+  function closeGroundFloorConfigModal() {
+    var modal = configModalEl();
+    if (!modal || typeof bootstrap === "undefined" || !bootstrap.Modal) return;
+    var instance = bootstrap.Modal.getInstance(modal);
+    if (instance) {
+      instance.hide();
+    }
+  }
+
   function showLayoutError(rootEl, message) {
     var el = rootEl ? rootEl.querySelector(".shop-plan__layout-error") : null;
     if (!el) return;
@@ -1375,6 +1384,7 @@
     if (typeof window.floor21RefreshGrid === "function") {
       await window.floor21RefreshGrid();
     }
+    closeGroundFloorConfigModal();
   }
 
   function ensureGroundFloorConfigSaveBinding() {

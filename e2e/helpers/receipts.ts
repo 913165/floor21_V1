@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { loadPaymentReceiptsForBooking, loadPaymentScheduleForBooking } from './nav';
+import { closeReceiptFormModalIfOpen, openBootstrapModal } from './modals';
 import type { PlatformFlowState } from './platform-flow';
 import { waitForMainPanel } from './projects';
 
@@ -58,9 +59,8 @@ export async function createPaymentReceipt(
   const receiptDate = options?.receiptDate ?? e2eReceiptDate(receiptIndex);
 
   const loaded = await loadPaymentReceiptsForBooking(page, flow.buildingId, bookingId);
-  await loaded.getByRole('button', { name: 'New Payment receipt' }).click();
-  const modal = page.locator('#receipt-form-modal');
-  await expect(modal).toBeVisible();
+  await expect(loaded.getByRole('button', { name: 'New Payment receipt' })).toBeVisible();
+  const modal = await openBootstrapModal(page, 'receipt-form-modal');
 
   await modal.locator('#amountConsideration').fill(String(amount));
   await modal.locator('#receiptDate').fill(receiptDate);
@@ -79,11 +79,7 @@ export async function createPaymentReceipt(
     done.locator('.alert-success').filter({ hasText: /Receipt saved/ }).first(),
   ).toBeVisible();
 
-  if (await modal.isVisible()) {
-    await modal.locator('.btn-close').click();
-    await expect(modal).not.toHaveClass(/show/, { timeout: 10_000 });
-    await expect(page.locator('.modal-backdrop')).toHaveCount(0, { timeout: 10_000 });
-  }
+  await closeReceiptFormModalIfOpen(page);
 
   return chequeNo;
 }

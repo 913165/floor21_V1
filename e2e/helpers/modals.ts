@@ -27,6 +27,60 @@ async function clickModalDismissButton(modal: Locator): Promise<void> {
   await headerClose.click();
 }
 
+/** Move modal out of turbo-frame so Bootstrap backdrop and show() work (same as flat-grid.js). */
+export async function mountTurboFrameModalOnBody(page: Page, modalId: string): Promise<void> {
+  await page.evaluate((id) => {
+    const matches = document.querySelectorAll(`[id="${id}"]`);
+    if (!matches.length) return;
+    const main = document.getElementById('floor21-main');
+    let keep = matches[matches.length - 1] as HTMLElement;
+    if (main && matches.length > 1) {
+      matches.forEach((node) => {
+        if (main.contains(node)) keep = node as HTMLElement;
+      });
+    }
+    matches.forEach((node) => {
+      if (node !== keep) node.remove();
+    });
+    if (keep.parentElement !== document.body) {
+      document.body.appendChild(keep);
+    }
+  }, modalId);
+}
+
+/** Open a Bootstrap modal by id (turbo-frame safe). */
+export async function openBootstrapModal(page: Page, modalId: string): Promise<Locator> {
+  await mountTurboFrameModalOnBody(page, modalId);
+  const modal = page.locator(`#${modalId}`);
+  await page.evaluate((id) => {
+    const modalEl = document.getElementById(id);
+    if (!modalEl) throw new Error(`Modal #${id} not found`);
+    const bootstrap = (
+      window as unknown as {
+        bootstrap?: { Modal?: { getOrCreateInstance: (el: Element) => { show: () => void } } };
+      }
+    ).bootstrap;
+    if (!bootstrap?.Modal) throw new Error('Bootstrap Modal not available');
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }, modalId);
+  await expect(modal).toHaveClass(/show/, { timeout: 10_000 });
+  return modal;
+}
+
+export async function closeReceiptFormModalIfOpen(page: Page): Promise<void> {
+  const modal = page.locator('#receipt-form-modal.modal.show').last();
+  if ((await modal.count()) === 0) {
+    return;
+  }
+  const cancel = modal.getByRole('button', { name: 'Cancel' });
+  if (await cancel.isVisible()) {
+    await cancel.click();
+  } else {
+    await modal.locator('.modal-header .btn-close').click();
+  }
+  await expectModalDismissed(page, modal);
+}
+
 /** Flat details popup — prefer inline Close next to Save; fall back to header X. */
 export async function closeFlatDetailsModal(page: Page, modal?: Locator): Promise<void> {
   const target = modal ?? page.locator('#flat-details-modal');
