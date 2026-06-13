@@ -145,6 +145,17 @@ class BuildingFlatTypeDefaultsTest {
     }
 
     @Test
+    void resolveReturnsNoDefaultsForShopUnits() {
+        BuildingFlatTypeDefaults.Defaults defaults =
+                BuildingFlatTypeDefaults.resolve(Map.of(), List.of(), "SHOP");
+
+        assertNull(defaults.areaSqft());
+        assertNull(defaults.carpetAreaSqft());
+        assertNull(defaults.balconyAreaSqft());
+        assertNull(defaults.basePrice());
+    }
+
+    @Test
     void coalesceForEditKeepsCurrentValueUnlessTypeChanged() {
         assertNull(BuildingFlatTypeDefaults.coalesceForEdit(null, new BigDecimal("100"), false));
         assertEquals(

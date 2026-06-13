@@ -6362,6 +6362,8 @@
       setAreaPanelFromFlat(flat);
       syncShopSlotAdminFields(selectedShopSlotElement);
       finishAdminSaveSuccess();
+      showGridToast(ADMIN_SAVE_SUCCESS_MSG);
+      closeFlatDetailsModal();
       return;
     }
     if (selectedParkingSlot) {
@@ -6371,6 +6373,8 @@
       syncParkingSlotAdminFields(selectedParkingSlotElement);
       refreshParkingSectionMetaDisplays();
       finishAdminSaveSuccess();
+      showGridToast(ADMIN_SAVE_SUCCESS_MSG);
+      closeFlatDetailsModal();
       return;
     }
     var card = document.getElementById("flat-" + selectedFlatId);

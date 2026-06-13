@@ -2380,6 +2380,9 @@ public class FlatService {
     @Transactional
     public Flat updateFlatAsPlatformAdmin(UUID flatId, FlatAdminUpdateDto dto) {
         Flat flat = requireFlatForAdmin(flatId);
+        if (isGroundFloorShop(flat)) {
+            return updateGroundShopAsPlatformAdmin(flat, dto);
+        }
         if (FlatUnitTypes.isDuplexSecondary(flat)) {
             throw new IllegalArgumentException("Split the duplex before editing the linked upper unit.");
         }
@@ -2423,6 +2426,39 @@ public class FlatService {
         }
         flat = flatRepository.saveAndFlush(flat);
         return flat;
+    }
+
+    private static boolean isGroundFloorShop(Flat flat) {
+        return flat != null
+                && flat.getFloorNumber() != null
+                && flat.getFloorNumber() == 0
+                && FlatUnitTypes.isShopCode(flat.getBhkType());
+    }
+
+    private Flat updateGroundShopAsPlatformAdmin(Flat flat, FlatAdminUpdateDto dto) {
+        UUID flatId = flat.getId();
+        if (hasActiveBooking(flatId)) {
+            applyGroundShopAreaAndPrice(flat, dto.areaSqft(), dto.basePrice());
+        } else {
+            FlatUnitTypes.applyToFlat(flat, "SHOP", dto.areaSqft(), null, null, dto.basePrice());
+        }
+        return flatRepository.saveAndFlush(flat);
+    }
+
+    private static void applyGroundShopAreaAndPrice(
+            Flat flat, BigDecimal areaSqft, BigDecimal basePrice) {
+        if (areaSqft != null) {
+            if (areaSqft.signum() <= 0) {
+                throw new IllegalArgumentException("Shop area must be greater than zero.");
+            }
+            flat.setAreaSqft(areaSqft);
+        }
+        if (basePrice != null) {
+            if (basePrice.signum() < 0) {
+                throw new IllegalArgumentException("Price cannot be negative.");
+            }
+            flat.setBasePrice(basePrice);
+        }
     }
 
     @Transactional

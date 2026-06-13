@@ -32,7 +32,9 @@ public final class BuildingFlatTypeDefaults {
             String unitType,
             Integer columnNumber) {
         String normalized = FlatUnitTypes.normalize(unitType);
-        if (FlatUnitTypes.isParkingCode(normalized) || FlatUnitTypes.isAmenityCode(normalized)) {
+        if (FlatUnitTypes.isParkingCode(normalized)
+                || FlatUnitTypes.isShopCode(normalized)
+                || FlatUnitTypes.isAmenityCode(normalized)) {
             return new Defaults(null, null, null, null);
         }
         String columnKey =
