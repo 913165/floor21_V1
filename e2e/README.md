@@ -110,7 +110,7 @@ Expand **Floor21 — full flow (admin + partner)**, then click ▶ on each step 
 
 **Navigation:** After login, helpers in `helpers/nav.ts` reach screens through the **sidebar** (same as manual testing). Direct `page.goto` is reserved for login and HTTP API calls (e.g. milestone template download), not for in-app tenant screens.
 
-**Modals:** If a Bootstrap modal is open (e.g. Clients **Import**), helpers dismiss it with the header **X** (`.btn-close`) before sidebar navigation so Playwright is not blocked by the backdrop.
+**Modals:** Helpers dismiss open modals with the inline **Close** button (flat details `#admin-close-btn`) or footer **Close** / **Cancel** where available, so Playwright is not blocked by the backdrop. Header **X** is only used when no footer dismiss control exists (e.g. receipt form).
 
 ## Turbo frames
 

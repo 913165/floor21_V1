@@ -43,6 +43,7 @@ import {
   configureAndVerifyFloorSizes,
   type FloorSizeConfigTestRecord,
 } from './floor-size-config';
+import { closeFlatDetailsModal } from './modals';
 import {
   configureAndApplyUnitTypeDefaults,
   E2E_2BHK_UNIT_DEFAULTS,
@@ -471,8 +472,7 @@ export async function assignFlatToPartner(page: Page, flatId: string, partnerNam
   const card = page.locator(`#flat-${flatId}`);
   await expect(card).toContainText(partnerName);
 
-  await modal.locator('.btn-close').click();
-  await expect(modal).toBeHidden();
+  await closeFlatDetailsModal(page, modal);
 }
 
 function shuffle<T>(items: T[]): T[] {

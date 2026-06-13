@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { openFlatDetailsForFlat, waitForFlatGridReady } from './buildings';
+import { closeFlatDetailsModal } from './modals';
 import { clickSidebarLink, openAdminBuildingFlatGrid } from './nav';
 
 const SQFT_PER_SQM = 10.763910416709722;
@@ -154,8 +155,7 @@ export async function configureAndVerifyFlatDetailsAreas(
   await expectSavedValuesBanner(modal);
   await expectFlatDetailsAreasInModal(page, modal, data);
 
-  await modal.locator('.btn-close').click();
-  await expect(modal).toBeHidden();
+  await closeFlatDetailsModal(page, modal);
 
   const balconyAreaSqft = await expectFlatCardAreaAttributes(sampleFlat, data);
 
@@ -169,8 +169,7 @@ export async function configureAndVerifyFlatDetailsAreas(
 
   modal = await openFlatDetailsForFlat(page, flatId!);
   await expectFlatDetailsAreasInModal(page, modal, data);
-  await modal.locator('.btn-close').click();
-  await expect(modal).toBeHidden();
+  await closeFlatDetailsModal(page, modal);
 
   return {
     flatId: flatId!,

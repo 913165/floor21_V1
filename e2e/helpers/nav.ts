@@ -1,5 +1,8 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { closeClientsImportModalIfOpen } from './modals';
 import { waitForMainPanel } from './projects';
+
+export { closeClientsImportModalIfOpen };
 
 /** Project filter uses data-project-search-select + auto-submit; pick via the search UI. */
 async function applyProjectFilter(page: Page, main: Locator, projectId: string): Promise<Locator> {
@@ -107,18 +110,6 @@ export async function clickSidebarLink(page: Page, name: string | RegExp): Promi
   await expect(link).toBeVisible();
   await link.click();
   await waitForMainPanel(page);
-}
-
-/** Dismiss the clients import modal via the header X (backdrop blocks sidebar clicks). */
-export async function closeClientsImportModalIfOpen(page: Page): Promise<void> {
-  // Turbo can leave duplicate modal markup in the frame; target the open instance only.
-  const modal = page.locator('#clients-import-modal.modal.show').last();
-  if ((await modal.count()) === 0) {
-    return;
-  }
-  await modal.locator('.btn-close').click();
-  await expect(modal).not.toHaveClass(/show/, { timeout: 10_000 });
-  await expect(page.locator('.modal-backdrop')).toHaveCount(0, { timeout: 10_000 });
 }
 
 export async function openClientsList(page: Page): Promise<Locator> {
@@ -280,17 +271,21 @@ export async function loadMilestoneSetupForBooking(
   let panel = await waitForMainPanel(page);
   await expect(panel.getByRole('heading', { name: /Milestone setup/i })).toBeVisible();
 
+  // Search is th:disabled until buildingId is already in the URL — selectOption alone cannot enable it.
   await panel.locator('#msBuilding').selectOption(buildingId);
   await Promise.all([
     page.waitForURL(/milestone-setup.*buildingId=/, { timeout: 30_000 }),
-    panel.locator('#milestonePickerForm').getByRole('button', { name: 'Search' }).click(),
+    panel
+      .locator('#milestonePickerForm')
+      .evaluate((form: HTMLFormElement) => form.requestSubmit()),
   ]);
   panel = await waitForMainPanel(page);
 
+  await expect(panel.locator('#msBooking')).toBeVisible({ timeout: 15_000 });
   await panel.locator('#msBooking').selectOption(bookingId);
   await Promise.all([
     page.waitForURL(/milestone-setup.*bookingId=/, { timeout: 30_000 }),
-    panel.getByRole('button', { name: 'Load client' }).click(),
+    panel.locator('#milestonePickerForm').getByRole('button', { name: 'Load client' }).click(),
   ]);
   return waitForMainPanel(page);
 }

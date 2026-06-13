@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { defaultParkingSlotsPerFloor, openFlatDetailsForFlat, type NewBuildingInput } from './buildings';
+import { closeFlatDetailsModal } from './modals';
 import { openAdminBuildingFlatGrid, openBuildingFlatGrid as openBuildingFlatGridViaNav } from './nav';
 
 export type ParkingSlotLocation = {
@@ -90,8 +91,7 @@ export async function linkParkingSlotToResidentialFlat(
   await expect(linkedSlot).toHaveAttribute('data-linked-flat-id', residentialFlatId);
 
   if (await detailsModal.isVisible()) {
-    await detailsModal.locator('.btn-close').click();
-    await expect(detailsModal).toBeHidden();
+    await closeFlatDetailsModal(page, detailsModal);
   }
 
   return parkingFlatId;
@@ -112,6 +112,5 @@ export async function expectResidentialFlatShowsParkingLink(
   await expect(list.locator('li')).toHaveCount(1, { timeout: 30_000 });
   await expect(list).toContainText(`Floor ${parkingFloor}`);
   await expect(list).toContainText(`Slot ${slotNumber}`);
-  await modal.locator('.btn-close').click();
-  await expect(modal).toBeHidden();
+  await closeFlatDetailsModal(page, modal);
 }

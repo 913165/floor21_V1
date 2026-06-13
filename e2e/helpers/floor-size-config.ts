@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { defaultParkingSlotsPerFloor, waitForFlatGridReady } from './buildings';
+import { dismissBootstrapModal } from './modals';
 import { waitForMainPanel } from './projects';
 
 export const DEFAULT_PARKING_CAR_SIZE_PERCENT = 180;
@@ -77,21 +78,7 @@ async function isBootstrapModalOpen(page: Page, modalId: string): Promise<boolea
   return (await page.locator(`#${modalId}.modal.show`).count()) > 0;
 }
 
-/** Dismiss an open Bootstrap modal via the header X (aria-label Close). */
-async function dismissBootstrapModal(page: Page, modalId: string): Promise<void> {
-  const modal = page.locator(`#${modalId}.modal.show`).last();
-  if ((await modal.count()) === 0) {
-    return;
-  }
-  const closeBtn = modal.locator('.modal-header .btn-close');
-  await expect(closeBtn).toBeVisible({ timeout: 10_000 });
-  await closeBtn.scrollIntoViewIfNeeded();
-  await closeBtn.click();
-  await expect(page.locator(`#${modalId}`).first()).not.toHaveClass(/show/, { timeout: 10_000 });
-  await expect(page.locator('.modal-backdrop')).toHaveCount(0, { timeout: 10_000 });
-}
-
-/** Ground floor save leaves the modal open with "Saved values" — dismiss via header X. */
+/** Ground floor save leaves the modal open with "Saved values" — dismiss via footer Cancel. */
 export async function closeGroundFloorConfigModal(page: Page): Promise<void> {
   await dismissBootstrapModal(page, 'ground-floor-config-modal');
 }

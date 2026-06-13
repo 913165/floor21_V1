@@ -6392,6 +6392,19 @@
     finishAdminSaveSuccess();
   }
 
+  function ensureAdminCloseClickBinding() {
+    if (window.__f21AdminCloseClickHandler) {
+      document.removeEventListener("click", window.__f21AdminCloseClickHandler, true);
+    }
+    window.__f21AdminCloseClickHandler = function (e) {
+      var btn = e.target.closest("#admin-close-btn");
+      if (!btn) return;
+      e.preventDefault();
+      closeFlatDetailsModal();
+    };
+    document.addEventListener("click", window.__f21AdminCloseClickHandler, true);
+  }
+
   function ensureAdminSaveClickBinding() {
     if (window.__f21AdminSaveClickHandler) {
       document.removeEventListener("click", window.__f21AdminSaveClickHandler, true);
@@ -6634,6 +6647,7 @@
   onPageReady(function () {
     mountModalsOnBody();
     ensureAdminSaveClickBinding();
+    ensureAdminCloseClickBinding();
     ensureAdminPartnerSaveBinding();
     ensureUserPriceSaveBinding();
     ensureAdminLifecycleClickBinding();
