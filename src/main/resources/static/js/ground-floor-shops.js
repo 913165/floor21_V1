@@ -402,6 +402,157 @@
     return Math.max(0.5, Math.min(2, pct / 100));
   }
 
+  function clampPanelPercent(pct) {
+    return Math.max(50, Math.min(200, Math.round(pct)));
+  }
+
+  function snapPanelPercent(pct) {
+    return Math.round(clampPanelPercent(pct) / 5) * 5;
+  }
+
+  function groundPanelPercents(panel) {
+    return {
+      shop: Number(panel.dataset.shopSizePercent || DEFAULT_SHOP_SIZE_PERCENT),
+      parking: Number(panel.dataset.parkingCarSizePercent || DEFAULT_PARKING_CAR_SIZE_PERCENT),
+    };
+  }
+
+  function resetGroundPanelContent(panel) {
+    panel.querySelectorAll(".shop-plan__sheet").forEach(function (sheet) {
+      sheet.style.setProperty("--shop-car-scale", "1");
+      sheet.style.setProperty("--shop-parking-car-scale", "1");
+    });
+  }
+
+  function groundPanelStorageKey(panel) {
+    var id = buildingId();
+    return "floor21:panel:" + (id || "") + ":ground";
+  }
+
+  function groundPanelResizeOptions(panel) {
+    return {
+      layoutSelector: ".flat-ground-floor-section__layout",
+      storageKey: function () {
+        return groundPanelStorageKey(panel);
+      },
+      defaultScale: function (p) {
+        return Number(p.dataset.shopSizePercent || DEFAULT_SHOP_SIZE_PERCENT) / 100;
+      },
+      minWidth: 280,
+      minHeight: 120,
+      resetContent: resetGroundPanelContent,
+      onResizeEnd: function (p) {
+        if (!window.floor21PanelResize) {
+          return;
+        }
+        var current = groundPanelPercents(p);
+        var scale = window.floor21PanelResize.uniformScale(p);
+        var finalShop = snapPanelPercent(scale * 100);
+        var parkingRatio = current.shop > 0 ? current.parking / current.shop : 1;
+        var finalParking = snapPanelPercent(finalShop * parkingRatio);
+        void persistGroundPanelScale(p, finalShop, finalParking);
+      },
+    };
+  }
+
+  function applyGroundPanelScale(panel, shopPct, parkingPct) {
+    if (!panel) {
+      return;
+    }
+    shopPct = clampPanelPercent(shopPct);
+    parkingPct = clampPanelPercent(parkingPct);
+    panel.dataset.shopSizePercent = String(shopPct);
+    panel.dataset.parkingCarSizePercent = String(parkingPct);
+
+    var root = groundFloorPlanRoot();
+    if (root && root._shopLayoutState && root._shopLayoutState.plan) {
+      root._shopLayoutState.plan.shopSizePercent = shopPct;
+      root._shopLayoutState.plan.parkingCarSizePercent = parkingPct;
+    }
+
+    if (panel.classList.contains("flat-ground-floor-section__panel--resizable") && window.floor21PanelResize) {
+      window.floor21PanelResize.remeasure(panel, groundPanelResizeOptions(panel));
+      return;
+    }
+
+    panel.style.width = "";
+    panel.style.height = "";
+    var shopScale = shopPct / 100;
+    var parkingScale = parkingPct / 100;
+    panel.querySelectorAll(".shop-plan__sheet").forEach(function (sheet) {
+      sheet.style.setProperty("--shop-car-scale", String(shopScale));
+      sheet.style.setProperty("--shop-parking-car-scale", String(parkingScale));
+    });
+  }
+
+  function syncGroundResizablePanel(panel) {
+    if (!panel || !window.floor21PanelResize) {
+      return;
+    }
+    window.floor21PanelResize.remeasure(panel, groundPanelResizeOptions(panel));
+  }
+
+  function ensureGroundFloorResizeHandle(panel) {
+    if (!panel || !isPlatformAdminEdit()) {
+      return;
+    }
+    if (panel.dataset.configured !== "true") {
+      return;
+    }
+    if (!panel.classList.contains("flat-ground-floor-section--split")) {
+      return;
+    }
+    panel.classList.add("flat-ground-floor-section__panel--resizable");
+    if (window.floor21PanelResize) {
+      window.floor21PanelResize.init(panel, groundPanelResizeOptions(panel));
+    }
+  }
+
+  async function persistGroundPanelScale(panel, shopPct, parkingPct) {
+    var id = buildingId();
+    if (!id || !panel) {
+      return { ok: false };
+    }
+    var shopCount = Number(panel.dataset.shopCount);
+    var shopAreaSqft = Number(panel.dataset.shopArea);
+    var parkingSlotCount = Number(panel.dataset.parkingSlotCount || "0");
+    var parkingSlotAreaSqft = Number(panel.dataset.parkingSlotArea || "0");
+    if (!shopCount || shopCount < 1 || !shopAreaSqft || shopAreaSqft <= 0) {
+      return { ok: false };
+    }
+    var shopSizePercent = snapPanelPercent(shopPct);
+    var parkingCarSizePercent = snapPanelPercent(parkingPct);
+    var res = await fetch(appRoot() + "/buildings/" + id + "/ground-floor-config", {
+      method: "POST",
+      headers: Object.assign({ "Content-Type": "application/json" }, csrfHeaders()),
+      body: JSON.stringify({
+        shopCount: shopCount,
+        shopAreaSqft: shopAreaSqft,
+        shopSizePercent: shopSizePercent,
+        parkingSlotCount: parkingSlotCount,
+        parkingSlotAreaSqft: parkingSlotCount > 0 ? parkingSlotAreaSqft : null,
+        parkingCarSizePercent: parkingCarSizePercent,
+        carLiftCount: Number(panel.dataset.carLiftCount || "1"),
+        passengerLiftCount: Number(panel.dataset.passengerLiftCount || "0"),
+        gateCount: Number(panel.dataset.gateCount || "1"),
+      }),
+    });
+    if (!res.ok) {
+      return { ok: false, error: await parseErrorResponse(res) };
+    }
+    var groundFloor = await res.json();
+    var planRes = await fetch(appRoot() + "/buildings/" + id + "/ground-floor/plan", {
+      headers: { Accept: "application/json" },
+    });
+    var plan = planRes.ok ? await planRes.json() : null;
+    updatePanelMeta(groundFloor, plan);
+    if (plan) {
+      renderShopPlanGrid(plan, groundFloorPlanRoot());
+      ensureGroundFloorResizeHandle(panel);
+    }
+    return { ok: true };
+  }
+
   function clonePlan(plan) {
     return {
       shopCount: plan.shopCount,
@@ -532,6 +683,10 @@
       plan: clonePlan(plan),
     };
     if (canEdit) updateShopGridToolbar(rootEl);
+    var panel = groundFloorPanel();
+    if (panel && panel.classList.contains("flat-ground-floor-section__panel--resizable")) {
+      syncGroundResizablePanel(panel);
+    }
   }
 
   function dragKeyFromEl(el) {
@@ -1166,6 +1321,7 @@
     if (addBtn) addBtn.classList.toggle("d-none", configured);
     if (configured) {
       ensureGroundFloorConfigureLink(panel);
+      ensureGroundFloorResizeHandle(panel);
     }
   }
 
@@ -1180,6 +1336,7 @@
     if (!res.ok) return;
     var plan = await res.json();
     renderShopPlanGrid(plan, groundFloorPlanRoot());
+    ensureGroundFloorResizeHandle(panel);
     if (plan.hasLayoutImage) {
       panel.setAttribute("data-has-layout-image", "true");
     }
@@ -1221,21 +1378,23 @@
     }
   }
 
-  function syncParkingCarSizeLabel(value) {
-    var label = configEl("ground-floor-config-parking-car-size-value");
-    if (label) label.textContent = String(value);
-  }
-
-  function syncShopSizeLabel(value) {
-    var label = configEl("ground-floor-config-shop-size-value");
-    if (label) label.textContent = String(value);
+  function groundPanelSizePercentsForConfigSave() {
+    var panel = groundFloorPanel();
+    return {
+      shop:
+        panel && panel.dataset.shopSizePercent
+          ? clampPanelPercent(Number(panel.dataset.shopSizePercent))
+          : DEFAULT_SHOP_SIZE_PERCENT,
+      parking:
+        panel && panel.dataset.parkingCarSizePercent
+          ? clampPanelPercent(Number(panel.dataset.parkingCarSizePercent))
+          : DEFAULT_PARKING_CAR_SIZE_PERCENT,
+    };
   }
 
   function populateConfigForm(panel) {
     var countEl = configEl("ground-floor-config-shop-count");
-    var shopSizeEl = configEl("ground-floor-config-shop-size");
     var parkingCountEl = configEl("ground-floor-config-parking-count");
-    var parkingCarSize = configEl("ground-floor-config-parking-car-size");
     var carLiftEl = configEl("ground-floor-config-car-lift-count");
     var passengerLiftEl = configEl("ground-floor-config-passenger-lift-count");
     var gateEl = configEl("ground-floor-config-gate-count");
@@ -1247,14 +1406,6 @@
       "ground-floor-config-area",
       panel && panel.dataset.shopArea ? panel.dataset.shopArea : "350"
     );
-    if (shopSizeEl) {
-      var shopSize =
-        panel && panel.dataset.shopSizePercent
-          ? panel.dataset.shopSizePercent
-          : String(DEFAULT_SHOP_SIZE_PERCENT);
-      shopSizeEl.value = shopSize;
-      syncShopSizeLabel(shopSize);
-    }
     if (parkingCountEl) {
       parkingCountEl.value =
         panel && panel.dataset.parkingSlotCount != null
@@ -1265,14 +1416,6 @@
       "ground-floor-config-parking-area",
       panel && panel.dataset.parkingSlotArea ? panel.dataset.parkingSlotArea : "150"
     );
-    if (parkingCarSize) {
-      var carSize =
-        panel && panel.dataset.parkingCarSizePercent
-          ? panel.dataset.parkingCarSizePercent
-          : String(DEFAULT_PARKING_CAR_SIZE_PERCENT);
-      parkingCarSize.value = carSize;
-      syncParkingCarSizeLabel(carSize);
-    }
     if (carLiftEl) {
       carLiftEl.value =
         panel && panel.dataset.carLiftCount != null ? panel.dataset.carLiftCount : "1";
@@ -1312,8 +1455,6 @@
     var id = buildingId();
     var countEl = configEl("ground-floor-config-shop-count");
     var parkingCountEl = configEl("ground-floor-config-parking-count");
-    var parkingCarSizeEl = configEl("ground-floor-config-parking-car-size");
-    var shopSizeEl = configEl("ground-floor-config-shop-size");
     var carLiftEl = configEl("ground-floor-config-car-lift-count");
     var passengerLiftEl = configEl("ground-floor-config-passenger-lift-count");
     var gateEl = configEl("ground-floor-config-gate-count");
@@ -1343,6 +1484,7 @@
     }
     showConfigError("");
     showConfigStatus("Saving…", "success");
+    var sizePercents = groundPanelSizePercentsForConfigSave();
     var saveLabel = saveBtn ? saveBtn.textContent : "Save";
     if (saveBtn) {
       saveBtn.disabled = true;
@@ -1361,8 +1503,8 @@
           gateCount: gateEl ? Number(gateEl.value) : 1,
           parkingSlotCount: parkingSlotCount,
           parkingSlotAreaSqft: parkingSlotCount > 0 ? parkingSlotAreaSqft : null,
-          parkingCarSizePercent: parkingCarSizeEl ? Number(parkingCarSizeEl.value) : 180,
-          shopSizePercent: shopSizeEl ? Number(shopSizeEl.value) : DEFAULT_SHOP_SIZE_PERCENT,
+          parkingCarSizePercent: sizePercents.parking,
+          shopSizePercent: sizePercents.shop,
         }),
       });
     } catch (err) {
@@ -1518,6 +1660,10 @@
 
   onPageReady(function () {
     ensureShopGridDelegation();
+    window.floor21PanelResizeIsEnabled = isPlatformAdminEdit;
+    if (window.floor21PanelResize) {
+      window.floor21PanelResize.bind();
+    }
     ensureConfigModalMounted();
     ensureGroundFloorConfigSaveBinding();
 
@@ -1536,17 +1682,6 @@
       return;
     }
     section.dataset.f21GroundInit = "true";
-
-    document.addEventListener("input", function (e) {
-      if (!e.target || !e.target.id) return;
-      var modal = configModalEl();
-      if (!modal || !modal.contains(e.target)) return;
-      if (e.target.id === "ground-floor-config-parking-car-size") {
-        syncParkingCarSizeLabel(e.target.value);
-      } else if (e.target.id === "ground-floor-config-shop-size") {
-        syncShopSizeLabel(e.target.value);
-      }
-    });
 
     document.addEventListener("click", function (e) {
       var addBtn = e.target.closest(".ground-floor-add-btn");

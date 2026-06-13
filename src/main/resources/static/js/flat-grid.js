@@ -2661,6 +2661,153 @@
     return Math.max(0.5, Math.min(2, pct / 100));
   }
 
+  function clampParkingCarSizePercent(pct) {
+    return Math.max(50, Math.min(200, Math.round(pct)));
+  }
+
+  function snapParkingCarSizePercent(pct) {
+    var clamped = clampParkingCarSizePercent(pct);
+    return Math.round(clamped / 5) * 5;
+  }
+
+  function parkingCarScaleFromPercent(pct) {
+    return Math.max(0.5, Math.min(2, pct / 100));
+  }
+
+  function resetParkingPanelContent(section) {
+    section.querySelectorAll(".parking-plan__sheet").forEach(function (sheet) {
+      sheet.style.setProperty("--parking-car-scale", "1");
+    });
+  }
+
+  function parkingPanelStorageKey(section) {
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : "";
+    return "floor21:panel:" + buildingId + ":parking:" + (section.dataset.floorNumber || "");
+  }
+
+  function parkingPanelResizeOptions(section) {
+    return {
+      layoutSelector: ".flat-parking-section__layout",
+      storageKey: function () {
+        return parkingPanelStorageKey(section);
+      },
+      defaultScale: function (s) {
+        return Number(s.dataset.carSizePercent || DEFAULT_PARKING_CAR_SIZE_PERCENT) / 100;
+      },
+      minWidth: 280,
+      minHeight: 120,
+      resetContent: resetParkingPanelContent,
+      onResizeEnd: function (s) {
+        if (!window.floor21PanelResize) {
+          return;
+        }
+        var scale = window.floor21PanelResize.uniformScale(s);
+        var pct = snapParkingCarSizePercent(scale * 100);
+        void persistParkingCarSizeFromSection(s, pct);
+      },
+    };
+  }
+
+  function applyParkingCarScaleToSection(section, carSizePercent) {
+    if (!section) {
+      return;
+    }
+    var pct = clampParkingCarSizePercent(carSizePercent);
+    section.dataset.carSizePercent = String(pct);
+    var root = parkingPlanRootForSection(section);
+    if (root && root._parkingLayoutState && root._parkingLayoutState.plan) {
+      root._parkingLayoutState.plan.carSizePercent = pct;
+    }
+    if (section.classList.contains("flat-parking-section--resizable") && window.floor21PanelResize) {
+      window.floor21PanelResize.remeasure(section, parkingPanelResizeOptions(section));
+      return;
+    }
+    var scale = parkingCarScaleFromPercent(pct);
+    section.style.width = "";
+    section.style.height = "";
+    section.querySelectorAll(".parking-plan__sheet").forEach(function (sheet) {
+      sheet.style.setProperty("--parking-car-scale", String(scale));
+    });
+  }
+
+  function syncParkingResizablePanel(section) {
+    if (!section || !window.floor21PanelResize) {
+      return;
+    }
+    window.floor21PanelResize.remeasure(section, parkingPanelResizeOptions(section));
+  }
+
+  function ensureParkingSectionResizeHandle(section) {
+    if (!section || !isPlatformAdminEdit()) {
+      return;
+    }
+    if (section.dataset.configured !== "true") {
+      return;
+    }
+    if (!section.classList.contains("flat-parking-section--split")) {
+      return;
+    }
+    section.classList.add("flat-parking-section--resizable");
+    if (window.floor21PanelResize) {
+      window.floor21PanelResize.init(section, parkingPanelResizeOptions(section));
+    }
+  }
+
+  function ensureParkingSectionResizeHandles() {
+    if (!isPlatformAdminEdit()) {
+      return;
+    }
+    document
+      .querySelectorAll('.flat-parking-section--split[data-configured="true"]')
+      .forEach(ensureParkingSectionResizeHandle);
+  }
+
+  async function persistParkingCarSizeFromSection(section, carSizePercent) {
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    var floorNumber = section && section.dataset.floorNumber;
+    if (!buildingId || !floorNumber || !section) {
+      return { ok: false };
+    }
+    var slotCount = Number(section.dataset.slotCount);
+    var slotAreaSqft = Number(section.dataset.area);
+    var carLifts = Number(section.dataset.carLiftCount || "0");
+    var passengerLifts = Number(section.dataset.passengerLiftCount || "0");
+    var gates = Number(section.dataset.gateCount || "0");
+    if (!slotCount || slotCount < 1 || !slotAreaSqft || slotAreaSqft <= 0) {
+      return { ok: false };
+    }
+    var pct = snapParkingCarSizePercent(carSizePercent);
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    var res = await fetch(parkingConfigApiUrl(buildingId, floorNumber), {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({
+        slotCount: slotCount,
+        carSizePercent: pct,
+        carLiftCount: carLifts,
+        passengerLiftCount: passengerLifts,
+        gateCount: gates,
+        slotAreaSqft: slotAreaSqft,
+      }),
+    });
+    if (!res.ok) {
+      return { ok: false, error: await parseErrorResponse(res) };
+    }
+    var plan = await res.json();
+    applyParkingCarScaleToSection(section, plan.carSizePercent != null ? plan.carSizePercent : pct);
+    invalidateParkingPlanCache(floorNumber);
+    if (isBasementFloor(floorNumber) && window.floor21SyncBasement) {
+      var labelEl = section.querySelector(".flat-parking-section__title");
+      var basementDto = basementDtoFromPlan(plan, labelEl ? labelEl.textContent.trim() : "");
+      if (basementDto) {
+        window.floor21SyncBasement(basementDto);
+      }
+    }
+    return { ok: true };
+  }
+
   function renderParkingPlanGrid(plan, rootEl, canEdit) {
     var cols = plan.gridCols || 14;
     var rows = plan.gridRows || 8;
@@ -2789,6 +2936,10 @@
       };
     });
     renderParkingPlanGrid(plan, rootEl, isPlatformAdminEdit());
+    var section = rootEl && rootEl.closest(".flat-parking-section");
+    if (section && section.classList.contains("flat-parking-section--resizable")) {
+      syncParkingResizablePanel(section);
+    }
   }
 
   function findGridOccupant(state, col, row, excludeDrag) {
@@ -3169,6 +3320,7 @@
       section.classList.add("flat-parking-section--split");
       var planPane = section.querySelector(".flat-parking-section__plan");
       if (planPane) planPane.setAttribute("aria-hidden", "false");
+      ensureParkingSectionResizeHandle(section);
       return;
     }
     renderParkingPlan(plan, root);
@@ -3184,6 +3336,7 @@
     section.classList.add("flat-parking-section--split");
     var planPane = section.querySelector(".flat-parking-section__plan");
     if (planPane) planPane.setAttribute("aria-hidden", "false");
+    ensureParkingSectionResizeHandle(section);
   }
 
   async function loadAllConfiguredParkingPlans() {
@@ -3207,6 +3360,7 @@
       );
     });
     await Promise.all(tasks);
+    ensureParkingSectionResizeHandles();
   }
 
   function showParkingConfigError(message) {
@@ -3432,11 +3586,6 @@
     showParkingPlanInSection(plan, true);
   }
 
-  function syncParkingConfigCarSizeLabel(value) {
-    var label = document.getElementById("parking-config-car-size-value");
-    if (label) label.textContent = String(value);
-  }
-
   function openParkingConfigModal(sectionEl) {
     if (!sectionEl || !isPlatformAdminEdit()) return;
     mountModalsOnBody();
@@ -3444,7 +3593,6 @@
     var modalEl = document.getElementById("parking-config-modal");
     var label = document.getElementById("parking-config-floor-label");
     var slots = document.getElementById("parking-config-slots");
-    var carSize = document.getElementById("parking-config-car-size");
     var carLiftCount = document.getElementById("parking-config-car-lift-count");
     var passengerLiftCount = document.getElementById("parking-config-passenger-lift-count");
     var gateCount = document.getElementById("parking-config-gate-count");
@@ -3457,11 +3605,6 @@
     var slotValue = sectionEl.dataset.slotCount || "4";
     if (slots) {
       slots.value = slotValue;
-    }
-    if (carSize) {
-      var sizeValue = sectionEl.dataset.carSizePercent || String(DEFAULT_PARKING_CAR_SIZE_PERCENT);
-      carSize.value = sizeValue;
-      syncParkingConfigCarSizeLabel(sizeValue);
     }
     if (carLiftCount) {
       carLiftCount.value =
@@ -3489,7 +3632,6 @@
     var modalEl = document.getElementById("parking-config-modal");
     var labelEl = document.getElementById("parking-config-floor-label");
     var slots = document.getElementById("parking-config-slots");
-    var carSize = document.getElementById("parking-config-car-size");
     var carLiftCount = document.getElementById("parking-config-car-lift-count");
     var passengerLiftCount = document.getElementById("parking-config-passenger-lift-count");
     var gateCount = document.getElementById("parking-config-gate-count");
@@ -3500,12 +3642,6 @@
     }
     if (sectionEl) {
       if (slots) slots.value = sectionEl.dataset.slotCount || "4";
-      if (carSize) {
-        var sizeValue =
-          sectionEl.dataset.carSizePercent || String(DEFAULT_PARKING_CAR_SIZE_PERCENT);
-        carSize.value = sizeValue;
-        syncParkingConfigCarSizeLabel(sizeValue);
-      }
       if (carLiftCount) {
         carLiftCount.value =
           sectionEl.dataset.carLiftCount != null ? sectionEl.dataset.carLiftCount : "1";
@@ -3522,10 +3658,6 @@
       setAreaPair("parking-config-area", sectionEl.dataset.area || "150");
     } else {
       if (slots) slots.value = "4";
-      if (carSize) {
-        carSize.value = String(DEFAULT_PARKING_CAR_SIZE_PERCENT);
-        syncParkingConfigCarSizeLabel(carSize.value);
-      }
       if (carLiftCount) carLiftCount.value = "1";
       if (passengerLiftCount) passengerLiftCount.value = "0";
       if (gateCount) gateCount.value = "1";
@@ -3536,13 +3668,20 @@
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   };
 
+  function parkingCarSizePercentForConfigSave(floorNumber) {
+    var section = parkingSectionForFloor(floorNumber);
+    if (section && section.dataset.carSizePercent) {
+      return clampParkingCarSizePercent(Number(section.dataset.carSizePercent));
+    }
+    return DEFAULT_PARKING_CAR_SIZE_PERCENT;
+  }
+
   async function saveParkingConfig() {
     var cfg = parkingConfigState();
     var grid = document.getElementById("flat-grid");
     var buildingId = grid ? grid.getAttribute("data-building-id") : null;
     var floorNumber = cfg.floorNumber || parkingConfigFloorNumber;
     var slotsEl = document.getElementById("parking-config-slots");
-    var carSizeEl = document.getElementById("parking-config-car-size");
     var carLiftCountEl = document.getElementById("parking-config-car-lift-count");
     var passengerLiftCountEl = document.getElementById("parking-config-passenger-lift-count");
     var gateCountEl = document.getElementById("parking-config-gate-count");
@@ -3557,11 +3696,7 @@
       showParkingConfigError("Enter a slot count between 1 and 200.");
       return;
     }
-    var carSizePercent = carSizeEl ? Number(carSizeEl.value) : DEFAULT_PARKING_CAR_SIZE_PERCENT;
-    if (!carSizePercent || carSizePercent < 50 || carSizePercent > 200) {
-      showParkingConfigError("Car size must be between 50% and 200%.");
-      return;
-    }
+    var carSizePercent = parkingCarSizePercentForConfigSave(floorNumber);
     var carLifts = carLiftCountEl ? Number(carLiftCountEl.value) : 1;
     var passengerLifts = passengerLiftCountEl ? Number(passengerLiftCountEl.value) : 0;
     var gates = gateCountEl ? Number(gateCountEl.value) : 1;
@@ -4141,11 +4276,17 @@
     }
     el.dataset.parkingSnapshot = snapshot;
     if (unchanged) {
+      if (configured) {
+        ensureParkingSectionResizeHandle(el);
+      }
       return;
     }
     el.innerHTML = buildParkingSectionInnerHtml(floor);
     var planPane = el.querySelector(".flat-parking-section__plan");
     if (planPane) planPane.setAttribute("aria-hidden", configured ? "false" : "true");
+    if (configured) {
+      ensureParkingSectionResizeHandle(el);
+    }
   }
 
   function createParkingSectionElement(floor) {
@@ -6660,6 +6801,10 @@
       return;
     }
     ensureParkingGridDelegation();
+    window.floor21PanelResizeIsEnabled = isPlatformAdminEdit;
+    if (window.floor21PanelResize) {
+      window.floor21PanelResize.bind();
+    }
     if (grid.dataset.f21Init === "true") {
       return;
     }
@@ -6754,12 +6899,6 @@
         void uploadParkingLayoutImage(parkingLayoutUploadSection, file);
         parkingLayoutUploadSection = null;
         parkingLayoutFileInput.value = "";
-      });
-    }
-    var parkingConfigCarSize = document.getElementById("parking-config-car-size");
-    if (parkingConfigCarSize) {
-      parkingConfigCarSize.addEventListener("input", function () {
-        syncParkingConfigCarSizeLabel(parkingConfigCarSize.value);
       });
     }
     var flatLayoutFileInput = document.getElementById("flat-layout-file-input");

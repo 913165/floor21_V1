@@ -718,6 +718,14 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   height: auto;
 }
 
+.flat-card-row > .flat-parking-section--split.flat-parking-section--configured,
+.flat-card-row > .flat-parking-section--resizable {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: none;
+}
+
 .flat-card:not(.flat-parking):not(.flat-amenity):not(.flat-duplex-part):not(.flat-merge-part) {
   --flat-card-border: #94a3b8;
   min-height: 0;
@@ -1727,6 +1735,13 @@ body > .modal .modal-content button {
 }
 
 .flat-parking-section--split {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.flat-parking-section.flat-parking-section--configured,
+.flat-parking-section.flat-parking-section--split {
   width: fit-content;
   max-width: 100%;
 }
@@ -1847,8 +1862,237 @@ body > .modal .modal-content button {
   margin-top: 0.35rem;
 }
 
+.flat-parking-section.flat-parking-section--resizable,
+.flat-parking-section--resizable,
+.flat-parking-section.floor21-resizable-panel,
+.flat-ground-floor-section__panel.floor21-resizable-panel,
+.flat-ground-floor-section__panel--resizable {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: top;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* One panel: inner plan sheet has no extra border. */
+.flat-parking-section--split.flat-parking-section--configured .parking-plan__sheet,
+.flat-parking-section--split.flat-parking-section--configured .parking-plan__sheet--grid,
+.flat-ground-floor-section__panel--resizable .shop-plan__sheet--grid,
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__sheet--grid {
+  border: none;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  max-width: none;
+}
+
+.floor21-resizable-panel__scaler {
+  width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.floor21-resizable-panel--measuring .floor21-resizable-panel__scaler {
+  width: max-content;
+  height: auto;
+}
+
+.floor21-resizable-panel .flat-parking-section__layout,
+.floor21-resizable-panel .flat-ground-floor-section__layout {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  align-items: stretch;
+}
+
+.floor21-resizable-panel .flat-parking-section__plan,
+.floor21-resizable-panel .flat-ground-floor-section__plan {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.floor21-resizable-panel .flat-parking-section__plan-root,
+.floor21-resizable-panel .flat-ground-floor-section__plan-root {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.floor21-resizable-panel .parking-plan__sheet--grid,
+.floor21-resizable-panel .shop-plan__sheet--grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.floor21-resizable-panel .parking-plan__layout-toolbar,
+.floor21-resizable-panel .shop-plan__layout-toolbar {
+  flex: 0 0 auto;
+}
+
+.floor21-resizable-panel .parking-plan__grid,
+.floor21-resizable-panel .shop-plan__grid {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-width: none;
+  grid-template-columns: repeat(var(--parking-grid-cols, 14), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--parking-grid-rows, 8), minmax(2.25rem, 1fr));
+}
+
+.floor21-resizable-panel .shop-plan__grid {
+  grid-template-columns: repeat(var(--shop-grid-cols, 14), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--shop-grid-rows, 8), minmax(2.25rem, 1fr));
+}
+
+.floor21-resizable-panel .parking-plan__cell,
+.floor21-resizable-panel .shop-plan__cell {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.floor21-resizable-panel .parking-plan__sheet--grid .parking-plan__slot--vertical,
+.floor21-resizable-panel .parking-plan__sheet--grid .parking-plan__slot--horizontal,
+.floor21-resizable-panel .shop-plan__slot {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+
+.floor21-resizable-panel--measuring .parking-plan__grid,
+.floor21-resizable-panel--measuring .shop-plan__grid {
+  width: fit-content;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(var(--parking-grid-cols, 14), var(--parking-cell-width, 2.85rem));
+  grid-template-rows: repeat(var(--parking-grid-rows, 8), var(--parking-cell-height, 3.5rem));
+}
+
+.floor21-resizable-panel--measuring .shop-plan__grid {
+  grid-template-columns: repeat(var(--shop-grid-cols, 14), var(--shop-cell-width));
+  grid-template-rows: repeat(var(--shop-grid-rows, 8), var(--shop-cell-height));
+}
+
+.floor21-resizable-panel--measuring .parking-plan__cell,
+.floor21-resizable-panel--measuring .shop-plan__cell {
+  width: var(--parking-cell-width, 2.85rem);
+  height: var(--parking-cell-height, 3.5rem);
+}
+
+.floor21-resizable-panel--measuring .shop-plan__cell {
+  width: var(--shop-cell-width);
+  height: var(--shop-cell-height);
+}
+
+.floor21-resizable-panel--measuring .parking-plan__sheet--grid .parking-plan__slot--vertical {
+  width: var(--parking-cell-width, 2.85rem);
+  height: var(--parking-cell-height, 3.5rem);
+}
+
+.floor21-resizable-panel--measuring .parking-plan__sheet--grid .parking-plan__slot--horizontal {
+  width: var(--parking-cell-height, 3.5rem);
+  height: var(--parking-cell-width, 2.85rem);
+}
+
+.floor21-resizable-panel--measuring .shop-plan__slot {
+  width: var(--shop-cell-width);
+  height: var(--shop-cell-height);
+}
+
+.floor21-resizable-panel__handle {
+  position: absolute;
+  z-index: 7;
+  touch-action: none;
+}
+
+.floor21-resizable-panel__handle--edge-right {
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+}
+
+.floor21-resizable-panel__handle--edge-bottom {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.floor21-resizable-panel__handle--corner {
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  border-right: 2px solid #6c757d;
+  border-bottom: 2px solid #6c757d;
+  border-radius: 0 0 0.45rem 0;
+  opacity: 0.75;
+}
+
+.floor21-resizable-panel__handle--corner:hover,
+.floor21-resizable-panel--resizing .floor21-resizable-panel__handle--corner {
+  opacity: 1;
+}
+
+.floor21-resizable-panel--resizing {
+  user-select: none;
+}
+
+[data-bs-theme="dark"] .floor21-resizable-panel__handle--corner {
+  border-right-color: #adb5bd;
+  border-bottom-color: #adb5bd;
+}
+
+.flat-parking-section--resizable .flat-parking-section__summary,
+.flat-ground-floor-section__panel.floor21-resizable-panel .flat-ground-floor-section__summary {
+  flex: 0 0 11rem;
+  max-width: none;
+}
+
+.flat-parking-section--resizable .flat-parking-section__plan,
+.flat-ground-floor-section__panel.floor21-resizable-panel .flat-ground-floor-section__plan {
+  max-width: none;
+  overflow: visible;
+}
+
+.flat-parking-section--resizable:not(.floor21-resizable-panel) .flat-parking-section__plan {
+  width: fit-content;
+}
+
 .flat-parking-section--pending {
   border-style: dashed;
+}
+
+.flat-parking-section--resizable .parking-plan__sheet--grid {
+  --parking-car-scale: 1;
+}
+
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__sheet--grid {
+  --shop-car-scale: 1;
+  --shop-parking-car-scale: 1;
 }
 
 .flat-parking-section__link {
@@ -2406,6 +2650,12 @@ body > .modal .modal-content button {
 [data-bs-theme="dark"] .parking-plan__sheet {
   background: #2b3035;
   border-color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .flat-parking-section--split.flat-parking-section--configured .parking-plan__sheet,
+[data-bs-theme="dark"] .flat-parking-section--split.flat-parking-section--configured .parking-plan__sheet--grid {
+  background: transparent;
+  border: none;
 }
 
 [data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked) .parking-plan__car-shell {
@@ -5216,6 +5466,10 @@ body > .modal .modal-content button {
   max-width: 100%;
 }
 
+.flat-ground-floor-section > .flat-ground-floor-section__panel.flat-ground-floor-section--split.flat-ground-floor-section--configured {
+  align-self: flex-start;
+}
+
 .flat-ground-floor-section__layout {
   display: block;
   padding: 0.75rem 1rem;
@@ -5401,6 +5655,89 @@ body > .modal .modal-content button {
 .shop-plan__cell--drop.shop-plan__cell--drag-over {
   background: rgba(13, 110, 253, 0.12);
   border-color: #0d6efd;
+}
+
+/* Ground floor panel resize: fluid grid fills panel width and height (overrides fit-content rules above). */
+.flat-ground-floor-section__panel.floor21-resizable-panel .flat-ground-floor-section__layout {
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
+}
+
+.flat-ground-floor-section__panel.floor21-resizable-panel.flat-ground-floor-section--split .flat-ground-floor-section__plan {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  width: auto;
+  max-width: none;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.flat-ground-floor-section__panel.floor21-resizable-panel .flat-ground-floor-section__plan-root {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__sheet--grid {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__grid {
+  width: 100%;
+  height: 100%;
+  flex: 1 1 0;
+  min-height: 0;
+  max-width: none;
+  align-content: stretch;
+  grid-template-columns: repeat(var(--shop-grid-cols, 14), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--shop-grid-rows, 8), minmax(2.25rem, 1fr));
+}
+
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__cell,
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__slot,
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__fixture {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  align-self: stretch;
+  justify-self: stretch;
+}
+
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__slot {
+  justify-content: flex-end;
+  container-type: size;
+}
+
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__bay {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__label,
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__slot-no,
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__unit-no {
+  font-size: clamp(0.5rem, 2.5cqh, 0.75rem);
+}
+
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__slot--parking .shop-plan__car-svg {
+  width: auto;
+  height: 100%;
+  max-height: 100%;
 }
 
 .shop-plan__grid--dragging .shop-plan__slot--draggable,

@@ -891,11 +891,6 @@
           <input class="form-control form-control-sm" type="number" id="parking-config-slots" min="1" max="200" step="1" value="4"/>
           <th:block th:replace="~{buildings/fragments/area-dual-field :: field('parking-config-area', 'Area per slot', '', '')}"></th:block>
           <p class="text-muted small mt-1 mb-0">Applied to every parking slot on this floor.</p>
-          <label class="form-label small mb-1 mt-3" for="parking-config-car-size">
-            Car size <span id="parking-config-car-size-value">180</span>%
-          </label>
-          <input class="form-range" type="range" id="parking-config-car-size" min="50" max="200" step="5" value="180"/>
-          <p class="text-muted small mt-2 mb-0">Scales grid cells and cars together (50–200%).</p>
           <label class="form-label small mb-1 mt-3" for="parking-config-car-lift-count">Number of car lifts</label>
           <input class="form-control form-control-sm" type="number" id="parking-config-car-lift-count" min="0" max="8" step="1" value="1"/>
           <label class="form-label small mb-1 mt-2" for="parking-config-passenger-lift-count">Number of passenger lifts</label>
@@ -925,17 +920,9 @@
           <label class="form-label small mb-1" for="ground-floor-config-shop-count">Number of shops</label>
           <input class="form-control form-control-sm" type="number" id="ground-floor-config-shop-count" min="1" max="50" step="1" value="4"/>
           <th:block th:replace="~{buildings/fragments/area-dual-field :: field('ground-floor-config-area', 'Area per shop', '', '')}"></th:block>
-          <label class="form-label small mb-1 mt-3" for="ground-floor-config-shop-size">
-            Shop size <span id="ground-floor-config-shop-size-value">140</span>%
-          </label>
-          <input class="form-range" type="range" id="ground-floor-config-shop-size" min="50" max="200" step="5" value="140"/>
           <label class="form-label small mb-1 mt-3" for="ground-floor-config-parking-count">Ground parking slots (optional)</label>
           <input class="form-control form-control-sm" type="number" id="ground-floor-config-parking-count" min="0" max="50" step="1" value="0"/>
           <th:block th:replace="~{buildings/fragments/area-dual-field :: field('ground-floor-config-parking-area', 'Area per parking slot', '', '')}"></th:block>
-          <label class="form-label small mb-1 mt-3" for="ground-floor-config-parking-car-size">
-            Parking car size <span id="ground-floor-config-parking-car-size-value">180</span>%
-          </label>
-          <input class="form-range" type="range" id="ground-floor-config-parking-car-size" min="50" max="200" step="5" value="180"/>
           <label class="form-label small mb-1 mt-3" for="ground-floor-config-car-lift-count">Number of car lifts</label>
           <input class="form-control form-control-sm" type="number" id="ground-floor-config-car-lift-count" min="0" max="8" step="1" value="1"/>
           <label class="form-label small mb-1 mt-2" for="ground-floor-config-passenger-lift-count">Number of passenger lifts</label>
@@ -1156,8 +1143,9 @@
     </div>
   </div>
   <script defer th:src="@{/js/floor21-area-unit.js(v=area-unit-prefs-v2)}"></script>
-  <script defer th:src="@{/js/flat-grid.js(v=user-price-edit-v1)}"></script>
-  <script defer th:src="@{/js/ground-floor-shops.js(v=ground-config-close-v1)}"></script>
+  <script defer th:src="@{/js/floor21-panel-resize.js(v=panel-resize-v4)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=panel-resize-v4)}"></script>
+  <script defer th:src="@{/js/ground-floor-shops.js(v=panel-resize-v4)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=7)}"></script>
 </div>
 </body>
