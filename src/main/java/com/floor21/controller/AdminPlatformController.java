@@ -141,6 +141,7 @@ public class AdminPlatformController {
         model.addAttribute("formAction", "/admin/buildings/save");
         model.addAttribute("cancelHref", "/admin/buildings");
         model.addAttribute("generateInitialLayout", true);
+        model.addAttribute("editLayoutFlow", false);
         model.addAttribute("adminBuildingsFlow", true);
     }
 
@@ -159,6 +160,7 @@ public class AdminPlatformController {
         model.addAttribute("formAction", "/admin/buildings/" + building.getId() + "/update");
         model.addAttribute("cancelHref", "/admin/buildings");
         model.addAttribute("adminBuildingsFlow", true);
+        model.addAttribute("generateInitialLayout", false);
         model.addAttribute("editLayoutFlow", true);
     }
 

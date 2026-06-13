@@ -104,6 +104,8 @@ public class BuildingController {
                     building.getBuilder().getCompanyName() + " (" + building.getBuilder().getEmail() + ")");
         }
         model.addAttribute("platformAdminView", isPlatformAdmin());
+        model.addAttribute("generateInitialLayout", false);
+        model.addAttribute("editLayoutFlow", false);
         return "buildings/form";
     }
 

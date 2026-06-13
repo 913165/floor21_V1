@@ -173,16 +173,16 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     emitFlowCredentials(flow, testInfo, 'credentials-after-flat-details-areas');
   });
 
-  test('Admin — 3e. Ground floor shops + parking car size sliders (decrease, save, reopen, reload)', async ({
+  test('Admin — 3e. Ground floor shops + parking configure (no size sliders)', async ({
     page,
   }, testInfo) => {
     loadFlow();
     requireBuildingFlow(flow);
     await adminConfigureFloorSizes(page, flow);
-    expect(flow.floorSizeConfigTest?.parkingCarSizeDecreased).toBe(155);
-    expect(flow.floorSizeConfigTest?.parkingCarSizeIncreased).toBe(170);
-    expect(flow.floorSizeConfigTest?.shopSizeDecreased).toBe(115);
-    expect(flow.floorSizeConfigTest?.shopSizeIncreased).toBe(125);
+    expect(flow.floorSizeConfigTest?.parkingCarSizePercent).toBe(180);
+    expect(flow.floorSizeConfigTest?.shopSizePercent).toBe(140);
+    expect(flow.floorSizeConfigTest?.groundShopCount).toBe(4);
+    expect(flow.floorSizeConfigTest?.parkingFloor).toBe(1);
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-after-floor-size-config');
   });

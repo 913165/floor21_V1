@@ -165,7 +165,7 @@ Generated from app routes/controllers vs e2e helpers only.
 
 === What Playwright DOES cover (for reference) ===
 Admin: create project, create 2 users, create building + grid counts, 2BHK defaults,
-  column defaults, per-flat areas, ground-floor shop count + shop/parking size sliders,
+  column defaults, per-flat areas, ground-floor shop count + parking configure (no size sliders),
   add partners, assign ~90% flats, import milestone templates Excel, link parking slots.
 Partner: login, assigned-flat bookability, owner all-flats bookability, create clients,
   create bookings (≥50% of assigned), own bookings in list, milestone setup + receipts
