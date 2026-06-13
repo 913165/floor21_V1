@@ -42,18 +42,16 @@ class StaffBuildingAccessServiceTest {
     }
 
     @Test
-    void resolveAllowedBuildingIds_partnerWithNoAssignments_returnsEmptySet() {
+    void resolveAllowedBuildingIds_partner_returnsUnrestrictedBuildingAccess() {
         UUID userId = UUID.randomUUID();
         UUID builderId = UUID.randomUUID();
         when(userRepository.findById(userId)).thenReturn(Optional.of(new User()));
         when(userProjectAssignmentService.getRole(userId, builderId))
                 .thenReturn(StaffBuildingAccessService.ROLE_EXECUTIVE);
-        when(assignmentRepository.findBuildingIdsByUserIdAndBuilderId(userId, builderId))
-                .thenReturn(List.of());
 
         Set<UUID> allowed = service.resolveAllowedBuildingIds(userId, builderId);
 
-        assertThat(allowed).isEmpty();
+        assertThat(allowed).isNull();
     }
 
     @Test
@@ -72,15 +70,17 @@ class StaffBuildingAccessServiceTest {
     }
 
     @Test
-    void describeBuildingAccess_partnerWithNoAssignments_showsNoBuildings() {
+    void describeBuildingAccess_partner_showsAllBuildingsForProject() {
         UUID userId = UUID.randomUUID();
         UUID builderId = UUID.randomUUID();
+        Builder builder = new Builder();
+        builder.setId(builderId);
+        builder.setCompanyName("Olde baileys");
         when(userProjectAssignmentService.getRole(userId, builderId))
                 .thenReturn(StaffBuildingAccessService.ROLE_EXECUTIVE);
-        when(assignmentRepository.findByUser_IdAndBuilding_Builder_IdOrderByBuildingName(userId, builderId))
-                .thenReturn(List.of());
+        when(builderRepository.findById(builderId)).thenReturn(Optional.of(builder));
 
         assertThat(service.describeBuildingAccess(userId, builderId))
-                .containsExactly("No buildings assigned");
+                .containsExactly("All buildings (Olde baileys)");
     }
 }

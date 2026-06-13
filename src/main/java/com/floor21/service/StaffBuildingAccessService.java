@@ -8,7 +8,6 @@ import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.UserBuildingAssignmentRepository;
 import com.floor21.repository.UserRepository;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -32,8 +31,8 @@ public class StaffBuildingAccessService {
     private final UserProjectAssignmentService userProjectAssignmentService;
 
     /**
-     * {@code null} = unrestricted (project admin: all buildings). Empty set = partner with no buildings yet.
-     * Non-empty set = only those buildings.
+     * {@code null} = all buildings on the project (owners and partners). Flat-level partner allocation
+     * ({@link PartnerFlatAllocationService}) controls which residential flats a partner may book.
      */
     @Transactional(readOnly = true)
     public Set<UUID> resolveAllowedBuildingIds(UUID staffUserId, UUID builderId) {
@@ -41,27 +40,26 @@ public class StaffBuildingAccessService {
                 .findById(staffUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Staff member not found."));
         String role = userProjectAssignmentService.getRole(staffUserId, builderId);
-        if (ROLE_BUILDER_ADMIN.equals(role)) {
+        if (ROLE_BUILDER_ADMIN.equals(role) || ROLE_EXECUTIVE.equals(role)) {
             return null;
         }
-        List<UUID> assigned = assignmentRepository.findBuildingIdsByUserIdAndBuilderId(staffUserId, builderId);
-        if (assigned.isEmpty()) {
-            return Collections.emptySet();
-        }
-        return new HashSet<>(assigned);
+        return Set.of();
     }
 
     @Transactional(readOnly = true)
     public List<String> describeBuildingAccess(UUID staffUserId, UUID builderId) {
         String role = userProjectAssignmentService.getRole(staffUserId, builderId);
+        String projectName =
+                builderRepository
+                        .findById(builderId)
+                        .map(Builder::getCompanyName)
+                        .filter(name -> name != null && !name.isBlank())
+                        .orElse("project");
         if (ROLE_BUILDER_ADMIN.equals(role)) {
-            String projectName =
-                    builderRepository
-                            .findById(builderId)
-                            .map(Builder::getCompanyName)
-                            .filter(name -> name != null && !name.isBlank())
-                            .orElse("project");
             return List.of("Full access (" + projectName + ")");
+        }
+        if (ROLE_EXECUTIVE.equals(role)) {
+            return List.of("All buildings (" + projectName + ")");
         }
         List<UserBuildingAssignment> rows =
                 assignmentRepository.findByUser_IdAndBuilding_Builder_IdOrderByBuildingName(staffUserId, builderId);
@@ -130,12 +128,7 @@ public class StaffBuildingAccessService {
                 .filter(
                         u -> {
                             String role = userProjectAssignmentService.getRole(u.getId(), builderId);
-                            if (ROLE_BUILDER_ADMIN.equals(role)) {
-                                return true;
-                            }
-                            List<UUID> assigned =
-                                    assignmentRepository.findBuildingIdsByUserIdAndBuilderId(u.getId(), builderId);
-                            return !assigned.isEmpty() && assigned.contains(buildingId);
+                            return ROLE_BUILDER_ADMIN.equals(role) || ROLE_EXECUTIVE.equals(role);
                         })
                 .toList();
     }
