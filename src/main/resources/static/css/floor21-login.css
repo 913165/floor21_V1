@@ -520,3 +520,34 @@ html[data-bs-theme="light"] .floor21-login {
 [data-bs-theme="light"] .floor21-login__accent--blue {
   opacity: 0.18;
 }
+
+/* Keep login backdrop visible while POST + redirect completes (avoids white flash). */
+body.floor21-login--pending {
+  overflow: hidden;
+}
+
+.floor21-login__pending {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 18, 32, 0.42);
+  backdrop-filter: blur(2px);
+}
+
+html[data-bs-theme="light"] .floor21-login__pending {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.floor21-login__pending-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-radius: 0.75rem;
+  background: var(--bs-body-bg, #fff);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  font-weight: 500;
+}

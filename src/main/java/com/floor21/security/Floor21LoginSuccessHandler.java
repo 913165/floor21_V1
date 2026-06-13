@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler;
@@ -26,7 +27,8 @@ public class Floor21LoginSuccessHandler extends SavedRequestAwareAuthenticationS
             HttpServletRequest request, HttpServletResponse response, Authentication authentication)
             throws ServletException, IOException {
         if (authentication.getPrincipal() instanceof Floor21UserPrincipal principal) {
-            platformAdminService.recordLogin(principal.getEmail());
+            String email = principal.getEmail();
+            CompletableFuture.runAsync(() -> platformAdminService.recordLogin(email));
         }
         super.onAuthenticationSuccess(request, response, authentication);
     }

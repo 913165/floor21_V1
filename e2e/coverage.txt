@@ -1,0 +1,172 @@
+Floor21 — NOT covered by Playwright (e2e/tests/floor21-full-flow.spec.ts)
+Generated from app routes/controllers vs e2e helpers only.
+
+=== Auth & session ===
+- Invalid login / empty fields / inactive user / unassigned user
+- Logout flow (profile menu)
+- Session expired / invalid session banners
+- Theme toggle on login
+- Direct URL access when logged out (redirect to login)
+- Legacy builder-company login (builders table, not staff users)
+
+=== Profile ===
+- My profile page
+- Change password (success and wrong current password)
+
+=== Dashboard ===
+- Platform dashboard stats, recent bookings pagination, quick links
+- Tenant dashboard scoped metrics
+
+=== Platform — Projects (/admin/projects) ===
+- List / search / filter / sort / pagination
+- Edit project
+- Deactivate / delete project
+
+=== Platform — Users (/admin/users) ===
+- List / search / filter users
+- Edit user
+- Duplicate email validation
+- Deactivate user
+
+=== Platform — Staff (/admin/projects/{id}/staff) ===
+- Staff list page (beyond assign flow)
+- Assign BUILDER_ADMIN role
+- Building-scoped partner only
+- Remove partner from project
+- Edit partner building access
+- Create new staff from project form
+- Impersonate partner / end impersonation
+- Building-level staff view (/admin/buildings/{id}/staff)
+
+=== Platform — All buildings (/admin/buildings) ===
+- List / search / filter / sort
+- Edit building metadata
+- Delete building (with and without bookings)
+
+=== Platform — Vault config (/admin/vault-config) ===
+- Grant configuration UI
+- Cross-tenant validation
+
+=== Platform — Activity / Reports / Audit / Settings ===
+- /admin/activity
+- /admin/reports (+ builders.csv, buildings.csv, inventory.csv downloads)
+- /admin/audit-log
+- /admin/settings (view and save)
+
+=== Platform — Payment milestones (/admin/payment-milestones) ===
+- List / create / edit milestone templates
+- Import template download and CSV import (separate from builder-pricing-slabs)
+
+=== Tenant — Buildings list (/buildings) ===
+- Buildings list page (partner vs builder-admin scope)
+- Edit building layout form
+
+=== Flat grid — viewing & exports ===
+- Export Excel / PDF / PDF grid
+- Floor plan image view
+- Building snapshot modal
+- Grid auto-refresh (20s)
+- Book flat from grid modal (Hold / Release / Book this flat)
+- Partner greyed-out flats (other partner's unit, unassigned unit)
+- User price edit (non-admin partner)
+
+=== Flat grid — admin operations not in E2E ===
+- Add / remove floors
+- Apply floor-wide BHK/area change
+- Generate flats (standalone; only implicit via building create)
+- Merge flats / split duplex / restore merge
+- Delete flat / activate-deactivate flat
+- Upload flat layout image
+- Shop slot save from ground-floor grid popup (only config modal sliders tested)
+- Parking slot area/price save from slot popup
+- Basement parking floors (add, configure, layout, plan)
+- Ground-floor / parking layout image upload
+- Drag-and-drop shop/parking/fixture placement on plan
+
+=== Clients (/clients) ===
+- Clients list / search / pagination
+- Client detail view
+- Edit client
+- Client import / export / import template
+- Platform admin read-only clients list
+- Platform admin blocked from creating clients
+
+=== Bookings (/bookings) ===
+- Booking detail page assertions (beyond create redirect)
+- Edit booking
+- Booking validation errors
+- Book already-booked flat (negative)
+- Book flat assigned to another partner (negative)
+- Builder admin books any flat
+- Booking with broker assigned
+
+=== Cancellations (/cancellations) ===
+- Cancellations list
+- Cancel booking flow (date, reason, refund)
+- Partner cancel own booking
+
+=== Brokers (/brokers) ===
+- List / create / edit brokers
+- Broker bookings view
+
+=== Bank accounts (/bank-accounts) ===
+- List / create / edit bank accounts
+- Partner access to bank CRUD
+
+=== Milestone templates — beyond import ===
+- Create / edit / delete individual rate slab rows (CRUD UI)
+- Manual milestone template CRUD (/admin/payment-milestones)
+
+=== Milestone setup — partial only ===
+- Save schedule button / bulk date apply (only materialize path exercised)
+- Edit individual slab rows after materialize
+
+=== Payment receipts (/receipts) — partial only ===
+- Receipt print view
+- Edit existing receipt
+- Invalid amount/date validation
+- Legacy URL redirects
+- Full receipts hub without prior milestone flow
+
+=== Payment schedule (/bookings/payment-schedule) — partial only ===
+- Slab payment record / delete payment
+- Demand draft generation
+- Export Excel / PDF
+- Ledger row assertions (only screenshot, no content checks)
+
+=== Vault (/vault) ===
+- PIN unlock / lock / change PIN / reset PIN
+- Per-booking vault income and expense
+- General vault income and expense
+- Vault building filter
+- Vault menu hidden without grant
+
+=== Expenses hub (/expenses) — BUILDER_ADMIN only ===
+- Expenses menu visibility (partner blocked)
+- List / add / delete project expenses
+- Expenses PIN flow
+
+=== Per-booking extra expenses (/bookings/{id}/expenses) ===
+- List / add booking-level extra expenses
+
+=== Security & access (negative) ===
+- Partner hits /admin/* URLs (403)
+- Partner opens another building's flat grid
+- Partner cross-tenant data isolation
+- CSRF rejection on POST
+- Turbo navigation after session expiry
+
+=== UI / layout ===
+- Sidebar active-state highlighting
+- Mobile sidebar / narrow viewport
+- Dark mode theme persistence
+- Dark mode list pagination chrome
+- List page search + filter + per-page size (projects, users, buildings, clients)
+
+=== What Playwright DOES cover (for reference) ===
+Admin: create project, create 2 users, create building + grid counts, 2BHK defaults,
+  column defaults, per-flat areas, ground-floor shop count + shop/parking size sliders,
+  add partners, assign ~90% flats, import milestone templates Excel, link parking slots.
+Partner: login, assigned-flat bookability, owner all-flats bookability, create clients,
+  create bookings (≥50% of assigned), own bookings in list, milestone setup + receipts
+  (5 waterfall + 1) + payment schedule screenshot.

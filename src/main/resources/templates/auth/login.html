@@ -7,9 +7,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="floor21-session-timeout-seconds" th:content="${sessionTimeoutSeconds}"/>
   <title>Login | Floor21</title>
+  <link rel="preload" th:href="@{/vendor/bootstrap.min.css}" as="style"/>
+  <link rel="preload" th:href="@{/css/floor21.css(v=area-field-row-v1)}" as="style"/>
+  <link rel="preload" th:href="@{/css/floor21-chrome.css(v=turbo-frame)}" as="style"/>
   <link rel="stylesheet" th:href="@{/vendor/bootstrap.min.css}"/>
   <link rel="stylesheet" th:href="@{/css/floor21.css(v=password-toggle)}"/>
-  <link rel="stylesheet" th:href="@{/css/floor21-login.css(v=logo1)}"/>
+  <link rel="stylesheet" th:href="@{/css/floor21-login.css(v=login-pending-v1)}"/>
 </head>
 <body class="floor21-login">
 <div class="floor21-login__backdrop" aria-hidden="true">
@@ -62,7 +65,7 @@
             Your session expired due to inactivity. Please sign in again.
           </div>
           <div class="alert alert-info" th:if="${param.logout}">You have been logged out.</div>
-          <form th:action="@{/login}" method="post">
+          <form th:action="@{/login}" method="post" id="login-form">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
             <div class="mb-3">
               <label class="form-label" for="login-email">Email</label>
@@ -72,7 +75,13 @@
               <label class="form-label" for="login-password">Password</label>
               <input class="form-control" id="login-password" type="password" name="password" required autocomplete="current-password"/>
             </div>
-            <button class="btn btn-primary w-100" type="submit">Sign in</button>
+            <button class="btn btn-primary w-100" type="submit" id="login-submit">
+              <span class="floor21-login__submit-label">Sign in</span>
+              <span class="floor21-login__submit-busy d-none" aria-hidden="true">
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                Signing in…
+              </span>
+            </button>
           </form>
         </div>
       </div>
@@ -80,10 +89,30 @@
   </main>
 </div>
 
+<div class="floor21-login__pending d-none" id="login-pending" aria-live="polite" aria-busy="true">
+  <div class="floor21-login__pending-card">
+    <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+    <p class="mb-0 mt-3">Signing you in…</p>
+  </div>
+</div>
+
 <script th:src="@{/vendor/bootstrap.bundle.min.js}"></script>
 <script defer th:src="@{/js/session-auth.js(v=session-relogin2)}"></script>
 <script th:inline="javascript">
   (function () {
+    var form = document.getElementById("login-form");
+    var pending = document.getElementById("login-pending");
+    var submitBtn = document.getElementById("login-submit");
+    if (form && pending && submitBtn) {
+      form.addEventListener("submit", function () {
+        submitBtn.disabled = true;
+        submitBtn.querySelector(".floor21-login__submit-label")?.classList.add("d-none");
+        submitBtn.querySelector(".floor21-login__submit-busy")?.classList.remove("d-none");
+        pending.classList.remove("d-none");
+        document.body.classList.add("floor21-login--pending");
+      });
+    }
+
     var params = new URLSearchParams(window.location.search);
     if (!params.has("relogin") && !params.has("expired")) {
       return;

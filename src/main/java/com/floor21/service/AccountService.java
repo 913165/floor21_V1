@@ -37,10 +37,7 @@ public class AccountService {
     public String currentDisplayName() {
         Floor21UserPrincipal principal = requirePrincipal();
         if (principal.isSuperAdmin()) {
-            return builderRepository
-                    .findByEmailIgnoreCase(principal.getEmail())
-                    .map(b -> "Floor21 Admin")
-                    .orElse(principal.getEmail());
+            return "Floor21 Admin";
         }
         return userRepository
                 .findFirstByEmailIgnoreCaseAndActiveTrue(principal.getEmail())

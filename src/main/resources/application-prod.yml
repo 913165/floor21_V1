@@ -3,6 +3,17 @@ spring:
     show-sql: false
   thymeleaf:
     cache: true
+  web:
+    resources:
+      cache:
+        period: 7d
+      chain:
+        cache: true
+server:
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,text/javascript,application/javascript,application/json,image/svg+xml
+    min-response-size: 1024
 logging:
   file:
     path: logs

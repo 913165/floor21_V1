@@ -83,12 +83,8 @@ public class PlatformAdminService {
                         .toInstant();
         long bookingsThisMonth = bookingRepository.countCreatedSince(monthStart);
         List<AdminBuilderRow> recentBuilders =
-                builderRepository.findAllTenantsOrderByCompanyNameAsc().stream()
-                        .map(this::toBuilderRow)
-                        .sorted(Comparator.comparing(
-                                AdminBuilderRow::lastActivityAt,
-                                Comparator.nullsLast(Comparator.reverseOrder())))
-                        .limit(5)
+                builderRepository.findTop5ByPlatformAdminFalseOrderByCreatedAtDesc().stream()
+                        .map(this::toBuilderRowSummary)
                         .toList();
         return new PlatformDashboardDto(
                 totalBuilders,
@@ -312,6 +308,22 @@ public class PlatformAdminService {
                 id.toString(),
                 null,
                 projectName + " deleted by " + adminEmail);
+    }
+
+    /** Dashboard list only needs name/city; avoids per-builder count queries. */
+    private AdminBuilderRow toBuilderRowSummary(Builder b) {
+        return new AdminBuilderRow(
+                b.getId(),
+                b.getCompanyName(),
+                b.getEmail(),
+                b.getCity(),
+                Boolean.TRUE.equals(b.getActive()),
+                0L,
+                null,
+                0L,
+                b.getLastLoginAt(),
+                b.getCreatedAt(),
+                b.getUpdatedAt());
     }
 
     private AdminBuilderRow toBuilderRow(Builder b) {
