@@ -6,17 +6,21 @@ import com.floor21.dto.ProjectSnapshotBuildingDto;
 import com.floor21.entity.Builder;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.BuildingRepository;
+import com.floor21.security.Floor21UserPrincipal;
+import com.floor21.security.TenantContext;
 import com.floor21.service.PlatformAdminService;
 import com.floor21.service.PlatformAuditService;
 import com.floor21.service.UserProjectAssignmentService;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,13 +50,23 @@ public class AdminController {
             @RequestParam(defaultValue = "desc") String dir,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String active) {
+        boolean readonlyView = !isSuperAdmin();
         String sortKey = PlatformAdminService.normalizeProjectsSort(sort);
         boolean ascending = PlatformAdminService.normalizeProjectsSortAscending(sortKey, dir);
         Boolean activeFilter = PlatformAdminService.parseProjectActiveFilter(active);
+        Set<UUID> restrictToProjectIds = readonlyView ? allowedProjectIds() : null;
         Page<AdminBuilderRow> projectPage =
                 platformAdminService.listBuildersPage(
-                        page, size, sortKey, ascending ? "asc" : "desc", q, activeFilter);
-        model.addAttribute("pageTitle", "Projects");
+                        page,
+                        size,
+                        sortKey,
+                        ascending ? "asc" : "desc",
+                        q,
+                        activeFilter,
+                        restrictToProjectIds);
+        model.addAttribute("pageTitle", readonlyView ? "My projects" : "Projects");
+        model.addAttribute("readonlyView", readonlyView);
+        model.addAttribute("currentBuilderId", TenantContext.getBuilderIdOrNull());
         model.addAttribute("projectPage", projectPage);
         model.addAttribute("builders", projectPage.getContent());
         model.addAttribute("sort", sortKey);
@@ -72,9 +86,21 @@ public class AdminController {
     }
 
     @GetMapping("/{id}/edit")
-    public String edit(@PathVariable UUID id, Model model) {
-        model.addAttribute("pageTitle", "Edit project");
-        model.addAttribute("builder", builderRepository.findById(id).orElseThrow());
+    public String edit(@PathVariable UUID id, Model model, RedirectAttributes ra) {
+        boolean readonlyView = !isSuperAdmin();
+        if (readonlyView && !canAccessProject(id)) {
+            ra.addFlashAttribute("errorMessage", "Project not found.");
+            return "redirect:/admin/projects";
+        }
+        Builder builder = builderRepository.findById(id).orElseThrow();
+        if (builder.isPlatformAdmin()) {
+            ra.addFlashAttribute("errorMessage", "Project not found.");
+            return "redirect:/admin/projects";
+        }
+        model.addAttribute("pageTitle", readonlyView ? "View project" : "Edit project");
+        model.addAttribute("readonlyView", readonlyView);
+        model.addAttribute("currentBuilderId", TenantContext.getBuilderIdOrNull());
+        model.addAttribute("builder", builder);
         model.addAttribute("buildingCount", buildingRepository.countByBuilder_Id(id));
         model.addAttribute("partnerCount", userProjectAssignmentService.countForProject(id));
         return "admin/builders/form";
@@ -83,6 +109,7 @@ public class AdminController {
     @GetMapping("/{id}/layout-defaults")
     @ResponseBody
     public ProjectLayoutDefaultsDto layoutDefaults(@PathVariable UUID id) {
+        assertCanAccessProject(id);
         Builder builder = builderRepository.findById(id).orElseThrow();
         if (builder.isPlatformAdmin()) {
             throw new IllegalArgumentException("Not a tenant project.");
@@ -95,6 +122,7 @@ public class AdminController {
     @GetMapping("/{id}/snapshot-buildings")
     @ResponseBody
     public List<ProjectSnapshotBuildingDto> snapshotBuildings(@PathVariable UUID id) {
+        assertCanAccessProject(id);
         Builder builder = builderRepository.findById(id).orElseThrow();
         if (builder.isPlatformAdmin()) {
             throw new IllegalArgumentException("Not a tenant project.");
@@ -175,5 +203,44 @@ public class AdminController {
     public String legacyNewBuilding(@PathVariable UUID builderId) {
         return "redirect:/admin/buildings/new?builderId=" + builderId;
     }
-}
 
+    private Set<UUID> allowedProjectIds() {
+        Floor21UserPrincipal principal = currentPrincipal();
+        if (principal == null) {
+            return Set.of();
+        }
+        return userProjectAssignmentService.listProjectIdsForUser(
+                principal.getStaffUserId(), principal.getBuilderId());
+    }
+
+    private boolean canAccessProject(UUID projectId) {
+        Floor21UserPrincipal principal = currentPrincipal();
+        if (principal == null) {
+            return false;
+        }
+        return userProjectAssignmentService.canUserAccessProject(
+                principal.getStaffUserId(), principal.getBuilderId(), projectId);
+    }
+
+    private void assertCanAccessProject(UUID projectId) {
+        if (isSuperAdmin()) {
+            return;
+        }
+        if (!canAccessProject(projectId)) {
+            throw new IllegalArgumentException("Project not found.");
+        }
+    }
+
+    private static boolean isSuperAdmin() {
+        Floor21UserPrincipal principal = currentPrincipal();
+        return principal != null && principal.isSuperAdmin();
+    }
+
+    private static Floor21UserPrincipal currentPrincipal() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof Floor21UserPrincipal principal) {
+            return principal;
+        }
+        return null;
+    }
+}

@@ -14,6 +14,11 @@
 
     <p class="floor21-nav__section" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Property</p>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/admin/projects}"
+       data-nav-prefix="/admin/projects"
+       data-nav-exclude-contains="/staff"
+       th:classappend="${#strings.startsWith(path, '/admin/projects') and !#strings.contains(path, '/staff')} ? ' is-active' : ''">Projects</a>
+    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/buildings}"
        data-nav-prefix="/buildings"
        th:classappend="${#strings.startsWith(path, '/buildings')} ? ' is-active' : ''">Buildings</a>

@@ -10,11 +10,17 @@
     <a th:href="@{/admin/buildings}">All buildings</a>, then add login users under
     <a th:href="@{/admin/users}">User Management</a>.
   </p>
-  <p class="text-muted small mb-3" th:if="${builder.id != null}">
+  <p class="text-muted small mb-3" th:if="${builder.id != null and !readonlyView}">
     Manage buildings and layouts from
     <a th:href="@{/admin/buildings(projectId=${builder.id})}">All buildings</a>
     (filtered to this project).
     Add partners from <a th:href="@{/admin/projects/{id}/staff(id=${builder.id})}">Partners</a>.
+  </p>
+  <p class="text-muted small mb-3" th:if="${builder.id != null and readonlyView}">
+    Read-only project details.
+    <a th:if="${currentBuilderId != null and currentBuilderId == builder.id}"
+       th:href="@{/buildings}">Open buildings</a>
+    for this project.
   </p>
 
   <form class="card card-body shadow-sm" th:action="@{/admin/projects/save}" th:object="${builder}" method="post"
@@ -25,39 +31,50 @@
     <div class="row g-3">
       <div class="col-md-6">
         <label class="form-label">Project name</label>
-        <input class="form-control" th:field="*{companyName}" required/>
+        <input class="form-control" th:field="*{companyName}" th:readonly="${readonlyView}" required/>
       </div>
       <div class="col-md-6">
         <label class="form-label">City</label>
-        <input class="form-control" th:field="*{city}"/>
+        <input class="form-control" th:field="*{city}" th:readonly="${readonlyView}"/>
       </div>
       <div class="col-12">
         <label class="form-label">Address</label>
-        <textarea class="form-control" rows="2" th:field="*{address}"></textarea>
+        <textarea class="form-control" rows="2" th:field="*{address}" th:readonly="${readonlyView}"></textarea>
       </div>
       <div class="col-md-4 d-flex align-items-end">
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" th:field="*{active}"/>
+          <input class="form-check-input" type="checkbox" th:field="*{active}" th:disabled="${readonlyView}"/>
           <label class="form-check-label">Project active</label>
         </div>
+      </div>
+      <div class="col-md-4" th:if="${readonlyView and buildingCount != null}">
+        <label class="form-label">Buildings</label>
+        <p class="form-control-plaintext mb-0" th:text="${buildingCount}">0</p>
+      </div>
+      <div class="col-md-4" th:if="${readonlyView and partnerCount != null}">
+        <label class="form-label">Partners</label>
+        <p class="form-control-plaintext mb-0" th:text="${partnerCount}">0</p>
       </div>
     </div>
 
     <div class="mt-3 d-flex flex-wrap align-items-center gap-2">
-      <button class="btn btn-primary" type="submit">Save</button>
+      <button class="btn btn-primary" type="submit" th:if="${!readonlyView}">Save</button>
       <a class="btn btn-outline-primary"
-         th:if="${builder.id != null}"
+         th:if="${!readonlyView and builder.id != null}"
          th:href="@{/admin/buildings/new(builderId=${builder.id})}">Add building</a>
       <a class="btn btn-outline-secondary"
-         th:if="${builder.id != null}"
+         th:if="${!readonlyView and builder.id != null}"
          th:href="@{/admin/buildings(projectId=${builder.id})}">View buildings</a>
+      <a class="btn btn-outline-secondary"
+         th:if="${readonlyView and builder.id != null and currentBuilderId != null and currentBuilderId == builder.id}"
+         th:href="@{/buildings}">View buildings</a>
       <a class="btn btn-outline-primary"
-         th:if="${builder.id != null}"
+         th:if="${!readonlyView and builder.id != null}"
          th:href="@{/admin/projects/{id}/staff(id=${builder.id})}">Partners</a>
-      <a class="btn btn-link" th:href="@{/admin/projects}">Cancel</a>
+      <a class="btn btn-link" th:href="@{/admin/projects}">Back</a>
     </div>
   </form>
-  <div class="mt-3 d-flex flex-wrap gap-2" th:if="${builder.id != null}">
+  <div class="mt-3 d-flex flex-wrap gap-2" th:if="${builder.id != null and !readonlyView}">
     <form th:if="${builder.active}" th:action="@{/admin/projects/{id}/deactivate(id=${builder.id})}" method="post"
           onsubmit="return confirm('Deactivate this project? Users will not be able to sign in.');">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>

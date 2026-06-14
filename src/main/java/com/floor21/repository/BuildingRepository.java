@@ -10,7 +10,9 @@ import org.springframework.data.repository.query.Param;
 
 public interface BuildingRepository extends JpaRepository<Building, UUID> {
 
-    List<Building> findByBuilder_IdOrderByBuildingNameAsc(UUID builderId);
+    @Query(
+            "select b from Building b join fetch b.builder br where br.id = :builderId order by lower(b.buildingName)")
+    List<Building> findByBuilder_IdOrderByBuildingNameAsc(@Param("builderId") UUID builderId);
 
     Optional<Building> findByIdAndBuilder_Id(UUID id, UUID builderId);
 

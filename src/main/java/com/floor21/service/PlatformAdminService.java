@@ -25,6 +25,7 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -113,6 +114,18 @@ public class PlatformAdminService {
     @Transactional(readOnly = true)
     public Page<AdminBuilderRow> listBuildersPage(
             int page, int size, String sort, String dir, String search, Boolean activeFilter) {
+        return listBuildersPage(page, size, sort, dir, search, activeFilter, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdminBuilderRow> listBuildersPage(
+            int page,
+            int size,
+            String sort,
+            String dir,
+            String search,
+            Boolean activeFilter,
+            Set<UUID> restrictToProjectIds) {
         String sortKey = normalizeProjectsSort(sort);
         boolean ascending = normalizeProjectsSortAscending(sortKey, dir);
         int safeSize = Math.min(Math.max(size, 5), PROJECTS_MAX_PAGE_SIZE);
@@ -120,6 +133,7 @@ public class PlatformAdminService {
 
         List<AdminBuilderRow> filtered =
                 loadAllBuilderRows().stream()
+                        .filter(row -> restrictToProjectIds == null || restrictToProjectIds.contains(row.id()))
                         .filter(row -> matchesProjectSearch(row, search))
                         .filter(row -> matchesProjectActiveFilter(row, activeFilter))
                         .toList();

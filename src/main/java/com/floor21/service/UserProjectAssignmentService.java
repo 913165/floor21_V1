@@ -6,7 +6,9 @@ import com.floor21.entity.UserProjectAssignment;
 import com.floor21.repository.UserProjectAssignmentRepository;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -98,6 +100,30 @@ public class UserProjectAssignmentService {
                         .orElseGet(() -> new UserProjectAssignment(user, builder, normalizedRole));
         assignment.setRole(normalizedRole);
         return assignmentRepository.save(assignment);
+    }
+
+    @Transactional(readOnly = true)
+    public Set<UUID> listProjectIdsForUser(UUID staffUserId, UUID builderLoginId) {
+        if (staffUserId != null) {
+            return listMemberships(staffUserId).stream()
+                    .map(a -> a.getBuilder().getId())
+                    .collect(Collectors.toSet());
+        }
+        if (builderLoginId != null) {
+            return Set.of(builderLoginId);
+        }
+        return Set.of();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canUserAccessProject(UUID staffUserId, UUID builderLoginId, UUID projectId) {
+        if (staffUserId != null) {
+            return hasMembership(staffUserId, projectId);
+        }
+        if (builderLoginId != null) {
+            return builderLoginId.equals(projectId);
+        }
+        return false;
     }
 
     @Transactional(readOnly = true)
