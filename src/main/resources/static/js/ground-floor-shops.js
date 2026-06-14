@@ -3,6 +3,7 @@
 
   var DEFAULT_PARKING_CAR_SIZE_PERCENT = 180;
   var DEFAULT_SHOP_SIZE_PERCENT = 140;
+  var DEFAULT_PANEL_WIDTH_SCALE = 0.82;
 
   function appRoot() {
     var r = document.body.getAttribute("data-app-root") || "";
@@ -435,9 +436,7 @@
       storageKey: function () {
         return groundPanelStorageKey(panel);
       },
-      defaultScale: function (p) {
-        return Number(p.dataset.shopSizePercent || DEFAULT_SHOP_SIZE_PERCENT) / 100;
-      },
+      defaultWidthScale: DEFAULT_PANEL_WIDTH_SCALE,
       minWidth: 280,
       minHeight: 120,
       resetContent: resetGroundPanelContent,

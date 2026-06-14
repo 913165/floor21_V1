@@ -31,7 +31,7 @@
     return true;
   }
 
-  function loadSize(key, natural, defaultScale) {
+  function loadSize(key, natural, widthScale, heightScale) {
     if (!key) {
       return null;
     }
@@ -46,10 +46,11 @@
     } catch (e) {
       /* ignore */
     }
-    var scale = defaultScale > 0 ? defaultScale : 1;
+    var wScale = widthScale > 0 ? widthScale : 1;
+    var hScale = heightScale > 0 ? heightScale : 1;
     return {
-      w: Math.ceil(natural.w * scale),
-      h: Math.ceil(natural.h * scale),
+      w: Math.ceil(natural.w * wScale),
+      h: Math.ceil(natural.h * hScale),
     };
   }
 
@@ -177,6 +178,17 @@
     return 1;
   }
 
+  function resolveAxisScale(panel, opts, axisKey) {
+    var value = opts[axisKey];
+    if (typeof value === "function") {
+      return value(panel);
+    }
+    if (typeof value === "number" && value > 0) {
+      return value;
+    }
+    return resolveDefaultScale(panel, opts);
+  }
+
   function remeasure(panel, options) {
     if (!panel) {
       return;
@@ -195,8 +207,9 @@
     panel._floor21PanelNatural = natural;
 
     var key = resolveStorageKey(panel, opts);
-    var defaultScale = resolveDefaultScale(panel, opts);
-    var stored = loadSize(key, natural, defaultScale);
+    var widthScale = resolveAxisScale(panel, opts, "defaultWidthScale");
+    var heightScale = resolveAxisScale(panel, opts, "defaultHeightScale");
+    var stored = loadSize(key, natural, widthScale, heightScale);
     var minW = opts.minWidth || 280;
     var minH = opts.minHeight || 120;
     panel._floor21PanelStorageKey = key;
@@ -206,7 +219,7 @@
     if (stored) {
       setPanelSize(panel, stored.w, stored.h);
     } else {
-      setPanelSize(panel, natural.w * defaultScale, natural.h * defaultScale);
+      setPanelSize(panel, natural.w * widthScale, natural.h * heightScale);
     }
   }
 

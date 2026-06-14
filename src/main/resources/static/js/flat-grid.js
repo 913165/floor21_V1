@@ -29,6 +29,7 @@
   var unitTypeDefaultsCache = null;
   var columnTypeDefaultsCache = null;
   var DEFAULT_PARKING_CAR_SIZE_PERCENT = 180;
+  var DEFAULT_PANEL_WIDTH_SCALE = 0.82;
   var parkingConfigBasementMode = false;
 
   function parkingConfigState() {
@@ -2692,9 +2693,7 @@
       storageKey: function () {
         return parkingPanelStorageKey(section);
       },
-      defaultScale: function (s) {
-        return Number(s.dataset.carSizePercent || DEFAULT_PARKING_CAR_SIZE_PERCENT) / 100;
-      },
+      defaultWidthScale: DEFAULT_PANEL_WIDTH_SCALE,
       minWidth: 280,
       minHeight: 120,
       resetContent: resetParkingPanelContent,
