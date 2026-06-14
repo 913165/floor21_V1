@@ -4,6 +4,7 @@
   var DEFAULT_PARKING_CAR_SIZE_PERCENT = 180;
   var DEFAULT_SHOP_SIZE_PERCENT = 140;
   var DEFAULT_PANEL_WIDTH_SCALE = 0.82;
+  var DEFAULT_GROUND_PANEL_HEIGHT_SCALE = 1.25;
 
   function appRoot() {
     var r = document.body.getAttribute("data-app-root") || "";
@@ -437,6 +438,7 @@
         return groundPanelStorageKey(panel);
       },
       defaultWidthScale: DEFAULT_PANEL_WIDTH_SCALE,
+      defaultHeightScale: DEFAULT_GROUND_PANEL_HEIGHT_SCALE,
       minWidth: 280,
       minHeight: 120,
       resetContent: resetGroundPanelContent,
