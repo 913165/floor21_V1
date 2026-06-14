@@ -3321,6 +3321,7 @@
       var planPane = section.querySelector(".flat-parking-section__plan");
       if (planPane) planPane.setAttribute("aria-hidden", "false");
       ensureParkingSectionResizeHandle(section);
+      syncParkingResizablePanel(section);
       return;
     }
     renderParkingPlan(plan, root);
@@ -3337,6 +3338,7 @@
     var planPane = section.querySelector(".flat-parking-section__plan");
     if (planPane) planPane.setAttribute("aria-hidden", "false");
     ensureParkingSectionResizeHandle(section);
+    syncParkingResizablePanel(section);
   }
 
   async function loadAllConfiguredParkingPlans() {
@@ -6804,8 +6806,10 @@
     window.floor21PanelResizeIsEnabled = isPlatformAdminEdit;
     if (window.floor21PanelResize) {
       window.floor21PanelResize.bind();
+      ensureParkingSectionResizeHandles();
     }
     if (grid.dataset.f21Init === "true") {
+      void loadAllConfiguredParkingPlans();
       return;
     }
     grid.dataset.f21Init = "true";
