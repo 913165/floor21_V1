@@ -4,80 +4,246 @@
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content">
+  <link rel="stylesheet" th:href="@{/css/client-detail.css(v=1)}" data-turbo-track="reload"/>
+
   <div class="alert alert-secondary py-2 mb-3" sec:authorize="hasRole('SUPER_ADMIN')">
     View only — platform admin cannot edit client records.
   </div>
-  <h1 class="h3 mb-4" th:text="${pageTitle}">Client</h1>
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <h2 class="h6 text-muted text-uppercase mb-3">Personal</h2>
-      <dl class="row mb-0">
-        <dt class="col-sm-3">Name</dt>
-        <dd class="col-sm-9" th:text="${client.displayName()}"></dd>
-        <dt class="col-sm-3">Company</dt>
-        <dd class="col-sm-9" th:text="${client.companyName != null && !client.companyName.isBlank() ? client.companyName : '—'}"></dd>
-        <dt class="col-sm-3">Occupation</dt>
-        <dd class="col-sm-9" th:text="${client.occupation != null && !client.occupation.isBlank() ? client.occupation : '—'}"></dd>
-      </dl>
 
-      <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Address</h2>
-      <dl class="row mb-0">
-        <dt class="col-sm-3">Address</dt>
-        <dd class="col-sm-9">
-          <span th:if="${client.address1 != null && !client.address1.isBlank()}" th:text="${client.address1}"></span>
-          <span th:if="${client.address2 != null && !client.address2.isBlank()}"><br/><span th:text="${client.address2}"></span></span>
-          <span th:if="${client.address3 != null && !client.address3.isBlank()}"><br/><span th:text="${client.address3}"></span></span>
-          <span th:if="${(client.address1 == null || client.address1.isBlank()) && (client.address2 == null || client.address2.isBlank()) && (client.address3 == null || client.address3.isBlank())}">—</span>
-        </dd>
-        <dt class="col-sm-3">City</dt>
-        <dd class="col-sm-9" th:text="${client.city != null && !client.city.isBlank() ? client.city : '—'}"></dd>
-      </dl>
-
-      <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Contact</h2>
-      <dl class="row mb-0">
-        <dt class="col-sm-3">Phone (office)</dt>
-        <dd class="col-sm-9" th:text="${client.phoneOffice != null && !client.phoneOffice.isBlank() ? client.phoneOffice : '—'}"></dd>
-        <dt class="col-sm-3">Phone (residence)</dt>
-        <dd class="col-sm-9" th:text="${client.phoneResidence != null && !client.phoneResidence.isBlank() ? client.phoneResidence : '—'}"></dd>
-        <dt class="col-sm-3">Mobile 1</dt>
-        <dd class="col-sm-9" th:text="${client.mobile1 != null && !client.mobile1.isBlank() ? client.mobile1 : '—'}"></dd>
-        <dt class="col-sm-3">Mobile 2</dt>
-        <dd class="col-sm-9" th:text="${client.mobile2 != null && !client.mobile2.isBlank() ? client.mobile2 : '—'}"></dd>
-        <dt class="col-sm-3">Email 1</dt>
-        <dd class="col-sm-9" th:text="${client.email1 != null && !client.email1.isBlank() ? client.email1 : '—'}"></dd>
-        <dt class="col-sm-3">Email 2</dt>
-        <dd class="col-sm-9" th:text="${client.email2 != null && !client.email2.isBlank() ? client.email2 : '—'}"></dd>
-      </dl>
-
-      <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Identity &amp; dates</h2>
-      <dl class="row mb-0">
-        <dt class="col-sm-3">PAN no</dt>
-        <dd class="col-sm-9" th:text="${client.panNumber != null && !client.panNumber.isBlank() ? client.panNumber : '—'}"></dd>
-        <dt class="col-sm-3">Aadhaar</dt>
-        <dd class="col-sm-9" th:text="${client.aadhaarNumber != null && !client.aadhaarNumber.isBlank() ? client.aadhaarNumber : '—'}"></dd>
-        <dt class="col-sm-3">Date of birth</dt>
-        <dd class="col-sm-9" th:text="${client.dob != null ? #temporals.format(client.dob, 'dd MMM yyyy') : '—'}"></dd>
-        <dt class="col-sm-3">Date of marriage</dt>
-        <dd class="col-sm-9" th:text="${client.dateOfMarriage != null ? #temporals.format(client.dateOfMarriage, 'dd MMM yyyy') : '—'}"></dd>
-      </dl>
-
-      <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Notes</h2>
-      <dl class="row mb-0">
-        <dt class="col-sm-3">Particulars</dt>
-        <dd class="col-sm-9 text-break" th:text="${client.particulars != null && !client.particulars.isBlank() ? client.particulars : '—'}"></dd>
-      </dl>
-
-      <div class="mt-4 pt-3 border-top d-flex flex-wrap align-items-center gap-2">
-        <a class="btn btn-outline-secondary" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')" th:href="@{/clients/{id}/edit(id=${client.id})}">Edit</a>
-        <th:block th:if="${!#lists.isEmpty(clientBuildings)}">
-          <a class="btn btn-primary btn-sm"
-             th:each="nav : ${clientBuildings}"
-             th:href="@{/buildings/{bid}/flats(bid=${nav.buildingId()},focusFlat=${nav.focusFlatId()})}"
-             th:text="|Flats — ${nav.buildingName()}|">Flats</a>
-        </th:block>
-        <a class="btn btn-link" th:href="@{/clients}">Back</a>
+  <div class="client-card">
+    <div class="client-header">
+      <div class="client-header__identity">
+        <div class="client-avatar" th:text="${client.avatarInitials()}">AN</div>
+        <div class="min-w-0">
+          <p class="client-name" th:text="${client.displayName()}">Client name</p>
+          <p class="client-subtitle">Client</p>
+        </div>
+      </div>
+      <div class="client-actions">
+        <a class="client-actions__btn"
+           sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+           th:href="@{/clients/{id}/edit(id=${client.id})}">
+          <svg class="client-field-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               aria-hidden="true">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+          </svg>
+          Edit
+        </a>
       </div>
     </div>
+
+    <div class="client-section-grid">
+      <div class="client-section-col">
+        <p class="client-section-heading">Personal</p>
+
+        <div class="client-field-row">
+          <p class="client-field-label">Name</p>
+          <p class="client-field-value" th:text="${client.displayName()}">Name</p>
+        </div>
+
+        <div class="client-field-row">
+          <p class="client-field-label">Company</p>
+          <p class="client-field-value"
+             th:classappend="${client.companyName == null || client.companyName.isBlank()} ? 'client-field-value--empty'"
+             th:text="${client.companyName != null && !client.companyName.isBlank()} ? ${client.companyName} : 'Not provided'">
+            Not provided
+          </p>
+        </div>
+
+        <div class="client-field-row">
+          <p class="client-field-label">Occupation</p>
+          <p class="client-field-value"
+             th:classappend="${client.occupation == null || client.occupation.isBlank()} ? 'client-field-value--empty'"
+             th:text="${client.occupation != null && !client.occupation.isBlank()} ? ${client.occupation} : 'Not provided'">
+            Not provided
+          </p>
+        </div>
+      </div>
+
+      <div class="client-section-col">
+        <p class="client-section-heading">Identity &amp; dates</p>
+
+        <div class="client-field-row">
+          <p class="client-field-label">PAN no</p>
+          <p class="client-field-value client-field-value--mono"
+             th:classappend="${client.panNumber == null || client.panNumber.isBlank()} ? 'client-field-value--empty'"
+             th:text="${client.panNumber != null && !client.panNumber.isBlank()} ? ${client.panNumber} : 'Not provided'">
+            Not provided
+          </p>
+        </div>
+
+        <div class="client-field-row">
+          <p class="client-field-label">Aadhaar</p>
+          <p class="client-field-value client-field-value--mono"
+             th:classappend="${client.aadhaarNumber == null || client.aadhaarNumber.isBlank()} ? 'client-field-value--empty'"
+             th:text="${client.aadhaarNumber != null && !client.aadhaarNumber.isBlank()} ? ${client.aadhaarNumber} : 'Not provided'">
+            Not provided
+          </p>
+        </div>
+
+        <div class="client-field-row-split">
+          <div>
+            <p class="client-field-label">Date of birth</p>
+            <p class="client-field-value"
+               th:classappend="${client.dob == null} ? 'client-field-value--empty'"
+               th:text="${client.dob != null} ? ${#temporals.format(client.dob, 'dd MMM yyyy')} : 'Not provided'">
+              Not provided
+            </p>
+          </div>
+          <div>
+            <p class="client-field-label">Date of marriage</p>
+            <p class="client-field-value"
+               th:classappend="${client.dateOfMarriage == null} ? 'client-field-value--empty'"
+               th:text="${client.dateOfMarriage != null} ? ${#temporals.format(client.dateOfMarriage, 'dd MMM yyyy')} : 'Not provided'">
+              Not provided
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="client-address-block">
+      <p class="client-section-heading">Address</p>
+      <p class="client-address-text" th:if="${client.hasAddressLines()}">
+        <span th:if="${client.address1 != null && !client.address1.isBlank()}" th:text="${client.address1}"></span>
+        <br th:if="${client.address2 != null && !client.address2.isBlank()}"/>
+        <span th:if="${client.address2 != null && !client.address2.isBlank()}" th:text="${client.address2}"></span>
+        <br th:if="${client.address3 != null && !client.address3.isBlank()}"/>
+        <span th:if="${client.address3 != null && !client.address3.isBlank()}" th:text="${client.address3}"></span>
+        <br th:if="${client.city != null && !client.city.isBlank()}"/>
+        <span th:if="${client.city != null && !client.city.isBlank()}" th:text="${client.city}"></span>
+      </p>
+      <p class="client-field-value client-field-value--empty" th:unless="${client.hasAddressLines()}">Not provided</p>
+    </div>
+
+    <div class="client-contact-block">
+      <p class="client-section-heading">Contact</p>
+
+      <div class="client-section-grid client-section-grid--nested">
+        <div class="client-section-col">
+          <div class="client-field-row client-field-row--icon">
+            <svg class="client-field-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            <div>
+              <p class="client-field-label">Phone (office)</p>
+              <p class="client-field-value"
+                 th:classappend="${client.phoneOffice == null || client.phoneOffice.isBlank()} ? 'client-field-value--empty'"
+                 th:text="${client.phoneOffice != null && !client.phoneOffice.isBlank()} ? ${client.phoneOffice} : 'Not provided'">
+                Not provided
+              </p>
+            </div>
+          </div>
+
+          <div class="client-field-row client-field-row--icon">
+            <svg class="client-field-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            <div>
+              <p class="client-field-label">Phone (residence)</p>
+              <p class="client-field-value"
+                 th:classappend="${client.phoneResidence == null || client.phoneResidence.isBlank()} ? 'client-field-value--empty'"
+                 th:text="${client.phoneResidence != null && !client.phoneResidence.isBlank()} ? ${client.phoneResidence} : 'Not provided'">
+                Not provided
+              </p>
+            </div>
+          </div>
+
+          <div class="client-field-row client-field-row--icon">
+            <svg class="client-field-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            <div>
+              <p class="client-field-label">Mobile 1</p>
+              <p class="client-field-value"
+                 th:classappend="${client.mobile1 == null || client.mobile1.isBlank()} ? 'client-field-value--empty'"
+                 th:text="${client.mobile1 != null && !client.mobile1.isBlank()} ? ${client.mobile1} : 'Not provided'">
+                Not provided
+              </p>
+            </div>
+          </div>
+
+          <div class="client-field-row client-field-row--icon">
+            <svg class="client-field-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            <div>
+              <p class="client-field-label">Mobile 2</p>
+              <p class="client-field-value"
+                 th:classappend="${client.mobile2 == null || client.mobile2.isBlank()} ? 'client-field-value--empty'"
+                 th:text="${client.mobile2 != null && !client.mobile2.isBlank()} ? ${client.mobile2} : 'Not provided'">
+                Not provided
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="client-section-col">
+          <div class="client-field-row client-field-row--icon">
+            <svg class="client-field-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+              <rect width="20" height="16" x="2" y="4" rx="2"/>
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            </svg>
+            <div>
+              <p class="client-field-label">Email 1</p>
+              <p class="client-field-value"
+                 th:classappend="${client.email1 == null || client.email1.isBlank()} ? 'client-field-value--empty'"
+                 th:text="${client.email1 != null && !client.email1.isBlank()} ? ${client.email1} : 'Not provided'">
+                Not provided
+              </p>
+            </div>
+          </div>
+
+          <div class="client-field-row client-field-row--icon">
+            <svg class="client-field-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+              <rect width="20" height="16" x="2" y="4" rx="2"/>
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            </svg>
+            <div>
+              <p class="client-field-label">Email 2</p>
+              <p class="client-field-value"
+                 th:classappend="${client.email2 == null || client.email2.isBlank()} ? 'client-field-value--empty'"
+                 th:text="${client.email2 != null && !client.email2.isBlank()} ? ${client.email2} : 'Not provided'">
+                Not provided
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="client-notes-block">
+      <p class="client-section-heading">Notes</p>
+      <p class="client-field-value text-break"
+         th:classappend="${client.particulars == null || client.particulars.isBlank()} ? 'client-field-value--empty'"
+         th:text="${client.particulars != null && !client.particulars.isBlank()} ? ${client.particulars} : 'Not provided'">
+        Not provided
+      </p>
+    </div>
+  </div>
+
+  <div class="client-detail-footer d-flex flex-wrap align-items-center gap-2">
+    <th:block th:if="${!#lists.isEmpty(clientBuildings)}">
+      <a class="btn btn-primary btn-sm"
+         th:each="nav : ${clientBuildings}"
+         th:href="@{/buildings/{bid}/flats(bid=${nav.buildingId()},focusFlat=${nav.focusFlatId()})}"
+         th:text="|Flats — ${nav.buildingName()}|">Flats</a>
+    </th:block>
+    <a class="btn btn-link" th:href="@{/clients}">Back to clients</a>
   </div>
 </div>
 </body>

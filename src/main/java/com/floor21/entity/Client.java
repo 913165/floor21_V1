@@ -130,4 +130,31 @@ public class Client {
         }
         return "Client";
     }
+
+    public String avatarInitials() {
+        String fn = firstName != null ? firstName.trim() : "";
+        String ln = lastName != null ? lastName.trim() : "";
+        if (!fn.isEmpty() && !ln.isEmpty()) {
+            return ("" + Character.toUpperCase(fn.charAt(0)) + Character.toUpperCase(ln.charAt(0)));
+        }
+        if (fn.length() >= 2) {
+            return fn.substring(0, 2).toUpperCase();
+        }
+        if (!fn.isEmpty()) {
+            return fn.substring(0, 1).toUpperCase();
+        }
+        String label = displayName();
+        if (label.length() >= 2) {
+            return label.substring(0, 2).toUpperCase();
+        }
+        return label.isEmpty() ? "C" : label.substring(0, 1).toUpperCase();
+    }
+
+    public boolean hasAddressLines() {
+        return isPresent(address1) || isPresent(address2) || isPresent(address3) || isPresent(city);
+    }
+
+    private static boolean isPresent(String value) {
+        return value != null && !value.isBlank();
+    }
 }

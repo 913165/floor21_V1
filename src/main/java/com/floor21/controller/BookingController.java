@@ -128,4 +128,16 @@ public class BookingController {
         ra.addFlashAttribute("successMessage", "Booking saved");
         return "redirect:/bookings/" + saved.getId();
     }
+
+    @PostMapping("/{id}/remove")
+    public String remove(@PathVariable UUID id, RedirectAttributes ra) {
+        try {
+            bookingService.removeCancelled(id);
+            ra.addFlashAttribute("successMessage", "Booking removed");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/bookings/" + id;
+        }
+        return "redirect:/bookings";
+    }
 }

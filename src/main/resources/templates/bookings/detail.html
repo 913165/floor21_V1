@@ -6,6 +6,7 @@
 <div th:fragment="content">
   <h1 class="h3 mb-2" th:text="${pageTitle}">Booking</h1>
   <p class="text-muted" th:text="${booking.bookingCode}"></p>
+  <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
   <div class="row g-3 mb-3">
     <div class="col-md-6">
       <div class="card shadow-sm h-100"><div class="card-body">
@@ -153,6 +154,12 @@
     <a class="btn btn-outline-primary" th:href="@{/bookings/{id}/expenses(id=${booking.id})}">Expenses</a>
     <a class="btn btn-outline-danger" th:if="${booking.status == 'ACTIVE'}"
        th:href="@{/bookings/{id}/cancel(id=${booking.id})}">Cancel booking</a>
+    <form class="d-inline" th:if="${booking.status == 'CANCELLED'}"
+          th:action="@{/bookings/{id}/remove(id=${booking.id})}" method="post"
+          th:attr="onsubmit=|return confirm('Remove booking ${booking.bookingCode} permanently? This cannot be undone.');|">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button class="btn btn-outline-danger" type="submit">Remove</button>
+    </form>
     <a class="btn btn-link" th:href="@{/bookings}">Back</a>
   </div>
 </div>

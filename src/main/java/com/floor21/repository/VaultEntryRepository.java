@@ -70,4 +70,8 @@ public interface VaultEntryRepository extends JpaRepository<VaultEntry, UUID> {
 
     Optional<VaultEntry> findByIdAndBuilder_IdAndBookingIsNullAndEntryType(
             UUID id, UUID builderId, String entryType);
+
+    long countByBooking_Id(UUID bookingId);
+
+    void deleteByBooking_Id(UUID bookingId);
 }

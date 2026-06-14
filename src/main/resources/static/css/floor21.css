@@ -5920,3 +5920,219 @@ body > .modal .modal-content button {
   margin-top: 0.35rem;
   margin-bottom: 0;
 }
+
+/* Client detail page */
+.client-card {
+  --client-accent: #2dd4a0;
+  --client-accent-heading: #0f6e56;
+  background: var(--bs-body-bg);
+  border: 0.5px solid var(--bs-border-color);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+[data-bs-theme="dark"] .client-card {
+  --client-accent-heading: #5dcaa5;
+}
+
+.client-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 0.5px solid var(--bs-border-color);
+}
+
+.client-header__identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.client-avatar {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(45, 212, 160, 0.15);
+  color: var(--client-accent-heading);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
+[data-bs-theme="dark"] .client-avatar {
+  background: rgba(45, 212, 160, 0.2);
+  color: #9fe1cb;
+}
+
+.client-name {
+  font-weight: 500;
+  font-size: 17px;
+  margin: 0;
+  color: var(--bs-body-color);
+}
+
+.client-subtitle {
+  font-size: 13px;
+  color: var(--bs-secondary-color);
+  margin: 2px 0 0;
+}
+
+.client-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.client-actions__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  background: var(--bs-body-bg);
+  border: 0.5px solid var(--bs-border-color);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  color: var(--bs-body-color);
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+.client-actions__btn:hover {
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+  border-color: var(--bs-border-color);
+}
+
+.client-section-grid {
+  padding: 1.25rem 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0;
+}
+
+.client-section-grid--nested {
+  padding: 0;
+}
+
+.client-section-col {
+  padding-right: 2rem;
+  min-width: 0;
+}
+
+.client-section-col + .client-section-col {
+  padding-left: 2rem;
+  border-left: 0.5px solid var(--bs-border-color);
+}
+
+.client-section-heading {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--client-accent-heading);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--client-accent);
+}
+
+.client-field-row {
+  padding: 10px 0;
+  border-bottom: 0.5px solid var(--bs-border-color);
+}
+
+.client-field-row:last-child {
+  border-bottom: none;
+}
+
+.client-field-row--icon {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.client-field-row-split {
+  padding: 10px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+}
+
+.client-field-label {
+  font-size: 12px;
+  color: var(--bs-secondary-color);
+  margin: 0 0 2px;
+}
+
+.client-field-value {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+  color: var(--bs-body-color);
+  word-break: break-word;
+}
+
+.client-field-value--mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.02em;
+}
+
+.client-field-value--empty {
+  font-weight: 400;
+  color: var(--bs-tertiary-color);
+}
+
+.client-field-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--bs-secondary-color);
+}
+
+.client-address-block,
+.client-contact-block,
+.client-notes-block {
+  padding: 0 1.5rem 1.25rem;
+}
+
+.client-contact-block {
+  padding-bottom: 1.5rem;
+}
+
+.client-address-text {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 4px 0 0;
+  line-height: 1.6;
+  color: var(--bs-body-color);
+}
+
+.client-detail-footer {
+  margin-top: 1rem;
+}
+
+@media (max-width: 767.98px) {
+  .client-section-col {
+    padding-right: 0;
+  }
+
+  .client-section-col + .client-section-col {
+    padding-left: 0;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-left: none;
+    border-top: 0.5px solid var(--bs-border-color);
+  }
+
+  .client-header {
+    flex-wrap: wrap;
+  }
+}

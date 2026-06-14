@@ -74,4 +74,8 @@ public interface ReceiptRepository extends JpaRepository<Receipt, UUID> {
                     + "where r.builder.id = :builderId "
                     + "order by r.receiptDate desc, r.createdAt desc")
     List<Receipt> findForTenantList(@Param("builderId") UUID builderId);
+
+    long countByBooking_IdAndBuilder_Id(UUID bookingId, UUID builderId);
+
+    void deleteByBooking_IdAndBuilder_Id(UUID bookingId, UUID builderId);
 }

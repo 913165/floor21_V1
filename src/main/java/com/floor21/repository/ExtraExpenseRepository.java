@@ -9,4 +9,6 @@ public interface ExtraExpenseRepository extends JpaRepository<ExtraExpense, UUID
 
     List<ExtraExpense> findByBooking_IdAndBuilder_IdOrderByExpenseDateDescCreatedAtDesc(
             UUID bookingId, UUID builderId);
+
+    void deleteByBooking_Id(UUID bookingId);
 }

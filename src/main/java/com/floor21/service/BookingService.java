@@ -6,12 +6,19 @@ import com.floor21.entity.Client;
 import com.floor21.entity.Flat;
 import com.floor21.entity.User;
 import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.repository.BookingPaymentSlabRepository;
 import com.floor21.repository.BookingRepository;
+import com.floor21.repository.BookingSlabPaymentRepository;
 import com.floor21.repository.BrokerRepository;
 import com.floor21.repository.BuilderRepository;
+import com.floor21.repository.CancellationRepository;
 import com.floor21.repository.ClientRepository;
+import com.floor21.repository.ExtraExpenseRepository;
 import com.floor21.repository.FlatRepository;
+import com.floor21.repository.ReceiptRepository;
 import com.floor21.repository.UserRepository;
+import com.floor21.repository.VaultBookingProfileRepository;
+import com.floor21.repository.VaultEntryRepository;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
 import java.math.BigDecimal;
@@ -37,6 +44,13 @@ public class BookingService {
     private final BuilderRepository builderRepository;
     private final PartnerFlatAllocationService partnerFlatAllocationService;
     private final UserProjectAssignmentService userProjectAssignmentService;
+    private final BookingSlabPaymentRepository bookingSlabPaymentRepository;
+    private final BookingPaymentSlabRepository bookingPaymentSlabRepository;
+    private final ReceiptRepository receiptRepository;
+    private final CancellationRepository cancellationRepository;
+    private final ExtraExpenseRepository extraExpenseRepository;
+    private final VaultBookingProfileRepository vaultBookingProfileRepository;
+    private final VaultEntryRepository vaultEntryRepository;
 
     @Transactional(readOnly = true)
     public List<Booking> list() {
@@ -215,6 +229,42 @@ public class BookingService {
 
         entity.setUpdatedAt(Instant.now());
         return bookingRepository.save(entity);
+    }
+
+    @Transactional
+    public void removeCancelled(UUID id) {
+        UUID builderId = TenantContext.requireBuilderId();
+        Booking booking =
+                bookingRepository
+                        .findByIdAndBuilder_Id(id, builderId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        if (booking.getFlat() != null
+                && booking.getFlat().getBuilding() != null
+                && !TenantContext.canAccessBuilding(booking.getFlat().getBuilding().getId())) {
+            throw new ResourceNotFoundException("Booking not found");
+        }
+        if (!canViewAllBookings() && !isOwnedByCurrentStaff(booking)) {
+            throw new ResourceNotFoundException("Booking not found");
+        }
+        if (!"CANCELLED".equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Only cancelled bookings can be removed.");
+        }
+        if (receiptRepository.countByBooking_IdAndBuilder_Id(id, builderId) > 0) {
+            throw new IllegalArgumentException(
+                    "This booking has payment receipts. Remove cannot proceed while receipts exist.");
+        }
+        if (vaultEntryRepository.countByBooking_Id(id) > 0) {
+            throw new IllegalArgumentException(
+                    "This booking has vault entries. Remove cannot proceed while vault records exist.");
+        }
+
+        bookingSlabPaymentRepository.deleteAllForBooking(id);
+        bookingPaymentSlabRepository.deleteByBooking_Id(id);
+        vaultBookingProfileRepository.deleteById(id);
+        vaultEntryRepository.deleteByBooking_Id(id);
+        extraExpenseRepository.deleteByBooking_Id(id);
+        cancellationRepository.deleteByBooking_Id(id);
+        bookingRepository.delete(booking);
     }
 
     private static BigDecimal zeroIfNull(BigDecimal v) {
