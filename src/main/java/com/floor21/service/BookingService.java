@@ -122,9 +122,11 @@ public class BookingService {
         UUID builderId = TenantContext.requireBuilderId();
         var builder = builderRepository.findById(builderId).orElseThrow();
 
+        UUID flatId = form.getFlat().getId();
         Flat flat =
-                flatRepository
-                        .findByIdAndBuilder_Id(form.getFlat().getId(), builderId)
+                (form.getId() == null
+                                ? flatRepository.findByIdAndBuilder_IdForUpdate(flatId, builderId)
+                                : flatRepository.findByIdAndBuilder_Id(flatId, builderId))
                         .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
         if (flat.getBuilding() != null
                 && !TenantContext.canAccessBuilding(flat.getBuilding().getId())) {
@@ -141,6 +143,9 @@ public class BookingService {
         boolean isNew = form.getId() == null;
         Booking entity;
         if (isNew) {
+            if (bookingRepository.countActiveByFlatId(flat.getId()) > 0) {
+                throw new IllegalArgumentException("This flat already has an active booking");
+            }
             if (!"AVAILABLE".equals(flat.getStatus()) && !"HOLD".equals(flat.getStatus())) {
                 throw new IllegalArgumentException("Flat is not available for booking");
             }

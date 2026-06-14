@@ -250,23 +250,37 @@ public class BuildingService {
     }
 
     @Transactional(readOnly = true)
+    public Map<UUID, Long> countActiveBookingsPerBuilding() {
+        Map<UUID, Long> counts = new HashMap<>();
+        for (Object[] row : bookingRepository.countActiveGroupedByBuilding()) {
+            counts.put((UUID) row[0], (Long) row[1]);
+        }
+        return counts;
+    }
+
+    @Transactional(readOnly = true)
     public long countBookingsForBuilding(UUID buildingId) {
         return bookingRepository.countByBuildingId(buildingId);
     }
 
     @Transactional(readOnly = true)
+    public long countActiveBookingsForBuilding(UUID buildingId) {
+        return bookingRepository.countActiveByBuildingId(buildingId);
+    }
+
+    @Transactional(readOnly = true)
     public boolean canEditLayout(UUID buildingId) {
-        return countBookingsForBuilding(buildingId) == 0;
+        return countActiveBookingsForBuilding(buildingId) == 0;
     }
 
     @Transactional(readOnly = true)
     public void assertLayoutEditable(UUID buildingId) {
-        long bookingCount = countBookingsForBuilding(buildingId);
+        long bookingCount = countActiveBookingsForBuilding(buildingId);
         if (bookingCount > 0) {
             throw new IllegalArgumentException(
                     "Cannot edit the building layout while "
                             + bookingCount
-                            + " booking(s) exist for this building. Cancel or move those bookings first.");
+                            + " active booking(s) exist for this building. Cancel those bookings first.");
         }
     }
 

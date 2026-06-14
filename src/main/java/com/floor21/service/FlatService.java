@@ -2373,6 +2373,10 @@ public class FlatService {
         if (!List.of("AVAILABLE", "HOLD", "BOOKED", "CANCELLED").contains(status)) {
             throw new IllegalArgumentException("Invalid status");
         }
+        if (List.of("AVAILABLE", "HOLD").contains(status) && hasActiveBooking(flatId)) {
+            throw new IllegalArgumentException(
+                    "Cannot set flat to " + status + " while an active booking exists. Cancel the booking first.");
+        }
         flat.setStatus(status);
         return flatRepository.save(flat);
     }

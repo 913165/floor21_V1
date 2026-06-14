@@ -57,7 +57,9 @@ public class CancellationService {
         bookingRepository.save(booking);
 
         Flat flat = booking.getFlat();
-        flat.setStatus("AVAILABLE");
-        flatRepository.save(flat);
+        if (bookingRepository.countActiveByFlatId(flat.getId()) == 0) {
+            flat.setStatus("AVAILABLE");
+            flatRepository.save(flat);
+        }
     }
 }

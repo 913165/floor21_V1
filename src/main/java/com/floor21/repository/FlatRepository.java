@@ -1,10 +1,12 @@
 package com.floor21.repository;
 
 import com.floor21.entity.Flat;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,6 +18,10 @@ public interface FlatRepository extends JpaRepository<Flat, UUID> {
     long countByBuilding_IdAndBuilder_Id(UUID buildingId, UUID builderId);
 
     Optional<Flat> findByIdAndBuilder_Id(UUID id, UUID builderId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select f from Flat f where f.id = :id and f.builder.id = :builderId")
+    Optional<Flat> findByIdAndBuilder_IdForUpdate(@Param("id") UUID id, @Param("builderId") UUID builderId);
 
     @Query("select f from Flat f join fetch f.building b join fetch b.builder where f.id = :id")
     Optional<Flat> findByIdWithBuilding(@Param("id") UUID id);

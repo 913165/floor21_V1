@@ -81,7 +81,7 @@ public class BuildingController {
             model.addAttribute("platformAdminView", false);
             model.addAttribute("buildings", buildingService.listForTenant());
         }
-        model.addAttribute("bookingCounts", buildingService.countBookingsPerBuilding());
+        model.addAttribute("activeBookingCounts", buildingService.countActiveBookingsPerBuilding());
         return "buildings/list";
     }
 
@@ -91,7 +91,7 @@ public class BuildingController {
         if (!buildingService.canEditLayout(id)) {
             ra.addFlashAttribute(
                     "errorMessage",
-                    "This building has bookings. Layout cannot be changed until those bookings are removed.");
+                    "This building has active bookings. Layout cannot be changed until those bookings are cancelled.");
             return "redirect:/buildings";
         }
         Building building = buildingService.resolveForAccess(id);

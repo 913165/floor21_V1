@@ -225,7 +225,7 @@ public class AdminPlatformController {
         if (!buildingService.canEditLayout(id)) {
             ra.addFlashAttribute(
                     "errorMessage",
-                    "This building has bookings. Layout cannot be edited until those bookings are removed.");
+                    "This building has active bookings. Layout cannot be edited until those bookings are cancelled.");
             return "redirect:/admin/buildings";
         }
         Building building =
