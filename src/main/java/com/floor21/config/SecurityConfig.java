@@ -60,6 +60,8 @@ public class SecurityConfig {
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
                                         .requestMatchers(HttpMethod.GET, "/admin/projects/*/snapshot-buildings")
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
+                                        .requestMatchers(HttpMethod.GET, "/admin/projects/new")
+                                        .hasRole("SUPER_ADMIN")
                                         .requestMatchers("/admin/**")
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers("/dashboard")

@@ -78,6 +78,7 @@
   function onReady() {
     wireFrameLinks(document.getElementById("floor21-sidebar"));
     wireFrameLinks(document.getElementById("floor21-topbar"));
+    wireFrameLinks(document.getElementById(FRAME_ID));
     wireDownloadLinks(document.getElementById(FRAME_ID));
     syncBodyChrome();
   }
@@ -106,6 +107,14 @@
     event.preventDefault();
     if (detail.visit) {
       detail.visit(detail.response);
+    }
+  });
+
+  document.addEventListener("turbo:fetch-request-error", function () {
+    var frame = document.getElementById(FRAME_ID);
+    if (frame) {
+      frame.removeAttribute("busy");
+      frame.removeAttribute("aria-busy");
     }
   });
 

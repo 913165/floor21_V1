@@ -16,7 +16,11 @@ turbo-frame#floor21-main {
 turbo-frame#floor21-main[busy] {
   /* Keep previous paint visible; avoid empty white frame while fetching. */
   opacity: 1;
-  pointer-events: none;
+  cursor: wait;
+}
+
+turbo-frame#floor21-main[busy] .floor21-panel__inner {
+  cursor: wait;
 }
 
 turbo-frame#floor21-main[aria-busy="true"] .floor21-panel__inner {

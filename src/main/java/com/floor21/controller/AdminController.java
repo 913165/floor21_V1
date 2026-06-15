@@ -81,6 +81,7 @@ public class AdminController {
     @GetMapping("/new")
     public String form(Model model) {
         model.addAttribute("pageTitle", "New project");
+        model.addAttribute("readonlyView", false);
         model.addAttribute("builder", new Builder());
         return "admin/builders/form";
     }
@@ -135,10 +136,14 @@ public class AdminController {
     @PostMapping("/save")
     public String save(@ModelAttribute Builder form, Model model, RedirectAttributes ra) {
         if (form.getCompanyName() == null || form.getCompanyName().isBlank()) {
+            boolean readonlyView = !isSuperAdmin();
             model.addAttribute("pageTitle", form.getId() == null ? "New project" : "Edit project");
+            model.addAttribute("readonlyView", readonlyView);
+            model.addAttribute("currentBuilderId", TenantContext.getBuilderIdOrNull());
             model.addAttribute("builder", form);
             if (form.getId() != null) {
                 model.addAttribute("buildingCount", buildingRepository.countByBuilder_Id(form.getId()));
+                model.addAttribute("partnerCount", userProjectAssignmentService.countForProject(form.getId()));
             }
             model.addAttribute("errorMessage", "Project name is required.");
             return "admin/builders/form";
@@ -232,8 +237,12 @@ public class AdminController {
     }
 
     private static boolean isSuperAdmin() {
-        Floor21UserPrincipal principal = currentPrincipal();
-        return principal != null && principal.isSuperAdmin();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_SUPER_ADMIN".equals(a.getAuthority()));
     }
 
     private static Floor21UserPrincipal currentPrincipal() {

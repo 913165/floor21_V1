@@ -81,10 +81,26 @@
     }
   }
 
+  function cleanupStaleModals() {
+    document.querySelectorAll("body > .modal-backdrop").forEach(function (el) {
+      el.remove();
+    });
+    document.body.classList.remove("modal-open");
+    document.body.style.removeProperty("overflow");
+    document.body.style.removeProperty("padding-right");
+  }
+
   onPageReady(function () {
     initProfileDropdown();
     mountTurboFrameModalsOnBody();
+    cleanupStaleModals();
   });
   document.addEventListener("turbo:render", mountTurboFrameModalsOnBody);
+  document.addEventListener("turbo:frame-render", function (event) {
+    if (event.target && event.target.id === "floor21-main") {
+      mountTurboFrameModalsOnBody();
+      cleanupStaleModals();
+    }
+  });
   document.addEventListener("show.bs.modal", onModalShow, true);
 })();

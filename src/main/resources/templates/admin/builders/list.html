@@ -23,7 +23,9 @@
                   th:selected="${pageSize == opt}">25</option>
         </select>
       </form>
-      <a class="btn btn-primary" th:if="${!readonlyView}" th:href="@{/admin/projects/new}">New project</a>
+      <a class="btn btn-primary" th:if="${!readonlyView}"
+         th:href="@{/admin/projects/new}"
+         data-turbo="false">New project</a>
     </div>
   </div>
 
