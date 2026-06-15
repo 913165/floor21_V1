@@ -27,12 +27,19 @@ public class ReceiptSlabAllocationService {
 
     @Transactional
     public Map<UUID, List<ReceiptSlabAllocationSlice>> allocateBySlab(UUID bookingId) {
+        UUID builderId = TenantContext.requireBuilderId();
+        return allocateBySlab(bookingId, builderId);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<UUID, List<ReceiptSlabAllocationSlice>> allocateBySlab(UUID bookingId, UUID builderId) {
         List<BookingPaymentSlab> slabs =
-                bookingPaymentSlabService.listUniqueSlabsForSchedule(bookingId);
+                TenantContext.getBuilderIdOrNull() != null
+                        ? bookingPaymentSlabService.listUniqueSlabsForSchedule(bookingId)
+                        : bookingPaymentSlabService.listUniqueSlabsForScheduleReadOnly(bookingId, builderId);
         if (slabs.isEmpty()) {
             return Map.of();
         }
-        UUID builderId = TenantContext.requireBuilderId();
         List<Receipt> receipts =
                 receiptRepository.findActiveByBooking_IdOrderByReceiptDateAsc(bookingId, builderId);
         return SlabReceiptWaterfall.allocate(slabs, receipts);

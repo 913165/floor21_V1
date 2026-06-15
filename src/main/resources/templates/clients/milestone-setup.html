@@ -23,38 +23,46 @@
 
   <form id="milestonePickerForm" class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get"
         th:action="@{/clients/milestone-setup}">
-    <div class="row g-2 align-items-end">
-      <div class="col-md-3" th:if="${platformAdminView}">
+    <div class="row g-2 align-items-start">
+      <div class="col-md-3 slab-schedule-picker__field" th:if="${platformAdminView}">
         <label class="form-label" for="msProject">Project</label>
         <select class="form-select" id="msProject" name="projectId"
                 data-project-search-select data-submit-on-select="true">
-          <option value="">All projects</option>
+          <option value="" th:selected="${filterProjectId == null}">Choose project…</option>
           <option th:each="p : ${projects}"
                   th:value="${p.id}"
                   th:text="${p.companyName}"
                   th:selected="${filterProjectId != null && filterProjectId == p.id}"></option>
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-3 slab-schedule-picker__field">
         <label class="form-label" for="msBuilding">Building</label>
-        <select class="form-select" id="msBuilding" name="buildingId" required>
+        <select class="form-select" id="msBuilding" name="buildingId" required
+                th:disabled="${platformAdminView and filterProjectId == null}">
           <option value="" disabled th:selected="${selectedBuildingId == null}">Choose building…</option>
           <option th:each="bl : ${buildings}"
                   th:value="${bl.id}"
                   th:selected="${selectedBuildingId != null && selectedBuildingId == bl.id}"
-                  th:text="${platformAdminView and bl.builder != null ? bl.buildingName + ' (' + bl.builder.companyName + ')' : bl.buildingName}"></option>
+                  th:text="${bl.buildingName}"></option>
         </select>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0"
+           th:if="${platformAdminView and filterProjectId == null}">Select a project first.</p>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0"
+           th:if="${platformAdminView and filterProjectId != null}"></p>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-4 slab-schedule-picker__field">
         <label class="form-label" for="msClientQ">Client / flat search</label>
         <input class="form-control" id="msClientQ" name="clientQ" type="search"
                th:value="${clientQ}"
                placeholder="Filter by client name, flat no., booking code…"
                th:disabled="${selectedBuildingId == null}"/>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0" th:if="${platformAdminView}"></p>
       </div>
-      <div class="col-md-2">
-        <button class="btn btn-primary w-100" type="submit"
+      <div class="col-md-2 slab-schedule-picker__field">
+        <label class="form-label slab-schedule-picker__action-label" for="msSearchBtn">Search</label>
+        <button class="btn btn-primary w-100" id="msSearchBtn" type="submit"
                 th:disabled="${selectedBuildingId == null}">Search</button>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0" th:if="${platformAdminView}"></p>
       </div>
     </div>
     <div class="row g-2 align-items-end mt-2" th:if="${selectedBuildingId != null}">

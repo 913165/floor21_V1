@@ -9,6 +9,7 @@ import com.floor21.entity.Client;
 import com.floor21.entity.Flat;
 import com.floor21.util.IndianRupeesFormatter;
 import com.floor21.util.PoiSheetSupport;
+import com.floor21.security.TenantContext;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
@@ -52,7 +53,12 @@ public class SlabScheduleExportService {
 
     @Transactional(readOnly = true)
     public byte[] exportExcel(UUID bookingId) {
-        ExportContext ctx = loadContext(bookingId);
+        return exportExcel(bookingId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportExcel(UUID bookingId, UUID builderId) {
+        ExportContext ctx = loadContext(bookingId, builderId);
         try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = wb.createSheet("Payment schedule");
             org.apache.poi.ss.usermodel.Font bold = wb.createFont();
@@ -90,7 +96,12 @@ public class SlabScheduleExportService {
 
     @Transactional(readOnly = true)
     public byte[] exportPdf(UUID bookingId) {
-        ExportContext ctx = loadContext(bookingId);
+        return exportPdf(bookingId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportPdf(UUID bookingId, UUID builderId) {
+        ExportContext ctx = loadContext(bookingId, builderId);
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Document document = new Document(PageSize.A4.rotate(), 36, 36, 36, 36);
             PdfWriter.getInstance(document, out);
@@ -146,17 +157,37 @@ public class SlabScheduleExportService {
 
     @Transactional(readOnly = true)
     public String suggestedExcelFilename(UUID bookingId) {
-        return baseFilename(bookingId) + ".xlsx";
+        return suggestedExcelFilename(bookingId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public String suggestedExcelFilename(UUID bookingId, UUID builderId) {
+        return baseFilename(bookingId, builderId) + ".xlsx";
     }
 
     @Transactional(readOnly = true)
     public String suggestedPdfFilename(UUID bookingId) {
-        return baseFilename(bookingId) + ".pdf";
+        return suggestedPdfFilename(bookingId, null);
     }
 
-    private ExportContext loadContext(UUID bookingId) {
-        Booking booking = bookingPaymentSlabService.getBookingForSchedule(bookingId);
-        List<SlabScheduleLedgerRow> rows = slabScheduleLedgerService.buildLedger(bookingId);
+    @Transactional(readOnly = true)
+    public String suggestedPdfFilename(UUID bookingId, UUID builderId) {
+        return baseFilename(bookingId, builderId) + ".pdf";
+    }
+
+    private ExportContext loadContext(UUID bookingId, UUID builderId) {
+        Booking booking;
+        List<SlabScheduleLedgerRow> rows;
+        if (TenantContext.getBuilderIdOrNull() != null) {
+            booking = bookingPaymentSlabService.getBookingForSchedule(bookingId);
+            rows = slabScheduleLedgerService.buildLedger(bookingId);
+        } else {
+            if (builderId == null) {
+                throw new IllegalArgumentException("Select a project/building to export.");
+            }
+            booking = bookingPaymentSlabService.getBookingForScheduleReadOnly(bookingId, builderId);
+            rows = slabScheduleLedgerService.buildLedgerReadOnly(bookingId, builderId);
+        }
         if (rows.isEmpty()) {
             throw new IllegalArgumentException(
                     "No payment schedule is available for this booking. Create the slab schedule first.");
@@ -167,7 +198,14 @@ public class SlabScheduleExportService {
     }
 
     private String baseFilename(UUID bookingId) {
-        Booking booking = bookingPaymentSlabService.getBookingForSchedule(bookingId);
+        return baseFilename(bookingId, null);
+    }
+
+    private String baseFilename(UUID bookingId, UUID builderId) {
+        Booking booking =
+                TenantContext.getBuilderIdOrNull() != null
+                        ? bookingPaymentSlabService.getBookingForSchedule(bookingId)
+                        : bookingPaymentSlabService.getBookingForScheduleReadOnly(bookingId, builderId);
         String code = booking.getBookingCode() != null ? booking.getBookingCode() : bookingId.toString();
         String safe = code.replaceAll("[^a-zA-Z0-9_-]", "_");
         return "Slab_Schedule_" + safe + "_" + LocalDate.now();

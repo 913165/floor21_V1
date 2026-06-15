@@ -94,7 +94,11 @@ public class ClientMilestoneSetupController {
 
         if (platformAdmin) {
             model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
-            model.addAttribute("buildings", buildingService.filterForPlatformAdmin(projectId, null));
+            buildingId = buildingService.sanitizeBuildingIdForProject(buildingId, projectId);
+            if (buildingId == null) {
+                bookingId = null;
+            }
+            model.addAttribute("buildings", buildingService.listBuildingsForPlatformProject(projectId));
         } else {
             model.addAttribute("buildings", buildingService.listForTenant());
         }

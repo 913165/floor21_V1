@@ -75,11 +75,21 @@ public class BookingPaymentSlabService {
     @Transactional(readOnly = true)
     public Booking getBookingForSchedule(UUID bookingId) {
         UUID builderId = TenantContext.requireBuilderId();
+        return loadBookingForSchedule(bookingId, builderId);
+    }
+
+    @Transactional(readOnly = true)
+    public Booking getBookingForScheduleReadOnly(UUID bookingId, UUID builderId) {
+        return loadBookingForSchedule(bookingId, builderId);
+    }
+
+    private Booking loadBookingForSchedule(UUID bookingId, UUID builderId) {
         Booking booking =
                 bookingRepository
                         .findByIdAndBuilder_IdForSchedule(bookingId, builderId)
                         .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
-        if (booking.getFlat() != null
+        if (TenantContext.getBuilderIdOrNull() != null
+                && booking.getFlat() != null
                 && booking.getFlat().getBuilding() != null
                 && !TenantContext.canAccessBuilding(booking.getFlat().getBuilding().getId())) {
             throw new ResourceNotFoundException("Booking not found");
@@ -90,6 +100,12 @@ public class BookingPaymentSlabService {
     @Transactional(readOnly = true)
     public List<BookingPaymentSlab> listLines(UUID bookingId) {
         getBookingForSchedule(bookingId);
+        return bookingPaymentSlabRepository.findByBooking_IdOrderBySortOrderAscIdAsc(bookingId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingPaymentSlab> listLinesReadOnly(UUID bookingId, UUID builderId) {
+        getBookingForScheduleReadOnly(bookingId, builderId);
         return bookingPaymentSlabRepository.findByBooking_IdOrderBySortOrderAscIdAsc(bookingId);
     }
 
@@ -290,6 +306,42 @@ public class BookingPaymentSlabService {
         }
 
         List<BookingPaymentSlab> allSlabs = listLines(bookingId);
+        Map<String, BookingPaymentSlab> byLabel = new LinkedHashMap<>();
+        for (BookingPaymentSlab slab : allSlabs) {
+            byLabel.merge(normalizeMilestoneLabel(slab.getMilestoneLabel()), slab, this::pickPreferredSlab);
+        }
+
+        List<BookingPaymentSlab> ordered = new ArrayList<>();
+        Set<String> seenLabels = new HashSet<>();
+        for (PaymentSlabTemplate template : templates) {
+            String labelKey = normalizeMilestoneLabel(template.getMilestoneLabel());
+            if (!seenLabels.add(labelKey)) {
+                continue;
+            }
+            BookingPaymentSlab slab = byLabel.get(labelKey);
+            if (slab != null) {
+                ordered.add(slab);
+            }
+        }
+        return ordered;
+    }
+
+    /** Read-only slab list for platform admin — does not sync or mutate booking milestone rows. */
+    @Transactional(readOnly = true)
+    public List<BookingPaymentSlab> listUniqueSlabsForScheduleReadOnly(UUID bookingId, UUID builderId) {
+        Booking booking = getBookingForScheduleReadOnly(bookingId, builderId);
+        if (booking.getFlat() == null || booking.getFlat().getBuilding() == null) {
+            return listLinesReadOnly(bookingId, builderId);
+        }
+        UUID buildingId = booking.getFlat().getBuilding().getId();
+        List<PaymentSlabTemplate> templates =
+                distinctActiveTemplates(
+                        paymentSlabTemplateService.listActiveForBuildingReadOnly(buildingId));
+        if (templates.isEmpty()) {
+            return listLinesReadOnly(bookingId, builderId);
+        }
+
+        List<BookingPaymentSlab> allSlabs = listLinesReadOnly(bookingId, builderId);
         Map<String, BookingPaymentSlab> byLabel = new LinkedHashMap<>();
         for (BookingPaymentSlab slab : allSlabs) {
             byLabel.merge(normalizeMilestoneLabel(slab.getMilestoneLabel()), slab, this::pickPreferredSlab);

@@ -38,7 +38,21 @@ public class SlabScheduleLedgerService {
                 receiptSlabAllocationService.allocateBySlab(bookingId);
         List<BookingPaymentSlab> slabs =
                 bookingPaymentSlabService.listUniqueSlabsForSchedule(bookingId);
+        return buildLedgerRows(slabs, bySlab);
+    }
 
+    /** Read-only ledger for platform admin (no milestone sync on load). */
+    @Transactional(readOnly = true)
+    public List<SlabScheduleLedgerRow> buildLedgerReadOnly(UUID bookingId, UUID builderId) {
+        Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab =
+                receiptSlabAllocationService.allocateBySlab(bookingId, builderId);
+        List<BookingPaymentSlab> slabs =
+                bookingPaymentSlabService.listUniqueSlabsForScheduleReadOnly(bookingId, builderId);
+        return buildLedgerRows(slabs, bySlab);
+    }
+
+    private List<SlabScheduleLedgerRow> buildLedgerRows(
+            List<BookingPaymentSlab> slabs, Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab) {
         LocalDate today = LocalDate.now();
         List<SlabScheduleLedgerRow> rows = new ArrayList<>();
 

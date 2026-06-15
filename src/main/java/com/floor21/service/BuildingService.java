@@ -125,6 +125,27 @@ public class BuildingService {
                 .toList();
     }
 
+    /** Buildings for one tenant project; empty when no project is chosen (platform admin pickers). */
+    @Transactional(readOnly = true)
+    public List<Building> listBuildingsForPlatformProject(UUID projectId) {
+        if (projectId == null) {
+            return List.of();
+        }
+        return buildingRepository.findByBuilder_IdOrderByBuildingNameAsc(projectId);
+    }
+
+    /** Drop building selection when it does not belong to the chosen project. */
+    @Transactional(readOnly = true)
+    public UUID sanitizeBuildingIdForProject(UUID buildingId, UUID projectId) {
+        if (buildingId == null || projectId == null) {
+            return null;
+        }
+        return buildingRepository
+                .findByIdAndBuilder_Id(buildingId, projectId)
+                .map(Building::getId)
+                .orElse(null);
+    }
+
     @Transactional(readOnly = true)
     public Page<Building> listBuildingsPage(
             int page, int size, String sort, String dir, UUID projectId, String search) {

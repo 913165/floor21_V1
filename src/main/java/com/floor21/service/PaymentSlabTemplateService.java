@@ -33,6 +33,12 @@ public class PaymentSlabTemplateService {
     }
 
     @Transactional(readOnly = true)
+    public List<PaymentSlabTemplate> listActiveForBuildingReadOnly(UUID buildingId) {
+        requireBuilding(buildingId);
+        return paymentSlabTemplateRepository.findByBuilding_IdAndActiveTrueOrderBySortOrderAscIdAsc(buildingId);
+    }
+
+    @Transactional(readOnly = true)
     public List<PaymentSlabTemplate> listForBuildingAdmin(UUID buildingId) {
         requireBuilding(buildingId);
         return paymentSlabTemplateRepository.findByBuilding_IdOrderBySortOrderAscIdAsc(buildingId);

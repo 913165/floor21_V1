@@ -44,6 +44,8 @@ public class SecurityConfig {
                                                 "/admin/milestone-sample-templates/",
                                                 "/admin/milestone-sample-templates/*/download")
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
+                                        .requestMatchers(HttpMethod.GET, "/bookings/payment-schedule", "/bookings/payment-schedule/**")
+                                        .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
                                         .requestMatchers(HttpMethod.GET, "/admin/projects", "/admin/projects/")
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
                                         .requestMatchers(HttpMethod.GET, "/admin/projects/*/edit")

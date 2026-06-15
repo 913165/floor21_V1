@@ -194,6 +194,40 @@
       }
     }
 
+    function clearDependentFilters(form) {
+      if (!form) {
+        return;
+      }
+      ["buildingId", "bookingId"].forEach(function (name) {
+        var el = form.querySelector('[name="' + name + '"]');
+        if (el) {
+          el.value = "";
+        }
+      });
+    }
+
+    function commitIfSingleMatch() {
+      var query = normalize(search.value);
+      if (!query) {
+        return false;
+      }
+      var matches = options.filter(function (opt) {
+        return opt.value && normalize(opt.textContent).indexOf(query) !== -1;
+      });
+      if (matches.length === 1) {
+        chooseOption(matches[0]);
+        return true;
+      }
+      var exact = options.filter(function (opt) {
+        return opt.value && normalize(opt.textContent) === query;
+      });
+      if (exact.length === 1) {
+        chooseOption(exact[0]);
+        return true;
+      }
+      return false;
+    }
+
     function chooseOption(opt) {
       if (!opt) {
         return;
@@ -231,6 +265,7 @@
         if (picking) {
           return;
         }
+        commitIfSingleMatch();
         endSearch();
       }, 120);
     });
@@ -278,12 +313,23 @@
         if (!form) {
           return;
         }
+        clearDependentFilters(form);
         if (typeof form.requestSubmit === "function") {
           form.requestSubmit();
         } else {
           form.submit();
         }
       });
+    }
+
+    if (select.form) {
+      select.form.addEventListener(
+        "submit",
+        function () {
+          commitIfSingleMatch();
+        },
+        true
+      );
     }
 
     syncInputFromSelect();
