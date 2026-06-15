@@ -6,6 +6,9 @@
 <div th:fragment="content">
   <h1 class="h3 mb-2" th:text="${pageTitle}">Booking</h1>
   <p class="text-muted" th:text="${booking.bookingCode}"></p>
+  <div class="alert alert-info py-2" th:if="${readonlyView}">
+    Read-only for platform admin. Use Payment schedule and Receipts links to review related records.
+  </div>
   <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
   <div class="row g-3 mb-3">
     <div class="col-md-6">
@@ -147,20 +150,24 @@
        th:if="${booking.flat != null and booking.flat.building != null}"
        th:href="@{/buildings/{bid}/flats(bid=${booking.flat.building.id},focusFlat=${booking.flat.id})}"
        th:text="|Flat grid — ${booking.flat.flatNumber}|">Flat grid</a>
-    <a class="btn btn-outline-info" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/bookings/payment-schedule(bookingId=${booking.id})}">Payment schedule</a>
-    <a class="btn btn-primary" th:href="@{/bookings/{id}/edit(id=${booking.id})}">Modify particulars</a>
-    <a class="btn btn-outline-primary" th:href="@{/receipts(bookingId=${booking.id})}">Receipts</a>
-    <a class="btn btn-outline-primary" th:href="@{/bookings/{id}/expenses(id=${booking.id})}">Expenses</a>
-    <a class="btn btn-outline-danger" th:if="${booking.status == 'ACTIVE'}"
+    <a class="btn btn-outline-info"
+       th:if="${booking.flat != null and booking.flat.building != null}"
+       th:href="@{/bookings/payment-schedule(bookingId=${booking.id}, buildingId=${booking.flat.building.id}, projectId=${filterProjectId != null ? filterProjectId : (booking.builder != null ? booking.builder.id : null)})}">Payment schedule</a>
+    <a class="btn btn-primary" th:unless="${readonlyView}" th:href="@{/bookings/{id}/edit(id=${booking.id})}">Modify particulars</a>
+    <a class="btn btn-outline-primary"
+       th:if="${booking.flat != null and booking.flat.building != null}"
+       th:href="@{/receipts(bookingId=${booking.id}, buildingId=${booking.flat.building.id}, projectId=${filterProjectId != null ? filterProjectId : (booking.builder != null ? booking.builder.id : null)})}">Receipts</a>
+    <a class="btn btn-outline-primary" th:unless="${readonlyView}" th:href="@{/bookings/{id}/expenses(id=${booking.id})}">Expenses</a>
+    <a class="btn btn-outline-danger" th:if="${!readonlyView and booking.status == 'ACTIVE'}"
        th:href="@{/bookings/{id}/cancel(id=${booking.id})}">Cancel booking</a>
-    <form class="d-inline" th:if="${booking.status == 'CANCELLED'}"
+    <form class="d-inline" th:if="${!readonlyView and booking.status == 'CANCELLED'}"
           th:action="@{/bookings/{id}/remove(id=${booking.id})}" method="post"
           th:attr="onsubmit=|return confirm('Remove booking ${booking.bookingCode} permanently? This cannot be undone.');|">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
       <button class="btn btn-outline-danger" type="submit">Remove</button>
     </form>
-    <a class="btn btn-link" th:href="@{/bookings}">Back</a>
+    <a class="btn btn-link"
+       th:href="@{/bookings(projectId=${filterProjectId})}">Back</a>
   </div>
 </div>
 </body>

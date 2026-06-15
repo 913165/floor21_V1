@@ -16,9 +16,120 @@ import org.springframework.data.repository.query.Param;
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     @Query(
-            "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
-                    + "where b.builder.id = :builderId order by b.bookingDate desc, b.createdAt desc")
+            value =
+                    "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                            + "where b.builder.id = :builderId order by b.bookingDate desc, b.createdAt desc",
+            countQuery = "select count(b) from Booking b where b.builder.id = :builderId")
+    Page<Booking> findByBuilder_IdForListUi(@Param("builderId") UUID builderId, Pageable pageable);
+
+    @Query(
+            value =
+                    "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                            + "where b.builder.id = :builderId order by b.bookingDate desc, b.createdAt desc")
     List<Booking> findByBuilder_IdForListUi(@Param("builderId") UUID builderId);
+
+    @Query(
+            value =
+                    "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                            + "join fetch b.builder br where br.platformAdmin = false "
+                            + "order by lower(br.companyName), b.bookingDate desc, b.createdAt desc",
+            countQuery =
+                    "select count(b) from Booking b join b.builder br where br.platformAdmin = false")
+    Page<Booking> findAllForPlatformAdminListUi(Pageable pageable);
+
+    @Query(
+            value =
+                    "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                            + "join fetch b.builder br where br.platformAdmin = false "
+                            + "order by lower(br.companyName), b.bookingDate desc, b.createdAt desc")
+    List<Booking> findAllForPlatformAdminListUi();
+
+    @Query(
+            value =
+                    "select b from Booking b join fetch b.client c join fetch b.flat f join fetch f.building bl "
+                            + "join fetch b.builder br where br.platformAdmin = false and ("
+                            + "lower(b.bookingCode) like lower(concat('%', :q, '%')) or "
+                            + "lower(concat(coalesce(c.firstName, ''), ' ', coalesce(c.lastName, ''))) like "
+                            + "lower(concat('%', :q, '%')) or "
+                            + "lower(f.flatNumber) like lower(concat('%', :q, '%')) or "
+                            + "lower(bl.buildingName) like lower(concat('%', :q, '%')) or "
+                            + "lower(br.companyName) like lower(concat('%', :q, '%'))) "
+                            + "order by lower(br.companyName), b.bookingDate desc, b.createdAt desc",
+            countQuery =
+                    "select count(b) from Booking b join b.client c join b.flat f join f.building bl join b.builder br "
+                            + "where br.platformAdmin = false and ("
+                            + "lower(b.bookingCode) like lower(concat('%', :q, '%')) or "
+                            + "lower(concat(coalesce(c.firstName, ''), ' ', coalesce(c.lastName, ''))) like "
+                            + "lower(concat('%', :q, '%')) or "
+                            + "lower(f.flatNumber) like lower(concat('%', :q, '%')) or "
+                            + "lower(bl.buildingName) like lower(concat('%', :q, '%')) or "
+                            + "lower(br.companyName) like lower(concat('%', :q, '%')))")
+    Page<Booking> searchAllForPlatformAdmin(@Param("q") String q, Pageable pageable);
+
+    @Query(
+            value =
+                    "select b from Booking b join fetch b.client c join fetch b.flat f join fetch f.building bl "
+                            + "where b.builder.id = :builderId and ("
+                            + "lower(b.bookingCode) like lower(concat('%', :q, '%')) or "
+                            + "lower(concat(coalesce(c.firstName, ''), ' ', coalesce(c.lastName, ''))) like "
+                            + "lower(concat('%', :q, '%')) or "
+                            + "lower(f.flatNumber) like lower(concat('%', :q, '%')) or "
+                            + "lower(bl.buildingName) like lower(concat('%', :q, '%'))) "
+                            + "order by b.bookingDate desc, b.createdAt desc",
+            countQuery =
+                    "select count(b) from Booking b join b.client c join b.flat f join f.building bl "
+                            + "where b.builder.id = :builderId and ("
+                            + "lower(b.bookingCode) like lower(concat('%', :q, '%')) or "
+                            + "lower(concat(coalesce(c.firstName, ''), ' ', coalesce(c.lastName, ''))) like "
+                            + "lower(concat('%', :q, '%')) or "
+                            + "lower(f.flatNumber) like lower(concat('%', :q, '%')) or "
+                            + "lower(bl.buildingName) like lower(concat('%', :q, '%')))")
+    Page<Booking> searchByBuilder_IdForListUi(
+            @Param("builderId") UUID builderId, @Param("q") String q, Pageable pageable);
+
+    @Query(
+            value =
+                    "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                            + "where b.builder.id = :builderId and f.building.id in :buildingIds "
+                            + "order by b.bookingDate desc, b.createdAt desc",
+            countQuery =
+                    "select count(b) from Booking b join b.flat f "
+                            + "where b.builder.id = :builderId and f.building.id in :buildingIds")
+    Page<Booking> findByBuilder_IdAndFlat_Building_IdInForListUi(
+            @Param("builderId") UUID builderId,
+            @Param("buildingIds") Collection<UUID> buildingIds,
+            Pageable pageable);
+
+    @Query(
+            "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                    + "join fetch b.builder br where b.id = :id and br.platformAdmin = false")
+    Optional<Booking> findByIdForPlatformAdminView(@Param("id") UUID id);
+
+    @Query(
+            value =
+                    "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                            + "where b.builder.id = :builderId and b.executive.id = :executiveId "
+                            + "order by b.bookingDate desc, b.createdAt desc",
+            countQuery =
+                    "select count(b) from Booking b where b.builder.id = :builderId and b.executive.id = :executiveId")
+    Page<Booking> findByBuilder_IdAndExecutive_IdForListUi(
+            @Param("builderId") UUID builderId, @Param("executiveId") UUID executiveId, Pageable pageable);
+
+    @Query(
+            value =
+                    "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                            + "where b.builder.id = :builderId and b.executive.id = :executiveId "
+                            + "and f.building.id in :buildingIds "
+                            + "order by b.bookingDate desc, b.createdAt desc",
+            countQuery =
+                    "select count(b) from Booking b join b.flat f "
+                            + "where b.builder.id = :builderId and b.executive.id = :executiveId "
+                            + "and f.building.id in :buildingIds")
+    Page<Booking> findByBuilder_IdAndExecutive_IdAndFlat_Building_IdInForListUi(
+            @Param("builderId") UUID builderId,
+            @Param("executiveId") UUID executiveId,
+            @Param("buildingIds") Collection<UUID> buildingIds,
+            Pageable pageable);
 
     @Query(
             "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "

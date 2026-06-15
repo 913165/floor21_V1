@@ -8,7 +8,7 @@
     <div class="d-flex gap-2">
       <a class="btn btn-outline-primary btn-sm"
          th:if="${selectedBooking != null}"
-         th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId})}">Payment Receipts</a>
+         th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, projectId=${filterProjectId})}">Payment Receipts</a>
       <a class="btn btn-outline-secondary btn-sm" th:href="@{/bookings}">Bookings</a>
     </div>
   </div>

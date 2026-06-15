@@ -1,9 +1,13 @@
 package com.floor21.controller;
 
 import com.floor21.entity.Booking;
+import com.floor21.entity.Building;
 import com.floor21.entity.Receipt;
 import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BookingRepository;
+import com.floor21.repository.BuildingRepository;
+import com.floor21.repository.BuilderRepository;
+import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
 import com.floor21.service.BankService;
 import com.floor21.service.BuildingService;
@@ -12,9 +16,12 @@ import com.floor21.service.ReceiptService;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.WebDataBinder;
@@ -76,6 +83,8 @@ public class ReceiptsHubController {
     }
 
     private final BuildingService buildingService;
+    private final BuildingRepository buildingRepository;
+    private final BuilderRepository builderRepository;
     private final BookingRepository bookingRepository;
     private final ReceiptService receiptService;
     private final BankService bankService;
@@ -83,25 +92,54 @@ public class ReceiptsHubController {
 
     @GetMapping
     public String entry(
+            @RequestParam(required = false) UUID projectId,
             @RequestParam(required = false) UUID buildingId,
             @RequestParam(required = false) UUID bookingId,
             @RequestParam(required = false) UUID editReceiptId,
             @RequestParam(required = false, defaultValue = "false") boolean openNew,
             Model model) {
-        addPageTitleAndPicker(model, buildingId, bookingId);
+        boolean platformAdminView = isPlatformAdmin();
+        model.addAttribute("platformAdminView", platformAdminView);
+        model.addAttribute("readonlyView", platformAdminView);
+        model.addAttribute("filterProjectId", projectId);
+
+        if (platformAdminView && (editReceiptId != null || openNew)) {
+            model.addAttribute("errorMessage", "Read-only for platform admin.");
+            editReceiptId = null;
+            openNew = false;
+        }
+
+        buildingId = platformAdminView
+                ? buildingService.sanitizeBuildingIdForProject(buildingId, projectId)
+                : buildingId;
+        if (platformAdminView && buildingId == null) {
+            bookingId = null;
+        }
+
+        addPageTitleAndPicker(model, projectId, buildingId, bookingId, platformAdminView);
         if (bookingId == null) {
             return "receipts/entry";
         }
-        addBookingWorkspace(model, buildingId, bookingId);
-        boolean editingReceipt = editReceiptId != null;
-        model.addAttribute("editReceiptId", editReceiptId);
-        Receipt receiptForm =
-                editingReceipt
-                        ? receiptService.getForBooking(editReceiptId, bookingId)
-                        : newReceiptDraft();
-        addReceiptFormWorkspace(model, bookingId, receiptForm);
-        if (editingReceipt || openNew) {
-            model.addAttribute("openReceiptModal", true);
+
+        UUID builderId = resolveBuilderId(buildingId, projectId, platformAdminView);
+        if (platformAdminView && builderId == null) {
+            model.addAttribute("errorMessage", "Choose a project and building to load receipts.");
+            model.addAttribute("selectedBookingId", null);
+            return "receipts/entry";
+        }
+
+        addBookingWorkspace(model, buildingId, bookingId, builderId, platformAdminView);
+        if (!platformAdminView) {
+            boolean editingReceipt = editReceiptId != null;
+            model.addAttribute("editReceiptId", editReceiptId);
+            Receipt receiptForm =
+                    editingReceipt
+                            ? receiptService.getForBooking(editReceiptId, bookingId)
+                            : newReceiptDraft();
+            addReceiptFormWorkspace(model, bookingId, receiptForm);
+            if (editingReceipt || openNew) {
+                model.addAttribute("openReceiptModal", true);
+            }
         }
         return "receipts/entry";
     }
@@ -110,52 +148,72 @@ public class ReceiptsHubController {
     public String save(
             @RequestParam UUID bookingId,
             @RequestParam(required = false) UUID buildingId,
+            @RequestParam(required = false) UUID projectId,
             @ModelAttribute("receiptForm") Receipt receiptForm,
             Model model,
             RedirectAttributes ra) {
-        addPageTitleAndPicker(model, buildingId, bookingId);
+        if (isPlatformAdmin()) {
+            ra.addFlashAttribute("errorMessage", "Read-only for platform admin.");
+            return redirectToEntry(bookingId, buildingId, projectId);
+        }
+        addPageTitleAndPicker(model, projectId, buildingId, bookingId, false);
         try {
             boolean updating = receiptForm.getId() != null;
             receiptService.save(bookingId, receiptForm);
             ra.addFlashAttribute("successMessage", updating ? "Receipt updated." : "Receipt saved.");
-            return redirectToEntry(bookingId, buildingId);
+            return redirectToEntry(bookingId, buildingId, projectId);
         } catch (IllegalArgumentException ex) {
             model.addAttribute("errorMessage", ex.getMessage());
             model.addAttribute("receiptFormValidationFailed", true);
             model.addAttribute("openReceiptModal", true);
             try {
-                addBookingWorkspace(model, buildingId, bookingId);
+                addBookingWorkspace(model, buildingId, bookingId, null, false);
                 addReceiptFormWorkspace(model, bookingId, receiptForm);
             } catch (ResourceNotFoundException e) {
                 ra.addFlashAttribute("errorMessage", ex.getMessage());
-                return redirectToEntry(bookingId, buildingId);
+                return redirectToEntry(bookingId, buildingId, projectId);
             }
             return "receipts/entry";
         } catch (ResourceNotFoundException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
-            return redirectToEntry(bookingId, buildingId);
+            return redirectToEntry(bookingId, buildingId, projectId);
         }
     }
 
     @GetMapping("/{id}/print")
     public String print(
-            @PathVariable UUID id, @RequestParam UUID bookingId, Model model) {
-        Receipt receipt = receiptService.getForPrint(id, bookingId);
+            @PathVariable UUID id,
+            @RequestParam UUID bookingId,
+            @RequestParam(required = false) UUID builderId,
+            Model model) {
+        Receipt receipt = receiptService.getForPrint(id, bookingId, builderId);
         model.addAttribute("receipt", receipt);
         model.addAttribute("booking", receipt.getBooking());
-        model.addAttribute("pageTitle", "Receipt " + (receipt.getReceiptNumber() != null ? receipt.getReceiptNumber() : id));
+        model.addAttribute(
+                "pageTitle",
+                "Receipt " + (receipt.getReceiptNumber() != null ? receipt.getReceiptNumber() : id));
         receiptPrintService.addPrintAttributes(model, receipt);
         return "receipts/print";
     }
 
-    private void addPageTitleAndPicker(Model model, UUID buildingId, UUID bookingId) {
+    private void addPageTitleAndPicker(
+            Model model, UUID projectId, UUID buildingId, UUID bookingId, boolean platformAdminView) {
         model.addAttribute("pageTitle", "Payment Receipts");
-        model.addAttribute("buildings", buildingService.listForTenant());
         model.addAttribute("selectedBuildingId", buildingId);
-        UUID builderId = TenantContext.requireBuilderId();
+        model.addAttribute("selectedBookingId", bookingId);
+
+        if (platformAdminView) {
+            model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
+            model.addAttribute("buildings", buildingService.listBuildingsForPlatformProject(projectId));
+            model.addAttribute("bookings", listBookingsForPlatformAdmin(buildingId, projectId));
+            return;
+        }
+
+        model.addAttribute("buildings", buildingService.listForTenant());
+        UUID tenantBuilderId = TenantContext.requireBuilderId();
         List<Booking> bookings;
         if (buildingId == null) {
-            bookings = bookingRepository.findActiveForPaymentSchedule(builderId);
+            bookings = bookingRepository.findActiveForPaymentSchedule(tenantBuilderId);
             if (!TenantContext.hasUnrestrictedBuildingAccess()) {
                 bookings =
                         bookings.stream()
@@ -171,26 +229,42 @@ public class ReceiptsHubController {
             bookings = List.of();
         } else {
             bookings =
-                    bookingRepository.findActiveForPaymentScheduleByBuilding(builderId, buildingId);
+                    bookingRepository.findActiveForPaymentScheduleByBuilding(tenantBuilderId, buildingId);
         }
         model.addAttribute("bookings", bookings);
-        model.addAttribute("selectedBookingId", bookingId);
     }
 
-    private void addBookingWorkspace(Model model, UUID buildingId, UUID bookingId) {
-        UUID builderId = TenantContext.requireBuilderId();
-        Booking booking =
-                bookingRepository
-                        .findByIdAndBuilder_IdForSchedule(bookingId, builderId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
-        if (booking.getFlat() != null
-                && booking.getFlat().getBuilding() != null
-                && !TenantContext.canAccessBuilding(booking.getFlat().getBuilding().getId())) {
-            throw new ResourceNotFoundException("Booking not found");
+    private void addBookingWorkspace(
+            Model model, UUID buildingId, UUID bookingId, UUID builderId, boolean platformAdminView) {
+        Booking booking;
+        if (platformAdminView) {
+            booking =
+                    bookingRepository
+                            .findByIdAndBuilder_IdForSchedule(bookingId, builderId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+            if (buildingId != null
+                    && (booking.getFlat() == null
+                            || booking.getFlat().getBuilding() == null
+                            || !buildingId.equals(booking.getFlat().getBuilding().getId()))) {
+                throw new ResourceNotFoundException("Booking not found");
+            }
+            model.addAttribute("scheduleBuilderId", builderId);
+        } else {
+            UUID tenantBuilderId = TenantContext.requireBuilderId();
+            booking =
+                    bookingRepository
+                            .findByIdAndBuilder_IdForSchedule(bookingId, tenantBuilderId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+            if (booking.getFlat() != null
+                    && booking.getFlat().getBuilding() != null
+                    && !TenantContext.canAccessBuilding(booking.getFlat().getBuilding().getId())) {
+                throw new ResourceNotFoundException("Booking not found");
+            }
         }
+
         model.addAttribute("selectedBooking", booking);
-        model.addAttribute("summary", receiptService.summarizeBooking(bookingId));
-        List<Receipt> history = receiptService.listHistoryForBooking(bookingId);
+        model.addAttribute("summary", receiptService.summarizeBooking(bookingId, builderId));
+        List<Receipt> history = receiptService.listHistoryForBooking(bookingId, builderId);
         model.addAttribute("receiptHistory", history);
         model.addAttribute(
                 "historyTotal",
@@ -198,7 +272,6 @@ public class ReceiptsHubController {
                         .filter(r -> !Boolean.TRUE.equals(r.getDishonoured()))
                         .map(Receipt::getAmount)
                         .reduce(ZERO, BigDecimal::add));
-        model.addAttribute("latestReceiptNumber", receiptService.latestReceiptNumberHint(bookingId).orElse(null));
     }
 
     private void addReceiptFormWorkspace(Model model, UUID bookingId, Receipt receiptForm) {
@@ -210,6 +283,37 @@ public class ReceiptsHubController {
                     "nextReceiptNumberPreview", receiptService.previewNextReceiptNumber(bookingId));
         }
         model.addAttribute("bankAccounts", bankService.listActiveForReceipts());
+        model.addAttribute(
+                "latestReceiptNumber",
+                receiptService.latestReceiptNumberHint(bookingId).orElse(null));
+    }
+
+    private List<Booking> listBookingsForPlatformAdmin(UUID buildingId, UUID projectId) {
+        if (buildingId == null) {
+            return Collections.emptyList();
+        }
+        UUID builderId = resolveBuilderId(buildingId, projectId, true);
+        if (builderId == null) {
+            return Collections.emptyList();
+        }
+        return bookingRepository.findActiveForPaymentScheduleByBuilding(builderId, buildingId);
+    }
+
+    private UUID resolveBuilderId(UUID buildingId, UUID projectId, boolean platformAdminView) {
+        if (!platformAdminView) {
+            return TenantContext.getBuilderIdOrNull();
+        }
+        UUID tenant = TenantContext.getBuilderIdOrNull();
+        if (tenant != null) {
+            return tenant;
+        }
+        if (buildingId != null) {
+            Building building = buildingRepository.findByIdWithBuilder(buildingId).orElse(null);
+            if (building != null && building.getBuilder() != null) {
+                return building.getBuilder().getId();
+            }
+        }
+        return projectId;
     }
 
     private static Receipt newReceiptDraft() {
@@ -225,11 +329,21 @@ public class ReceiptsHubController {
         return r;
     }
 
-    private static String redirectToEntry(UUID bookingId, UUID buildingId) {
+    private static String redirectToEntry(UUID bookingId, UUID buildingId, UUID projectId) {
         StringBuilder sb = new StringBuilder("redirect:/receipts?bookingId=").append(bookingId);
+        if (projectId != null) {
+            sb.append("&projectId=").append(projectId);
+        }
         if (buildingId != null) {
             sb.append("&buildingId=").append(buildingId);
         }
         return sb.toString();
+    }
+
+    private static boolean isPlatformAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null
+                && auth.getPrincipal() instanceof Floor21UserPrincipal principal
+                && principal.isSuperAdmin();
     }
 }

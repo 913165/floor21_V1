@@ -9,30 +9,56 @@
     <a class="btn btn-outline-secondary" th:href="@{/bookings}">Bookings</a>
   </div>
 
-  <form class="card card-body shadow-sm mb-3" method="get" th:action="@{/receipts}" id="receiptPickerForm">
-    <div class="row g-2 align-items-end">
-      <div class="col-md-4">
-        <label class="form-label">Building <span class="text-muted fw-normal">(optional)</span></label>
-        <select class="form-select" name="buildingId" id="receiptBuilding">
-          <option value="">All buildings</option>
+  <div class="alert alert-info py-2" th:if="${platformAdminView}">
+    Read-only for platform admin. Choose a project and building, then load a booking to review payment receipts.
+  </div>
+
+  <form class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/receipts}" id="receiptPickerForm">
+    <div class="row g-2 align-items-start">
+      <div class="col-md-3 slab-schedule-picker__field" th:if="${platformAdminView}">
+        <label class="form-label" for="receiptProject">Project</label>
+        <select class="form-select" id="receiptProject" name="projectId"
+                data-project-search-select data-submit-on-select="true">
+          <option value="" th:selected="${filterProjectId == null}">Choose project...</option>
+          <option th:each="p : ${projects}"
+                  th:value="${p.id}"
+                  th:text="${p.companyName}"
+                  th:selected="${filterProjectId != null && filterProjectId == p.id}"></option>
+        </select>
+      </div>
+      <div class="col-md-4 slab-schedule-picker__field" th:classappend="${platformAdminView} ? 'col-md-3' : 'col-md-4'">
+        <label class="form-label" for="receiptBuilding">Building <span class="text-muted fw-normal" th:unless="${platformAdminView}">(optional)</span></label>
+        <select class="form-select" name="buildingId" id="receiptBuilding"
+                th:disabled="${platformAdminView and filterProjectId == null}">
+          <option value="" th:selected="${selectedBuildingId == null}"
+                  th:text="${platformAdminView} ? 'Choose building...' : 'All buildings'">All buildings</option>
           <option th:each="bl : ${buildings}"
                   th:value="${bl.id}"
                   th:selected="${selectedBuildingId != null && selectedBuildingId == bl.id}"
                   th:text="${bl.buildingName}"></option>
         </select>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0"
+           th:if="${platformAdminView and filterProjectId == null}">Select a project first.</p>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0"
+           th:if="${platformAdminView and filterProjectId != null}"></p>
       </div>
-      <div class="col-md-5">
-        <label class="form-label">Booking <span class="text-danger">*</span></label>
-        <select class="form-select" name="bookingId" id="receiptBooking" required>
-          <option value="" th:selected="${selectedBookingId == null}">Choose booking…</option>
+      <div class="col-md-5 slab-schedule-picker__field" th:classappend="${platformAdminView} ? 'col-md-4' : 'col-md-5'">
+        <label class="form-label" for="receiptBooking">Booking <span class="text-danger">*</span></label>
+        <select class="form-select" name="bookingId" id="receiptBooking" required
+                th:disabled="${platformAdminView and (filterProjectId == null or selectedBuildingId == null)}">
+          <option value="" th:selected="${selectedBookingId == null}">Choose booking...</option>
           <option th:each="bk : ${bookings}"
                   th:value="${bk.id}"
                   th:selected="${selectedBookingId != null && selectedBookingId == bk.id}"
                   th:text="|${bk.flat != null ? bk.flat.flatNumber : '—'} — ${bk.client.displayName()}|"></option>
         </select>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0" th:if="${platformAdminView}"></p>
       </div>
-      <div class="col-md-3">
-        <button class="btn btn-primary w-100" type="submit">Load booking</button>
+      <div class="col-md-3 slab-schedule-picker__field" th:classappend="${platformAdminView} ? 'col-md-2' : ''">
+        <label class="form-label slab-schedule-picker__action-label" for="receiptLoadBtn">Load</label>
+        <button class="btn btn-primary w-100" id="receiptLoadBtn" type="submit"
+                th:disabled="${platformAdminView and (filterProjectId == null or selectedBuildingId == null)}">Load booking</button>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0" th:if="${platformAdminView}"></p>
       </div>
     </div>
   </form>
@@ -110,11 +136,11 @@
     <div class="card shadow-sm mb-3">
       <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 py-2">
         <span class="fw-semibold">Payment receipts</span>
-        <button th:unless="${editingReceipt}" type="button" class="btn btn-primary btn-sm"
+        <button th:unless="${readonlyView or editingReceipt}" type="button" class="btn btn-primary btn-sm"
                 data-bs-toggle="modal" data-bs-target="#receipt-form-modal">
           New Payment receipt
         </button>
-        <a th:if="${editingReceipt}" class="btn btn-primary btn-sm"
+        <a th:if="${!readonlyView and editingReceipt}" class="btn btn-primary btn-sm"
            th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, openNew=true)}">
           New Payment receipt
         </a>
@@ -157,19 +183,19 @@
               <td class="small" th:text="${r.enteredByDisplay != null && !#strings.isEmpty(r.enteredByDisplay) ? r.enteredByDisplay : '—'}">—</td>
               <td class="text-end text-nowrap">
                 <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"
-                   th:href="@{/receipts/{id}/print(id=${r.id}, bookingId=${selectedBooking.id})}">Print</a>
-                <a class="btn btn-sm btn-outline-primary"
+                   th:href="@{/receipts/{id}/print(id=${r.id}, bookingId=${selectedBooking.id}, builderId=${scheduleBuilderId})}">Print</a>
+                <a class="btn btn-sm btn-outline-primary" th:unless="${readonlyView}"
                    th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, editReceiptId=${r.id})}">Edit</a>
               </td>
             </tr>
             <tr th:if="${#lists.isEmpty(receiptHistory)}">
               <td colspan="8" class="text-muted text-center py-4">
                 No payment receipts yet.
-                <button th:unless="${editingReceipt}" type="button" class="btn btn-link btn-sm p-0 align-baseline"
+                <button th:unless="${readonlyView or editingReceipt}" type="button" class="btn btn-link btn-sm p-0 align-baseline"
                         data-bs-toggle="modal" data-bs-target="#receipt-form-modal">
                   Record the first receipt
                 </button>
-                <a th:if="${editingReceipt}" class="btn btn-link btn-sm p-0 align-baseline"
+                <a th:if="${!readonlyView and editingReceipt}" class="btn btn-link btn-sm p-0 align-baseline"
                    th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, openNew=true)}">
                   Record the first receipt
                 </a>.
@@ -189,6 +215,7 @@
     </div>
 
     <div class="modal fade" id="receipt-form-modal" tabindex="-1"
+         th:unless="${readonlyView}"
          aria-labelledby="receipt-form-modal-title" aria-hidden="true"
          th:attr="data-open-on-load=${openReceiptModal == true || receiptFormValidationFailed == true}">
       <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">

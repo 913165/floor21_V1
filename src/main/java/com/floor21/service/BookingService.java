@@ -25,8 +25,12 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -35,6 +39,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class BookingService {
+
+    public static final int BOOKINGS_DEFAULT_PAGE_SIZE = 10;
+    public static final int BOOKINGS_MAX_PAGE_SIZE = 100;
 
     private final BookingRepository bookingRepository;
     private final FlatRepository flatRepository;
@@ -53,20 +60,60 @@ public class BookingService {
     private final VaultEntryRepository vaultEntryRepository;
 
     @Transactional(readOnly = true)
-    public List<Booking> list() {
-        UUID builderId = TenantContext.requireBuilderId();
-        List<Booking> bookings;
-        if (canViewAllBookings()) {
-            bookings = bookingRepository.findByBuilder_IdForListUi(builderId);
-        } else {
-            UUID staffUserId = currentStaffUserId();
-            if (staffUserId == null) {
-                return List.of();
-            }
-            bookings =
-                    bookingRepository.findByBuilder_IdAndExecutive_IdForListUi(builderId, staffUserId);
+    public Page<Booking> listPage(int page, int size, String q, UUID projectId) {
+        int safeSize = Math.min(Math.max(size, 5), BOOKINGS_MAX_PAGE_SIZE);
+        int safePage = Math.max(page, 0);
+        Pageable pageable = PageRequest.of(safePage, safeSize);
+
+        UUID builderId = TenantContext.getBuilderIdOrNull();
+        if (builderId != null) {
+            return listPageForTenant(builderId, pageable);
         }
-        return filterByBuildingAccess(bookings);
+        return listPageForPlatformAdmin(projectId, q, pageable);
+    }
+
+    private Page<Booking> listPageForTenant(UUID builderId, Pageable pageable) {
+        Set<UUID> allowedBuildings = TenantContext.getAllowedBuildingIdsOrNull();
+        boolean restrictedBuildings = allowedBuildings != null && !allowedBuildings.isEmpty();
+
+        if (canViewAllBookings()) {
+            if (restrictedBuildings) {
+                return bookingRepository.findByBuilder_IdAndFlat_Building_IdInForListUi(
+                        builderId, allowedBuildings, pageable);
+            }
+            return bookingRepository.findByBuilder_IdForListUi(builderId, pageable);
+        }
+        UUID staffUserId = currentStaffUserId();
+        if (staffUserId == null) {
+            return Page.empty(pageable);
+        }
+        if (restrictedBuildings) {
+            return bookingRepository.findByBuilder_IdAndExecutive_IdAndFlat_Building_IdInForListUi(
+                    builderId, staffUserId, allowedBuildings, pageable);
+        }
+        return bookingRepository.findByBuilder_IdAndExecutive_IdForListUi(
+                builderId, staffUserId, pageable);
+    }
+
+    private Page<Booking> listPageForPlatformAdmin(UUID projectId, String search, Pageable pageable) {
+        String term = search != null && !search.isBlank() ? search.trim() : null;
+        if (projectId != null) {
+            if (term != null) {
+                return bookingRepository.searchByBuilder_IdForListUi(projectId, term, pageable);
+            }
+            return bookingRepository.findByBuilder_IdForListUi(projectId, pageable);
+        }
+        if (term != null) {
+            return bookingRepository.searchAllForPlatformAdmin(term, pageable);
+        }
+        return bookingRepository.findAllForPlatformAdminListUi(pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Booking getForPlatformAdmin(UUID id) {
+        return bookingRepository
+                .findByIdForPlatformAdminView(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
     }
 
     @Transactional(readOnly = true)
@@ -84,20 +131,6 @@ public class BookingService {
             throw new ResourceNotFoundException("Booking not found");
         }
         return booking;
-    }
-
-    private static List<Booking> filterByBuildingAccess(List<Booking> bookings) {
-        if (TenantContext.hasUnrestrictedBuildingAccess()) {
-            return bookings;
-        }
-        return bookings.stream()
-                .filter(
-                        b ->
-                                b.getFlat() != null
-                                        && b.getFlat().getBuilding() != null
-                                        && TenantContext.canAccessBuilding(
-                                                b.getFlat().getBuilding().getId()))
-                .toList();
     }
 
     private static boolean canViewAllBookings() {
