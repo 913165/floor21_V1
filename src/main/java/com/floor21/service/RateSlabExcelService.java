@@ -38,11 +38,45 @@ public class RateSlabExcelService {
     private static final int MAX_ROWS = 500;
     private static final long MAX_BYTES = 5L * 1024 * 1024;
 
+    public static final Object[][] STANDARD_FIVE_STAGE_ROWS = {
+        {1, "Initial booking amount", 10, "Yes"},
+        {2, "On or after execution of this Agreement", 20, "Yes"},
+        {3, "On completion of the Plinth work of the building", 15, "Yes"},
+        {4, "On or before completion 2nd Slab", 2.5, "Yes"},
+        {5, "On handing over possession of Unit or receipt of Occupancy Certificate", 5, "Yes"}
+    };
+
+    public static final Object[][] CONSTRUCTION_TEN_STAGE_ROWS = {
+        {1, "Initial booking amount", 10, "Yes"},
+        {2, "On or after execution of this Agreement", 10, "Yes"},
+        {3, "On completion of the Plinth work of the building", 10, "Yes"},
+        {4, "On or before completion 1st Slab", 10, "Yes"},
+        {5, "On or before completion 2nd Slab", 10, "Yes"},
+        {6, "On or before completion 3rd Slab", 10, "Yes"},
+        {7, "On or before completion 4th Slab", 10, "Yes"},
+        {8, "On completion of brick work up to lintel level", 10, "Yes"},
+        {9, "On completion of internal plaster and flooring", 10, "Yes"},
+        {10, "On handing over possession of Unit or receipt of Occupancy Certificate", 10, "Yes"}
+    };
+
+    public static final Object[][] FRONT_LOADED_ROWS = {
+        {1, "Initial booking amount", 20, "Yes"},
+        {2, "On or after execution of this Agreement", 25, "Yes"},
+        {3, "On completion of the Plinth work of the building", 15, "Yes"},
+        {4, "On or before completion 2nd Slab", 10, "Yes"},
+        {5, "On completion of internal plaster and flooring", 10, "Yes"},
+        {6, "On handing over possession of Unit or receipt of Occupancy Certificate", 20, "Yes"}
+    };
+
     private final SlabRepository slabRepository;
     private final BuilderRepository builderRepository;
     private final BuildingRepository buildingRepository;
 
     public byte[] buildImportTemplate() throws IOException {
+        return buildTemplate(STANDARD_FIVE_STAGE_ROWS);
+    }
+
+    public byte[] buildTemplate(Object[][] sampleRows) throws IOException {
         try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = wb.createSheet("Milestone Templates");
             Row header = sheet.createRow(0);
@@ -50,23 +84,22 @@ public class RateSlabExcelService {
             for (int c = 0; c < headers.length; c++) {
                 header.createCell(c).setCellValue(headers[c]);
             }
-            Object[][] samples = {
-                {1, "Initial booking amount", 10, "Yes"},
-                {2, "On or after execution of this Agreement", 20, "Yes"},
-                {3, "On completion of the Plinth work of the building", 15, "Yes"},
-                {4, "On or before completion 2nd Slab", 2.5, "Yes"},
-                {5, "On handing over possession of Unit or receipt of Occupancy Certificate", 5, "Yes"}
-            };
-            for (int r = 0; r < samples.length; r++) {
+            for (int r = 0; r < sampleRows.length; r++) {
                 Row row = sheet.createRow(r + 1);
-                row.createCell(0).setCellValue(((Number) samples[r][0]).intValue());
-                row.createCell(1).setCellValue((String) samples[r][1]);
-                row.createCell(2).setCellValue(((Number) samples[r][2]).doubleValue());
-                row.createCell(3).setCellValue((String) samples[r][3]);
+                row.createCell(0).setCellValue(((Number) sampleRows[r][0]).intValue());
+                row.createCell(1).setCellValue((String) sampleRows[r][1]);
+                row.createCell(2).setCellValue(((Number) sampleRows[r][2]).doubleValue());
+                row.createCell(3).setCellValue((String) sampleRows[r][3]);
             }
             PoiSheetSupport.autoSizeColumns(sheet, headers.length);
             wb.write(out);
             return out.toByteArray();
+        }
+    }
+
+    public List<RateSlabImportRow> parse(byte[] content) throws IOException {
+        try (InputStream in = new java.io.ByteArrayInputStream(content)) {
+            return parse(in);
         }
     }
 

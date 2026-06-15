@@ -59,6 +59,7 @@ public class FlywayDataSourceMigrationConfig {
                 ensureGroundFloorColumns(dataSource);
                 ensureColumnBhkOrderColumn(dataSource);
                 ensureSlabMilestoneFields(dataSource);
+                ensureMilestoneSampleTemplatesTable(dataSource);
                 ensureSuper2PlatformAdmin(dataSource);
                 return bean;
             }
@@ -227,6 +228,32 @@ public class FlywayDataSourceMigrationConfig {
         } catch (Exception ex) {
             throw new IllegalStateException(
                     "Could not ensure slabs.sort_order / slabs.suggested_percent columns exist", ex);
+        }
+    }
+
+    /** Idempotent guard when V51 cannot run via Flyway (e.g. DB history still at version 50 after squash). */
+    private static void ensureMilestoneSampleTemplatesTable(DataSource dataSource) {
+        try (Connection connection = dataSource.getConnection();
+                Statement statement = connection.createStatement()) {
+            statement.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS milestone_sample_templates (
+                        id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        name         VARCHAR(200) NOT NULL,
+                        description  TEXT,
+                        file_name    VARCHAR(255) NOT NULL,
+                        file_content BYTEA NOT NULL,
+                        sort_order   INT NOT NULL DEFAULT 0,
+                        created_at   TIMESTAMP NOT NULL DEFAULT now(),
+                        updated_at   TIMESTAMP NOT NULL DEFAULT now()
+                    )""");
+            statement.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_milestone_sample_templates_sort
+                      ON milestone_sample_templates (sort_order, name)""");
+        } catch (Exception ex) {
+            throw new IllegalStateException(
+                    "Could not ensure milestone_sample_templates table exists", ex);
         }
     }
 

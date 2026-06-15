@@ -76,6 +76,12 @@
        data-nav-prefix="/expenses"
        th:classappend="${#strings.startsWith(path, '/expenses')} ? ' is-active' : ''">Expenses</a>
 
+    <p class="floor21-nav__section" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')">Others</p>
+    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+       th:href="@{/admin/milestone-sample-templates}"
+       data-nav-prefix="/admin/milestone-sample-templates"
+       th:classappend="${#strings.startsWith(path, '/admin/milestone-sample-templates')} ? ' is-active' : ''">Sample templates</a>
+
     <p class="floor21-nav__section" sec:authorize="hasRole('SUPER_ADMIN')">Platform</p>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/projects}"
@@ -121,6 +127,10 @@
        title="Per-booking payment schedule and slab receipts">Payment schedule (Clients)</a>
 
     <p class="floor21-nav__section" sec:authorize="hasRole('SUPER_ADMIN')">Others</p>
+    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
+       th:href="@{/admin/milestone-sample-templates}"
+       data-nav-prefix="/admin/milestone-sample-templates"
+       th:classappend="${#strings.startsWith(path, '/admin/milestone-sample-templates')} ? ' is-active' : ''">Sample templates</a>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/admin/activity}"
        data-nav-prefix="/admin/activity"
