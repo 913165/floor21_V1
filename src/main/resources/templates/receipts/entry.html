@@ -70,7 +70,11 @@
       if (!building || !booking || !form) return;
       building.addEventListener('change', function () {
         booking.value = '';
-        form.submit();
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit();
+        } else {
+          form.submit();
+        }
       });
     })();
   </script>

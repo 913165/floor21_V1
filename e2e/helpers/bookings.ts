@@ -11,7 +11,14 @@ export async function createBookingForFlat(
   const form = await openNewBookingForm(page);
 
   await form.locator('#client\\.id').selectOption({ label: clientDisplayName });
-  await form.locator('#flat\\.id').selectOption(flatId);
+  const flatSelect = form.locator('#flat\\.id');
+  const flatOption = flatSelect.locator(`option[value="${flatId}"]`);
+  if ((await flatOption.count()) === 0) {
+    throw new Error(
+      `Flat ${flatId} is not in the New booking dropdown — assign only data-bookable flats and restart the app after code changes.`,
+    );
+  }
+  await flatSelect.selectOption(flatId);
   await form.locator('#bookingDate').fill(bookingDate);
   await form.locator('#considerationAmt').fill('5000000');
 

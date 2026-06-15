@@ -208,6 +208,14 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     long countByBookingDateBetween(java.time.LocalDate start, java.time.LocalDate end);
 
+    /** Highest F21-{year}-#### suffix for the given year prefix (e.g. {@code F21-2026-%}). */
+    @Query(
+            value =
+                    "select coalesce(max(cast(substring(booking_code from 10) as integer)), 0) "
+                            + "from bookings where booking_code like :yearPrefix",
+            nativeQuery = true)
+    long maxBookingCodeSequenceForYear(@Param("yearPrefix") String yearPrefix);
+
     @Query(
             "select b from Booking b join fetch b.client where b.builder.id = :builderId and b.status = 'ACTIVE' "
                     + "and b.flat.id in :flatIds order by b.bookingDate desc")

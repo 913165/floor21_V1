@@ -3,7 +3,7 @@ import os from 'os';
 import path from 'path';
 import { expect, type Page } from '@playwright/test';
 import { loginAsSuperAdmin } from './auth';
-import { loadMilestoneSetupForBooking, openMilestoneTemplates } from './nav';
+import { loadMilestoneSetupForBooking, openMilestoneTemplates, waitForUrlBookingId } from './nav';
 import type { PlatformFlowState } from './platform-flow';
 import { waitForMainPanel } from './projects';
 
@@ -61,7 +61,7 @@ export async function ensureClientMilestoneSchedule(
     if (await materialize.isVisible()) {
       page.once('dialog', (dialog) => dialog.accept());
       await Promise.all([
-        page.waitForURL(/milestone-setup.*bookingId=/, { timeout: 30_000 }),
+        waitForUrlBookingId(page, bookingId),
         materialize.click(),
       ]);
       panel = await waitForMainPanel(page);
@@ -77,7 +77,7 @@ export async function ensureClientMilestoneSchedule(
   const saveSchedule = panel.getByRole('button', { name: 'Save schedule' });
   if (await saveSchedule.isVisible()) {
     await Promise.all([
-      page.waitForURL(/milestone-setup.*bookingId=/, { timeout: 30_000 }),
+      waitForUrlBookingId(page, bookingId),
       saveSchedule.click(),
     ]);
     panel = await waitForMainPanel(page);

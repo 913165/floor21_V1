@@ -35,6 +35,13 @@ public final class FlatUnitTypes {
         return Set.copyOf(AMENITY);
     }
 
+    /** Unit type codes excluded from residential booking dropdowns (amenities + retail shops). */
+    public static java.util.List<String> nonBookableUnitTypeCodesUpper() {
+        java.util.List<String> excluded = new java.util.ArrayList<>(AMENITY);
+        excluded.addAll(SHOP_CODES);
+        return excluded;
+    }
+
     public static boolean isParkingCode(String unitType) {
         if (unitType == null || unitType.isBlank()) {
             return false;

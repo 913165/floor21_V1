@@ -247,7 +247,7 @@ export async function adminAssignFlats(page: Page, flow: PlatformFlowState) {
   await expect(adminGrid.locator('#flat-grid')).toBeVisible();
 
   const candidateFlats = adminGrid.locator(
-    '#flat-grid [data-flat-id][data-amenity="false"][data-parking="false"]',
+    '#flat-grid [data-flat-id][data-bookable="true"]',
   );
   const candidateCount = await candidateFlats.count();
   expect(candidateCount).toBeGreaterThanOrEqual(4);

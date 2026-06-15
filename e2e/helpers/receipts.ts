@@ -69,10 +69,7 @@ export async function createPaymentReceipt(
   await modal.locator('#chequeNo').fill(chequeNo);
   await modal.locator('#bankName').fill('HDFC Bank');
 
-  await Promise.all([
-    page.waitForURL(/receipts\?.*bookingId=/, { timeout: 30_000 }),
-    modal.getByRole('button', { name: 'Save receipt' }).click(),
-  ]);
+  await modal.getByRole('button', { name: 'Save receipt' }).click();
 
   const done = await waitForMainPanel(page);
   await expect(

@@ -12,6 +12,8 @@ import com.floor21.service.BrokerService;
 import com.floor21.service.ClientService;
 import com.floor21.service.ReceiptService;
 import java.beans.PropertyEditorSupport;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +47,56 @@ public class BookingController {
 
     @InitBinder("booking")
     public void initBinder(WebDataBinder binder) {
+        binder.registerCustomEditor(
+                LocalDate.class,
+                new PropertyEditorSupport() {
+                    @Override
+                    public void setAsText(String text) {
+                        if (text == null || text.isBlank()) {
+                            setValue(null);
+                        } else {
+                            setValue(LocalDate.parse(text));
+                        }
+                    }
+                });
+        binder.registerCustomEditor(
+                BigDecimal.class,
+                new PropertyEditorSupport() {
+                    @Override
+                    public void setAsText(String text) {
+                        if (text == null || text.isBlank()) {
+                            setValue(null);
+                        } else {
+                            setValue(new BigDecimal(text.replace(",", "").trim()));
+                        }
+                    }
+                });
+        binder.registerCustomEditor(
+                UUID.class,
+                "client.id",
+                new PropertyEditorSupport() {
+                    @Override
+                    public void setAsText(String text) {
+                        if (text == null || text.isBlank()) {
+                            setValue(null);
+                        } else {
+                            setValue(UUID.fromString(text));
+                        }
+                    }
+                });
+        binder.registerCustomEditor(
+                UUID.class,
+                "flat.id",
+                new PropertyEditorSupport() {
+                    @Override
+                    public void setAsText(String text) {
+                        if (text == null || text.isBlank()) {
+                            setValue(null);
+                        } else {
+                            setValue(UUID.fromString(text));
+                        }
+                    }
+                });
         binder.registerCustomEditor(
                 UUID.class,
                 "broker.id",
@@ -117,7 +169,9 @@ public class BookingController {
         model.addAttribute(
                 "flats",
                 flatRepository.findBookableResidentialByBuilder_IdAndStatusIn(
-                        builderId, FlatUnitTypes.amenityCodesUpper(), List.of("AVAILABLE", "HOLD")));
+                        builderId,
+                        FlatUnitTypes.nonBookableUnitTypeCodesUpper(),
+                        List.of("AVAILABLE", "HOLD")));
         model.addAttribute("executives", userProjectAssignmentService.listActiveUsersForProject(builderId));
         return "bookings/form";
     }
@@ -160,7 +214,7 @@ public class BookingController {
                 "flats",
                 flatRepository.findBookableResidentialByBuilder_IdAndStatusIn(
                         builderId,
-                        FlatUnitTypes.amenityCodesUpper(),
+                        FlatUnitTypes.nonBookableUnitTypeCodesUpper(),
                         List.of("AVAILABLE", "HOLD", "BOOKED")));
         model.addAttribute("executives", userProjectAssignmentService.listActiveUsersForProject(builderId));
         return "bookings/form";

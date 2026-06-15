@@ -322,10 +322,8 @@ public class BookingService {
 
     private String nextBookingCode() {
         int year = LocalDate.now().getYear();
-        LocalDate start = LocalDate.of(year, 1, 1);
-        LocalDate end = LocalDate.of(year, 12, 31);
-        // booking_code is globally unique; sequence must not reset per builder/project.
-        long seq = bookingRepository.countByBookingDateBetween(start, end) + 1;
+        String yearPrefix = String.format("F21-%d-%%", year);
+        long seq = bookingRepository.maxBookingCodeSequenceForYear(yearPrefix) + 1;
         return String.format("F21-%d-%04d", year, seq);
     }
 }

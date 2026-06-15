@@ -4,7 +4,16 @@ import { waitForMainPanel } from './projects';
 
 export { closeClientsImportModalIfOpen };
 
-/** Project filter uses data-project-search-select + auto-submit; pick via the search UI. */
+function urlParam(url: string | URL, name: string): string | null {
+  return new URL(url).searchParams.get(name);
+}
+
+function waitForUrlBookingId(page: Page, bookingId: string) {
+  return page.waitForURL((url) => urlParam(url, 'bookingId') === bookingId, { timeout: 30_000 });
+}
+
+export { waitForUrlBookingId };
+
 async function applyProjectFilter(page: Page, main: Locator, projectId: string): Promise<Locator> {
   const select = main.locator('#filterProject');
   await expect(main.locator('#filterProject-search')).toBeVisible({ timeout: 15_000 });
@@ -284,7 +293,7 @@ export async function loadMilestoneSetupForBooking(
   await expect(panel.locator('#msBooking')).toBeVisible({ timeout: 15_000 });
   await panel.locator('#msBooking').selectOption(bookingId);
   await Promise.all([
-    page.waitForURL(/milestone-setup.*bookingId=/, { timeout: 30_000 }),
+    waitForUrlBookingId(page, bookingId),
     panel.locator('#milestonePickerForm').getByRole('button', { name: 'Load client' }).click(),
   ]);
   return waitForMainPanel(page);
@@ -295,18 +304,14 @@ export async function loadPaymentReceiptsForBooking(
   buildingId: string,
   bookingId: string,
 ): Promise<Locator> {
-  await clickSidebarLink(page, 'Payment Receipts');
-  let panel = await waitForMainPanel(page);
+  const query = new URLSearchParams({ buildingId, bookingId });
+  await page.goto(`receipts?${query}`, { waitUntil: 'commit' });
+  const panel = await waitForMainPanel(page);
   await expect(panel.getByRole('heading', { name: 'Payment Receipts' })).toBeVisible();
-
-  await panel.locator('#receiptBuilding').selectOption(buildingId);
-  panel = await waitForMainPanel(page);
-  await panel.locator('#receiptBooking').selectOption(bookingId);
-  await Promise.all([
-    page.waitForURL(/receipts\?.*bookingId=/, { timeout: 30_000 }),
-    panel.locator('#receiptPickerForm').getByRole('button', { name: 'Load booking' }).click(),
-  ]);
-  return waitForMainPanel(page);
+  await expect(panel.getByRole('button', { name: 'New Payment receipt' })).toBeVisible({
+    timeout: 30_000,
+  });
+  return panel;
 }
 
 export async function loadPaymentScheduleForBooking(
@@ -314,16 +319,10 @@ export async function loadPaymentScheduleForBooking(
   buildingId: string,
   bookingId: string,
 ): Promise<Locator> {
-  await clickSidebarLink(page, 'Payment schedule (Clients)');
-  let panel = await waitForMainPanel(page);
+  const query = new URLSearchParams({ buildingId, bookingId });
+  await page.goto(`bookings/payment-schedule?${query}`, { waitUntil: 'commit' });
+  const panel = await waitForMainPanel(page);
   await expect(panel.getByRole('heading', { name: /Payment schedule/i })).toBeVisible();
-
-  await panel.locator('#scheduleBuilding').selectOption(buildingId);
-  panel = await waitForMainPanel(page);
-  await panel.locator('#scheduleBooking').selectOption(bookingId);
-  await Promise.all([
-    page.waitForURL(/payment-schedule.*bookingId=/, { timeout: 30_000 }),
-    panel.locator('#schedulePickerForm').getByRole('button', { name: 'Load booking' }).click(),
-  ]);
-  return waitForMainPanel(page);
+  await expect(panel.getByText('Slab payment schedule')).toBeVisible({ timeout: 30_000 });
+  return panel;
 }
