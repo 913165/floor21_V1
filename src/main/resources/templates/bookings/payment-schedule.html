@@ -98,7 +98,7 @@
         <div class="col-md-2"><span class="text-muted">BHK / unit type</span><br/><span class="fw-semibold" th:text="${selectedBooking.flat != null && selectedBooking.flat.bhkType != null ? selectedBooking.flat.bhkType : dash}">-</span></div>
         <div class="col-md-2"><span class="text-muted">Building</span><br/><span th:text="${selectedBooking.flat != null && selectedBooking.flat.building != null ? selectedBooking.flat.building.buildingName : dash}">-</span></div>
         <div class="col-md-3"><span class="text-muted">Consideration / flat base</span><br/><span class="slab-amt--base" th:text="${amt.formatAmountDisplay(baseAmount)}">0</span></div>
-        <div class="col-md-3"><span class="text-muted">Booked</span><br/><span th:text="${selectedBooking.bookingDate}">-</span></div>
+        <div class="col-md-3"><span class="text-muted">Booked</span><br/><span th:text="${selectedBooking.bookingDate != null ? #temporals.format(selectedBooking.bookingDate, 'dd-MMM-yyyy') : dash}">-</span></div>
         <div class="col-md-6"><span class="text-muted">Client</span><br/><span th:text="${selectedBooking.client.displayName()}">-</span></div>
         <div class="col-md-6"><span class="text-muted">Booking code</span><br/><span th:text="${selectedBooking.bookingCode}">-</span></div>
       </div>
@@ -155,7 +155,7 @@
             <tr th:each="row : ${ledgerRows}"
                 th:classappend="${row.rowType().name() == 'SLAB_TOTAL'} ? ' slab-ledger-row--milestone' : (${row.rowType().name() == 'TODAY'} ? ' slab-ledger-row--today' : ' slab-ledger-row--receipt')">
               <td class="text-nowrap text-muted"
-                  th:text="${row.date() != null ? row.date() : dash}">-</td>
+                  th:text="${row.date() != null ? #temporals.format(row.date(), 'dd-MMM-yyyy') : dash}">-</td>
               <td th:classappend="${row.rowType().name() == 'SLAB_TOTAL'} ? ' slab-ledger-milestone-title' : (${row.rowType().name() == 'TODAY'} ? ' fw-semibold text-primary' : '')"
                   th:text="${row.slabLabel() != null ? row.slabLabel() : dash}">-</td>
               <td class="text-end slab-amt--agreed"

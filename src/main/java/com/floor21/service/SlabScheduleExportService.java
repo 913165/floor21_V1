@@ -42,7 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SlabScheduleExportService {
 
     private static final DateTimeFormatter DATE_FMT =
-            DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH);
+            DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
 
     private static final String[] LEDGER_HEADERS = {
         "Date", "Slab", "Amount", "Receipt", "Balance", "Days", "Interest", "Info"

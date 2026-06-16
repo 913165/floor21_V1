@@ -56,7 +56,8 @@ public class SlabScheduleLedgerService {
         LocalDate today = LocalDate.now();
         List<SlabScheduleLedgerRow> rows = new ArrayList<>();
 
-        for (BookingPaymentSlab slab : slabs) {
+        for (int slabIndex = 0; slabIndex < slabs.size(); slabIndex++) {
+            BookingPaymentSlab slab = slabs.get(slabIndex);
             BigDecimal due = SlabReceiptWaterfall.slabDue(slab);
             List<ReceiptSlabAllocationSlice> payments =
                     bySlab.getOrDefault(slab.getId(), List.of());
@@ -78,7 +79,15 @@ public class SlabScheduleLedgerService {
             BigDecimal runningPaid = ZERO;
             for (ReceiptSlabAllocationSlice payment : payments) {
                 runningPaid = runningPaid.add(payment.amount());
-                BigDecimal balance = due.subtract(runningPaid).max(ZERO);
+                BigDecimal balance = due.subtract(runningPaid);
+                BigDecimal forward =
+                        laterAllocationForReceipt(
+                                payment.receiptId(), slabIndex, slabs, bySlab);
+                if (forward.compareTo(ZERO) > 0) {
+                    balance = balance.subtract(forward);
+                } else {
+                    balance = balance.max(ZERO);
+                }
                 rows.add(
                         new SlabScheduleLedgerRow(
                                 SlabLedgerRowType.RECEIPT,
@@ -123,6 +132,30 @@ public class SlabScheduleLedgerService {
             }
         }
         return rows;
+    }
+
+    /**
+     * Receipt amount allocated to later slabs (display only). When a receipt clears the current slab
+     * and carries surplus forward, the current slab row shows negative balance equal to that surplus.
+     */
+    private static BigDecimal laterAllocationForReceipt(
+            UUID receiptId,
+            int slabIndex,
+            List<BookingPaymentSlab> slabs,
+            Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab) {
+        if (receiptId == null) {
+            return ZERO;
+        }
+        BigDecimal total = ZERO;
+        for (int i = slabIndex + 1; i < slabs.size(); i++) {
+            for (ReceiptSlabAllocationSlice slice :
+                    bySlab.getOrDefault(slabs.get(i).getId(), List.of())) {
+                if (receiptId.equals(slice.receiptId())) {
+                    total = total.add(slice.amount());
+                }
+            }
+        }
+        return total;
     }
 
     @Transactional(readOnly = true)
