@@ -2,51 +2,124 @@
 <html xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
-<div th:fragment="content" th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}">
-  <h1 class="h3 mb-4" th:text="${pageTitle}">Dashboard</h1>
-  <div class="row g-3 mb-4">
-    <div class="col-md-3">
-      <div class="card shadow-sm"><div class="card-body">
-        <div class="text-muted small">Total flats</div>
-        <div class="fs-4" th:text="${dashboard.totalFlats()}">0</div>
-      </div></div>
+<div th:fragment="content"
+     th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}, recent=${dashboard.recentBookings()}">
+  <link rel="stylesheet" th:href="@{/css/dashboard.css(v=dashboard4-v2)}" data-turbo-track="reload"/>
+
+  <div class="f21-dashboard">
+    <h1 class="f21-dashboard__title" th:text="${pageTitle}">Dashboard</h1>
+
+    <div class="f21-stat-grid">
+      <article class="f21-stat-card f21-stat-card--flats">
+        <div class="f21-stat-card__head">
+          <span class="f21-stat-card__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 21h18"/>
+              <path d="M5 21V7l7-4 7 4v14"/>
+              <path d="M9 21v-6h6v6"/>
+            </svg>
+          </span>
+          <span class="f21-stat-card__label">Total flats</span>
+        </div>
+        <div class="f21-stat-card__value" th:text="${dashboard.totalFlats()}">0</div>
+        <div class="f21-stat-card__hint">Across all buildings</div>
+      </article>
+
+      <article class="f21-stat-card f21-stat-card--booked">
+        <div class="f21-stat-card__head">
+          <span class="f21-stat-card__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+          </span>
+          <span class="f21-stat-card__label">Booked</span>
+        </div>
+        <div class="f21-stat-card__value" th:text="${dashboard.bookedFlats()}">0</div>
+        <div class="f21-stat-card__hint">Active bookings</div>
+      </article>
+
+      <article class="f21-stat-card f21-stat-card--available">
+        <div class="f21-stat-card__head">
+          <span class="f21-stat-card__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 21h18"/>
+              <path d="M9 21V9l6-3 6 3v12"/>
+              <path d="M12 6V3"/>
+              <path d="M12 3h3"/>
+            </svg>
+          </span>
+          <span class="f21-stat-card__label">Available</span>
+        </div>
+        <div class="f21-stat-card__value" th:text="${dashboard.availableFlats()}">0</div>
+        <div class="f21-stat-card__hint">Ready to book</div>
+      </article>
+
+      <article class="f21-stat-card f21-stat-card--value">
+        <div class="f21-stat-card__head">
+          <span class="f21-stat-card__icon f21-stat-card__icon--rupee" aria-hidden="true">₹</span>
+          <span class="f21-stat-card__label">Booking value</span>
+        </div>
+        <div class="f21-stat-card__value" th:text="${amt.formatAmountDisplay(dashboard.revenue())}">0</div>
+        <div class="f21-stat-card__hint">Active pipeline</div>
+      </article>
     </div>
-    <div class="col-md-3">
-      <div class="card shadow-sm"><div class="card-body">
-        <div class="text-muted small">Booked</div>
-        <div class="fs-4" th:text="${dashboard.bookedFlats()}">0</div>
-      </div></div>
-    </div>
-    <div class="col-md-3">
-      <div class="card shadow-sm"><div class="card-body">
-        <div class="text-muted small">Available</div>
-        <div class="fs-4" th:text="${dashboard.availableFlats()}">0</div>
-      </div></div>
-    </div>
-    <div class="col-md-3">
-      <div class="card shadow-sm"><div class="card-body">
-        <div class="text-muted small">Active booking value</div>
-        <div class="fs-4" th:text="${amt.formatAmountDisplay(dashboard.revenue())}">0</div>
-      </div></div>
-    </div>
-  </div>
-  <div class="card shadow-sm">
-    <div class="card-header">Recent bookings</div>
-    <div class="table-responsive">
-      <table class="table table-sm mb-0">
-        <thead><tr><th>Code</th><th>Client</th><th>Flat</th><th>Building</th><th>Status</th></tr></thead>
-        <tbody>
-        <tr th:each="r : ${dashboard.recentBookings()}">
-          <td th:text="${r.bookingCode()}"></td>
-          <td th:text="${r.clientName()}"></td>
-          <td th:text="${r.flatNumber()}"></td>
-          <td th:text="${r.buildingName()}"></td>
-          <td th:text="${r.status()}"></td>
-        </tr>
-        <tr th:if="${#lists.isEmpty(dashboard.recentBookings())}"><td colspan="5" class="text-muted">No data yet</td></tr>
-        </tbody>
-      </table>
-    </div>
+
+    <section class="f21-dashboard-panel" aria-labelledby="dashboard-recent-bookings">
+      <div class="f21-dashboard-panel__header">
+        <div class="f21-dashboard-panel__title-wrap">
+          <svg class="f21-dashboard-panel__title-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          <h2 class="f21-dashboard-panel__title" id="dashboard-recent-bookings">Recent bookings</h2>
+          <span class="f21-dashboard-panel__count" th:text="${#lists.size(recent)}">0</span>
+        </div>
+        <a class="f21-dashboard-panel__link" th:href="@{/bookings}" data-turbo-frame="floor21-main">
+          View all <span aria-hidden="true">→</span>
+        </a>
+      </div>
+
+      <div class="table-responsive">
+        <table class="f21-dashboard-table">
+          <thead>
+          <tr>
+            <th scope="col">Code</th>
+            <th scope="col">Client</th>
+            <th scope="col">Flat</th>
+            <th scope="col">Building</th>
+            <th scope="col">Status</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="r : ${recent}">
+            <td class="f21-dashboard-table__code" th:text="${r.bookingCode()}"></td>
+            <td>
+              <div class="f21-dashboard-table__client">
+                <span class="f21-dashboard-table__avatar" th:text="${r.clientInitials()}">LS</span>
+                <span class="f21-dashboard-table__client-name" th:text="${r.clientName()}"></span>
+              </div>
+            </td>
+            <td th:text="${r.flatNumber()}"></td>
+            <td th:text="${r.buildingName()}"></td>
+            <td>
+              <span class="f21-dashboard-status"
+                    th:classappend="${#strings.equalsIgnoreCase(r.status(), 'ACTIVE')} ? ' f21-dashboard-status--active' : ' f21-dashboard-status--muted'"
+                    th:text="${#strings.equalsIgnoreCase(r.status(), 'ACTIVE') ? 'Active' : r.status()}">Active</span>
+            </td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(recent)}">
+            <td class="f21-dashboard-table__empty" colspan="5">No bookings yet.</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 </div>
 </body>

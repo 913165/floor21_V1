@@ -4,7 +4,7 @@
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content">
-  <link rel="stylesheet" th:href="@{/css/client-detail.css(v=1)}" data-turbo-track="reload"/>
+  <link rel="stylesheet" th:href="@{/css/client-detail.css(v=deep-content-v1)}" data-turbo-track="reload"/>
 
   <div class="alert alert-secondary py-2 mb-3" sec:authorize="hasRole('SUPER_ADMIN')">
     View only — platform admin cannot edit client records.

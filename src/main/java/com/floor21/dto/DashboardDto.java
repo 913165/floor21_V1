@@ -12,5 +12,10 @@ public record DashboardDto(
         List<RecentBookingRow> recentBookings) {
 
     public record RecentBookingRow(
-            String bookingCode, String clientName, String flatNumber, String buildingName, String status) {}
+            String bookingCode,
+            String clientName,
+            String clientInitials,
+            String flatNumber,
+            String buildingName,
+            String status) {}
 }

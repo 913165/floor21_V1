@@ -364,6 +364,7 @@ public class PlatformAdminService {
         return new RecentBookingRow(
                 b.getBookingCode(),
                 b.getClient().displayName(),
+                b.getClient().avatarInitials(),
                 b.getFlat().getFlatNumber(),
                 b.getFlat().getBuilding().getBuildingName(),
                 b.getStatus());

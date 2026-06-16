@@ -2,55 +2,97 @@
 <html xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
-<div th:fragment="content" th:with="pd=${platformDashboard}, amt=${T(com.floor21.util.IndianRupeesFormatter)}">
-  <h1 class="h3 mb-4" th:text="${pageTitle}">Platform dashboard</h1>
-  
-  <div class="row g-3 mb-4">
-    <div class="col-md-3">
-      <div class="card shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small">Builders (active)</div>
-          <div class="fs-4" th:text="${pd.activeBuilders()} + ' / ' + ${pd.totalBuilders()}">0</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small">Buildings</div>
-          <div class="fs-4" th:text="${pd.totalBuildings()}">0</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small">Flats (booked / total)</div>
-          <div class="fs-4" th:text="${pd.bookedFlats()} + ' / ' + ${pd.totalFlats()}">0</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small">Bookings this month</div>
-          <div class="fs-4" th:text="${pd.bookingsThisMonth()}">0</div>
-          <div class="text-muted small mt-1">Value: <span th:text="${amt.formatAmountDisplay(pd.activeBookingValue())}">0</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
+<div th:fragment="content"
+     th:with="pd=${platformDashboard}, amt=${T(com.floor21.util.IndianRupeesFormatter)}, recent=${recentBookings}">
+  <link rel="stylesheet" th:href="@{/css/dashboard.css(v=dashboard4-v2)}" data-turbo-track="reload"/>
 
-  <div class="row g-3">
-    <div class="col-lg-7">
-      <div class="card shadow-sm">
-        <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <span>Recent bookings (all tenants)</span>
-          <form class="d-flex align-items-center gap-2 mb-0" method="get" th:action="@{/dashboard}">
+  <div class="f21-dashboard">
+    <h1 class="f21-dashboard__title" th:text="${pageTitle}">Platform dashboard</h1>
+
+    <div class="f21-stat-grid">
+      <article class="f21-stat-card f21-stat-card--builders">
+        <div class="f21-stat-card__head">
+          <span class="f21-stat-card__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </span>
+          <span class="f21-stat-card__label">Builders (active)</span>
+        </div>
+        <div class="f21-stat-card__value"
+             th:text="${pd.activeBuilders()} + ' / ' + ${pd.totalBuilders()}">0</div>
+        <div class="f21-stat-card__hint"
+             th:text="${pd.inactiveBuilders()} + ' inactive'">0 inactive</div>
+      </article>
+
+      <article class="f21-stat-card f21-stat-card--flats">
+        <div class="f21-stat-card__head">
+          <span class="f21-stat-card__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 21h18"/>
+              <path d="M5 21V7l7-4 7 4v14"/>
+              <path d="M9 21v-6h6v6"/>
+            </svg>
+          </span>
+          <span class="f21-stat-card__label">Buildings</span>
+        </div>
+        <div class="f21-stat-card__value" th:text="${pd.totalBuildings()}">0</div>
+        <div class="f21-stat-card__hint">Across all tenants</div>
+      </article>
+
+      <article class="f21-stat-card f21-stat-card--booked">
+        <div class="f21-stat-card__head">
+          <span class="f21-stat-card__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+          </span>
+          <span class="f21-stat-card__label">Flats (booked / total)</span>
+        </div>
+        <div class="f21-stat-card__value" th:text="${pd.bookedFlats()} + ' / ' + ${pd.totalFlats()}">0</div>
+        <div class="f21-stat-card__hint"
+             th:text="${pd.availableFlats()} + ' available'">0 available</div>
+      </article>
+
+      <article class="f21-stat-card f21-stat-card--value">
+        <div class="f21-stat-card__head">
+          <span class="f21-stat-card__icon f21-stat-card__icon--rupee" aria-hidden="true">?</span>
+          <span class="f21-stat-card__label">Bookings this month</span>
+        </div>
+        <div class="f21-stat-card__value" th:text="${pd.bookingsThisMonth()}">0</div>
+        <div class="f21-stat-card__hint">
+          Value: <span th:text="${amt.formatAmountDisplay(pd.activeBookingValue())}">0</span>
+        </div>
+      </article>
+    </div>
+
+    <div class="f21-dashboard-split">
+      <section class="f21-dashboard-panel f21-dashboard-panel--wide" aria-labelledby="platform-recent-bookings">
+        <div class="f21-dashboard-panel__header">
+          <div class="f21-dashboard-panel__title-wrap">
+            <svg class="f21-dashboard-panel__title-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            <h2 class="f21-dashboard-panel__title" id="platform-recent-bookings">Recent bookings (all tenants)</h2>
+            <span class="f21-dashboard-panel__count"
+                  th:if="${recentBookingPage != null}"
+                  th:text="${recentBookingPage.totalElements}">0</span>
+          </div>
+          <form class="f21-dashboard-panel__toolbar mb-0" method="get" th:action="@{/dashboard}">
             <input type="hidden" name="page" value="0"/>
-            <label class="form-label small text-muted mb-0" for="dashboard-page-size">Per page</label>
-            <select class="form-select form-select-sm" id="dashboard-page-size" name="size"
-                    style="width: auto" onchange="this.form.submit()">
+            <label class="f21-dashboard-panel__toolbar-label" for="dashboard-page-size">Per page</label>
+            <select class="form-select form-select-sm f21-dashboard-panel__page-size"
+                    id="dashboard-page-size" name="size" onchange="this.form.submit()">
               <option th:each="opt : ${pageSizeOptions}"
                       th:value="${opt}"
                       th:text="${opt}"
@@ -58,33 +100,53 @@
             </select>
           </form>
         </div>
+
         <div class="table-responsive">
-          <table class="table table-sm mb-0">
-            <thead><tr><th>Code</th><th>Client</th><th>Flat</th><th>Building</th><th>Status</th></tr></thead>
+          <table class="f21-dashboard-table">
+            <thead>
+            <tr>
+              <th scope="col">Code</th>
+              <th scope="col">Client</th>
+              <th scope="col">Flat</th>
+              <th scope="col">Building</th>
+              <th scope="col">Status</th>
+            </tr>
+            </thead>
             <tbody>
-            <tr th:each="r : ${recentBookings}">
-              <td th:text="${r.bookingCode()}"></td>
-              <td th:text="${r.clientName()}"></td>
+            <tr th:each="r : ${recent}">
+              <td class="f21-dashboard-table__code" th:text="${r.bookingCode()}"></td>
+              <td>
+                <div class="f21-dashboard-table__client">
+                  <span class="f21-dashboard-table__avatar" th:text="${r.clientInitials()}">LS</span>
+                  <span class="f21-dashboard-table__client-name" th:text="${r.clientName()}"></span>
+                </div>
+              </td>
               <td th:text="${r.flatNumber()}"></td>
               <td th:text="${r.buildingName()}"></td>
-              <td th:text="${r.status()}"></td>
+              <td>
+                <span class="f21-dashboard-status"
+                      th:classappend="${#strings.equalsIgnoreCase(r.status(), 'ACTIVE')} ? ' f21-dashboard-status--active' : ' f21-dashboard-status--muted'"
+                      th:text="${#strings.equalsIgnoreCase(r.status(), 'ACTIVE') ? 'Active' : r.status()}">Active</span>
+              </td>
             </tr>
-            <tr th:if="${#lists.isEmpty(recentBookings)}"><td colspan="5" class="text-muted">No bookings yet.</td></tr>
+            <tr th:if="${#lists.isEmpty(recent)}">
+              <td class="f21-dashboard-table__empty" colspan="5">No bookings yet.</td>
+            </tr>
             </tbody>
           </table>
         </div>
-        <div class="card-footer border-top-0 pt-0 pb-3">
-          <nav class="d-flex flex-wrap align-items-center justify-content-between gap-2"
-               th:if="${recentBookingPage != null and recentBookingPage.totalElements > 0}"
-               aria-label="Recent bookings pagination">
-            <p class="text-muted small mb-0">
-              Showing
-              <strong th:text="${recentBookingPage.number * recentBookingPage.size + 1}">1</strong>
-              to
-              <strong th:text="${recentBookingPage.number * recentBookingPage.size + recentBookingPage.numberOfElements}">10</strong>
-              of <strong th:text="${recentBookingPage.totalElements}">0</strong>
-            </p>
-            <ul class="pagination pagination-sm mb-0" th:if="${recentBookingPage.totalPages > 1}">
+
+        <div class="f21-dashboard-panel__footer"
+             th:if="${recentBookingPage != null and recentBookingPage.totalElements > 0}">
+          <p class="f21-dashboard-panel__meta mb-0">
+            Showing
+            <strong th:text="${recentBookingPage.number * recentBookingPage.size + 1}">1</strong>
+            to
+            <strong th:text="${recentBookingPage.number * recentBookingPage.size + recentBookingPage.numberOfElements}">10</strong>
+            of <strong th:text="${recentBookingPage.totalElements}">0</strong>
+          </p>
+          <nav aria-label="Recent bookings pagination" th:if="${recentBookingPage.totalPages > 1}">
+            <ul class="pagination pagination-sm f21-dashboard-pagination mb-0">
               <li class="page-item" th:classappend="${!recentBookingPage.hasPrevious()} ? 'disabled'">
                 <a class="page-link"
                    th:if="${recentBookingPage.hasPrevious()}"
@@ -104,28 +166,47 @@
             </ul>
           </nav>
         </div>
-      </div>
-    </div>
-    <div class="col-lg-5">
-      <div class="card shadow-sm mb-3">
-        <div class="card-header">Newest builders</div>
-        <ul class="list-group list-group-flush">
-          <li class="list-group-item d-flex justify-content-between" th:each="b : ${pd.recentBuilders()}">
-            <span th:text="${b.companyName()}">ù</span>
-            <span class="text-muted small" th:text="${b.city()}">ù</span>
-          </li>
-          <li class="list-group-item text-muted" th:if="${#lists.isEmpty(pd.recentBuilders())}">No builders.</li>
-        </ul>
-      </div>
-      <div class="d-flex flex-wrap gap-2">
-        <a class="btn btn-outline-primary btn-sm" th:href="@{/admin/users}">Manage users</a>
-        <a class="btn btn-outline-primary btn-sm" th:href="@{/admin/activity}">View all activity</a>
-      </div>
+      </section>
+
+      <aside class="f21-dashboard-side">
+        <section class="f21-dashboard-panel" aria-labelledby="platform-newest-builders">
+          <div class="f21-dashboard-panel__header">
+            <div class="f21-dashboard-panel__title-wrap">
+              <svg class="f21-dashboard-panel__title-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                   aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M19 8v6"/>
+                <path d="M22 11h-6"/>
+              </svg>
+              <h2 class="f21-dashboard-panel__title" id="platform-newest-builders">Newest builders</h2>
+              <span class="f21-dashboard-panel__count" th:text="${#lists.size(pd.recentBuilders())}">0</span>
+            </div>
+            <a class="f21-dashboard-panel__link" th:href="@{/admin/projects}" data-turbo-frame="floor21-main">
+              View all <span aria-hidden="true">?</span>
+            </a>
+          </div>
+          <ul class="f21-dashboard-list">
+            <li class="f21-dashboard-list__item" th:each="b : ${pd.recentBuilders()}">
+              <div class="f21-dashboard-list__identity">
+                <span class="f21-dashboard-table__avatar f21-dashboard-table__avatar--builder"
+                      th:text="${#strings.length(b.companyName()) >= 2 ? #strings.toUpperCase(#strings.substring(b.companyName(), 0, 2)) : b.companyName()}">AB</span>
+                <span class="f21-dashboard-list__name" th:text="${b.companyName()}">Builder</span>
+              </div>
+              <span class="f21-dashboard-list__meta" th:text="${b.city()}">City</span>
+            </li>
+            <li class="f21-dashboard-list__empty" th:if="${#lists.isEmpty(pd.recentBuilders())}">No builders yet.</li>
+          </ul>
+        </section>
+
+        <div class="f21-dashboard-actions">
+          <a class="f21-dashboard-actions__btn" th:href="@{/admin/users}" data-turbo-frame="floor21-main">Manage users</a>
+          <a class="f21-dashboard-actions__btn" th:href="@{/admin/activity}" data-turbo-frame="floor21-main">View all activity</a>
+        </div>
+      </aside>
     </div>
   </div>
 </div>
 </body>
 </html>
-
-
-

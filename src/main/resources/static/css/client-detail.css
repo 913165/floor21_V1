@@ -15,8 +15,8 @@
 
 [data-bs-theme="dark"] .client-card {
   --client-accent-heading: #5dcaa5;
-  --client-surface: #1f2329;
-  --client-border: #33373d;
+  --client-surface: #152035;
+  --client-border: rgba(100, 130, 175, 0.28);
   --client-text: #f0f0f0;
   --client-text-secondary: #9a9a9a;
   --client-text-empty: #6b6b6b;

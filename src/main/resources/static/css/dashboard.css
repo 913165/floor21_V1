@@ -1,0 +1,569 @@
+/* Dashboard — stat cards + recent bookings (Dashboard4 layout) */
+
+.f21-dashboard__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.35rem;
+  color: var(--bs-body-color);
+}
+
+.f21-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.35rem;
+}
+
+@media (max-width: 991.98px) {
+  .f21-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575.98px) {
+  .f21-stat-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.f21-stat-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-height: 7.5rem;
+  padding: 1rem 1.05rem 0.95rem;
+  border: 1px solid #e2e8f0;
+  border-top-width: 3px;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.f21-stat-card--flats {
+  border-top-color: #3b82f6;
+}
+
+.f21-stat-card--builders {
+  border-top-color: #6366f1;
+}
+
+.f21-stat-card--booked {
+  border-top-color: #4ade80;
+}
+
+.f21-stat-card--available {
+  border-top-color: #16a34a;
+}
+
+.f21-stat-card--value {
+  border-top-color: #f59e0b;
+}
+
+.f21-stat-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.f21-stat-card__icon {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.f21-stat-card__icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.f21-stat-card__icon--rupee {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.f21-stat-card--flats .f21-stat-card__icon {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.f21-stat-card--builders .f21-stat-card__icon {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+}
+
+.f21-stat-card--booked .f21-stat-card__icon {
+  background: rgba(74, 222, 128, 0.16);
+  color: #16a34a;
+}
+
+.f21-stat-card--available .f21-stat-card__icon {
+  background: rgba(22, 163, 74, 0.14);
+  color: #15803d;
+}
+
+.f21-stat-card--value .f21-stat-card__icon {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+}
+
+.f21-stat-card__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  line-height: 1.2;
+}
+
+.f21-stat-card__value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--bs-body-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.f21-stat-card__hint {
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+  margin-top: auto;
+}
+
+/* Recent bookings panel */
+.f21-dashboard-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.f21-dashboard-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.95rem 1.15rem;
+  border-bottom: 1px solid #e8ecf2;
+}
+
+.f21-dashboard-panel__title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.f21-dashboard-panel__title-icon {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--bs-secondary-color);
+}
+
+.f21-dashboard-panel__title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--bs-body-color);
+}
+
+.f21-dashboard-panel__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.f21-dashboard-panel__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.f21-dashboard-panel__link:hover,
+.f21-dashboard-panel__link:focus-visible {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.f21-dashboard-table {
+  width: 100%;
+  margin-bottom: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.f21-dashboard-table thead th {
+  padding: 0.7rem 1.15rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.f21-dashboard-table tbody td {
+  padding: 0.85rem 1.15rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #eef2f7;
+  color: var(--bs-body-color);
+  font-size: 0.9rem;
+}
+
+.f21-dashboard-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.f21-dashboard-table__code {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.f21-dashboard-table__client {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.f21-dashboard-table__avatar {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: rgba(59, 130, 246, 0.14);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.22);
+}
+
+.f21-dashboard-table__client-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.f21-dashboard-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.f21-dashboard-status::before {
+  content: "";
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.f21-dashboard-status--active {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+  border: 1px solid rgba(34, 197, 94, 0.28);
+}
+
+.f21-dashboard-status--active::before {
+  background: #22c55e;
+}
+
+.f21-dashboard-status--muted {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+  border: 1px solid rgba(100, 116, 139, 0.22);
+}
+
+.f21-dashboard-status--muted::before {
+  background: #94a3b8;
+}
+
+.f21-dashboard-table__empty {
+  padding: 2rem 1.15rem !important;
+  text-align: center;
+  color: var(--bs-secondary-color);
+}
+
+/* Dark theme — deep navy content canvas */
+[data-bs-theme="dark"] .f21-stat-card {
+  background: var(--f21-content-surface, #152035);
+  border-color: rgba(100, 130, 175, 0.22);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+[data-bs-theme="dark"] .f21-stat-card--flats .f21-stat-card__icon {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+}
+
+[data-bs-theme="dark"] .f21-stat-card--booked .f21-stat-card__icon {
+  background: rgba(74, 222, 128, 0.16);
+  color: #86efac;
+}
+
+[data-bs-theme="dark"] .f21-stat-card--available .f21-stat-card__icon {
+  background: rgba(34, 197, 94, 0.16);
+  color: #4ade80;
+}
+
+[data-bs-theme="dark"] .f21-stat-card--value .f21-stat-card__icon {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+
+[data-bs-theme="dark"] .f21-dashboard-panel {
+  background: var(--f21-content-surface, #152035);
+  border-color: rgba(100, 130, 175, 0.22);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+[data-bs-theme="dark"] .f21-dashboard-panel__header {
+  border-bottom-color: rgba(100, 130, 175, 0.18);
+}
+
+[data-bs-theme="dark"] .f21-dashboard-panel__count {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+[data-bs-theme="dark"] .f21-dashboard-panel__link {
+  color: #93c5fd;
+}
+
+[data-bs-theme="dark"] .f21-dashboard-panel__link:hover,
+[data-bs-theme="dark"] .f21-dashboard-panel__link:focus-visible {
+  color: #bfdbfe;
+}
+
+[data-bs-theme="dark"] .f21-dashboard-table thead th {
+  background: var(--f21-content-surface-alt, #1a2840);
+  border-bottom-color: rgba(100, 130, 175, 0.18);
+}
+
+[data-bs-theme="dark"] .f21-dashboard-table tbody td {
+  border-bottom-color: rgba(100, 130, 175, 0.12);
+}
+
+[data-bs-theme="dark"] .f21-dashboard-table__avatar {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.28);
+}
+
+[data-bs-theme="dark"] .f21-dashboard-status--active {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.28);
+}
+
+[data-bs-theme="dark"] .f21-dashboard-status--muted {
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+/* Platform admin layout */
+.f21-dashboard-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(16rem, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 991.98px) {
+  .f21-dashboard-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.f21-dashboard-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.f21-dashboard-panel__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.f21-dashboard-panel__toolbar-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.f21-dashboard-panel__page-size {
+  width: auto;
+  min-width: 4.25rem;
+  font-size: 0.8125rem;
+}
+
+.f21-dashboard-panel__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem 1.15rem;
+  border-top: 1px solid #e8ecf2;
+}
+
+.f21-dashboard-panel__meta {
+  font-size: 0.8125rem;
+  color: var(--bs-secondary-color);
+}
+
+.f21-dashboard-pagination .page-link {
+  font-size: 0.8125rem;
+}
+
+.f21-dashboard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.f21-dashboard-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem 1.15rem;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.f21-dashboard-list__item:last-child {
+  border-bottom: 0;
+}
+
+.f21-dashboard-list__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.f21-dashboard-list__name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--bs-body-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.f21-dashboard-list__meta {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+}
+
+.f21-dashboard-list__empty {
+  padding: 1.5rem 1.15rem;
+  color: var(--bs-secondary-color);
+  font-size: 0.875rem;
+}
+
+.f21-dashboard-table__avatar--builder {
+  background: rgba(99, 102, 241, 0.14);
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.22);
+}
+
+.f21-dashboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.f21-dashboard-actions__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.42rem 0.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.06);
+  color: #2563eb;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.f21-dashboard-actions__btn:hover,
+.f21-dashboard-actions__btn:focus-visible {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+[data-bs-theme="dark"] .f21-stat-card--builders .f21-stat-card__icon {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+}
+
+[data-bs-theme="dark"] .f21-dashboard-panel__footer {
+  border-top-color: rgba(100, 130, 175, 0.18);
+}
+
+[data-bs-theme="dark"] .f21-dashboard-list__item {
+  border-bottom-color: rgba(100, 130, 175, 0.12);
+}
+
+[data-bs-theme="dark"] .f21-dashboard-table__avatar--builder {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+  border-color: rgba(99, 102, 241, 0.28);
+}
+
+[data-bs-theme="dark"] .f21-dashboard-actions__btn {
+  border-color: rgba(147, 197, 253, 0.28);
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+}
+
+[data-bs-theme="dark"] .f21-dashboard-actions__btn:hover,
+[data-bs-theme="dark"] .f21-dashboard-actions__btn:focus-visible {
+  background: rgba(59, 130, 246, 0.2);
+  color: #bfdbfe;
+}

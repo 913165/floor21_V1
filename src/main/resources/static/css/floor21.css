@@ -138,6 +138,23 @@
   --f21-card-header-color: color-mix(in srgb, var(--f21-area-accent) 76%, #ffffff 24%);
 }
 
+/* Dark theme: deep navy content canvas (menu chrome unchanged) */
+[data-bs-theme="dark"] body.floor21-body {
+  background-color: #0f1923;
+}
+
+[data-bs-theme="dark"] .floor21-panel {
+  --f21-content-bg: #0f1923;
+  --f21-content-surface: #152035;
+  --f21-content-surface-alt: #1a2840;
+  --bs-body-bg: var(--f21-content-bg);
+  --bs-tertiary-bg: var(--f21-content-bg);
+  --bs-secondary-bg: var(--f21-content-surface);
+  --bs-card-bg: var(--f21-content-surface);
+  --bs-border-color: rgba(100, 130, 175, 0.22);
+  background-color: var(--f21-content-bg);
+}
+
 .floor21-shell {
   flex: 1 1 auto;
   min-height: 0;
@@ -286,7 +303,7 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 
-/* Side menu (textures: floor21-chrome.css) */
+/* Side menu (textures: floor21-chrome.css) — Ice blue nav palette */
 .floor21-sidebar {
   width: var(--f21-sidebar-width);
   max-width: 100%;
@@ -295,36 +312,38 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   top: 0;
   align-self: flex-start;
   max-height: calc(100vh - var(--f21-topbar-height));
-  border-right: 1px solid rgba(0, 0, 0, 0.35);
+  border-right: 1px solid rgba(100, 130, 180, 0.18);
   padding: 0.65rem 0.55rem 1rem;
   isolation: isolate;
-  --f21-nav-text: rgba(255, 255, 255, 0.82);
-  --f21-nav-muted: rgba(210, 180, 155, 0.55);
-  --f21-nav-hover-bg: rgba(255, 255, 255, 0.08);
-  --f21-nav-active-bg: rgba(255, 255, 255, 0.12);
-  --f21-nav-active-text: #ffffff;
-  --f21-nav-active-accent: #2dd4bf;
-  --f21-nav-bullet: rgba(160, 120, 90, 0.55);
+  --f21-nav-text: #1e3a5f;
+  --f21-nav-muted: #5b6f8c;
+  --f21-nav-hover-bg: rgba(59, 130, 246, 0.1);
+  --f21-nav-active-bg: #d1fae5;
+  --f21-nav-active-text: #166534;
+  --f21-nav-active-accent: #22c55e;
+  --f21-nav-bullet: rgba(100, 130, 180, 0.5);
 }
 
 [data-bs-theme="light"] .floor21-sidebar {
-  --f21-nav-section-bg: rgba(0, 0, 0, 0.2);
-  --f21-nav-section-text: rgba(255, 248, 240, 0.92);
-  --f21-nav-section-border: #d4a574;
-  --f21-nav-section-active-bg: rgba(201, 160, 122, 0.24);
+  --f21-nav-section-bg: rgba(100, 130, 180, 0.14);
+  --f21-nav-section-text: #475569;
+  --f21-nav-section-border: #4ade80;
+  --f21-nav-section-active-bg: rgba(34, 197, 94, 0.14);
 }
 
 [data-bs-theme="dark"] .floor21-sidebar {
-  border-right-color: rgba(255, 255, 255, 0.08);
-  --f21-nav-text: rgba(226, 232, 240, 0.88);
-  --f21-nav-muted: rgba(148, 163, 184, 0.62);
-  --f21-nav-hover-bg: rgba(255, 255, 255, 0.06);
-  --f21-nav-active-bg: rgba(255, 255, 255, 0.09);
-  --f21-nav-bullet: rgba(100, 116, 139, 0.65);
-  --f21-nav-section-bg: rgba(255, 255, 255, 0.08);
-  --f21-nav-section-text: rgba(226, 232, 240, 0.92);
-  --f21-nav-section-border: rgba(94, 234, 212, 0.45);
-  --f21-nav-section-active-bg: rgba(94, 234, 212, 0.1);
+  border-right-color: rgba(134, 168, 212, 0.14);
+  --f21-nav-text: rgba(226, 232, 240, 0.92);
+  --f21-nav-muted: rgba(148, 163, 184, 0.68);
+  --f21-nav-hover-bg: rgba(255, 255, 255, 0.07);
+  --f21-nav-active-bg: rgba(34, 197, 94, 0.2);
+  --f21-nav-active-text: #bbf7d0;
+  --f21-nav-active-accent: #4ade80;
+  --f21-nav-bullet: rgba(134, 168, 212, 0.55);
+  --f21-nav-section-bg: rgba(255, 255, 255, 0.06);
+  --f21-nav-section-text: rgba(191, 219, 254, 0.88);
+  --f21-nav-section-border: rgba(74, 222, 128, 0.55);
+  --f21-nav-section-active-bg: rgba(34, 197, 94, 0.14);
 }
 
 .floor21-sidebar::after {
@@ -399,7 +418,7 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 
 .floor21-nav__link:hover,
 .floor21-nav__link:focus-visible {
-  color: #fff;
+  color: var(--f21-nav-active-text);
   background: var(--f21-nav-hover-bg);
   text-decoration: none;
 }
@@ -412,7 +431,7 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 
 .floor21-nav__link.is-active::before {
   background: var(--f21-nav-active-accent);
-  box-shadow: 0 0 8px rgba(45, 212, 191, 0.55);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.45);
 }
 
 .floor21-nav__link--vault {
@@ -4903,7 +4922,7 @@ body > .modal .modal-content button {
 }
 
 [data-bs-theme="dark"] .slab-schedule-picker.card {
-  background: var(--bs-body-bg);
+  background: var(--f21-content-surface, #152035);
   border: 1px solid var(--bs-border-color);
 }
 
@@ -4973,8 +4992,8 @@ body > .modal .modal-content button {
 }
 
 [data-bs-theme="dark"] .booking-schedule-summary.slab-schedule-card {
-  background: #161b22;
-  border-color: #30363d;
+  background: var(--f21-content-surface, #152035);
+  border-color: rgba(100, 130, 175, 0.28);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
@@ -5098,7 +5117,7 @@ body > .modal .modal-content button {
 }
 
 [data-bs-theme="dark"] .booking-schedule-summary__section + .booking-schedule-summary__section {
-  border-top-color: #30363d;
+  border-top-color: rgba(100, 130, 175, 0.22);
 }
 
 .booking-schedule-summary__section-title {
@@ -5149,8 +5168,8 @@ body > .modal .modal-content button {
 }
 
 [data-bs-theme="dark"] .booking-schedule-summary__unit-item {
-  background: #1c2128;
-  border: 1px solid #30363d;
+  background: var(--f21-content-surface-alt, #1a2840);
+  border: 1px solid rgba(100, 130, 175, 0.24);
 }
 
 .booking-schedule-summary__fin-grid {
@@ -5183,8 +5202,8 @@ body > .modal .modal-content button {
 }
 
 [data-bs-theme="dark"] .booking-schedule-summary__fin-item {
-  background: #1c2128;
-  border: 1px solid #30363d;
+  background: var(--f21-content-surface-alt, #1a2840);
+  border: 1px solid rgba(100, 130, 175, 0.24);
 }
 
 .booking-schedule-summary__fin-item--consideration::before {
@@ -5265,18 +5284,18 @@ body > .modal .modal-content button {
 }
 
 [data-bs-theme="dark"] .booking-schedule-summary__balances-table {
-  border: 1px solid #30363d;
+  border: 1px solid rgba(100, 130, 175, 0.24);
   border-radius: 0.55rem;
   overflow: hidden;
 }
 
 [data-bs-theme="dark"] .booking-schedule-summary__balances-table th,
 [data-bs-theme="dark"] .booking-schedule-summary__balances-table td {
-  border-color: #30363d;
+  border-color: rgba(100, 130, 175, 0.22);
 }
 
 [data-bs-theme="dark"] .booking-schedule-summary__balances-table thead th {
-  background: #1c2128;
+  background: var(--f21-content-surface-alt, #1a2840);
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -5710,19 +5729,19 @@ body.slab-schedule-col-resizing {
 
 /* ========== Dark theme: main content panel (tables, cards, light utilities) ========== */
 [data-bs-theme="dark"] .floor21-panel .card {
-  background-color: var(--bs-body-bg);
+  background-color: var(--f21-content-surface, #152035);
   color: var(--bs-body-color);
   border-color: var(--bs-border-color);
 }
 
 [data-bs-theme="dark"] .floor21-panel .card-header {
-  background-color: var(--bs-secondary-bg) !important;
+  background-color: var(--f21-content-surface-alt, #1a2840) !important;
   color: var(--f21-card-header-color) !important;
   border-bottom-color: var(--bs-border-color) !important;
 }
 
 [data-bs-theme="dark"] .floor21-panel .card-footer {
-  background-color: var(--bs-secondary-bg);
+  background-color: var(--f21-content-surface-alt, #1a2840);
   color: var(--bs-body-color);
   border-top-color: var(--bs-border-color);
 }
@@ -5742,29 +5761,29 @@ body.slab-schedule-col-resizing {
 [data-bs-theme="dark"] .floor21-panel tr.table-light,
 [data-bs-theme="dark"] .floor21-panel .table-light > th,
 [data-bs-theme="dark"] .floor21-panel .table-light > td {
-  --bs-table-bg: #1a2332;
+  --bs-table-bg: var(--f21-content-surface-alt, #1a2840);
   --bs-table-color: var(--bs-body-color);
   --bs-table-border-color: var(--bs-border-color);
-  background-color: #1a2332 !important;
+  background-color: var(--f21-content-surface-alt, #1a2840) !important;
   color: var(--bs-body-color) !important;
 }
 
 [data-bs-theme="dark"] .floor21-panel .table > thead > tr > th,
 [data-bs-theme="dark"] .floor21-panel .table > tfoot > tr > td,
 [data-bs-theme="dark"] .floor21-panel .table > tfoot > tr > th {
-  background-color: #1a2332;
+  background-color: var(--f21-content-surface-alt, #1a2840);
   color: var(--bs-body-color);
   border-color: var(--bs-border-color);
 }
 
 [data-bs-theme="dark"] .floor21-panel .table thead th {
-  background-color: #1a2332;
+  background-color: var(--f21-content-surface-alt, #1a2840);
   color: var(--bs-body-color);
   border-color: var(--bs-border-color);
 }
 
 [data-bs-theme="dark"] .slab-schedule-table thead th {
-  background-color: #1a2332;
+  background-color: var(--f21-content-surface-alt, #1a2840);
   color: var(--bs-body-color);
 }
 
@@ -5787,7 +5806,7 @@ body.slab-schedule-col-resizing {
 }
 
 [data-bs-theme="dark"] .floor21-panel .list-group-item {
-  background-color: var(--bs-body-bg);
+  background-color: var(--f21-content-surface, #152035);
   color: var(--bs-body-color);
   border-color: var(--bs-border-color);
 }
@@ -5826,10 +5845,10 @@ body.slab-schedule-col-resizing {
 
 [data-bs-theme="dark"] .f21-table-totals tfoot.table-light,
 [data-bs-theme="dark"] .f21-table-totals thead.table-light {
-  --bs-table-bg: #1a2332;
+  --bs-table-bg: var(--f21-content-surface-alt, #1a2840);
   --bs-table-color: var(--bs-body-color);
   --bs-table-border-color: var(--bs-border-color);
-  background-color: #1a2332 !important;
+  background-color: var(--f21-content-surface-alt, #1a2840) !important;
   color: var(--bs-body-color) !important;
 }
 
