@@ -68,20 +68,29 @@ export async function ensureClientMilestoneSchedule(
     }
   }
 
+  const bulkDateValue = '2026-03-28';
+
   const bulkDate = panel.locator('#msBulkDate');
   if (await bulkDate.isVisible()) {
-    await bulkDate.fill('2026-03-28');
+    await bulkDate.fill(bulkDateValue);
     await panel.locator('#msBulkApply').click();
+    await expect(panel.locator('#milestoneSlabTable tbody tr .js-ms-due-date').first())
+      .toHaveValue(bulkDateValue, { timeout: 5_000 });
   }
 
   const saveSchedule = panel.getByRole('button', { name: 'Save schedule' });
   if (await saveSchedule.isVisible()) {
     await Promise.all([
-      waitForUrlBookingId(page, bookingId),
+      page.waitForURL(/milestone-setup.*bookingId=/, { timeout: 30_000 }),
       saveSchedule.click(),
     ]);
     panel = await waitForMainPanel(page);
+    await expect(
+      panel.locator('.alert-success').filter({ hasText: /Milestone schedule saved/ }).first(),
+    ).toBeVisible({ timeout: 15_000 });
   }
 
   await expect(panel.locator('#milestoneSlabTable tbody tr').first()).toBeVisible();
+  const firstDate = panel.locator('#milestoneSlabTable tbody tr .js-ms-due-date').first();
+  await expect(firstDate).toHaveValue(bulkDateValue);
 }

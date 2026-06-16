@@ -16,6 +16,8 @@ import com.floor21.security.TenantContext;
 import com.floor21.service.BookingPaymentSlabService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.ExtraExpenseService;
+import com.floor21.util.MilestoneScheduleSaveFormParser;
+import jakarta.servlet.http.HttpServletRequest;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -51,15 +53,24 @@ public class ClientMilestoneSetupController {
 
     @InitBinder("saveForm")
     public void initSaveFormBinder(WebDataBinder binder) {
+        binder.setAutoGrowCollectionLimit(512);
         binder.registerCustomEditor(
                 LocalDate.class,
+                new PropertyEditorSupport() {
+                    @Override
+                    public void setAsText(String text) {
+                        setValue(MilestoneScheduleSaveFormParser.parseDueDate(text));
+                    }
+                });
+        binder.registerCustomEditor(
+                UUID.class,
                 new PropertyEditorSupport() {
                     @Override
                     public void setAsText(String text) {
                         if (text == null || text.isBlank()) {
                             setValue(null);
                         } else {
-                            setValue(LocalDate.parse(text));
+                            setValue(UUID.fromString(text.trim()));
                         }
                     }
                 });
@@ -163,10 +174,22 @@ public class ClientMilestoneSetupController {
 
     @PostMapping("/save")
     public String save(
-            @ModelAttribute("saveForm") BookingPaymentSlabBatchForm form,
+            HttpServletRequest request,
             @RequestParam(required = false) UUID buildingId,
             @RequestParam(required = false) UUID projectId,
             RedirectAttributes ra) {
+        BookingPaymentSlabBatchForm form;
+        try {
+            form = MilestoneScheduleSaveFormParser.parse(request);
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+            String bookingIdParam = request.getParameter("bookingId");
+            UUID bookingId =
+                    bookingIdParam != null && !bookingIdParam.isBlank()
+                            ? UUID.fromString(bookingIdParam.trim())
+                            : null;
+            return redirectBack(bookingId, buildingId, projectId);
+        }
         try {
             int saved = bookingPaymentSlabService.saveLines(form);
             ra.addFlashAttribute("successMessage", "Milestone schedule saved (" + saved + " rows).");

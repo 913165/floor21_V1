@@ -65,7 +65,7 @@ public class SlabScheduleLedgerService {
             rows.add(
                     new SlabScheduleLedgerRow(
                             SlabLedgerRowType.SLAB_TOTAL,
-                            hasReceipts ? slab.getDueDate() : null,
+                            slab.getDueDate(),
                             slab.getMilestoneLabel(),
                             due,
                             null,

@@ -105,12 +105,20 @@
       if (booking) {
         booking.value = '';
       }
-      form.submit();
+      if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+      } else {
+        form.submit();
+      }
     });
     if (booking) {
       booking.addEventListener('change', function () {
         if (booking.value) {
-          form.submit();
+          if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+          } else {
+            form.submit();
+          }
         }
       });
     }
@@ -148,11 +156,16 @@
       });
     }
 
-    form.addEventListener('submit', function () {
+    form.addEventListener('submit', function (event) {
       if (window.Floor21Amount) {
         form.querySelectorAll('.js-ms-agreed, .js-ms-extra').forEach(function (el) {
           Floor21Amount.syncDisplayToHidden(el);
         });
+      }
+      var idFields = form.querySelectorAll('input[name^="lines"][name$=".id"]');
+      if (form.querySelectorAll('.milestone-slab-row').length > 0 && idFields.length === 0) {
+        event.preventDefault();
+        window.alert('Schedule rows did not load correctly. Reload the client and try again.');
       }
     });
 

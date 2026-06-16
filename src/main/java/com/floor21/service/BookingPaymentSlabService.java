@@ -684,15 +684,12 @@ public class BookingPaymentSlabService {
             return false;
         }
         long existing = bookingPaymentSlabRepository.countByBooking_Id(bookingId);
-        boolean created = false;
         if (existing == 0) {
             createBookingSlabsFromMilestoneSlabs(booking, templates);
             syncAgreedAmountsFromPercent(bookingId);
-            created = true;
-        } else {
-            syncExistingBookingSlabsFromMilestoneSlabs(booking, templates);
+            return true;
         }
-        return created;
+        return false;
     }
 
     @Transactional(readOnly = true)
@@ -819,32 +816,6 @@ public class BookingPaymentSlabService {
         }
     }
 
-    private void syncExistingBookingSlabsFromMilestoneSlabs(Booking booking, List<Slab> templates) {
-        List<BookingPaymentSlab> existing = new ArrayList<>(listLines(booking.getId()));
-        existing.sort(Comparator.comparing(BookingPaymentSlab::getSortOrder));
-        Instant now = Instant.now();
-        int order = 0;
-        for (Slab template : templates) {
-            BookingPaymentSlab row;
-            if (order < existing.size()) {
-                row = existing.get(order);
-            } else {
-                row = new BookingPaymentSlab();
-                row.setBooking(booking);
-                row.setCreatedAt(now);
-                row.setExtraAmount(ZERO);
-                row.setDueDate(null);
-            }
-            row.setSortOrder(order);
-            row.setMilestoneLabel(resolveMilestoneLabel(template));
-            row.setPercent(template.getSuggestedPercent());
-            row.setTemplate(null);
-            row.setUpdatedAt(now);
-            bookingPaymentSlabRepository.save(row);
-            order++;
-        }
-    }
-
     private static String resolveMilestoneLabel(Slab slab) {
         if (slab.getSlabName() != null && !slab.getSlabName().isBlank()) {
             return slab.getSlabName().trim();
@@ -896,7 +867,7 @@ public class BookingPaymentSlabService {
                 entity.setAgreedAmount(agreed);
             }
             entity.setUpdatedAt(now);
-            bookingPaymentSlabRepository.save(entity);
+            bookingPaymentSlabRepository.saveAndFlush(entity);
             savePaymentsForSlab(entity, line.getPayments(), now);
             saved++;
         }

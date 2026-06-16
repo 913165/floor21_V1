@@ -123,7 +123,7 @@
         </div>
         <span class="text-muted small">(coming soon)</span>
       </div>
-      <form class="ms-auto" method="post" th:action="@{/clients/milestone-setup/materialize}"
+      <form class="ms-auto" method="post" data-turbo="false" th:action="@{/clients/milestone-setup/materialize}"
             id="msMaterializeForm"
             onsubmit="return confirm('Rebuild milestone rows from the building template? Existing dates may be reset if you choose replace.');">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -151,7 +151,7 @@
           </span>
         </span>
       </span>
-      <form sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')" method="post"
+      <form sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')" method="post" data-turbo="false"
             th:action="@{/clients/milestone-setup/materialize}">
         <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
         <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
@@ -164,6 +164,7 @@
   <form th:if="${!#lists.isEmpty(slabs)}"
         id="scheduleSaveForm"
         method="post"
+        data-turbo="false"
         th:action="@{/clients/milestone-setup/save}"
         th:object="${saveForm}"
         th:attr="data-booking-id=${selectedBooking.id}">
@@ -270,7 +271,7 @@
   </th:block>
 
   <script defer th:src="@{/js/amount-format.js(v=milestone-setup)}"></script>
-  <script defer th:src="@{/js/milestone-setup.js(v=4)}"></script>
+  <script defer th:src="@{/js/milestone-setup.js(v=5)}"></script>
 </div>
 </body>
 </html>
