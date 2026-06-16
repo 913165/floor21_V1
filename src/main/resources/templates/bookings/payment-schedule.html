@@ -91,16 +91,93 @@
     <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
     <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
-    <div class="card shadow-sm mb-3 slab-schedule-card">
-      <div class="card-header py-2 fw-semibold">Booking summary</div>
-      <div class="card-body row g-2 small">
-        <div class="col-md-2"><span class="text-muted">Flat</span><br/><span th:text="${selectedBooking.flat != null ? selectedBooking.flat.flatNumber : dash}">-</span></div>
-        <div class="col-md-2"><span class="text-muted">BHK / unit type</span><br/><span class="fw-semibold" th:text="${selectedBooking.flat != null && selectedBooking.flat.bhkType != null ? selectedBooking.flat.bhkType : dash}">-</span></div>
-        <div class="col-md-2"><span class="text-muted">Building</span><br/><span th:text="${selectedBooking.flat != null && selectedBooking.flat.building != null ? selectedBooking.flat.building.buildingName : dash}">-</span></div>
-        <div class="col-md-3"><span class="text-muted">Consideration / flat base</span><br/><span class="slab-amt--base" th:text="${amt.formatAmountDisplay(baseAmount)}">0</span></div>
-        <div class="col-md-3"><span class="text-muted">Booked</span><br/><span th:text="${selectedBooking.bookingDate != null ? #temporals.format(selectedBooking.bookingDate, 'dd-MMM-yyyy') : dash}">-</span></div>
-        <div class="col-md-6"><span class="text-muted">Client</span><br/><span th:text="${selectedBooking.client.displayName()}">-</span></div>
-        <div class="col-md-6"><span class="text-muted">Booking code</span><br/><span th:text="${selectedBooking.bookingCode}">-</span></div>
+    <div class="card shadow-sm mb-3 slab-schedule-card booking-schedule-summary">
+      <div class="booking-schedule-summary__hero"
+           th:with="flat=${selectedBooking.flat},
+                    client=${selectedBooking.client},
+                    buildingName=${flat != null && flat.building != null ? flat.building.buildingName : null},
+                    floorLabel=${flat != null && flat.floorNumber != null ? 'Floor ' + flat.floorNumber : dash},
+                    wingLabel=${flat != null && flat.layoutColumnType != null && !#strings.isEmpty(flat.layoutColumnType) ? flat.layoutColumnType + ' Wing' : dash},
+                    bhkLabel=${flat != null && flat.bhkType != null ? #strings.replace(flat.bhkType, 'BHK', ' BHK') : dash},
+                    carpetLabel=${flat != null && flat.carpetAreaSqft != null ? #numbers.formatDecimal(flat.carpetAreaSqft, 0, 'COMMA', 0, 'POINT') + ' sq ft' : dash}">
+        <div class="booking-schedule-summary__hero-main">
+          <div class="booking-schedule-summary__avatar" th:text="${client.avatarInitials()}">MG</div>
+          <div class="min-w-0">
+            <p class="booking-schedule-summary__hero-name mb-0" th:text="${client.displayName()}">Client</p>
+            <p class="booking-schedule-summary__hero-meta mb-0">
+              <span th:if="${flat != null && flat.flatNumber != null}">Flat <span th:text="${flat.flatNumber}">—</span></span><span th:if="${flat != null && flat.flatNumber != null && buildingName != null}"> · </span><span th:if="${buildingName != null}" th:text="${buildingName}">Building</span><span th:if="${buildingName != null && wingLabel != dash}"> · </span><span th:if="${wingLabel != dash}" th:text="${wingLabel}">Wing</span><span th:if="${wingLabel != dash && floorLabel != dash}"> · </span><span th:if="${floorLabel != dash}" th:text="${floorLabel}">Floor</span>
+            </p>
+          </div>
+        </div>
+        <div class="booking-schedule-summary__hero-aside">
+          <span class="booking-schedule-summary__badge booking-schedule-summary__badge--active"
+                th:if="${selectedBooking.status == null || selectedBooking.status == 'ACTIVE'}">Active</span>
+          <span class="booking-schedule-summary__badge booking-schedule-summary__badge--cancelled"
+                th:if="${selectedBooking.status == 'CANCELLED'}">Cancelled</span>
+          <div class="booking-schedule-summary__code">
+            <span class="booking-schedule-summary__code-label">Code:</span>
+            <span class="booking-schedule-summary__code-value" th:text="${selectedBooking.bookingCode}">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-body booking-schedule-summary__body p-0"
+           th:with="flat=${selectedBooking.flat},
+                    buildingName=${flat != null && flat.building != null ? flat.building.buildingName : null},
+                    floorLabel=${flat != null && flat.floorNumber != null ? 'Floor ' + flat.floorNumber : dash},
+                    wingLabel=${flat != null && flat.layoutColumnType != null && !#strings.isEmpty(flat.layoutColumnType) ? flat.layoutColumnType + ' Wing' : dash},
+                    bhkLabel=${flat != null && flat.bhkType != null ? #strings.replace(flat.bhkType, 'BHK', ' BHK') : dash},
+                    carpetLabel=${flat != null && flat.carpetAreaSqft != null ? #numbers.formatDecimal(flat.carpetAreaSqft, 0, 'COMMA', 0, 'POINT') + ' sq ft' : dash}">
+        <section class="booking-schedule-summary__section" aria-labelledby="booking-unit-details-heading">
+          <h3 class="booking-schedule-summary__section-title" id="booking-unit-details-heading">Unit details</h3>
+          <div class="booking-schedule-summary__unit-grid">
+            <div class="booking-schedule-summary__unit-item">
+              <div class="booking-schedule-summary__item-label">Flat</div>
+              <div class="booking-schedule-summary__item-value" th:text="${flat != null ? flat.flatNumber : dash}">—</div>
+            </div>
+            <div class="booking-schedule-summary__unit-item">
+              <div class="booking-schedule-summary__item-label">BHK</div>
+              <div class="booking-schedule-summary__item-value" th:text="${bhkLabel}">—</div>
+            </div>
+            <div class="booking-schedule-summary__unit-item">
+              <div class="booking-schedule-summary__item-label">Building</div>
+              <div class="booking-schedule-summary__item-value" th:text="${buildingName != null ? buildingName : dash}">—</div>
+            </div>
+            <div class="booking-schedule-summary__unit-item">
+              <div class="booking-schedule-summary__item-label">Wing</div>
+              <div class="booking-schedule-summary__item-value" th:text="${wingLabel}">—</div>
+            </div>
+            <div class="booking-schedule-summary__unit-item">
+              <div class="booking-schedule-summary__item-label">Floor</div>
+              <div class="booking-schedule-summary__item-value" th:text="${floorLabel}">—</div>
+            </div>
+          </div>
+        </section>
+        <section class="booking-schedule-summary__section" aria-labelledby="booking-financial-heading">
+          <h3 class="booking-schedule-summary__section-title" id="booking-financial-heading">Financial snapshot</h3>
+          <div class="booking-schedule-summary__fin-grid">
+            <div class="booking-schedule-summary__fin-item booking-schedule-summary__fin-item--consideration">
+              <div class="booking-schedule-summary__item-label">Consideration</div>
+              <div class="booking-schedule-summary__item-value booking-schedule-summary__item-value--amount slab-amt--base"
+                   th:text="${amt.formatAmountDisplay(baseAmount)}">0</div>
+            </div>
+            <div class="booking-schedule-summary__fin-item booking-schedule-summary__fin-item--carpet">
+              <div class="booking-schedule-summary__item-label">Carpet area</div>
+              <div class="booking-schedule-summary__item-value" th:text="${carpetLabel}">—</div>
+            </div>
+            <div class="booking-schedule-summary__fin-item booking-schedule-summary__fin-item--booked">
+              <div class="booking-schedule-summary__item-label">Booked on</div>
+              <div class="booking-schedule-summary__item-value booking-schedule-summary__date">
+                <svg class="booking-schedule-summary__date-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/>
+                  <path d="M16 2v4M8 2v4M3 10h18"/>
+                </svg>
+                <span th:text="${selectedBooking.bookingDate != null ? #temporals.format(selectedBooking.bookingDate, 'dd-MMM-yyyy') : dash}">—</span>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
 
