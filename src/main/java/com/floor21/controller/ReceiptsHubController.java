@@ -13,6 +13,7 @@ import com.floor21.service.BankService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.ReceiptPrintService;
 import com.floor21.service.ReceiptService;
+import jakarta.servlet.http.HttpSession;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -97,7 +98,17 @@ public class ReceiptsHubController {
             @RequestParam(required = false) UUID bookingId,
             @RequestParam(required = false) UUID editReceiptId,
             @RequestParam(required = false, defaultValue = "false") boolean openNew,
+            HttpSession session,
             Model model) {
+        if (projectId == null) {
+            projectId = MilestoneNavSession.readProjectId(session);
+        }
+        if (buildingId == null) {
+            buildingId = MilestoneNavSession.readBuildingId(session);
+        }
+        if (bookingId == null) {
+            bookingId = MilestoneNavSession.readBookingId(session);
+        }
         boolean platformAdminView = isPlatformAdmin();
         model.addAttribute("platformAdminView", platformAdminView);
         model.addAttribute("readonlyView", platformAdminView);
@@ -115,6 +126,7 @@ public class ReceiptsHubController {
         if (platformAdminView && buildingId == null) {
             bookingId = null;
         }
+        MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
 
         addPageTitleAndPicker(model, projectId, buildingId, bookingId, platformAdminView);
         if (bookingId == null) {

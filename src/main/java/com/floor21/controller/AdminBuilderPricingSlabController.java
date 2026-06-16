@@ -10,6 +10,7 @@ import com.floor21.security.TenantContext;
 import com.floor21.service.BuildingService;
 import com.floor21.service.RateSlabExcelService;
 import com.floor21.service.SlabService;
+import jakarta.servlet.http.HttpSession;
 import java.beans.PropertyEditorSupport;
 import java.io.IOException;
 import java.util.Collections;
@@ -84,7 +85,15 @@ public class AdminBuilderPricingSlabController {
             @RequestParam(required = false) UUID projectId,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) UUID buildingId,
+            HttpSession session,
             Model model) {
+        if (projectId == null) {
+            projectId = MilestoneNavSession.readProjectId(session);
+        }
+        if (buildingId == null) {
+            buildingId = MilestoneNavSession.readBuildingId(session);
+        }
+        MilestoneNavSession.rememberProjectBuilding(session, projectId, buildingId);
         String search = q != null ? q.trim() : "";
         boolean readonlyView = !isPlatformAdmin();
         model.addAttribute("pageTitle", "Milestone Templates");

@@ -16,6 +16,7 @@ import com.floor21.service.BuildingService;
 import com.floor21.service.DemandDraftService;
 import com.floor21.service.SlabScheduleExportService;
 import com.floor21.service.SlabScheduleLedgerService;
+import jakarta.servlet.http.HttpSession;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -91,7 +92,17 @@ public class BookingPaymentScheduleController {
             @RequestParam(required = false) UUID projectId,
             @RequestParam(required = false) UUID buildingId,
             @RequestParam(required = false) UUID bookingId,
+            HttpSession session,
             Model model) {
+        if (projectId == null) {
+            projectId = MilestoneNavSession.readProjectId(session);
+        }
+        if (buildingId == null) {
+            buildingId = MilestoneNavSession.readBuildingId(session);
+        }
+        if (bookingId == null) {
+            bookingId = MilestoneNavSession.readBookingId(session);
+        }
         boolean platformAdminView = isPlatformAdmin();
         model.addAttribute("pageTitle", "Payment schedule (Clients)");
         model.addAttribute("platformAdminView", platformAdminView);
@@ -107,6 +118,7 @@ public class BookingPaymentScheduleController {
             model.addAttribute("buildings", buildingService.listBuildingsForPlatformProject(projectId));
             model.addAttribute("selectedBuildingId", buildingId);
             model.addAttribute("selectedBookingId", bookingId);
+            MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
             model.addAttribute("bookings", listBookingsForPlatformAdmin(buildingId, projectId));
             if (bookingId != null) {
                 loadSelectedBookingForPlatformAdmin(model, projectId, buildingId, bookingId);
@@ -118,6 +130,7 @@ public class BookingPaymentScheduleController {
         model.addAttribute("selectedBuildingId", buildingId);
         model.addAttribute("bookings", bookingPaymentSlabService.listBookingsForSchedule(buildingId));
         model.addAttribute("selectedBookingId", bookingId);
+        MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
         if (bookingId != null) {
             loadSelectedBookingForTenant(model, buildingId, bookingId);
         }

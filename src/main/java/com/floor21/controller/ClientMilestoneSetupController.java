@@ -18,6 +18,7 @@ import com.floor21.service.BuildingService;
 import com.floor21.service.ExtraExpenseService;
 import com.floor21.util.MilestoneScheduleSaveFormParser;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,7 +33,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -94,7 +94,17 @@ public class ClientMilestoneSetupController {
             @RequestParam(required = false) UUID buildingId,
             @RequestParam(required = false) UUID bookingId,
             @RequestParam(required = false) String clientQ,
+            HttpSession session,
             Model model) {
+        if (projectId == null) {
+            projectId = MilestoneNavSession.readProjectId(session);
+        }
+        if (buildingId == null) {
+            buildingId = MilestoneNavSession.readBuildingId(session);
+        }
+        if (bookingId == null) {
+            bookingId = MilestoneNavSession.readBookingId(session);
+        }
         model.addAttribute("pageTitle", "Milestone setup (Clients)");
         boolean platformAdmin = isPlatformAdmin();
         boolean editable = !platformAdmin;
@@ -116,6 +126,7 @@ public class ClientMilestoneSetupController {
 
         model.addAttribute("selectedBuildingId", buildingId);
         model.addAttribute("selectedBookingId", bookingId);
+        MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
 
         if (buildingId == null) {
             return "clients/milestone-setup";
@@ -143,6 +154,7 @@ public class ClientMilestoneSetupController {
         if (!bookingBelongsToBuilding(bookingId, builderId, buildingId)) {
             model.addAttribute("errorMessage", "That client booking is not in the selected building.");
             model.addAttribute("selectedBookingId", null);
+            MilestoneNavSession.remember(session, projectId, buildingId, null);
             return "clients/milestone-setup";
         }
 
@@ -368,4 +380,5 @@ public class ClientMilestoneSetupController {
                 && auth.getPrincipal() instanceof Floor21UserPrincipal principal
                 && principal.isSuperAdmin();
     }
+
 }

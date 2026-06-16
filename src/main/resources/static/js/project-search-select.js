@@ -37,6 +37,7 @@
 
     var wrap = document.createElement("div");
     wrap.className = "project-search-select";
+    wrap.style.position = "relative";
     select.parentNode.insertBefore(wrap, select);
     wrap.appendChild(select);
 
@@ -72,7 +73,18 @@
     hint.className = "project-search-select__hint form-text";
     hint.hidden = true;
 
+    var toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "project-search-select__toggle";
+    toggle.setAttribute("aria-label", "Show project list");
+    toggle.innerHTML = "&#9662;";
+    toggle.style.position = "absolute";
+    toggle.style.top = "0.45rem";
+    toggle.style.right = "0.5rem";
+    toggle.style.zIndex = "2";
+
     wrap.insertBefore(search, select);
+    wrap.insertBefore(toggle, select);
     wrap.insertBefore(menu, select);
     wrap.appendChild(hint);
 
@@ -151,23 +163,8 @@
         menu.appendChild(item);
       });
 
-      if (filtered.length > MAX_VISIBLE) {
-        hint.textContent =
-          "Showing " +
-          MAX_VISIBLE +
-          " of " +
-          filtered.length +
-          " matches — keep typing to narrow results.";
-        hint.hidden = false;
-      } else if (query) {
-        hint.textContent =
-          filtered.length === 1
-            ? "1 match"
-            : filtered.length + " matches";
-        hint.hidden = false;
-      } else {
-        hint.hidden = true;
-      }
+      hint.hidden = true;
+      hint.textContent = "";
 
       openMenu();
     }
@@ -260,6 +257,13 @@
       }
     });
 
+    search.addEventListener("click", function () {
+      searching = true;
+      if (menu.hidden) {
+        renderMenu();
+      }
+    });
+
     search.addEventListener("blur", function () {
       setTimeout(function () {
         if (picking) {
@@ -303,6 +307,16 @@
       }
       if (e.key === "Escape") {
         e.preventDefault();
+        endSearch();
+      }
+    });
+
+    toggle.addEventListener("click", function () {
+      if (menu.hidden) {
+        searching = true;
+        renderMenu();
+        search.focus();
+      } else {
         endSearch();
       }
     });

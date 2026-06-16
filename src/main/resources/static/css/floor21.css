@@ -5894,6 +5894,28 @@ body > .modal .modal-content button {
   max-width: 36rem;
 }
 
+.project-search-select__input {
+  padding-right: 2.25rem;
+}
+
+.project-search-select__toggle {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.5rem;
+  transform: none;
+  border: 0;
+  background: transparent;
+  color: var(--bs-secondary-color);
+  line-height: 1;
+  font-size: 0.9rem;
+  padding: 0.1rem 0.25rem;
+  z-index: 2;
+}
+
+.project-search-select__toggle:hover {
+  color: var(--bs-emphasis-color);
+}
+
 .project-search-select__native {
   position: absolute;
   width: 1px;

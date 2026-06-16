@@ -3,6 +3,7 @@
  */
 (function () {
   'use strict';
+  const PICKER_STORAGE_KEY = 'floor21:milestone-setup:last-picker';
 
   function parseAmt(val) {
     if (window.Floor21Amount) {
@@ -95,30 +96,107 @@
   }
 
   function initPickerForm() {
+    const project = document.getElementById('msProject');
     const building = document.getElementById('msBuilding');
     const booking = document.getElementById('msBooking');
     const form = document.getElementById('milestonePickerForm');
     if (!building || !form) {
       return;
     }
-    building.addEventListener('change', function () {
-      if (booking) {
-        booking.value = '';
-      }
+    const submitForm = function () {
       if (typeof form.requestSubmit === 'function') {
         form.requestSubmit();
       } else {
         form.submit();
       }
+    };
+    const savePickerState = function () {
+      try {
+        window.localStorage.setItem(
+          PICKER_STORAGE_KEY,
+          JSON.stringify({
+            projectId: project ? project.value || '' : '',
+            buildingId: building.value || '',
+            bookingId: booking ? booking.value || '' : '',
+          }),
+        );
+      } catch (_e) {
+        // Ignore storage failures (private mode, quota, etc.).
+      }
+    };
+    const loadPickerState = function () {
+      try {
+        const raw = window.localStorage.getItem(PICKER_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (_e) {
+        return null;
+      }
+    };
+    const hasOption = function (select, value) {
+      if (!select || !value) {
+        return false;
+      }
+      return Array.from(select.options).some(function (opt) {
+        return opt.value === value;
+      });
+    };
+
+    // Always refresh storage with whichever values the server just rendered.
+    savePickerState();
+    const stored = loadPickerState();
+    if (stored && project && !project.value && stored.projectId && hasOption(project, stored.projectId)) {
+      project.value = stored.projectId;
+      if (booking) {
+        booking.value = '';
+      }
+      savePickerState();
+      submitForm();
+      return;
+    }
+    if (stored && !building.value && stored.buildingId && hasOption(building, stored.buildingId)) {
+      building.value = stored.buildingId;
+      if (booking) {
+        booking.value = '';
+      }
+      savePickerState();
+      submitForm();
+      return;
+    }
+    if (
+      stored &&
+      booking &&
+      building.value &&
+      building.value === stored.buildingId &&
+      !booking.value &&
+      stored.bookingId &&
+      hasOption(booking, stored.bookingId)
+    ) {
+      booking.value = stored.bookingId;
+      savePickerState();
+      submitForm();
+      return;
+    }
+
+    if (project) {
+      project.addEventListener('change', function () {
+        if (booking) {
+          booking.value = '';
+        }
+        savePickerState();
+      });
+    }
+    building.addEventListener('change', function () {
+      if (booking) {
+        booking.value = '';
+      }
+      savePickerState();
+      submitForm();
     });
     if (booking) {
       booking.addEventListener('change', function () {
+        savePickerState();
         if (booking.value) {
-          if (typeof form.requestSubmit === 'function') {
-            form.requestSubmit();
-          } else {
-            form.submit();
-          }
+          submitForm();
         }
       });
     }
