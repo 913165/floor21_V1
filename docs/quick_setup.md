@@ -17,26 +17,7 @@ From the project root:
 docker compose up -d postgres
 ```
 
-Check status:
 
-```bash
-docker compose ps
-docker compose logs postgres
-```
-
-Stop PostgreSQL:
-
-```bash
-docker compose stop postgres
-```
-
-Restart PostgreSQL:
-
-```bash
-docker compose restart postgres
-```
-
----
 
 ## 2. Find process using port 80
 
