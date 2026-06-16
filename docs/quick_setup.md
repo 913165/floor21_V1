@@ -16,7 +16,7 @@ docker compose up -d postgres
 See what is listening on port 80:
 
 ```bash
-sudo lsof -iTCP:80 -sTCP:LISTEN
+lsof -iTCP:80 -sTCP:LISTEN
 ```
 
 ## 3. Kill process on port 80
