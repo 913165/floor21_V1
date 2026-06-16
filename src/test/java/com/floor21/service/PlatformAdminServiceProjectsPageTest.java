@@ -106,6 +106,20 @@ class PlatformAdminServiceProjectsPageTest {
         assertThat(combinedPage.getContent().get(0).companyName()).isEqualTo("Horizon Pune");
     }
 
+    @Test
+    void listBuildersPage_filtersByProjectId() {
+        Builder first = tenant("Alpha", Instant.parse("2024-01-01T00:00:00Z"), null);
+        Builder second = tenant("Beta", Instant.parse("2024-02-01T00:00:00Z"), null);
+        when(builderRepository.findAllTenantsOrderByCompanyNameAsc()).thenReturn(List.of(first, second));
+        stubRowCounts();
+
+        Page<AdminBuilderRow> page =
+                service.listBuildersPage(0, 25, "companyName", "asc", null, null, first.getId());
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent().get(0).companyName()).isEqualTo("Alpha");
+    }
+
     private Builder tenant(String name, Instant createdAt, Instant updatedAt) {
         Builder b = new Builder();
         b.setId(UUID.randomUUID());

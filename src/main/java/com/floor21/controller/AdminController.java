@@ -49,7 +49,8 @@ public class AdminController {
             @RequestParam(defaultValue = "lastActivity") String sort,
             @RequestParam(defaultValue = "desc") String dir,
             @RequestParam(required = false) String q,
-            @RequestParam(required = false) String active) {
+            @RequestParam(required = false) String active,
+            @RequestParam(required = false) UUID projectId) {
         boolean readonlyView = !isSuperAdmin();
         String sortKey = PlatformAdminService.normalizeProjectsSort(sort);
         boolean ascending = PlatformAdminService.normalizeProjectsSortAscending(sortKey, dir);
@@ -63,10 +64,20 @@ public class AdminController {
                         ascending ? "asc" : "desc",
                         q,
                         activeFilter,
+                        projectId,
                         restrictToProjectIds);
+        List<Builder> projectOptions =
+                builderRepository.findAllTenantsOrderByCompanyNameAsc().stream()
+                        .filter(
+                                b ->
+                                        restrictToProjectIds == null
+                                                || restrictToProjectIds.contains(b.getId()))
+                        .toList();
         model.addAttribute("pageTitle", readonlyView ? "My projects" : "Projects");
         model.addAttribute("readonlyView", readonlyView);
         model.addAttribute("currentBuilderId", TenantContext.getBuilderIdOrNull());
+        model.addAttribute("projects", projectOptions);
+        model.addAttribute("filterProjectId", projectId);
         model.addAttribute("projectPage", projectPage);
         model.addAttribute("builders", projectPage.getContent());
         model.addAttribute("sort", sortKey);

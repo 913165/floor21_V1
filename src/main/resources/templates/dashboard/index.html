@@ -4,7 +4,7 @@
 <body>
 <div th:fragment="content"
      th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}, recent=${dashboard.recentBookings()}">
-  <link rel="stylesheet" th:href="@{/css/dashboard.css(v=dashboard4-v2)}" data-turbo-track="reload"/>
+  <link rel="stylesheet" th:href="@{/css/dashboard.css(v=dashboard4-v3)}" data-turbo-track="reload"/>
 
   <div class="f21-dashboard">
     <h1 class="f21-dashboard__title" th:text="${pageTitle}">Dashboard</h1>

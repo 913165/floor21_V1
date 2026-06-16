@@ -114,7 +114,7 @@ public class PlatformAdminService {
     @Transactional(readOnly = true)
     public Page<AdminBuilderRow> listBuildersPage(
             int page, int size, String sort, String dir, String search, Boolean activeFilter) {
-        return listBuildersPage(page, size, sort, dir, search, activeFilter, null);
+        return listBuildersPage(page, size, sort, dir, search, activeFilter, null, null);
     }
 
     @Transactional(readOnly = true)
@@ -125,6 +125,19 @@ public class PlatformAdminService {
             String dir,
             String search,
             Boolean activeFilter,
+            UUID projectId) {
+        return listBuildersPage(page, size, sort, dir, search, activeFilter, projectId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdminBuilderRow> listBuildersPage(
+            int page,
+            int size,
+            String sort,
+            String dir,
+            String search,
+            Boolean activeFilter,
+            UUID projectId,
             Set<UUID> restrictToProjectIds) {
         String sortKey = normalizeProjectsSort(sort);
         boolean ascending = normalizeProjectsSortAscending(sortKey, dir);
@@ -134,6 +147,7 @@ public class PlatformAdminService {
         List<AdminBuilderRow> filtered =
                 loadAllBuilderRows().stream()
                         .filter(row -> restrictToProjectIds == null || restrictToProjectIds.contains(row.id()))
+                        .filter(row -> projectId == null || projectId.equals(row.id()))
                         .filter(row -> matchesProjectSearch(row, search))
                         .filter(row -> matchesProjectActiveFilter(row, activeFilter))
                         .toList();

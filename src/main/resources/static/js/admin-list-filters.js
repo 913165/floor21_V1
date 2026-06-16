@@ -12,6 +12,25 @@
     }
   }
 
+  function wireSubmitOnSelect(form) {
+    if (!form || form.dataset.submitOnSelectEnhanced === "true") {
+      return;
+    }
+    form.dataset.submitOnSelectEnhanced = "true";
+    form.querySelectorAll("select[data-submit-on-select]").forEach(function (select) {
+      if (select.dataset.projectSearchEnhanced === "true") {
+        return;
+      }
+      if (select.dataset.submitOnSelectWired === "true") {
+        return;
+      }
+      select.dataset.submitOnSelectWired = "true";
+      select.addEventListener("change", function () {
+        submitForm(form);
+      });
+    });
+  }
+
   function wireLiveSearchForm(form, searchInputSelector) {
     if (!form || form.dataset.liveSearchEnhanced === "true") {
       return;
@@ -19,6 +38,7 @@
     form.dataset.liveSearchEnhanced = "true";
     form.setAttribute("data-turbo-frame", "floor21-main");
     form.setAttribute("data-turbo-action", "advance");
+    wireSubmitOnSelect(form);
 
     if (!searchInputSelector) {
       return;

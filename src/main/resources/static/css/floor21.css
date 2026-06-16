@@ -5890,6 +5890,64 @@ body.slab-schedule-col-resizing {
   opacity: 0.85;
 }
 
+/* Admin list tables — visible cell borders (projects, etc.) */
+.f21-list-table-wrap {
+  padding: 0 1rem 1rem;
+}
+
+.f21-list-table {
+  --f21-list-table-border: #cbd5e1;
+  --bs-table-border-color: var(--f21-list-table-border);
+  width: 100%;
+  margin-bottom: 0;
+  border: 1px solid var(--f21-list-table-border);
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.f21-list-table.table > :not(caption) > * > * {
+  border-bottom: 1px solid var(--f21-list-table-border);
+  border-right: 1px solid var(--f21-list-table-border);
+  box-shadow: none;
+}
+
+.f21-list-table > thead > tr > th:last-child,
+.f21-list-table > tbody > tr > td:last-child {
+  border-right: 0;
+}
+
+.f21-list-table > tbody > tr:last-child > td {
+  border-bottom: 0;
+}
+
+.f21-list-table > thead > tr > th {
+  background: #f1f5f9;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.f21-list-table > tbody > tr > td {
+  vertical-align: middle;
+}
+
+[data-bs-theme="dark"] .f21-list-table {
+  --f21-list-table-border: rgba(100, 130, 175, 0.32);
+}
+
+[data-bs-theme="dark"] .f21-list-table > thead > tr > th {
+  background: var(--f21-content-surface-alt, #1a2840);
+}
+
+[data-bs-theme="dark"] .f21-list-table > tbody > tr > td {
+  background: var(--f21-content-surface, #152035);
+}
+
+[data-bs-theme="dark"] .card .f21-list-table > tbody > tr:hover > td {
+  background: color-mix(in srgb, var(--f21-content-surface-alt, #1a2840) 55%, var(--f21-content-surface, #152035) 45%);
+}
+
 /* Ground floor shop panel (mirrors parking section layout; separate from parking styles) */
 .flat-ground-floor-section {
   margin-top: 0.25rem;
