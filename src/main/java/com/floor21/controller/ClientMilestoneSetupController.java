@@ -7,7 +7,6 @@ import com.floor21.entity.BookingPaymentSlab;
 import com.floor21.entity.Building;
 import com.floor21.entity.ExtraExpense;
 import com.floor21.exception.ResourceNotFoundException;
-import com.floor21.repository.BookingPaymentSlabRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
@@ -47,7 +46,6 @@ public class ClientMilestoneSetupController {
     private final BuildingRepository buildingRepository;
     private final BuilderRepository builderRepository;
     private final BookingRepository bookingRepository;
-    private final BookingPaymentSlabRepository bookingPaymentSlabRepository;
     private final BookingPaymentSlabService bookingPaymentSlabService;
     private final ExtraExpenseService extraExpenseService;
 
@@ -233,6 +231,21 @@ public class ClientMilestoneSetupController {
         return redirectBack(bookingId, buildingId, projectId);
     }
 
+    @PostMapping("/reset-template")
+    public String resetTemplate(
+            @RequestParam UUID bookingId,
+            @RequestParam(required = false) UUID buildingId,
+            @RequestParam(required = false) UUID projectId,
+            RedirectAttributes ra) {
+        try {
+            bookingPaymentSlabService.resetTemplateForBooking(bookingId);
+            ra.addFlashAttribute("successMessage", "Template reset and reloaded for this client.");
+        } catch (IllegalArgumentException | ResourceNotFoundException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return redirectBack(bookingId, buildingId, projectId);
+    }
+
     private BookingPaymentSlabBatchForm buildSaveForm(UUID bookingId, List<BookingPaymentSlab> slabs) {
         BookingPaymentSlabBatchForm form = new BookingPaymentSlabBatchForm();
         form.setBookingId(bookingId);
@@ -309,11 +322,9 @@ public class ClientMilestoneSetupController {
     }
 
     private List<BookingPaymentSlab> listSlabsForView(UUID bookingId, UUID builderId) {
-        if (TenantContext.getBuilderIdOrNull() != null) {
-            return bookingPaymentSlabService.listLines(bookingId);
-        }
+        // This page is a review/edit UI. It must not mutate booking_payment_slabs while being loaded.
         loadBookingForView(bookingId, builderId);
-        return bookingPaymentSlabRepository.findByBooking_IdOrderBySortOrderAscIdAsc(bookingId);
+        return bookingPaymentSlabService.listUniqueSlabsForScheduleReadOnly(bookingId, builderId);
     }
 
     /** Read-only totals for the setup grid — must not call payment-schedule sync (which deletes rows). */

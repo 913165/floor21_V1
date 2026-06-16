@@ -738,6 +738,12 @@ public class BookingPaymentSlabService {
         materializeFromPaymentTemplates(booking, replace);
     }
 
+    /** Rebuilds this booking's milestone rows from the current building template. */
+    @Transactional
+    public void resetTemplateForBooking(UUID bookingId) {
+        materializeFromTemplates(bookingId, true);
+    }
+
     private void materializeFromMilestoneSlabs(Booking booking, List<Slab> templates, boolean replace) {
         UUID bookingId = booking.getId();
         long existing = bookingPaymentSlabRepository.countByBooking_Id(bookingId);
@@ -748,8 +754,10 @@ public class BookingPaymentSlabService {
         if (replace && existing > 0) {
             bookingPaymentSlabRepository.deleteByBooking_Id(bookingId);
         }
-        createBookingSlabsFromMilestoneSlabs(booking, templates);
+        createBookingSlabsFromMilestoneSlabs(booking, distinctActiveMilestoneSlabs(templates));
         syncAgreedAmountsFromPercent(bookingId);
+        deduplicateSlabRows(bookingId);
+        consolidateOneSlabPerMilestoneLabel(bookingId);
     }
 
     private void materializeFromPaymentTemplates(Booking booking, boolean replace) {
@@ -793,7 +801,24 @@ public class BookingPaymentSlabService {
     }
 
     private List<Slab> listActiveBuildingMilestoneSlabs(UUID buildingId) {
-        return slabRepository.findActiveMilestonesByBuilding_Id(buildingId);
+        return distinctActiveMilestoneSlabs(slabRepository.findActiveMilestonesByBuilding_Id(buildingId));
+    }
+
+    /** Multiple slab rows can share the same label after imports; keep one per label for schedules. */
+    private static List<Slab> distinctActiveMilestoneSlabs(List<Slab> templates) {
+        Map<String, Slab> byLabel = new LinkedHashMap<>();
+        for (Slab template : templates) {
+            String key = normalizeMilestoneLabel(resolveMilestoneLabel(template));
+            byLabel.merge(
+                    key,
+                    template,
+                    (a, b) -> {
+                        int orderA = a.getSortOrder() != null ? a.getSortOrder() : 0;
+                        int orderB = b.getSortOrder() != null ? b.getSortOrder() : 0;
+                        return orderA <= orderB ? a : b;
+                    });
+        }
+        return new ArrayList<>(byLabel.values());
     }
 
     private void createBookingSlabsFromMilestoneSlabs(Booking booking, List<Slab> templates) {
