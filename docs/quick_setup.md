@@ -1,11 +1,3 @@
-Here's the **updated minimal Ubuntu server setup** keeping only:
-
-* PostgreSQL via Docker Compose
-* Find/Kill process on port 80
-* Run Spring Boot in background with `nohup`
-* View logs
-
----
 
 # Floor21 — Minimal Ubuntu Runtime Setup
 
