@@ -13,7 +13,9 @@
     Read-only for platform admin. Choose a project and building, then load a booking to review payment receipts.
   </div>
 
-  <form class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/receipts}" id="receiptPickerForm">
+  <form class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/receipts}" id="receiptPickerForm"
+        data-milestone-picker
+        th:attr="data-selected-building-id=${selectedBuildingId},data-selected-booking-id=${selectedBookingId}">
     <div class="row g-2 align-items-start">
       <div class="col-md-3 slab-schedule-picker__field" th:if="${platformAdminView}">
         <label class="form-label" for="receiptProject">Project</label>

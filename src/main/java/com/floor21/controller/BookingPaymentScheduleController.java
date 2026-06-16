@@ -94,20 +94,29 @@ public class BookingPaymentScheduleController {
             @RequestParam(required = false) UUID bookingId,
             HttpSession session,
             Model model) {
-        if (projectId == null) {
-            projectId = MilestoneNavSession.readProjectId(session);
-        }
-        if (buildingId == null) {
-            buildingId = MilestoneNavSession.readBuildingId(session);
-        }
-        if (bookingId == null) {
-            bookingId = MilestoneNavSession.readBookingId(session);
-        }
+        MilestoneNavSession.PickerSelection selection =
+                MilestoneNavSession.resolve(session, projectId, buildingId, bookingId);
+        projectId = selection.projectId();
+        buildingId = selection.buildingId();
+        bookingId = selection.bookingId();
         boolean platformAdminView = isPlatformAdmin();
         model.addAttribute("pageTitle", "Payment schedule (Clients)");
         model.addAttribute("platformAdminView", platformAdminView);
         model.addAttribute("readonlyView", platformAdminView);
         model.addAttribute("filterProjectId", projectId);
+
+        if (buildingId == null && bookingId != null) {
+            UUID builderIdForInfer =
+                    platformAdminView
+                            ? resolveBuilderId(buildingId, projectId)
+                            : TenantContext.requireBuilderId();
+            selection = MilestoneNavSession.withInferredBuilding(
+                    selection,
+                    MilestoneNavSupport.inferBuildingId(
+                            bookingRepository, bookingId, builderIdForInfer));
+            buildingId = selection.buildingId();
+            bookingId = selection.bookingId();
+        }
 
         if (platformAdminView) {
             model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
@@ -118,22 +127,53 @@ public class BookingPaymentScheduleController {
             model.addAttribute("buildings", buildingService.listBuildingsForPlatformProject(projectId));
             model.addAttribute("selectedBuildingId", buildingId);
             model.addAttribute("selectedBookingId", bookingId);
-            MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
-            model.addAttribute("bookings", listBookingsForPlatformAdmin(buildingId, projectId));
+            List<Booking> bookings = listBookingsForPlatformAdmin(buildingId, projectId);
+            Booking selectedForList = null;
+            if (bookingId != null) {
+                UUID builderId = resolveBuilderId(buildingId, projectId);
+                if (builderId != null) {
+                    try {
+                        selectedForList =
+                                bookingPaymentSlabService.getBookingForScheduleReadOnly(
+                                        bookingId, builderId);
+                    } catch (ResourceNotFoundException ignored) {
+                        selectedForList = null;
+                    }
+                }
+            }
+            model.addAttribute("bookings", MilestoneNavSupport.ensureSelectedBooking(bookings, selectedForList));
             if (bookingId != null) {
                 loadSelectedBookingForPlatformAdmin(model, projectId, buildingId, bookingId);
+                Object effectiveBuilding = model.getAttribute("selectedBuildingId");
+                if (effectiveBuilding instanceof UUID effectiveBuildingId) {
+                    buildingId = effectiveBuildingId;
+                }
             }
+            MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
             return "bookings/payment-schedule";
         }
 
         model.addAttribute("buildings", buildingService.listForTenant());
         model.addAttribute("selectedBuildingId", buildingId);
-        model.addAttribute("bookings", bookingPaymentSlabService.listBookingsForSchedule(buildingId));
+        List<Booking> bookings = bookingPaymentSlabService.listBookingsForSchedule(buildingId);
+        Booking selectedForList = null;
+        if (bookingId != null) {
+            try {
+                selectedForList = bookingPaymentSlabService.getBookingForSchedule(bookingId);
+            } catch (ResourceNotFoundException ignored) {
+                selectedForList = null;
+            }
+        }
+        model.addAttribute("bookings", MilestoneNavSupport.ensureSelectedBooking(bookings, selectedForList));
         model.addAttribute("selectedBookingId", bookingId);
-        MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
         if (bookingId != null) {
             loadSelectedBookingForTenant(model, buildingId, bookingId);
+            Object effectiveBuilding = model.getAttribute("selectedBuildingId");
+            if (effectiveBuilding instanceof UUID effectiveBuildingId) {
+                buildingId = effectiveBuildingId;
+            }
         }
+        MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
         return "bookings/payment-schedule";
     }
 

@@ -87,12 +87,11 @@ public class AdminBuilderPricingSlabController {
             @RequestParam(required = false) UUID buildingId,
             HttpSession session,
             Model model) {
-        if (projectId == null) {
-            projectId = MilestoneNavSession.readProjectId(session);
-        }
-        if (buildingId == null) {
-            buildingId = MilestoneNavSession.readBuildingId(session);
-        }
+        MilestoneNavSession.PickerSelection selection =
+                MilestoneNavSession.resolveProjectBuilding(session, projectId, buildingId);
+        projectId = selection.projectId();
+        buildingId =
+                buildingService.sanitizeBuildingIdForProject(selection.buildingId(), projectId);
         MilestoneNavSession.rememberProjectBuilding(session, projectId, buildingId);
         String search = q != null ? q.trim() : "";
         boolean readonlyView = !isPlatformAdmin();

@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
-<div th:fragment="content">
+<div th:fragment="content" th:with="dfmt=${T(com.floor21.util.Floor21DateFormatter)}">
   <h1 class="h3 mb-2" th:text="${pageTitle}">Broker bookings</h1>
   <p class="text-muted" th:text="${broker.fullName}"></p>
   <div class="table-responsive card shadow-sm">
@@ -11,7 +11,7 @@
       <tbody>
       <tr th:each="b : ${bookings}">
         <td><a th:href="@{/bookings/{id}(id=${b.id})}" th:text="${b.bookingCode}"></a></td>
-        <td th:text="${b.bookingDate}"></td>
+        <td th:text="${dfmt.formatDisplay(b.bookingDate)}"></td>
         <td th:text="${b.client.displayName()}"></td>
         <td>
           <a th:if="${b.flat != null and b.flat.building != null}"

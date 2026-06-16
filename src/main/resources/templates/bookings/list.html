@@ -3,7 +3,7 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
-<div th:fragment="content">
+<div th:fragment="content" th:with="dfmt=${T(com.floor21.util.Floor21DateFormatter)}">
   <div class="alert alert-info py-2" th:if="${platformAdminView}">
     Read-only for platform admin. Filter by project or search across all bookings.
   </div>
@@ -79,7 +79,7 @@
         <td th:if="${platformAdminView}"
             th:text="${b.builder != null ? b.builder.companyName : '—'}"></td>
         <td th:text="${b.bookingCode}"></td>
-        <td th:text="${b.bookingDate}"></td>
+        <td th:text="${dfmt.formatDisplay(b.bookingDate)}"></td>
         <td th:text="${b.client.displayName()}"></td>
         <td>
           <a th:if="${b.flat != null and b.flat.building != null}"

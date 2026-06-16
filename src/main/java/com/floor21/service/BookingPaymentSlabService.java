@@ -295,26 +295,56 @@ public class BookingPaymentSlabService {
         prepareSlabMilestones(bookingId);
         Booking booking = getBookingForSchedule(bookingId);
         if (booking.getFlat() == null || booking.getFlat().getBuilding() == null) {
-            return listLines(bookingId);
+            return dedupeSlabsByLabel(listLines(bookingId));
         }
         UUID buildingId = booking.getFlat().getBuilding().getId();
+        return orderUniqueSlabsByTemplateLabels(
+                listLines(bookingId), milestoneLabelsForBuilding(buildingId, false));
+    }
+
+    /** Read-only slab list for platform admin — does not sync or mutate booking milestone rows. */
+    @Transactional(readOnly = true)
+    public List<BookingPaymentSlab> listUniqueSlabsForScheduleReadOnly(UUID bookingId, UUID builderId) {
+        Booking booking = getBookingForScheduleReadOnly(bookingId, builderId);
+        if (booking.getFlat() == null || booking.getFlat().getBuilding() == null) {
+            return dedupeSlabsByLabel(listLinesReadOnly(bookingId, builderId));
+        }
+        UUID buildingId = booking.getFlat().getBuilding().getId();
+        return orderUniqueSlabsByTemplateLabels(
+                listLinesReadOnly(bookingId, builderId),
+                milestoneLabelsForBuilding(buildingId, true));
+    }
+
+    /**
+     * Milestone setup (Clients) uses building {@code slabs} (Milestone Templates). Payment schedule
+     * falls back to legacy {@code payment_slab_templates} when no building milestones exist.
+     */
+    private List<String> milestoneLabelsForBuilding(UUID buildingId, boolean readOnly) {
+        List<Slab> milestoneSlabs =
+                distinctActiveMilestoneSlabs(
+                        slabRepository.findActiveMilestonesByBuilding_Id(buildingId));
+        if (!milestoneSlabs.isEmpty()) {
+            return milestoneSlabs.stream().map(BookingPaymentSlabService::resolveMilestoneLabel).toList();
+        }
         List<PaymentSlabTemplate> templates =
-                distinctActiveTemplates(
-                        paymentSlabTemplateService.listActiveForBuilding(buildingId));
-        if (templates.isEmpty()) {
-            return listLines(bookingId);
-        }
+                readOnly
+                        ? distinctActiveTemplates(
+                                paymentSlabTemplateService.listActiveForBuildingReadOnly(buildingId))
+                        : distinctActiveTemplates(
+                                paymentSlabTemplateService.listActiveForBuilding(buildingId));
+        return templates.stream().map(PaymentSlabTemplate::getMilestoneLabel).toList();
+    }
 
-        List<BookingPaymentSlab> allSlabs = listLines(bookingId);
-        Map<String, BookingPaymentSlab> byLabel = new LinkedHashMap<>();
-        for (BookingPaymentSlab slab : allSlabs) {
-            byLabel.merge(normalizeMilestoneLabel(slab.getMilestoneLabel()), slab, this::pickPreferredSlab);
+    private List<BookingPaymentSlab> orderUniqueSlabsByTemplateLabels(
+            List<BookingPaymentSlab> allSlabs, List<String> templateLabelsInOrder) {
+        Map<String, BookingPaymentSlab> byLabel = dedupeSlabsByLabelMap(allSlabs);
+        if (templateLabelsInOrder.isEmpty()) {
+            return dedupeSlabsByLabel(allSlabs);
         }
-
         List<BookingPaymentSlab> ordered = new ArrayList<>();
         Set<String> seenLabels = new HashSet<>();
-        for (PaymentSlabTemplate template : templates) {
-            String labelKey = normalizeMilestoneLabel(template.getMilestoneLabel());
+        for (String templateLabel : templateLabelsInOrder) {
+            String labelKey = normalizeMilestoneLabel(templateLabel);
             if (!seenLabels.add(labelKey)) {
                 continue;
             }
@@ -326,40 +356,23 @@ public class BookingPaymentSlabService {
         return ordered;
     }
 
-    /** Read-only slab list for platform admin — does not sync or mutate booking milestone rows. */
-    @Transactional(readOnly = true)
-    public List<BookingPaymentSlab> listUniqueSlabsForScheduleReadOnly(UUID bookingId, UUID builderId) {
-        Booking booking = getBookingForScheduleReadOnly(bookingId, builderId);
-        if (booking.getFlat() == null || booking.getFlat().getBuilding() == null) {
-            return listLinesReadOnly(bookingId, builderId);
-        }
-        UUID buildingId = booking.getFlat().getBuilding().getId();
-        List<PaymentSlabTemplate> templates =
-                distinctActiveTemplates(
-                        paymentSlabTemplateService.listActiveForBuildingReadOnly(buildingId));
-        if (templates.isEmpty()) {
-            return listLinesReadOnly(bookingId, builderId);
-        }
+    private static List<BookingPaymentSlab> dedupeSlabsByLabel(List<BookingPaymentSlab> allSlabs) {
+        return new ArrayList<>(dedupeSlabsByLabelMap(allSlabs).values());
+    }
 
-        List<BookingPaymentSlab> allSlabs = listLinesReadOnly(bookingId, builderId);
+    private static Map<String, BookingPaymentSlab> dedupeSlabsByLabelMap(List<BookingPaymentSlab> allSlabs) {
         Map<String, BookingPaymentSlab> byLabel = new LinkedHashMap<>();
         for (BookingPaymentSlab slab : allSlabs) {
-            byLabel.merge(normalizeMilestoneLabel(slab.getMilestoneLabel()), slab, this::pickPreferredSlab);
+            byLabel.merge(
+                    normalizeMilestoneLabel(slab.getMilestoneLabel()),
+                    slab,
+                    BookingPaymentSlabService::chooseKeeperSlabPair);
         }
+        return byLabel;
+    }
 
-        List<BookingPaymentSlab> ordered = new ArrayList<>();
-        Set<String> seenLabels = new HashSet<>();
-        for (PaymentSlabTemplate template : templates) {
-            String labelKey = normalizeMilestoneLabel(template.getMilestoneLabel());
-            if (!seenLabels.add(labelKey)) {
-                continue;
-            }
-            BookingPaymentSlab slab = byLabel.get(labelKey);
-            if (slab != null) {
-                ordered.add(slab);
-            }
-        }
-        return ordered;
+    private static BookingPaymentSlab chooseKeeperSlabPair(BookingPaymentSlab a, BookingPaymentSlab b) {
+        return chooseKeeperSlab(List.of(a, b));
     }
 
     /** Multiple active DB templates can share the same label (e.g. after migrations); keep one per label. */
@@ -671,24 +684,24 @@ public class BookingPaymentSlabService {
             return false;
         }
         List<Slab> templates = listActiveBuildingMilestoneSlabs(buildingId);
-        if (templates.isEmpty()) {
-            long existing = bookingPaymentSlabRepository.countByBooking_Id(bookingId);
-            if (existing == 0) {
+        long existing = bookingPaymentSlabRepository.countByBooking_Id(bookingId);
+        if (existing == 0) {
+            if (!templates.isEmpty()) {
+                createBookingSlabsFromMilestoneSlabs(booking, templates);
+            } else {
                 try {
                     materializeFromPaymentTemplates(booking, false);
-                    return true;
                 } catch (IllegalArgumentException ignored) {
                     return false;
                 }
             }
-            return false;
-        }
-        long existing = bookingPaymentSlabRepository.countByBooking_Id(bookingId);
-        if (existing == 0) {
-            createBookingSlabsFromMilestoneSlabs(booking, templates);
             syncAgreedAmountsFromPercent(bookingId);
+            deduplicateSlabRows(bookingId);
+            consolidateOneSlabPerMilestoneLabel(bookingId);
             return true;
         }
+        deduplicateSlabRows(bookingId);
+        consolidateOneSlabPerMilestoneLabel(bookingId);
         return false;
     }
 
@@ -825,7 +838,7 @@ public class BookingPaymentSlabService {
         Instant now = Instant.now();
         BigDecimal base = baseConsideration(booking);
         int order = 0;
-        for (Slab template : templates) {
+        for (Slab template : distinctActiveMilestoneSlabs(templates)) {
             BookingPaymentSlab row = new BookingPaymentSlab();
             row.setBooking(booking);
             row.setTemplate(null);

@@ -210,6 +210,21 @@
   margin-top: 1rem;
 }
 
+.client-section-grid + .client-section-grid {
+  border-top: 0.5px solid var(--client-border);
+}
+
+.client-field-value a {
+  color: var(--client-accent-heading);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.client-field-value a:hover {
+  text-decoration: underline;
+  color: var(--client-accent-heading);
+}
+
 @media (max-width: 767.98px) {
   .client-section-grid {
     grid-template-columns: 1fr;

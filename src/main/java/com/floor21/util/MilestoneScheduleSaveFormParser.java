@@ -4,8 +4,6 @@ import com.floor21.dto.BookingPaymentSlabBatchForm;
 import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -70,18 +68,10 @@ public final class MilestoneScheduleSaveFormParser {
         if (text == null || text.isBlank()) {
             return null;
         }
-        String trimmed = text.trim();
         try {
-            return LocalDate.parse(trimmed);
-        } catch (DateTimeParseException ignored) {
-            for (String pattern : List.of("d-M-yyyy", "dd-MM-yyyy", "d/M/yyyy", "dd/MM/yyyy")) {
-                try {
-                    return LocalDate.parse(trimmed, DateTimeFormatter.ofPattern(pattern));
-                } catch (DateTimeParseException ignoredPattern) {
-                    /* try next */
-                }
-            }
-            throw new IllegalArgumentException("Invalid slab date: " + trimmed);
+            return Floor21DateFormatter.parseDisplay(text);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Invalid slab date: " + text.trim());
         }
     }
 

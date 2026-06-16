@@ -56,4 +56,41 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
                             + "lower(c.mobile1) like lower(concat('%', :q, '%')) or "
                             + "lower(c.email1) like lower(concat('%', :q, '%')))")
     Page<Client> search(@Param("builderId") UUID builderId, @Param("q") String q, Pageable pageable);
+
+    @Query(
+            value =
+                    "select c from Client c where c.builder.id = :builderId and c.id in "
+                            + "(select bk.client.id from Booking bk join bk.flat f where f.building.id = :buildingId "
+                            + "and (bk.status is null or bk.status <> 'CANCELLED'))",
+            countQuery =
+                    "select count(c) from Client c where c.builder.id = :builderId and c.id in "
+                            + "(select bk.client.id from Booking bk join bk.flat f where f.building.id = :buildingId "
+                            + "and (bk.status is null or bk.status <> 'CANCELLED'))")
+    Page<Client> findByBuilder_IdAndActiveBookingInBuilding(
+            @Param("builderId") UUID builderId,
+            @Param("buildingId") UUID buildingId,
+            Pageable pageable);
+
+    @Query(
+            value =
+                    "select c from Client c where c.builder.id = :builderId and c.id in "
+                            + "(select bk.client.id from Booking bk join bk.flat f where f.building.id = :buildingId "
+                            + "and (bk.status is null or bk.status <> 'CANCELLED')) and "
+                            + "(lower(c.firstName) like lower(concat('%', :q, '%')) or "
+                            + "lower(c.lastName) like lower(concat('%', :q, '%')) or "
+                            + "lower(c.mobile1) like lower(concat('%', :q, '%')) or "
+                            + "lower(c.email1) like lower(concat('%', :q, '%')))",
+            countQuery =
+                    "select count(c) from Client c where c.builder.id = :builderId and c.id in "
+                            + "(select bk.client.id from Booking bk join bk.flat f where f.building.id = :buildingId "
+                            + "and (bk.status is null or bk.status <> 'CANCELLED')) and "
+                            + "(lower(c.firstName) like lower(concat('%', :q, '%')) or "
+                            + "lower(c.lastName) like lower(concat('%', :q, '%')) or "
+                            + "lower(c.mobile1) like lower(concat('%', :q, '%')) or "
+                            + "lower(c.email1) like lower(concat('%', :q, '%')))")
+    Page<Client> searchByBuilder_IdAndActiveBookingInBuilding(
+            @Param("builderId") UUID builderId,
+            @Param("buildingId") UUID buildingId,
+            @Param("q") String q,
+            Pageable pageable);
 }

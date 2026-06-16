@@ -37,17 +37,21 @@ public class ClientService {
     private final BookingRepository bookingRepository;
 
     @Transactional(readOnly = true)
-    public Page<Client> listPage(int page, int size, String q, UUID projectId) {
+    public Page<Client> listPage(int page, int size, String q, UUID projectId, UUID buildingId) {
         int safeSize = Math.min(Math.max(size, 5), CLIENTS_MAX_PAGE_SIZE);
         int safePage = Math.max(page, 0);
-        return listClients(q, projectId, PageRequest.of(safePage, safeSize, resolveSort(q, projectId)));
+        return listClients(q, projectId, buildingId, PageRequest.of(safePage, safeSize, resolveSort(q, projectId)));
     }
 
     /** All clients matching the current list filters (search / project), for Excel export. */
     @Transactional(readOnly = true)
-    public List<Client> listForExport(String q, UUID projectId) {
+    public List<Client> listForExport(String q, UUID projectId, UUID buildingId) {
         Page<Client> page =
-                listClients(q, projectId, PageRequest.of(0, CLIENTS_MAX_EXPORT_ROWS, resolveSort(q, projectId)));
+                listClients(
+                        q,
+                        projectId,
+                        buildingId,
+                        PageRequest.of(0, CLIENTS_MAX_EXPORT_ROWS, resolveSort(q, projectId)));
         if (page.getTotalElements() > CLIENTS_MAX_EXPORT_ROWS) {
             throw new IllegalArgumentException(
                     "Too many clients to export ("
@@ -59,11 +63,22 @@ public class ClientService {
         return page.getContent();
     }
 
-    private Page<Client> listClients(String q, UUID projectId, Pageable pageable) {
+    private Page<Client> listClients(String q, UUID projectId, UUID buildingId, Pageable pageable) {
         String term = q != null && !q.isBlank() ? q.trim() : null;
 
         UUID builderId = TenantContext.getBuilderIdOrNull();
         if (builderId != null) {
+            if (buildingId != null) {
+                if (!TenantContext.canAccessBuilding(buildingId)) {
+                    return Page.empty(pageable);
+                }
+                if (term != null) {
+                    return clientRepository.searchByBuilder_IdAndActiveBookingInBuilding(
+                            builderId, buildingId, term, pageable);
+                }
+                return clientRepository.findByBuilder_IdAndActiveBookingInBuilding(
+                        builderId, buildingId, pageable);
+            }
             if (term != null) {
                 return clientRepository.search(builderId, term, pageable);
             }

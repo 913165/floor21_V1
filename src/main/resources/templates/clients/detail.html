@@ -3,8 +3,8 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
-<div th:fragment="content">
-  <link rel="stylesheet" th:href="@{/css/client-detail.css(v=deep-content-v1)}" data-turbo-track="reload"/>
+<div th:fragment="content" th:with="dfmt=${T(com.floor21.util.Floor21DateFormatter)}">
+  <link rel="stylesheet" th:href="@{/css/client-detail.css(v=detail-card-v1)}" data-turbo-track="reload"/>
 
   <div class="alert alert-secondary py-2 mb-3" sec:authorize="hasRole('SUPER_ADMIN')">
     View only — platform admin cannot edit client records.
@@ -88,7 +88,7 @@
             <p class="client-field-label">Date of birth</p>
             <p class="client-field-value"
                th:classappend="${client.dob == null} ? 'client-field-value--empty'"
-               th:text="${client.dob != null} ? ${#temporals.format(client.dob, 'dd MMM yyyy')} : 'Not provided'">
+               th:text="${client.dob != null} ? ${dfmt.formatDisplay(client.dob)} : 'Not provided'">
               Not provided
             </p>
           </div>
@@ -96,7 +96,7 @@
             <p class="client-field-label">Date of marriage</p>
             <p class="client-field-value"
                th:classappend="${client.dateOfMarriage == null} ? 'client-field-value--empty'"
-               th:text="${client.dateOfMarriage != null} ? ${#temporals.format(client.dateOfMarriage, 'dd MMM yyyy')} : 'Not provided'">
+               th:text="${client.dateOfMarriage != null} ? ${dfmt.formatDisplay(client.dateOfMarriage)} : 'Not provided'">
               Not provided
             </p>
           </div>

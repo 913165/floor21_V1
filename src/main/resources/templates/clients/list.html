@@ -4,11 +4,11 @@
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content">
-  <div class="alert alert-info py-2" sec:authorize="hasRole('SUPER_ADMIN')">
+  <div class="alert alert-info py-2 mb-3" sec:authorize="hasRole('SUPER_ADMIN')">
     Read-only for platform admin. Filter by project or search across all clients.
   </div>
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-    <h1 class="h3 mb-0" th:text="${pageTitle}">Milestone setup (Clients)</h1>
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Clients</h1>
     <div class="d-flex flex-wrap align-items-center gap-2">
       <form class="d-flex align-items-center gap-2" method="get" th:action="@{/clients}"
             id="clients-page-size-form"
@@ -16,6 +16,7 @@
         <input type="hidden" name="page" value="0"/>
         <input type="hidden" name="q" th:if="${q != null and !#strings.isEmpty(q)}" th:value="${q}"/>
         <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+        <input type="hidden" name="buildingId" th:if="${filterBuildingId != null}" th:value="${filterBuildingId}"/>
         <label class="form-label small text-muted mb-0" for="clients-page-size">Per page</label>
         <select class="form-select form-select-sm" id="clients-page-size" name="size"
                 style="width: auto" onchange="this.form.submit()">
@@ -26,60 +27,61 @@
         </select>
       </form>
       <a class="btn btn-outline-secondary btn-sm"
-         th:href="@{/clients/export(q=${q}, projectId=${filterProjectId})}"
+         th:href="@{/clients/export(q=${q}, projectId=${filterProjectId}, buildingId=${filterBuildingId})}"
          data-turbo="false">Export</a>
-      <button type="button" class="btn btn-outline-primary"
+      <button type="button" class="btn btn-outline-primary btn-sm"
               sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
               data-bs-toggle="modal" data-bs-target="#clients-import-modal">Import</button>
-      <a class="btn btn-primary" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')" th:href="@{/clients/new}">New client</a>
+      <a class="btn btn-primary btn-sm" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')" th:href="@{/clients/new}">New client</a>
     </div>
   </div>
 
-  <form class="row g-2 align-items-end mb-3" method="get" th:action="@{/clients}"
+  <form class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/clients}"
         id="clients-filter-form"
-        data-turbo-frame="floor21-main" data-turbo-action="advance"
-        sec:authorize="hasRole('SUPER_ADMIN')">
+        data-turbo-frame="floor21-main" data-turbo-action="advance">
     <input type="hidden" name="page" value="0"/>
     <input type="hidden" name="size" th:value="${pageSize}"/>
-    <div class="col-md-4 col-lg-3">
-      <label class="form-label small mb-1" for="filterProject">Project</label>
-      <select class="form-select form-select-sm" id="filterProject" name="projectId"
-              data-project-search-select data-submit-on-select="true">
-        <option value="">All projects</option>
-        <option th:each="p : ${projects}"
-                th:value="${p.id}"
-                th:text="${p.companyName}"
-                th:selected="${filterProjectId != null and filterProjectId == p.id}"></option>
-      </select>
-    </div>
-    <div class="col-md-5 col-lg-4">
-      <label class="form-label small mb-1" for="client-search-q">Search</label>
-      <input class="form-control form-control-sm" id="client-search-q" name="q" th:value="${q}"
-             placeholder="Name, phone, email" autocomplete="off" spellcheck="false"/>
-    </div>
-    <div class="col-auto">
-      <button class="btn btn-outline-secondary btn-sm" type="submit">Search</button>
-      <a class="btn btn-link btn-sm" th:href="@{/clients(size=${pageSize})}" th:if="${filterProjectId != null or (q != null and !#strings.isEmpty(q))}">Clear</a>
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4 col-lg-3 slab-schedule-picker__field" sec:authorize="hasRole('SUPER_ADMIN')">
+        <label class="form-label small mb-1" for="filterProject">Project</label>
+        <select class="form-select form-select-sm" id="filterProject" name="projectId"
+                data-project-search-select data-submit-on-select="true">
+          <option value="">All projects</option>
+          <option th:each="p : ${projects}"
+                  th:value="${p.id}"
+                  th:text="${p.companyName}"
+                  th:selected="${filterProjectId != null and filterProjectId == p.id}"></option>
+        </select>
+      </div>
+      <div class="col-md-4 col-lg-3 slab-schedule-picker__field" sec:authorize="!hasRole('SUPER_ADMIN')">
+        <label class="form-label small mb-1" for="filterBuilding">Building</label>
+        <select class="form-select form-select-sm" id="filterBuilding" name="buildingId"
+                data-submit-on-select="true">
+          <option value="" th:selected="${filterBuildingId == null}">All buildings</option>
+          <option th:each="bl : ${buildings}"
+                  th:value="${bl.id}"
+                  th:text="${bl.buildingName}"
+                  th:selected="${filterBuildingId != null and filterBuildingId == bl.id}"></option>
+        </select>
+      </div>
+      <div class="col-md-4 col-lg-4 slab-schedule-picker__field">
+        <label class="form-label small mb-1" for="client-search-q">Search</label>
+        <input class="form-control form-control-sm" id="client-search-q" name="q" th:value="${q}"
+               placeholder="Name, phone, email" autocomplete="off" spellcheck="false"/>
+      </div>
+      <div class="col-auto slab-schedule-picker__field">
+        <label class="form-label small mb-1 slab-schedule-picker__action-label" for="clients-search-btn">Search</label>
+        <button class="btn btn-outline-secondary btn-sm" id="clients-search-btn" type="submit">Search</button>
+        <a class="btn btn-link btn-sm"
+           th:href="@{/clients(size=${pageSize})}"
+           th:if="${filterProjectId != null or filterBuildingId != null or (q != null and !#strings.isEmpty(q))}">Clear</a>
+      </div>
     </div>
   </form>
 
-  <form class="row g-2 mb-3" method="get" th:action="@{/clients}"
-        id="clients-filter-form"
-        data-turbo-frame="floor21-main" data-turbo-action="advance"
-        sec:authorize="!hasRole('SUPER_ADMIN')">
-    <input type="hidden" name="page" value="0"/>
-    <input type="hidden" name="size" th:value="${pageSize}"/>
-    <div class="col-auto flex-grow-1">
-      <input class="form-control" id="client-search-q" name="q" th:value="${q}"
-             placeholder="Search name, phone, email" autocomplete="off" spellcheck="false"/>
-    </div>
-    <div class="col-auto">
-      <button class="btn btn-outline-secondary" type="submit">Search</button>
-    </div>
-  </form>
-
-  <div class="table-responsive card shadow-sm">
-    <table class="table table-hover mb-0">
+  <div class="card shadow-sm">
+    <div class="table-responsive f21-list-table-wrap">
+    <table class="table table-hover mb-0 f21-list-table">
       <thead>
       <tr>
         <th th:if="${platformAdminView != null and platformAdminView and filterProjectId == null}">Project</th>
@@ -96,7 +98,7 @@
         <td th:text="${c.displayName()}"></td>
         <td th:text="${c.city}"></td>
         <td th:text="${c.mobile1}"></td>
-        <td class="text-end">
+        <td class="text-end text-nowrap">
           <a class="btn btn-sm btn-outline-primary" th:href="@{/clients/{id}(id=${c.id})}">View</a>
           <a class="btn btn-sm btn-outline-secondary" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')" th:href="@{/clients/{id}/edit(id=${c.id})}">Edit</a>
         </td>
@@ -107,6 +109,7 @@
       </tr>
       </tbody>
     </table>
+    </div>
   </div>
 
   <nav class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3"
@@ -123,7 +126,7 @@
       <li class="page-item" th:classappend="${!clientPage.hasPrevious()} ? 'disabled'">
         <a class="page-link"
            th:if="${clientPage.hasPrevious()}"
-           th:href="@{/clients(page=${clientPage.number - 1}, size=${pageSize}, q=${q}, projectId=${filterProjectId})}">Previous</a>
+           th:href="@{/clients(page=${clientPage.number - 1}, size=${pageSize}, q=${q}, projectId=${filterProjectId}, buildingId=${filterBuildingId})}">Previous</a>
         <span class="page-link" th:unless="${clientPage.hasPrevious()}">Previous</span>
       </li>
       <li class="page-item disabled">
@@ -133,7 +136,7 @@
       <li class="page-item" th:classappend="${!clientPage.hasNext()} ? 'disabled'">
         <a class="page-link"
            th:if="${clientPage.hasNext()}"
-           th:href="@{/clients(page=${clientPage.number + 1}, size=${pageSize}, q=${q}, projectId=${filterProjectId})}">Next</a>
+           th:href="@{/clients(page=${clientPage.number + 1}, size=${pageSize}, q=${q}, projectId=${filterProjectId}, buildingId=${filterBuildingId})}">Next</a>
         <span class="page-link" th:unless="${clientPage.hasNext()}">Next</span>
       </li>
     </ul>

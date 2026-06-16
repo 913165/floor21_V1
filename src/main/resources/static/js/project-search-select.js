@@ -203,23 +203,102 @@
       });
     }
 
+    function snapshotDependents(form) {
+      if (!form || form.dataset.dependentSnapshotsSaved === "true") {
+        return;
+      }
+      form.dataset.dependentSnapshotsSaved = "true";
+      ["buildingId", "bookingId"].forEach(function (name) {
+        var el = form.querySelector('[name="' + name + '"]');
+        if (el && el.tagName === "SELECT") {
+          form.dataset["dependentSnapshot" + name] = el.innerHTML;
+        }
+      });
+    }
+
+    function isSearchDiverged() {
+      return searching && normalize(search.value) !== normalize(committedLabel);
+    }
+
+    function syncDependentDisabled(form) {
+      if (!form) {
+        return;
+      }
+      var building = form.querySelector('[name="buildingId"]');
+      var booking = form.querySelector('[name="bookingId"]');
+      var hasProject = !!select.value;
+      if (building) {
+        building.disabled = !hasProject;
+      }
+      if (booking) {
+        booking.disabled = !hasProject || !(building && building.value);
+      }
+    }
+
+    function resetDependentsForPendingProject(form) {
+      if (!form) {
+        return;
+      }
+      snapshotDependents(form);
+      clearDependentFilters(form);
+      ["buildingId", "bookingId"].forEach(function (name) {
+        var el = form.querySelector('[name="' + name + '"]');
+        if (!el || el.tagName !== "SELECT") {
+          return;
+        }
+        var placeholder = el.options[0];
+        el.innerHTML = "";
+        if (placeholder) {
+          el.appendChild(placeholder);
+        }
+        el.value = "";
+        el.disabled = true;
+      });
+    }
+
+    function restoreDependents(form) {
+      if (!form) {
+        return;
+      }
+      ["buildingId", "bookingId"].forEach(function (name) {
+        var el = form.querySelector('[name="' + name + '"]');
+        var html = form.dataset["dependentSnapshot" + name];
+        if (!el || !html) {
+          return;
+        }
+        el.innerHTML = html;
+      });
+      syncDependentDisabled(form);
+    }
+
+    function handlePendingProjectSearch(form) {
+      if (!form) {
+        return;
+      }
+      if (isSearchDiverged()) {
+        resetDependentsForPendingProject(form);
+      } else {
+        restoreDependents(form);
+      }
+    }
+
     function commitIfSingleMatch() {
       var query = normalize(search.value);
       if (!query) {
         return false;
-      }
-      var matches = options.filter(function (opt) {
-        return opt.value && normalize(opt.textContent).indexOf(query) !== -1;
-      });
-      if (matches.length === 1) {
-        chooseOption(matches[0]);
-        return true;
       }
       var exact = options.filter(function (opt) {
         return opt.value && normalize(opt.textContent) === query;
       });
       if (exact.length === 1) {
         chooseOption(exact[0]);
+        return true;
+      }
+      var matches = options.filter(function (opt) {
+        return opt.value && normalize(opt.textContent).indexOf(query) !== -1;
+      });
+      if (matches.length === 1) {
+        chooseOption(matches[0]);
         return true;
       }
       return false;
@@ -241,24 +320,35 @@
     }
 
     function endSearch() {
+      if (select.form && isSearchDiverged()) {
+        restoreDependents(select.form);
+      }
       searching = false;
       search.placeholder = "Search projects…";
       syncInputFromSelect();
       closeMenu();
     }
 
+    function beginSearch() {
+      searching = true;
+      if (committedLabel && normalize(search.value) === normalize(committedLabel)) {
+        search.placeholder = committedLabel;
+        search.value = "";
+      }
+      handlePendingProjectSearch(select.form);
+      renderMenu();
+    }
+
     activeSelects.push({ wrap: wrap, endSearch: endSearch });
     bindOutsideClickOnce();
 
-    search.addEventListener("focus", function () {
-      searching = true;
-      if (!search.value && committedLabel) {
-        search.value = committedLabel;
-      }
-    });
+    search.addEventListener("focus", beginSearch);
 
     search.addEventListener("click", function () {
-      searching = true;
+      if (!searching) {
+        beginSearch();
+        return;
+      }
       if (menu.hidden) {
         renderMenu();
       }
@@ -278,6 +368,7 @@
       if (!searching) {
         searching = true;
       }
+      handlePendingProjectSearch(select.form);
       renderMenu();
     });
 
@@ -313,8 +404,6 @@
 
     toggle.addEventListener("click", function () {
       if (menu.hidden) {
-        searching = true;
-        renderMenu();
         search.focus();
       } else {
         endSearch();
@@ -344,6 +433,11 @@
         },
         true
       );
+    }
+
+    if (select.form) {
+      snapshotDependents(select.form);
+      syncDependentDisabled(select.form);
     }
 
     syncInputFromSelect();

@@ -230,7 +230,7 @@ public class BookingService {
         entity.setMarketValue(form.getMarketValue());
         entity.setStampDutyAmount(form.getStampDutyAmount());
         entity.setRegistrationAmount(form.getRegistrationAmount());
-        entity.setFileNo(form.getFileNo());
+        entity.setFileNo(flatNumberFrom(flat));
         entity.setScheme(form.getScheme());
         entity.setParkingInfo(form.getParkingInfo());
         entity.setReference(form.getReference());
@@ -302,6 +302,13 @@ public class BookingService {
 
     private static BigDecimal zeroIfNull(BigDecimal v) {
         return v != null ? v : BigDecimal.ZERO;
+    }
+
+    private static String flatNumberFrom(Flat flat) {
+        if (flat == null || flat.getFlatNumber() == null || flat.getFlatNumber().isBlank()) {
+            return null;
+        }
+        return flat.getFlatNumber().trim();
     }
 
     private UUID resolveExecutiveId(Booking form) {

@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
-<div th:fragment="content">
+<div th:fragment="content" th:with="dfmt=${T(com.floor21.util.Floor21DateFormatter)}">
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <h1 class="h3 mb-0" th:text="${pageTitle}">Vault</h1>
     <div class="d-flex flex-wrap gap-2">
@@ -86,7 +86,7 @@
         <div class="col-md-2"><span class="text-muted">BHK / unit type</span><br/><span class="fw-semibold" th:text="${selectedBooking.flat != null && selectedBooking.flat.bhkType != null ? selectedBooking.flat.bhkType : '???'}">???</span></div>
         <div class="col-md-2"><span class="text-muted">Building</span><br/><span th:text="${selectedBooking.flat != null && selectedBooking.flat.building != null ? selectedBooking.flat.building.buildingName : '???'}">???</span></div>
         <div class="col-md-3"><span class="text-muted">Deal total (vault)</span><br/><span class="slab-amt--base" th:text="${amountForm != null && amountForm.totalConsideration != null ? amt.formatAmountDisplay(amountForm.totalConsideration) : '???'}">???</span></div>
-        <div class="col-md-3"><span class="text-muted">Booked</span><br/><span th:text="${selectedBooking.bookingDate}">???</span></div>
+        <div class="col-md-3"><span class="text-muted">Booked</span><br/><span th:text="${dfmt.formatDisplay(selectedBooking.bookingDate)}">—</span></div>
         <div class="col-md-6"><span class="text-muted">Client</span><br/><span th:text="${selectedBooking.client.displayName()}">???</span></div>
         <div class="col-md-6"><span class="text-muted">Booking code</span><br/><span th:text="${selectedBooking.bookingCode}">???</span></div>
       </div>

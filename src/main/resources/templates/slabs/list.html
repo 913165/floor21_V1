@@ -16,77 +16,76 @@
             title="Choose a building first">New rate slab</span>
     </div>
   </div>
-  <p class="text-muted small" th:if="${readonlyView}">
+  <p class="text-muted small mb-2" th:if="${readonlyView}">
     Read-only view of milestone templates for your project buildings.
     For buyer instalment schedules, use <strong>Milestone setup (Clients)</strong> and
     <strong>Payment schedule (Clients)</strong>.
   </p>
-  <p class="text-muted small" th:unless="${readonlyView}">
-    Per-building rate presets. Only <strong>Floor21</strong> super admins manage these.
-    For buyer instalment schedules, use <strong>Milestone setup (Clients)</strong> and
-    <strong>Payment schedule (Clients)</strong>.
-  </p>
+  <div class="alert alert-info py-2 mb-3" th:if="${!readonlyView}">
+    Choose a <strong>project</strong> and <strong>building</strong> to view or import milestone templates.
+    Use <button type="button" class="btn btn-link btn-sm p-0 align-baseline"
+          data-bs-toggle="modal" data-bs-target="#milestone-format-modal">Sample format</button> for the required Excel layout.
+  </div>
+
+  <form class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/admin/builder-pricing-slabs}"
+        id="slabs-filter-form"
+        data-turbo-frame="floor21-main" data-turbo-action="advance">
+    <div class="row g-2 align-items-start">
+      <div class="col-md-3 slab-schedule-picker__field" th:if="${!readonlyView}">
+        <label class="form-label" for="filterProject">Project</label>
+        <select class="form-select" id="filterProject" name="projectId"
+                data-project-search-select data-submit-on-select="true">
+          <option value="">All projects</option>
+          <option th:each="p : ${projects}"
+                  th:value="${p.id}"
+                  th:text="${p.companyName}"
+                  th:selected="${filterProjectId != null and filterProjectId == p.id}"></option>
+        </select>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0"></p>
+      </div>
+      <div class="col-md-4 slab-schedule-picker__field" th:classappend="${readonlyView} ? 'col-md-5' : ''">
+        <label class="form-label" for="slabs-search-q">Search</label>
+        <input class="form-control" id="slabs-search-q" name="q" th:value="${filterSearch}"
+               th:placeholder="${readonlyView} ? 'Building, city, slab name…' : 'Project, building, city, slab name…'"
+               autocomplete="off" spellcheck="false"/>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0"></p>
+      </div>
+      <div class="col-md-4 col-lg-3 slab-schedule-picker__field">
+        <label class="form-label" for="filterBuilding">Building</label>
+        <select class="form-select" id="filterBuilding" name="buildingId"
+                data-submit-on-select="true">
+          <option value="">Choose building…</option>
+          <option th:each="b : ${buildings}"
+                  th:value="${b.id}"
+                  th:attr="data-builder-id=${b.builder != null ? b.builder.id : ''}"
+                  th:selected="${selectedBuildingId != null and selectedBuildingId == b.id}"
+                  th:text="${readonlyView ? b.buildingName : ((b.builder != null ? b.builder.companyName + ' — ' : '') + b.buildingName)}">Building</option>
+        </select>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0"></p>
+      </div>
+      <div class="col-auto slab-schedule-picker__field">
+        <label class="form-label slab-schedule-picker__action-label" for="slabs-search-btn">Search</label>
+        <button class="btn btn-outline-secondary" id="slabs-search-btn" type="submit">Search</button>
+        <a class="btn btn-link btn-sm"
+           th:href="@{/admin/builder-pricing-slabs}"
+           th:if="${(!readonlyView and (filterProjectId != null or (filterSearch != null and !#strings.isEmpty(filterSearch)) or selectedBuildingId != null)) or (readonlyView and ((filterSearch != null and !#strings.isEmpty(filterSearch)) or selectedBuildingId != null))}">Clear</a>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0"></p>
+      </div>
+    </div>
+  </form>
 
   <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
   <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-
-  <form class="row g-2 align-items-end mb-3" method="get" th:action="@{/admin/builder-pricing-slabs}"
-        id="slabs-filter-form"
-        data-turbo-frame="floor21-main" data-turbo-action="advance">
-    <div class="col-md-3 col-lg-3" th:if="${!readonlyView}">
-      <label class="form-label small mb-1" for="filterProject">Project</label>
-      <select class="form-select form-select-sm" id="filterProject" name="projectId"
-              data-project-search-select data-submit-on-select="true">
-        <option value="">All projects</option>
-        <option th:each="p : ${projects}"
-                th:value="${p.id}"
-                th:text="${p.companyName}"
-                th:selected="${filterProjectId != null and filterProjectId == p.id}"></option>
-      </select>
-    </div>
-    <div class="col-md-4 col-lg-4" th:classappend="${readonlyView} ? 'col-md-8 col-lg-8' : ''">
-      <label class="form-label small mb-1" for="slabs-search-q">Search</label>
-      <input class="form-control form-control-sm" id="slabs-search-q" name="q" th:value="${filterSearch}"
-             th:placeholder="${readonlyView} ? 'Building, city, slab name…' : 'Project, building, city, slab name…'"
-             autocomplete="off" spellcheck="false"/>
-    </div>
-    <div class="col-md-4 col-lg-3">
-      <label class="form-label small mb-1" for="filterBuilding">Building</label>
-      <select class="form-select form-select-sm" id="filterBuilding" name="buildingId"
-              data-submit-on-select="true">
-        <option value="">Choose building…</option>
-        <option th:each="b : ${buildings}"
-                th:value="${b.id}"
-                th:attr="data-builder-id=${b.builder != null ? b.builder.id : ''}"
-                th:selected="${selectedBuildingId != null and selectedBuildingId == b.id}"
-                th:text="${readonlyView ? b.buildingName : ((b.builder != null ? b.builder.companyName + ' — ' : '') + b.buildingName)}">Building</option>
-      </select>
-    </div>
-    <div class="col-auto">
-      <button class="btn btn-outline-secondary btn-sm" type="submit">Search</button>
-      <a class="btn btn-link btn-sm"
-         th:href="@{/admin/builder-pricing-slabs}"
-         th:if="${(!readonlyView and (filterProjectId != null or (filterSearch != null and !#strings.isEmpty(filterSearch)) or selectedBuildingId != null)) or (readonlyView and ((filterSearch != null and !#strings.isEmpty(filterSearch)) or selectedBuildingId != null))}">Clear</a>
-    </div>
-  </form>
 
   <div th:if="${selectedBuilding != null}" class="small text-muted mb-2">
     <span class="fw-semibold" th:text="${selectedBuilding.buildingName}">Building</span>
   </div>
 
-  <div th:if="${!importReady and !readonlyView}" class="alert alert-info">
-    Select a <strong>project</strong> and <strong>building</strong> (use Search to narrow the list), then import milestones for that building.
-    Use <button type="button" class="btn btn-link btn-sm p-0 align-baseline"
-          data-bs-toggle="modal" data-bs-target="#milestone-format-modal">Sample format</button> to see the required Excel layout.
-  </div>
-
-  <div th:if="${readonlyView and selectedBuildingId == null}" class="alert alert-info">
+  <div th:if="${readonlyView and selectedBuildingId == null}" class="alert alert-info py-2">
     Select a <strong>building</strong> to view milestone templates for your project.
-    Use <button type="button" class="btn btn-link btn-sm p-0 align-baseline"
-          data-bs-toggle="modal" data-bs-target="#milestone-format-modal">Sample format</button> to see the Excel layout.
   </div>
 
-  <div th:if="${importReady}" class="card card-body shadow-sm mb-3">
+  <div th:if="${importReady}" class="card card-body shadow-sm mb-3 slab-schedule-picker">
     <h2 class="h6 fw-semibold mb-2">Import from Excel</h2>
     <p class="text-muted small mb-3">
       Upload a file in the <button type="button" class="btn btn-link btn-sm p-0 align-baseline"
@@ -124,8 +123,9 @@
     </form>
   </div>
 
-  <div th:if="${selectedBuildingId != null}" class="table-responsive card shadow-sm">
-    <table class="table mb-0">
+  <div th:if="${selectedBuildingId != null}" class="card shadow-sm">
+    <div class="table-responsive f21-list-table-wrap">
+    <table class="table mb-0 f21-list-table">
       <thead>
       <tr>
         <th class="text-center" style="width: 4rem;">Sr. No.</th>
@@ -160,6 +160,7 @@
       </tr>
       </tbody>
     </table>
+    </div>
   </div>
 
   <div class="modal fade" id="milestone-format-modal" tabindex="-1"

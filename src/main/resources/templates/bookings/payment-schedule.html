@@ -17,7 +17,9 @@
     Read-only for platform admin. Choose a project and building, then load a booking to review slab receipts and balances.
   </div>
 
-  <form id="schedulePickerForm" class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/bookings/payment-schedule}">
+  <form id="schedulePickerForm" class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/bookings/payment-schedule}"
+        data-milestone-picker
+        th:attr="data-selected-building-id=${selectedBuildingId},data-selected-booking-id=${selectedBookingId}">
     <div class="row g-2 align-items-start">
       <div class="col-md-3 slab-schedule-picker__field" th:if="${platformAdminView}">
         <label class="form-label" for="scheduleProject">Project</label>
@@ -71,17 +73,30 @@
   </form>
   <script>
     (function () {
+      const project = document.getElementById('scheduleProject');
       const building = document.getElementById('scheduleBuilding');
       const booking = document.getElementById('scheduleBooking');
       const form = document.getElementById('schedulePickerForm');
       if (!building || !booking || !form) return;
-      building.addEventListener('change', function () {
+      function clearBooking() {
         booking.value = '';
+      }
+      function submitPicker() {
         if (typeof form.requestSubmit === 'function') {
           form.requestSubmit();
         } else {
           form.submit();
         }
+      }
+      if (project) {
+        project.addEventListener('change', function () {
+          building.value = '';
+          clearBooking();
+        });
+      }
+      building.addEventListener('change', function () {
+        clearBooking();
+        submitPicker();
       });
     })();
   </script>

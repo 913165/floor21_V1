@@ -22,7 +22,9 @@
   <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
   <form id="milestonePickerForm" class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get"
-        th:action="@{/clients/milestone-setup}">
+        th:action="@{/clients/milestone-setup}"
+        data-milestone-picker
+        th:attr="data-selected-building-id=${selectedBuildingId},data-selected-booking-id=${selectedBookingId}">
     <div class="row g-2 align-items-start">
       <div class="col-md-3 slab-schedule-picker__field" th:if="${platformAdminView}">
         <label class="form-label" for="msProject">Project</label>

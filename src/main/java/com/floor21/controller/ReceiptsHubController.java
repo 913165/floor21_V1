@@ -100,19 +100,28 @@ public class ReceiptsHubController {
             @RequestParam(required = false, defaultValue = "false") boolean openNew,
             HttpSession session,
             Model model) {
-        if (projectId == null) {
-            projectId = MilestoneNavSession.readProjectId(session);
-        }
-        if (buildingId == null) {
-            buildingId = MilestoneNavSession.readBuildingId(session);
-        }
-        if (bookingId == null) {
-            bookingId = MilestoneNavSession.readBookingId(session);
-        }
+        MilestoneNavSession.PickerSelection selection =
+                MilestoneNavSession.resolve(session, projectId, buildingId, bookingId);
+        projectId = selection.projectId();
+        buildingId = selection.buildingId();
+        bookingId = selection.bookingId();
         boolean platformAdminView = isPlatformAdmin();
         model.addAttribute("platformAdminView", platformAdminView);
         model.addAttribute("readonlyView", platformAdminView);
         model.addAttribute("filterProjectId", projectId);
+
+        if (buildingId == null && bookingId != null) {
+            UUID builderIdForInfer =
+                    platformAdminView
+                            ? resolveBuilderId(buildingId, projectId, platformAdminView)
+                            : TenantContext.getBuilderIdOrNull();
+            UUID inferred =
+                    MilestoneNavSupport.inferBuildingId(
+                            bookingRepository, bookingId, builderIdForInfer);
+            selection = MilestoneNavSession.withInferredBuilding(selection, inferred);
+            buildingId = selection.buildingId();
+            bookingId = selection.bookingId();
+        }
 
         if (platformAdminView && (editReceiptId != null || openNew)) {
             model.addAttribute("errorMessage", "Read-only for platform admin.");
@@ -126,9 +135,15 @@ public class ReceiptsHubController {
         if (platformAdminView && buildingId == null) {
             bookingId = null;
         }
-        MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
 
         addPageTitleAndPicker(model, projectId, buildingId, bookingId, platformAdminView);
+        if (bookingId != null) {
+            Object effectiveBuilding = model.getAttribute("selectedBuildingId");
+            if (effectiveBuilding instanceof UUID effectiveBuildingId) {
+                buildingId = effectiveBuildingId;
+            }
+        }
+        MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
         if (bookingId == null) {
             return "receipts/entry";
         }
@@ -217,7 +232,10 @@ public class ReceiptsHubController {
         if (platformAdminView) {
             model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
             model.addAttribute("buildings", buildingService.listBuildingsForPlatformProject(projectId));
-            model.addAttribute("bookings", listBookingsForPlatformAdmin(buildingId, projectId));
+            UUID builderId = resolveBuilderId(buildingId, projectId, true);
+            List<Booking> bookings = listBookingsForPlatformAdmin(buildingId, projectId);
+            model.addAttribute(
+                    "bookings", bookingsWithSelected(bookings, bookingId, builderId));
             return;
         }
 
@@ -243,7 +261,17 @@ public class ReceiptsHubController {
             bookings =
                     bookingRepository.findActiveForPaymentScheduleByBuilding(tenantBuilderId, buildingId);
         }
-        model.addAttribute("bookings", bookings);
+        model.addAttribute("bookings", bookingsWithSelected(bookings, bookingId, tenantBuilderId));
+    }
+
+    private List<Booking> bookingsWithSelected(
+            List<Booking> bookings, UUID bookingId, UUID builderId) {
+        if (bookingId == null || builderId == null) {
+            return bookings;
+        }
+        Booking selectedForList =
+                bookingRepository.findByIdAndBuilder_IdForSchedule(bookingId, builderId).orElse(null);
+        return MilestoneNavSupport.ensureSelectedBooking(bookings, selectedForList);
     }
 
     private void addBookingWorkspace(

@@ -505,6 +505,9 @@
     if (dateInput && !dateInput.value) {
       dateInput.value = new Date().toISOString().slice(0, 10);
     }
+    if (window.Floor21Date && typeof window.Floor21Date.init === 'function') {
+      window.Floor21Date.init(row);
+    }
     if (dateInput) {
       dateInput.focus();
     }

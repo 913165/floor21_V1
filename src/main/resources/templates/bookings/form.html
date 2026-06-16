@@ -21,9 +21,10 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Flat</label>
-            <select class="form-select" th:field="*{flat.id}" required>
+            <select class="form-select" id="bookingFlatSelect" th:field="*{flat.id}" required>
               <option th:each="f : ${flats}"
                       th:value="${f.id}"
+                      th:attr="data-flat-number=${f.flatNumber}"
                       th:text="${f.building.buildingName + ' — ' + f.flatNumber + ' (' + f.bhkType + ', ' + f.status + ')'}"></option>
             </select>
           </div>
@@ -40,8 +41,10 @@
       <div class="card-body">
         <div class="row g-3">
           <div class="col-md-4">
-            <label class="form-label">File no</label>
-            <input class="form-control" th:field="*{fileNo}" maxlength="50"/>
+            <label class="form-label" for="bookingFlatNoDisplay">Flat no</label>
+            <p class="form-control-plaintext fw-semibold mb-0 py-1 border rounded px-2 bg-body-secondary"
+               id="bookingFlatNoDisplay">—</p>
+            <p class="form-text small mb-0">Taken from the flat selected above.</p>
           </div>
           <div class="col-md-4">
             <label class="form-label">Consideration</label>
@@ -145,6 +148,22 @@
       <a class="btn btn-link" th:href="${booking.id != null} ? @{/bookings/{id}(id=${booking.id})} : @{/bookings}">Cancel</a>
     </div>
   </form>
+  <script>
+    (function () {
+      var flatSelect = document.getElementById('bookingFlatSelect');
+      var display = document.getElementById('bookingFlatNoDisplay');
+      if (!flatSelect || !display) {
+        return;
+      }
+      function syncFlatNo() {
+        var opt = flatSelect.options[flatSelect.selectedIndex];
+        var flatNo = opt && opt.getAttribute('data-flat-number');
+        display.textContent = flatNo && flatNo.trim() ? flatNo.trim() : '—';
+      }
+      flatSelect.addEventListener('change', syncFlatNo);
+      syncFlatNo();
+    })();
+  </script>
 </div>
 </body>
 </html>

@@ -94,15 +94,11 @@ public class ClientMilestoneSetupController {
             @RequestParam(required = false) String clientQ,
             HttpSession session,
             Model model) {
-        if (projectId == null) {
-            projectId = MilestoneNavSession.readProjectId(session);
-        }
-        if (buildingId == null) {
-            buildingId = MilestoneNavSession.readBuildingId(session);
-        }
-        if (bookingId == null) {
-            bookingId = MilestoneNavSession.readBookingId(session);
-        }
+        MilestoneNavSession.PickerSelection selection =
+                MilestoneNavSession.resolve(session, projectId, buildingId, bookingId);
+        projectId = selection.projectId();
+        buildingId = selection.buildingId();
+        bookingId = selection.bookingId();
         model.addAttribute("pageTitle", "Milestone setup (Clients)");
         boolean platformAdmin = isPlatformAdmin();
         boolean editable = !platformAdmin;
@@ -110,6 +106,18 @@ public class ClientMilestoneSetupController {
         model.addAttribute("editable", editable);
         model.addAttribute("filterProjectId", projectId);
         model.addAttribute("clientQ", clientQ != null ? clientQ.trim() : "");
+
+        if (buildingId == null && bookingId != null) {
+            UUID builderIdForInfer =
+                    platformAdmin
+                            ? resolveBuilderId(buildingId, projectId)
+                            : TenantContext.getBuilderIdOrNull();
+            UUID inferred =
+                    MilestoneNavSupport.inferBuildingId(
+                            bookingRepository, bookingId, builderIdForInfer);
+            selection = MilestoneNavSession.withInferredBuilding(selection, inferred);
+            buildingId = selection.buildingId();
+        }
 
         if (platformAdmin) {
             model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
@@ -124,21 +132,32 @@ public class ClientMilestoneSetupController {
 
         model.addAttribute("selectedBuildingId", buildingId);
         model.addAttribute("selectedBookingId", bookingId);
-        MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
 
         if (buildingId == null) {
+            MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
             return "clients/milestone-setup";
         }
 
         UUID builderId = resolveBuilderId(buildingId, projectId);
         if (builderId == null) {
             model.addAttribute("errorMessage", "Choose a project or impersonate a partner to load bookings.");
+            MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
             return "clients/milestone-setup";
         }
 
         List<Booking> bookings =
                 bookingRepository.findActiveForPaymentScheduleByBuilding(builderId, buildingId);
-        model.addAttribute("bookings", filterBookingsByClientQuery(bookings, clientQ));
+        Booking selectedForList = null;
+        if (bookingId != null) {
+            try {
+                selectedForList = loadBookingForView(bookingId, builderId);
+            } catch (ResourceNotFoundException ignored) {
+                selectedForList = null;
+            }
+        }
+        bookings = filterBookingsByClientQuery(bookings, clientQ);
+        bookings = MilestoneNavSupport.ensureSelectedBooking(bookings, selectedForList);
+        model.addAttribute("bookings", bookings);
         Building building =
                 buildingRepository
                         .findByIdWithBuilder(buildingId)
@@ -146,6 +165,7 @@ public class ClientMilestoneSetupController {
         model.addAttribute("selectedBuilding", building);
 
         if (bookingId == null) {
+            MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
             return "clients/milestone-setup";
         }
 
@@ -179,6 +199,7 @@ public class ClientMilestoneSetupController {
         SlabScheduleSummary summary = summarizeForView(bookingId, builderId, booking);
         model.addAttribute("scheduleSummary", summary);
 
+        MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
         return "clients/milestone-setup";
     }
 

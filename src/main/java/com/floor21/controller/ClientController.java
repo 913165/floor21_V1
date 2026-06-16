@@ -6,6 +6,7 @@ import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
 import com.floor21.service.ClientExcelService;
 import com.floor21.service.ClientService;
+import com.floor21.service.BuildingService;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
@@ -40,15 +41,17 @@ public class ClientController {
     private final ClientService clientService;
     private final ClientExcelService clientExcelService;
     private final BuilderRepository builderRepository;
+    private final BuildingService buildingService;
 
     @GetMapping
     public String list(
             Model model,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) UUID buildingId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Page<Client> clientPage = clientService.listPage(page, size, q, projectId);
+        Page<Client> clientPage = clientService.listPage(page, size, q, projectId, buildingId);
         model.addAttribute("pageTitle", "Clients");
         model.addAttribute("clientPage", clientPage);
         model.addAttribute("clients", clientPage.getContent());
@@ -59,6 +62,9 @@ public class ClientController {
             model.addAttribute("platformAdminView", true);
             model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
             model.addAttribute("filterProjectId", projectId);
+        } else {
+            model.addAttribute("buildings", buildingService.listForTenant());
+            model.addAttribute("filterBuildingId", buildingId);
         }
         return "clients/list";
     }
@@ -68,15 +74,18 @@ public class ClientController {
             Model model,
             @RequestParam String q,
             @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) UUID buildingId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Page<Client> clientPage = clientService.listPage(page, size, q, projectId);
+        Page<Client> clientPage = clientService.listPage(page, size, q, projectId, buildingId);
         model.addAttribute("clientPage", clientPage);
         model.addAttribute("clients", clientPage.getContent());
         model.addAttribute("pageSize", clientPage.getSize());
         if (isPlatformAdmin()) {
             model.addAttribute("platformAdminView", true);
             model.addAttribute("filterProjectId", projectId);
+        } else {
+            model.addAttribute("filterBuildingId", buildingId);
         }
         return "clients/list :: clientRows";
     }
@@ -85,10 +94,11 @@ public class ClientController {
     public Object export(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) UUID buildingId,
             RedirectAttributes ra)
             throws IOException {
         try {
-            List<Client> clients = clientService.listForExport(q, projectId);
+            List<Client> clients = clientService.listForExport(q, projectId, buildingId);
             boolean includeProjectColumn =
                     TenantContext.getBuilderIdOrNull() == null && projectId == null && isPlatformAdmin();
             byte[] body = clientExcelService.exportClients(clients, includeProjectColumn);
@@ -103,7 +113,7 @@ public class ClientController {
                     .body(body);
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
-            return "redirect:" + clientsListUrl(q, 0, ClientService.CLIENTS_DEFAULT_PAGE_SIZE, projectId);
+            return "redirect:" + clientsListUrl(q, 0, ClientService.CLIENTS_DEFAULT_PAGE_SIZE, projectId, buildingId);
         }
     }
 
@@ -136,7 +146,7 @@ public class ClientController {
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
         }
-        return "redirect:" + clientsListUrl(q, page, size, null);
+        return "redirect:" + clientsListUrl(q, page, size, null, null);
     }
 
     @GetMapping("/new")
@@ -190,13 +200,16 @@ public class ClientController {
                 && principal.isSuperAdmin();
     }
 
-    private static String clientsListUrl(String q, int page, int size, UUID projectId) {
+    private static String clientsListUrl(String q, int page, int size, UUID projectId, UUID buildingId) {
         UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/clients");
         if (q != null && !q.isBlank()) {
             builder.queryParam("q", q.trim());
         }
         if (projectId != null) {
             builder.queryParam("projectId", projectId);
+        }
+        if (buildingId != null) {
+            builder.queryParam("buildingId", buildingId);
         }
         if (page > 0) {
             builder.queryParam("page", page);
