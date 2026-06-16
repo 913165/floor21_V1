@@ -19,15 +19,6 @@ See what is listening on port 80:
 sudo lsof -iTCP:80 -sTCP:LISTEN
 ```
 
-Example output:
-
-```bash
-COMMAND   PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
-java    12345 ubuntu  50u  IPv6 ...    TCP *:http (LISTEN)
-```
-
----
-
 ## 3. Kill process on port 80
 
 Kill whatever is occupying port 80:
@@ -36,15 +27,7 @@ Kill whatever is occupying port 80:
 sudo kill -9 $(sudo lsof -t -i:80)
 ```
 
-Verify:
 
-```bash
-sudo lsof -iTCP:80 -sTCP:LISTEN
-```
-
-No output means port 80 is free.
-
----
 
 
 # Start Floor21
