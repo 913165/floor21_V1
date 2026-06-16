@@ -98,27 +98,7 @@ mkdir -p logs
 nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod -q > /dev/null 2>&1 &
 ```
 
----
 
-## 6. View application logs
-
-```bash
-tail -f logs/floor21.log
-```
-
-Show last 100 lines:
-
-```bash
-tail -100 logs/floor21.log
-```
-
-Search for errors:
-
-```bash
-grep ERROR logs/floor21.log
-```
-
----
 
 ## Quick Commands
 
