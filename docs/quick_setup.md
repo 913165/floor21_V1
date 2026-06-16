@@ -54,45 +54,13 @@ No output means port 80 is free.
 
 ---
 
-## 4. Find Floor21 Java process
-
-```bash
-ps aux | grep floor21
-```
-
-Or:
-
-```bash
-ps -ef | grep java
-```
-
----
-
-## 5. Run Floor21 in background
-
-From the project root:
-
-```bash
-chmod +x mvnw
-mkdir -p logs
-
-nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod -q > /dev/null 2>&1 &
-```
-
-
-
-## Quick Commands
-
-```bash
-# Start PostgreSQL
-docker compose up -d postgres
-
-# Kill app on port 80
-sudo kill -9 $(sudo lsof -t -i:80)
 
 # Start Floor21
-nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod -q > /dev/null 2>&1 &
 
+```bash
+nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod -q > /dev/null 2>&1 &
+```
 # Watch logs
+```bash
 tail -f logs/floor21.log
 ```
