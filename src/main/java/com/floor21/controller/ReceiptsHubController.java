@@ -13,6 +13,7 @@ import com.floor21.service.BankService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.ReceiptPrintService;
 import com.floor21.service.ReceiptService;
+import com.floor21.service.ReceiptWordExportService;
 import jakarta.servlet.http.HttpSession;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
@@ -21,6 +22,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -90,6 +95,7 @@ public class ReceiptsHubController {
     private final ReceiptService receiptService;
     private final BankService bankService;
     private final ReceiptPrintService receiptPrintService;
+    private final ReceiptWordExportService receiptWordExportService;
 
     @GetMapping
     public String entry(
@@ -221,6 +227,23 @@ public class ReceiptsHubController {
                 "Receipt " + (receipt.getReceiptNumber() != null ? receipt.getReceiptNumber() : id));
         receiptPrintService.addPrintAttributes(model, receipt);
         return "receipts/print";
+    }
+
+    @GetMapping("/{id}/download-word")
+    public ResponseEntity<byte[]> downloadWord(
+            @PathVariable UUID id,
+            @RequestParam UUID bookingId,
+            @RequestParam(required = false) UUID builderId) {
+        Receipt receipt = receiptService.getForPrint(id, bookingId, builderId);
+        byte[] body = receiptWordExportService.generate(receipt);
+        String filename = receiptWordExportService.suggestedFilename(receipt);
+        ContentDisposition disposition = ContentDisposition.attachment().filename(filename).build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(
+                        MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+                .body(body);
     }
 
     private void addPageTitleAndPicker(

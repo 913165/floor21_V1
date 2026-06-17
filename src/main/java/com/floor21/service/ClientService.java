@@ -159,7 +159,7 @@ public class ClientService {
             UUID bid = building.getId();
             byBuilding.putIfAbsent(
                     bid,
-                    new ClientBuildingNavDto(bid, building.getBuildingName(), flat.getId()));
+                    new ClientBuildingNavDto(bid, building.getBuildingName(), flat.getId(), b.getId()));
         }
         return new ArrayList<>(byBuilding.values());
     }

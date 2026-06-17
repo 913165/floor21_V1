@@ -241,6 +241,7 @@
               <th class="align-middle text-center text-nowrap">Days</th>
               <th class="align-middle text-center text-nowrap">Interest</th>
               <th class="align-middle text-center">Info</th>
+              <th class="align-middle text-center">Remark</th>
             </tr>
             </thead>
             <tbody>
@@ -264,6 +265,8 @@
                   th:text="${row.interest() != null ? amt.formatAmountDisplay(row.interest()) : dash}">-</td>
               <td class="small text-muted"
                   th:text="${row.info() != null and !#strings.isEmpty(row.info()) ? row.info() : dash}">-</td>
+              <td class="small text-muted"
+                  th:text="${row.remark() != null and !#strings.isEmpty(row.remark()) ? row.remark() : dash}">-</td>
             </tr>
             </tbody>
             <tfoot class="table-light" th:if="${ledgerSummary != null}">
@@ -274,6 +277,7 @@
               <td class="text-end slab-amt--balance" th:text="${amt.formatAmountDisplay(ledgerSummary.totalBalance())}">0</td>
               <td class="text-center text-muted" th:text="${dash}">-</td>
               <td class="text-end" th:text="${amt.formatAmountDisplay(ledgerSummary.totalInterest())}">0</td>
+              <td class="text-muted" th:text="${dash}">-</td>
               <td class="text-muted" th:text="${dash}">-</td>
             </tr>
             </tfoot>

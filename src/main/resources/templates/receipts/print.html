@@ -59,9 +59,11 @@
       This receipt is issued on record against the particulars stated herein.
     </p>
 
-    <div class="d-print-none mt-4">
+    <div class="d-print-none mt-4 d-flex flex-wrap gap-2">
       <button type="button" class="btn btn-primary" onclick="window.print()">Print</button>
-      <a class="btn btn-link" th:href="@{/receipts(bookingId=${booking.id})}">Back to Payment Receipts</a>
+      <a class="btn btn-outline-primary receipt-action-btn" data-turbo="false"
+         th:href="@{/receipts/{id}/download-word(id=${receipt.id}, bookingId=${booking.id})}">Download Word</a>
+      <a class="btn btn-link receipt-back-link" th:href="@{/receipts(bookingId=${booking.id})}">Back to Payment Receipts</a>
     </div>
   </div>
 
@@ -71,19 +73,26 @@
       font-family: "Times New Roman", Times, serif;
       font-size: 12pt;
       line-height: 1.65;
-      color: #000;
+      color: #111;
+      background: #fff;
+      padding: 1.75rem 2rem;
+      border-radius: 0.25rem;
+      box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.1);
     }
 
     .receipt-letter-head {
       font-size: 12pt;
+      color: inherit;
     }
 
     .receipt-narrative {
       text-align: justify;
+      color: inherit;
     }
 
     .receipt-narrative strong {
       font-weight: 700;
+      color: inherit;
     }
 
     .receipt-amount-box {
@@ -92,15 +101,40 @@
       padding: 0.4rem 1rem;
       font-weight: 700;
       font-size: 12pt;
+      color: inherit;
+    }
+
+    .receipt-signatory {
+      color: inherit;
     }
 
     .receipt-signatory-line {
       font-size: 11pt;
-      color: #000;
+      color: inherit;
     }
 
     .receipt-disclaimer {
       font-size: 9.5pt;
+      color: #333;
+    }
+
+    /* On-screen preview: keep receipt paper-like in dark theme */
+    [data-bs-theme="dark"] .receipt-letter {
+      color: #111;
+      background: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.45);
+    }
+
+    [data-bs-theme="dark"] .receipt-letter strong,
+    [data-bs-theme="dark"] .receipt-signatory,
+    [data-bs-theme="dark"] .receipt-signatory-line,
+    [data-bs-theme="dark"] .receipt-amount-box,
+    [data-bs-theme="dark"] .receipt-disclaimer {
+      color: inherit;
+    }
+
+    [data-bs-theme="dark"] .receipt-disclaimer {
       color: #333;
     }
 
@@ -112,11 +146,20 @@
       .floor21-panel {
         padding: 0 !important;
         overflow: visible !important;
+        background: #fff !important;
       }
 
       .receipt-letter {
         max-width: 100% !important;
         box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        color: #000 !important;
+        background: #fff !important;
+      }
+
+      .receipt-disclaimer {
+        color: #333 !important;
       }
 
       @page {

@@ -1,54 +1,76 @@
 package com.floor21.service;
 
+import com.floor21.dto.ReceiptLetterView;
 import com.floor21.entity.Bank;
 import com.floor21.entity.Building;
+import com.floor21.entity.Builder;
 import com.floor21.entity.Client;
 import com.floor21.entity.Flat;
 import com.floor21.entity.Receipt;
+import com.floor21.entity.User;
+import com.floor21.entity.UserProjectAssignment;
+import com.floor21.repository.UserProjectAssignmentRepository;
 import com.floor21.util.IndianRupeesFormatter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
 
 @Service
+@RequiredArgsConstructor
 public class ReceiptPrintService {
 
     private static final BigDecimal ZERO = BigDecimal.ZERO;
     private static final DateTimeFormatter PRINT_DATE =
             DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
 
-    public void addPrintAttributes(Model model, Receipt receipt) {
+    private final UserProjectAssignmentRepository userProjectAssignmentRepository;
+
+    public ReceiptLetterView buildLetterView(Receipt receipt) {
         Flat flat = receipt.getBooking().getFlat();
         Building building = flat.getBuilding();
         Client client = receipt.getBooking().getClient();
-
-        model.addAttribute("receiptDateFormatted", formatDate(receipt.getReceiptDate()));
-        model.addAttribute(
-                "instrumentDateFormatted",
-                formatDate(receipt.getChequeDate() != null ? receipt.getChequeDate() : receipt.getReceiptDate()));
-        model.addAttribute("amountFiguresPrint", IndianRupeesFormatter.formatFigures(receipt.getAmount()));
-        model.addAttribute("amountWordsPrint", IndianRupeesFormatter.formatWordsOnly(receipt.getAmount()));
-        model.addAttribute("payerNamesPrint", resolvePayerNames(client));
-        model.addAttribute("paymentInstrumentPrint", buildPaymentInstrument(receipt));
-        model.addAttribute("drawnOnBankPrint", resolveDrawnOn(receipt));
-        model.addAttribute("purposeNarrativePrint", buildPurposeNarrative(receipt));
-        model.addAttribute("flatNumberPrint", flat.getFlatNumber() != null ? flat.getFlatNumber().trim() : "—");
-        model.addAttribute("floorPhrasePrint", ordinalFloorPhrase(flat.getFloorNumber()));
-        model.addAttribute(
-                "projectNamePrint",
-                building.getBuildingName() != null ? building.getBuildingName().trim() : "—");
-        model.addAttribute("siteAddressPrint", formatSiteAddress(building));
-        model.addAttribute(
-                "builderCompanyPrint",
-                receipt.getBuilder().getCompanyName() != null
-                        ? receipt.getBuilder().getCompanyName().trim()
-                        : "—");
-        model.addAttribute(
-                "showChequeRealizationDisclaimer",
+        String receiptNumber =
+                receipt.getReceiptNumber() != null && !receipt.getReceiptNumber().isBlank()
+                        ? receipt.getReceiptNumber().trim()
+                        : "—";
+        return new ReceiptLetterView(
+                receiptNumber,
+                formatDate(receipt.getReceiptDate()),
+                formatDate(receipt.getChequeDate() != null ? receipt.getChequeDate() : receipt.getReceiptDate()),
+                IndianRupeesFormatter.formatFigures(receipt.getAmount()),
+                IndianRupeesFormatter.formatWordsOnly(receipt.getAmount()),
+                resolvePayerNames(client),
+                buildPaymentInstrument(receipt),
+                resolveDrawnOn(receipt),
+                buildPurposeNarrative(receipt),
+                flat.getFlatNumber() != null ? flat.getFlatNumber().trim() : "—",
+                ordinalFloorPhrase(flat.getFloorNumber()),
+                building.getBuildingName() != null ? building.getBuildingName().trim() : "—",
+                formatSiteAddress(building),
+                signatoryCompanyForBuilder(resolveBuilder(receipt, building)),
                 receipt.getPaymentMode() != null && receipt.getPaymentMode().trim().equalsIgnoreCase("Cheque"));
+    }
+
+    public void addPrintAttributes(Model model, Receipt receipt) {
+        ReceiptLetterView view = buildLetterView(receipt);
+        model.addAttribute("receiptDateFormatted", view.receiptDateFormatted());
+        model.addAttribute("instrumentDateFormatted", view.instrumentDateFormatted());
+        model.addAttribute("amountFiguresPrint", view.amountFiguresPrint());
+        model.addAttribute("amountWordsPrint", view.amountWordsPrint());
+        model.addAttribute("payerNamesPrint", view.payerNamesPrint());
+        model.addAttribute("paymentInstrumentPrint", view.paymentInstrumentPrint());
+        model.addAttribute("drawnOnBankPrint", view.drawnOnBankPrint());
+        model.addAttribute("purposeNarrativePrint", view.purposeNarrativePrint());
+        model.addAttribute("flatNumberPrint", view.flatNumberPrint());
+        model.addAttribute("floorPhrasePrint", view.floorPhrasePrint());
+        model.addAttribute("projectNamePrint", view.projectNamePrint());
+        model.addAttribute("siteAddressPrint", view.siteAddressPrint());
+        model.addAttribute("builderCompanyPrint", view.builderCompanyPrint());
+        model.addAttribute("showChequeRealizationDisclaimer", view.showChequeRealizationDisclaimer());
     }
 
     private static String formatDate(LocalDate d) {
@@ -155,6 +177,44 @@ public class ReceiptPrintService {
             sb.append(b.getCity().trim());
         }
         return sb.length() > 0 ? sb.toString() : "—";
+    }
+
+    /**
+     * Authorised signatory uses the builder admin's company name (User Management), not the project
+     * or building marketing name shown in the receipt narrative.
+     */
+    public String signatoryCompanyForBuilder(Builder builder) {
+        if (builder == null) {
+            return "—";
+        }
+        for (UserProjectAssignment assignment :
+                userProjectAssignmentRepository.findByBuilder_IdWithUser(builder.getId())) {
+            if (!StaffBuildingAccessService.ROLE_BUILDER_ADMIN.equals(assignment.getRole())) {
+                continue;
+            }
+            String company = userCompanyName(assignment.getUser());
+            if (company != null) {
+                return company;
+            }
+        }
+        if (builder.getCompanyName() != null && !builder.getCompanyName().isBlank()) {
+            return builder.getCompanyName().trim();
+        }
+        return "—";
+    }
+
+    private static Builder resolveBuilder(Receipt receipt, Building building) {
+        if (building != null && building.getBuilder() != null) {
+            return building.getBuilder();
+        }
+        return receipt.getBuilder();
+    }
+
+    private static String userCompanyName(User user) {
+        if (user == null || user.getCompanyName() == null || user.getCompanyName().isBlank()) {
+            return null;
+        }
+        return user.getCompanyName().trim();
     }
 
     private static String trimToNull(String s) {

@@ -42,6 +42,7 @@ public final class SlabReceiptWaterfall {
             LocalDate payDate =
                     receipt.getReceiptDate() != null ? receipt.getReceiptDate() : LocalDate.now();
             String reference = buildReceiptReference(receipt);
+            String remark = receiptRemarks(receipt);
 
             for (int i = 0; i < slabs.size() && pool.compareTo(ZERO) > 0; i++) {
                 if (remainingDue[i].compareTo(ZERO) <= 0) {
@@ -51,13 +52,13 @@ public final class SlabReceiptWaterfall {
                 if (apply.compareTo(ZERO) <= 0) {
                     continue;
                 }
-                addSlice(bySlab, slabs.get(i).getId(), receipt.getId(), payDate, apply, reference);
+                addSlice(bySlab, slabs.get(i).getId(), receipt.getId(), payDate, apply, reference, remark);
                 remainingDue[i] = remainingDue[i].subtract(apply);
                 pool = pool.subtract(apply);
             }
             if (pool.compareTo(ZERO) > 0) {
                 BookingPaymentSlab last = slabs.get(slabs.size() - 1);
-                addSlice(bySlab, last.getId(), receipt.getId(), payDate, pool, reference);
+                addSlice(bySlab, last.getId(), receipt.getId(), payDate, pool, reference, remark);
             }
         }
         return bySlab;
@@ -95,13 +96,21 @@ public final class SlabReceiptWaterfall {
         return sb.length() > 0 ? sb.toString() : "Receipt";
     }
 
+    private static String receiptRemarks(Receipt receipt) {
+        if (receipt.getRemarks() == null || receipt.getRemarks().isBlank()) {
+            return null;
+        }
+        return receipt.getRemarks().trim();
+    }
+
     private static void addSlice(
             Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab,
             UUID slabId,
             UUID receiptId,
             LocalDate payDate,
             BigDecimal amount,
-            String reference) {
+            String reference,
+            String remark) {
         bySlab.get(slabId)
                 .add(
                         new ReceiptSlabAllocationSlice(
@@ -109,6 +118,7 @@ public final class SlabReceiptWaterfall {
                                 receiptId,
                                 payDate,
                                 amount.setScale(2, RoundingMode.HALF_UP),
-                                reference));
+                                reference,
+                                remark));
     }
 }

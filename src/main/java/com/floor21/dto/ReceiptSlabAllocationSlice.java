@@ -10,4 +10,5 @@ public record ReceiptSlabAllocationSlice(
         UUID receiptId,
         LocalDate paymentDate,
         BigDecimal amount,
-        String reference) {}
+        String reference,
+        String remark) {}

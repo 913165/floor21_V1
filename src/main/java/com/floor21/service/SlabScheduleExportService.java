@@ -45,7 +45,7 @@ public class SlabScheduleExportService {
             DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
 
     private static final String[] LEDGER_HEADERS = {
-        "Date", "Slab", "Amount", "Receipt", "Balance", "Days", "Interest", "Info"
+        "Date", "Slab", "Amount", "Receipt", "Balance", "Days", "Interest", "Info", "Remark"
     };
 
     private final BookingPaymentSlabService bookingPaymentSlabService;
@@ -119,7 +119,7 @@ public class SlabScheduleExportService {
 
             PdfPTable table = new PdfPTable(LEDGER_HEADERS.length);
             table.setWidthPercentage(100f);
-            table.setWidths(new float[] {10f, 22f, 12f, 12f, 12f, 7f, 12f, 13f});
+            table.setWidths(new float[] {9f, 20f, 11f, 11f, 11f, 6f, 10f, 12f, 10f});
             for (String h : LEDGER_HEADERS) {
                 table.addCell(headerCell(h, headerFont));
             }
@@ -135,6 +135,7 @@ public class SlabScheduleExportService {
                         dataCell(ledgerRow.days() != null ? ledgerRow.days().toString() : "—", rowFont, Element.ALIGN_CENTER));
                 table.addCell(dataCell(formatMoney(ledgerRow.interest()), rowFont, Element.ALIGN_RIGHT));
                 table.addCell(dataCell(nullToDash(ledgerRow.info()), rowFont));
+                table.addCell(dataCell(nullToDash(ledgerRow.remark()), rowFont));
             }
             if (ctx.summary() != null) {
                 SlabScheduleLedgerSummary s = ctx.summary();
@@ -145,6 +146,7 @@ public class SlabScheduleExportService {
                 table.addCell(dataCell(formatMoney(s.totalBalance()), headerFont, Element.ALIGN_RIGHT));
                 table.addCell(dataCell("—", headerFont, Element.ALIGN_CENTER));
                 table.addCell(dataCell(formatMoney(s.totalInterest()), headerFont, Element.ALIGN_RIGHT));
+                table.addCell(dataCell("—", headerFont));
                 table.addCell(dataCell("—", headerFont));
             }
             document.add(table);
@@ -303,6 +305,7 @@ public class SlabScheduleExportService {
             ledgerRow.days() != null ? ledgerRow.days().toString() : "—",
             formatMoney(ledgerRow.interest()),
             nullToDash(ledgerRow.info()),
+            nullToDash(ledgerRow.remark()),
         };
         for (int c = 0; c < values.length; c++) {
             Cell cell = row.createCell(c);
@@ -324,6 +327,7 @@ public class SlabScheduleExportService {
         row.createCell(5).setCellValue("—");
         row.createCell(6).setCellValue(formatMoney(summary.totalInterest()));
         row.createCell(7).setCellValue("—");
+        row.createCell(8).setCellValue("—");
         for (int c = 2; c <= 6; c++) {
             row.getCell(c).setCellStyle(boldStyle);
         }

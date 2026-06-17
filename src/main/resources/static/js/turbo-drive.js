@@ -23,7 +23,7 @@
       return false;
     }
     return (
-      /\/(export\/|demand-draft|download)(\/|\?|$)/i.test(href) ||
+      /\/(export\/|demand-draft|download-word|download)(\/|\?|$)/i.test(href) ||
       /\.(csv|xlsx|xls|pdf|docx)(\?|$)/i.test(href)
     );
   }

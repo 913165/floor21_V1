@@ -218,7 +218,7 @@
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-sm mb-0 align-middle">
+          <table class="table table-sm mb-0 align-middle f21-list-table receipt-history-table">
             <thead class="table-light">
             <tr>
               <th style="width:3rem;">Sno</th>
@@ -243,20 +243,24 @@
                       th:text="|${r.chequeNo} · |"></span>
                 <span th:if="${r.bankName != null && !#strings.isEmpty(r.bankName)}"
                       th:text="|${r.bankName} · |"></span>
-                <span class="text-muted"
+                <span class="receipt-history-details-muted"
                       th:text="|Cons ${r.amountConsideration} + Ex ${r.amountExtraCharges} + IntA ${r.amountInterestAgreement} + IntG ${r.amountInterestGst} + TDS ${r.amountTds} + GST ${r.amountGstComponent}|"></span>
               </td>
               <td class="text-end" th:text="${amt.formatAmountDisplay(r.amount)}">0</td>
               <td>
                 <span th:if="${r.dishonoured != null && r.dishonoured}" class="badge text-bg-warning">Yes</span>
-                <span th:unless="${r.dishonoured != null && r.dishonoured}" class="text-muted">—</span>
+                <span th:unless="${r.dishonoured != null && r.dishonoured}" class="receipt-history-details-muted">—</span>
               </td>
               <td class="small" th:text="${r.enteredByDisplay != null && !#strings.isEmpty(r.enteredByDisplay) ? r.enteredByDisplay : '—'}">—</td>
               <td class="text-end text-nowrap">
-                <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"
-                   th:href="@{/receipts/{id}/print(id=${r.id}, bookingId=${selectedBooking.id}, builderId=${scheduleBuilderId})}">Print</a>
-                <a class="btn btn-sm btn-outline-primary" th:unless="${readonlyView}"
-                   th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, editReceiptId=${r.id})}">Edit</a>
+                <div class="d-inline-flex flex-wrap gap-1 justify-content-end receipt-history-actions">
+                  <a class="btn btn-sm btn-outline-secondary receipt-action-btn" target="_blank" rel="noopener"
+                     th:href="@{/receipts/{id}/print(id=${r.id}, bookingId=${selectedBooking.id}, builderId=${scheduleBuilderId})}">Print</a>
+                  <a class="btn btn-sm btn-outline-primary receipt-action-btn" data-turbo="false"
+                     th:href="@{/receipts/{id}/download-word(id=${r.id}, bookingId=${selectedBooking.id}, builderId=${scheduleBuilderId})}">Word</a>
+                  <a class="btn btn-sm btn-outline-primary receipt-action-btn" th:unless="${readonlyView}"
+                     th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, editReceiptId=${r.id})}">Edit</a>
+                </div>
               </td>
             </tr>
             <tr th:if="${#lists.isEmpty(receiptHistory)}">

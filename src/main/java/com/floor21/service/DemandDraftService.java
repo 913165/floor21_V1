@@ -40,6 +40,7 @@ public class DemandDraftService {
             DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.ENGLISH);
 
     private final BookingPaymentSlabService bookingPaymentSlabService;
+    private final ReceiptPrintService receiptPrintService;
 
     @Transactional(readOnly = true)
     public byte[] generate(UUID bookingId) {
@@ -201,7 +202,11 @@ public class DemandDraftService {
         addBlankLine(doc);
         addBlankLine(doc);
 
-        addParagraph(doc, "For " + (builder != null ? builder.getCompanyName() : "Builder"), false, 11);
+        addParagraph(
+                doc,
+                "For " + receiptPrintService.signatoryCompanyForBuilder(builder),
+                false,
+                11);
         addBlankLine(doc);
         addBlankLine(doc);
         addParagraph(doc, "Authorised signatory", false, 11);

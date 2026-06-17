@@ -15,4 +15,5 @@ public record SlabScheduleLedgerRow(
         Integer days,
         BigDecimal interest,
         String info,
+        String remark,
         UUID receiptId) {}

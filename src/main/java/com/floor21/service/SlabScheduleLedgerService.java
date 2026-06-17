@@ -74,6 +74,7 @@ public class SlabScheduleLedgerService {
                             null,
                             null,
                             null,
+                            null,
                             null));
 
             BigDecimal runningPaid = ZERO;
@@ -99,6 +100,7 @@ public class SlabScheduleLedgerService {
                                 null,
                                 null,
                                 null,
+                                payment.remark(),
                                 payment.receiptId()));
             }
 
@@ -128,6 +130,7 @@ public class SlabScheduleLedgerService {
                                 days > 0 ? days : null,
                                 interest.compareTo(ZERO) > 0 ? interest : null,
                                 info,
+                                null,
                                 null));
             }
         }

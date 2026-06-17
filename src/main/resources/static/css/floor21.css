@@ -5835,6 +5835,65 @@ body.slab-schedule-col-resizing {
   color: var(--bs-emphasis-color);
 }
 
+.receipt-history-details-muted {
+  color: var(--bs-secondary-color);
+}
+
+.receipt-history-actions .receipt-action-btn {
+  color: var(--bs-body-color);
+  border-color: var(--bs-border-color);
+}
+
+.receipt-history-actions .receipt-action-btn.btn-outline-primary {
+  color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.receipt-history-actions .receipt-action-btn.btn-outline-primary:hover,
+.receipt-history-actions .receipt-action-btn.btn-outline-primary:focus {
+  color: var(--bs-primary-text-emphasis, #fff);
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.receipt-history-actions .receipt-action-btn.btn-outline-secondary:hover,
+.receipt-history-actions .receipt-action-btn.btn-outline-secondary:focus {
+  color: var(--bs-body-color);
+  background-color: var(--bs-secondary-bg);
+  border-color: var(--bs-border-color);
+}
+
+.receipt-back-link {
+  color: var(--bs-link-color);
+}
+
+.receipt-back-link:hover,
+.receipt-back-link:focus {
+  color: var(--bs-link-hover-color);
+}
+
+[data-bs-theme="dark"] .receipt-history-table {
+  --bs-table-color: var(--bs-body-color);
+  --bs-table-bg: transparent;
+}
+
+[data-bs-theme="dark"] .receipt-history-actions .receipt-action-btn.btn-outline-secondary {
+  color: var(--bs-body-color);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+[data-bs-theme="dark"] .receipt-history-actions .receipt-action-btn.btn-outline-primary {
+  color: #7dd3fc;
+  border-color: #38bdf8;
+}
+
+[data-bs-theme="dark"] .receipt-history-actions .receipt-action-btn.btn-outline-primary:hover,
+[data-bs-theme="dark"] .receipt-history-actions .receipt-action-btn.btn-outline-primary:focus {
+  color: #0f172a;
+  background-color: #38bdf8;
+  border-color: #38bdf8;
+}
+
 [data-bs-theme="dark"] .vault-deal-stat__value--register {
   color: #8ec5f0;
 }

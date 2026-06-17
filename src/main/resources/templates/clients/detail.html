@@ -4,7 +4,7 @@
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content" th:with="dfmt=${T(com.floor21.util.Floor21DateFormatter)}">
-  <link rel="stylesheet" th:href="@{/css/client-detail.css(v=detail-card-v1)}" data-turbo-track="reload"/>
+  <link rel="stylesheet" th:href="@{/css/client-detail.css(v=client-nav-v1)}" data-turbo-track="reload"/>
 
   <div class="alert alert-secondary py-2 mb-3" sec:authorize="hasRole('SUPER_ADMIN')">
     View only — platform admin cannot edit client records.
@@ -20,6 +20,17 @@
         </div>
       </div>
       <div class="client-actions">
+        <th:block th:if="${!#lists.isEmpty(clientBuildings) and clientBuildings.size() == 1}"
+                  th:with="nav=${clientBuildings[0]}">
+          <a class="client-actions__btn client-actions__btn--accent"
+             th:href="@{/receipts(bookingId=${nav.bookingId()}, buildingId=${nav.buildingId()}, projectId=${client.builder != null ? client.builder.id : null})}">
+            Payment Receipts
+          </a>
+          <a class="client-actions__btn client-actions__btn--accent"
+             th:href="@{/bookings/payment-schedule(bookingId=${nav.bookingId()}, buildingId=${nav.buildingId()}, projectId=${client.builder != null ? client.builder.id : null})}">
+            Payment schedule
+          </a>
+        </th:block>
         <a class="client-actions__btn"
            sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
            th:href="@{/clients/{id}/edit(id=${client.id})}">
@@ -238,12 +249,22 @@
 
   <div class="client-detail-footer d-flex flex-wrap align-items-center gap-2">
     <th:block th:if="${!#lists.isEmpty(clientBuildings)}">
-      <a class="btn btn-primary btn-sm"
-         th:each="nav : ${clientBuildings}"
-         th:href="@{/buildings/{bid}/flats(bid=${nav.buildingId()},focusFlat=${nav.focusFlatId()})}"
-         th:text="|Flats — ${nav.buildingName()}|">Flats</a>
+      <div class="client-detail-footer__group d-flex flex-wrap align-items-center gap-2"
+           th:each="nav : ${clientBuildings}">
+        <a class="btn btn-primary btn-sm client-detail-nav-btn"
+           th:href="@{/buildings/{bid}/flats(bid=${nav.buildingId()},focusFlat=${nav.focusFlatId()})}"
+           th:text="|Flats — ${nav.buildingName()}|">Flats</a>
+        <a class="btn btn-sm btn-outline-primary client-detail-nav-btn"
+           th:href="@{/receipts(bookingId=${nav.bookingId()}, buildingId=${nav.buildingId()}, projectId=${client.builder != null ? client.builder.id : null})}">
+          Payment Receipts
+        </a>
+        <a class="btn btn-sm btn-outline-primary client-detail-nav-btn"
+           th:href="@{/bookings/payment-schedule(bookingId=${nav.bookingId()}, buildingId=${nav.buildingId()}, projectId=${client.builder != null ? client.builder.id : null})}">
+          Payment schedule
+        </a>
+      </div>
     </th:block>
-    <a class="btn btn-link" th:href="@{/clients}">Back to clients</a>
+    <a class="btn btn-link client-detail-back-link" th:href="@{/clients}">Back to clients</a>
   </div>
 </div>
 </body>
