@@ -5372,6 +5372,8 @@ body > .modal .modal-content button {
   border-color: var(--slab-schedule-grid);
 }
 
+/* Dark theme slab grid — full rules near end of file (after generic .table overrides) */
+
 .slab-schedule-table--resizable {
   table-layout: fixed;
   width: 100%;
@@ -5443,7 +5445,7 @@ body.slab-schedule-col-resizing {
 
 [data-bs-theme="dark"] .slab-schedule-ledger-table .slab-ledger-row--milestone td {
   background: rgba(110, 181, 247, 0.12);
-  border-top-color: rgba(110, 181, 247, 0.4);
+  border-top: 2px solid rgba(110, 181, 247, 0.4) !important;
 }
 
 [data-bs-theme="dark"] .slab-schedule-ledger-table .slab-ledger-milestone-title,
@@ -5782,11 +5784,6 @@ body.slab-schedule-col-resizing {
   border-color: var(--bs-border-color);
 }
 
-[data-bs-theme="dark"] .slab-schedule-table thead th {
-  background-color: var(--f21-content-surface-alt, #1a2840);
-  color: var(--bs-body-color);
-}
-
 [data-bs-theme="dark"] .floor21-panel .table-hover > tbody > tr:hover > * {
   --bs-table-color-state: var(--bs-body-color);
   --bs-table-bg-state: rgba(255, 255, 255, 0.06);
@@ -5909,6 +5906,58 @@ body.slab-schedule-col-resizing {
   --bs-table-border-color: var(--bs-border-color);
   background-color: var(--f21-content-surface-alt, #1a2840) !important;
   color: var(--bs-body-color) !important;
+}
+
+/* Slab schedule — dark theme full grid (Bootstrap inset box-shadow hides thead vertical lines) */
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table {
+  --slab-schedule-grid: rgba(100, 130, 175, 0.38);
+  border: 1px solid var(--slab-schedule-grid);
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table.table > :not(caption) > * > * {
+  border-bottom: 1px solid var(--slab-schedule-grid) !important;
+  border-right: 1px solid var(--slab-schedule-grid) !important;
+  box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > thead.table-light > tr > th,
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > thead > tr > th {
+  border-top: 1px solid var(--slab-schedule-grid) !important;
+  background-color: var(--f21-content-surface-alt, #1a2840) !important;
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > tfoot.table-light > tr > td,
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > tfoot.table-light > tr > th,
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > tfoot > tr > td,
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > tfoot > tr > th {
+  background-color: var(--f21-content-surface-alt, #1a2840);
+}
+
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > :not(caption) > * > *:first-child {
+  border-left: 1px solid var(--slab-schedule-grid) !important;
+}
+
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > thead > tr > th:last-child,
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > tbody > tr > td:last-child,
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > tfoot > tr > td:last-child,
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > tfoot > tr > th:last-child {
+  border-right: 0 !important;
+}
+
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > tfoot > tr:last-child > td,
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table > tfoot > tr:last-child > th {
+  border-bottom: 0 !important;
+}
+
+[data-bs-theme="dark"] .floor21-panel .slab-schedule-table:not(:has(> tfoot)) > tbody > tr:last-child > td {
+  border-bottom: 0 !important;
+}
+
+[data-bs-theme="dark"] .slab-schedule-ledger-table .slab-ledger-row--today td {
+  border-top: 1px dashed var(--bs-border-color) !important;
 }
 
 .floor21-password-wrap .floor21-password-toggle {
