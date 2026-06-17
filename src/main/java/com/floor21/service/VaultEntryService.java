@@ -97,7 +97,7 @@ public class VaultEntryService {
         return newDraft(booking, VaultEntryType.EXPENSE);
     }
 
-    private static VaultEntry newDraft(Booking booking, String entryType) {
+    private VaultEntry newDraft(Booking booking, String entryType) {
         VaultEntry entry = new VaultEntry();
         entry.setEntryType(entryType);
         entry.setEntryDate(LocalDate.now());
