@@ -29,6 +29,7 @@ public class VaultEntryService {
     private final VaultEntryRepository vaultEntryRepository;
     private final BuilderRepository builderRepository;
     private final BookingRepository bookingRepository;
+    private final BookingOwnerService bookingOwnerService;
     private final VaultBookingProfileService vaultBookingProfileService;
 
     @Transactional(readOnly = true)
@@ -315,11 +316,8 @@ public class VaultEntryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
     }
 
-    private static String ownerNameFrom(Booking booking) {
-        if (booking.getClient() == null) {
-            return "—";
-        }
-        return booking.getClient().displayName();
+    private String ownerNameFrom(Booking booking) {
+        return bookingOwnerService.ownersDisplayName(booking);
     }
 
     private static String flatNumberFrom(Booking booking) {

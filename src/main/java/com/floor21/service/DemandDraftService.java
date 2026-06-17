@@ -41,6 +41,7 @@ public class DemandDraftService {
 
     private final BookingPaymentSlabService bookingPaymentSlabService;
     private final ReceiptPrintService receiptPrintService;
+    private final BookingOwnerService bookingOwnerService;
 
     @Transactional(readOnly = true)
     public byte[] generate(UUID bookingId) {
@@ -82,6 +83,7 @@ public class DemandDraftService {
             BigDecimal amountDue) {
         Builder builder = booking.getBuilder();
         Client client = booking.getClient();
+        String ownersLabel = bookingOwnerService.ownersDisplayName(booking);
         Flat flat = booking.getFlat();
         Building building = flat != null ? flat.getBuilding() : null;
         LocalDate today = LocalDate.now();
@@ -105,7 +107,7 @@ public class DemandDraftService {
         addBlankLine(doc);
 
         addParagraph(doc, "To,", false, 11);
-        addParagraph(doc, client.displayName(), true, 12);
+        addParagraph(doc, ownersLabel, true, 12);
         String clientAddr = clientCorrespondenceAddress(client);
         if (!clientAddr.isBlank()) {
             addParagraph(doc, clientAddr, false, 11);
@@ -131,7 +133,7 @@ public class DemandDraftService {
                 12);
         addBlankLine(doc);
 
-        addParagraph(doc, "Dear " + client.displayName() + ",", false, 11);
+        addParagraph(doc, "Dear " + ownersLabel + ",", false, 11);
         addBlankLine(doc);
 
         addParagraph(

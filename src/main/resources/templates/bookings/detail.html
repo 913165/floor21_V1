@@ -47,11 +47,16 @@
         <p class="client-section-heading">Client &amp; unit</p>
 
         <div class="client-field-row">
-          <p class="client-field-label">Client</p>
+          <p class="client-field-label">Owners</p>
           <p class="client-field-value" th:if="${client != null}">
-            <a th:href="@{/clients/{id}(id=${client.id})}" th:text="${client.displayName()}">Client</a>
+            <a th:href="@{/clients/{id}(id=${client.id})}" th:text="${ownersDisplayName}">Client</a>
           </p>
           <p class="client-field-value client-field-value--empty" th:unless="${client != null}">Not provided</p>
+          <ul class="list-unstyled small mb-0 mt-1" th:if="${coOwners != null and !#lists.isEmpty(coOwners) and coOwners.size() > 1}">
+            <li th:each="owner : ${coOwners}">
+              <a th:href="@{/clients/{id}(id=${owner.id})}" th:text="${owner.displayName()}">Co-owner</a>
+            </li>
+          </ul>
         </div>
 
         <div class="client-field-row">

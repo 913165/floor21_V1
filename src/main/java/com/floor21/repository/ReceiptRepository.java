@@ -39,8 +39,8 @@ public interface ReceiptRepository extends JpaRepository<Receipt, UUID> {
             @Param("bookingId") UUID bookingId, @Param("builderId") UUID builderId);
 
     @Query(
-            "select r from Receipt r left join fetch r.depositBank join fetch r.builder "
-                    + "join fetch r.booking b join fetch b.client join fetch b.flat f "
+            "select r from Receipt r left join fetch r.depositBank left join fetch r.paidByClient "
+                    + "join fetch r.builder join fetch r.booking b join fetch b.client join fetch b.flat f "
                     + "join fetch f.building bl join fetch bl.builder "
                     + "where r.id = :id and b.id = :bookingId and r.builder.id = :builderId")
     Optional<Receipt> findByIdForPrintView(

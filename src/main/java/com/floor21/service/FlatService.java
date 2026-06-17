@@ -91,6 +91,7 @@ public class FlatService {
     private final BookingRepository bookingRepository;
     private final PartnerFlatAllocationService partnerFlatAllocationService;
     private final BuildingFloorPlanService buildingFloorPlanService;
+    private final BookingOwnerService bookingOwnerService;
 
     @Transactional(readOnly = true)
     public long countFlatsForBuilding(UUID buildingId) {
@@ -1802,7 +1803,7 @@ public class FlatService {
         return map;
     }
 
-    private static String resolveCardClass(
+    private String resolveCardClass(
             Flat flat, Booking booking, boolean bookableByCurrentUser, Map<UUID, Flat> flatById) {
         String tone;
         if (FlatUnitTypes.isDuplexSecondary(flat)) {
@@ -1859,39 +1860,37 @@ public class FlatService {
                 : "flat-card " + tone + linkClass;
     }
 
-    private static String buildBuyerTooltip(Flat flat, Booking booking) {
+    private String buildBuyerTooltip(Flat flat, Booking booking) {
         if (!"BOOKED".equals(flat.getStatus()) || booking == null) {
             return "";
         }
+        String name = bookingOwnerService.ownersDisplayName(booking);
+        if (name.isBlank() || "—".equals(name)) {
+            return "";
+        }
         Client c = booking.getClient();
-        if (c == null) {
-            return "";
-        }
-        String name = buyerDisplayName(c);
-        if (name.isBlank()) {
-            return "";
-        }
         StringBuilder sb = new StringBuilder();
         sb.append("Buyer: ").append(name);
         if (booking.getBookingCode() != null && !booking.getBookingCode().isBlank()) {
             sb.append("\nBooking: ").append(booking.getBookingCode());
         }
-        String phone = pickPhone(c);
+        String phone = c != null ? pickPhone(c) : null;
         if (phone != null) {
             sb.append("\nPhone: ").append(phone);
         }
-        String email = pickEmail(c);
+        String email = c != null ? pickEmail(c) : null;
         if (email != null) {
             sb.append("\nEmail: ").append(email);
         }
         return sb.toString();
     }
 
-    private static String ownerCardTitle(Flat flat, Booking booking) {
+    private String ownerCardTitle(Flat flat, Booking booking) {
         if (!"BOOKED".equals(flat.getStatus()) || booking == null || booking.getClient() == null) {
             return "";
         }
-        return buyerDisplayName(booking.getClient());
+        String name = bookingOwnerService.ownersDisplayName(booking);
+        return "—".equals(name) ? "" : name;
     }
 
     private static String ownerCardSubtitle(Flat flat, Booking booking) {
@@ -3446,7 +3445,7 @@ public class FlatService {
         return "BOOKED".equals(f.getStatus());
     }
 
-    private static String resolveGridOwnerTitle(
+    private String resolveGridOwnerTitle(
             Flat f, Booking b, boolean bookable, Map<UUID, Flat> flatById) {
         if (FlatUnitTypes.isDuplexSecondary(f)) {
             Flat primary = flatById.get(f.getDuplexPrimaryFlatId());
@@ -3492,7 +3491,7 @@ public class FlatService {
         return "";
     }
 
-    private static String buildLinkedUnitTooltip(Flat f, Map<UUID, Flat> flatById, Booking b) {
+    private String buildLinkedUnitTooltip(Flat f, Map<UUID, Flat> flatById, Booking b) {
         if (FlatUnitTypes.isDuplexSecondary(f) && b != null) {
             Flat primary = flatById.get(f.getDuplexPrimaryFlatId());
             if (primary != null && "BOOKED".equals(primary.getStatus())) {
@@ -3512,7 +3511,7 @@ public class FlatService {
         return resolveLinkedUnitDetail(f, flatById, b);
     }
 
-    private static String buildDuplexSecondaryTooltip(Flat f, Map<UUID, Flat> flatById, Booking b) {
+    private String buildDuplexSecondaryTooltip(Flat f, Map<UUID, Flat> flatById, Booking b) {
         return buildLinkedUnitTooltip(f, flatById, b);
     }
 

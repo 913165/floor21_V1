@@ -14,8 +14,8 @@
       <div class="card-body">
         <div class="row g-3">
           <div class="col-md-4">
-            <label class="form-label">Client</label>
-            <select class="form-select" th:field="*{client.id}" required>
+            <label class="form-label">Primary client</label>
+            <select class="form-select" th:field="*{client.id}" id="bookingPrimaryClient" required>
               <option th:each="c : ${clients}" th:value="${c.id}" th:text="${c.displayName()}"></option>
             </select>
           </div>
@@ -31,6 +31,20 @@
           <div class="col-md-4">
             <label class="form-label">Booking date</label>
             <input class="form-control" type="date" th:field="*{bookingDate}" required/>
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="coOwnerIds">Co-owners <span class="text-muted fw-normal">(optional)</span></label>
+            <select class="form-select" name="coOwnerIds" id="coOwnerIds" multiple
+                    data-client-multi-search-select
+                    data-exclude-select="#bookingPrimaryClient"
+                    data-search-placeholder="Search co-owners…"
+                    aria-describedby="coOwnerHelp">
+              <option th:each="c : ${clients}"
+                      th:value="${c.id}"
+                      th:text="${c.displayName()}"
+                      th:selected="${selectedCoOwnerIds != null and selectedCoOwnerIds.contains(c.id)}"></option>
+            </select>
+            <p class="form-text small mb-0" id="coOwnerHelp">Search and select additional owners. The primary client is excluded automatically.</p>
           </div>
         </div>
       </div>
@@ -148,6 +162,7 @@
       <a class="btn btn-link" th:href="${booking.id != null} ? @{/bookings/{id}(id=${booking.id})} : @{/bookings}">Cancel</a>
     </div>
   </form>
+  <script defer th:src="@{/js/client-multi-search-select.js(v=1)}"></script>
   <script>
     (function () {
       var flatSelect = document.getElementById('bookingFlatSelect');

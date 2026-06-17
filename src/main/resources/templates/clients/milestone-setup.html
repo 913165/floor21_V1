@@ -75,7 +75,7 @@
           <option th:each="bk : ${bookings}"
                   th:value="${bk.id}"
                   th:selected="${selectedBookingId != null && selectedBookingId == bk.id}"
-                  th:text="|${bk.flat != null ? bk.flat.flatNumber : '—'} — ${bk.client.displayName()}|"></option>
+                  th:text="|${bk.flat != null ? bk.flat.flatNumber : '—'} — ${@bookingOwnerService.ownersDisplayName(bk.id)}|"></option>
         </select>
       </div>
       <div class="col-md-4">
@@ -150,7 +150,7 @@
         </tr>
         <tr>
           <th class="text-muted">Client</th>
-          <td colspan="3" th:text="${selectedBooking.client.displayName()}">—</td>
+          <td colspan="3" th:text="${@bookingOwnerService.ownersDisplayName(selectedBooking.id)}">—</td>
         </tr>
         </tbody>
       </table>
@@ -231,7 +231,7 @@
     <div class="card shadow-sm slab-schedule-card">
       <div class="card-header py-2 fw-semibold text-white milestone-slab-header">
         Slab Schedule for
-        <span th:text="|${selectedBooking.flat != null ? selectedBooking.flat.flatNumber : '—'} — ${selectedBooking.client.displayName()}|">Client</span>
+        <span th:text="|${selectedBooking.flat != null ? selectedBooking.flat.flatNumber : '—'} — ${@bookingOwnerService.ownersDisplayName(selectedBooking.id)}|">Client</span>
         as Regular Payment
       </div>
       <div class="card-body p-0">

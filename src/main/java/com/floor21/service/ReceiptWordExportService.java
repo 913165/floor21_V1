@@ -24,8 +24,8 @@ public class ReceiptWordExportService {
     private final ReceiptPrintService receiptPrintService;
 
     @Transactional(readOnly = true)
-    public byte[] generate(Receipt receipt) {
-        ReceiptLetterView view = receiptPrintService.buildLetterView(receipt);
+    public byte[] generate(Receipt receipt, boolean allOwners) {
+        ReceiptLetterView view = receiptPrintService.buildLetterView(receipt, allOwners);
         try (XWPFDocument doc = new XWPFDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             writeDocument(doc, view);
             doc.write(out);

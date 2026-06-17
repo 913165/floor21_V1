@@ -3,12 +3,14 @@ package com.floor21.service;
 import com.floor21.dto.BookingReceiptSummary;
 import com.floor21.entity.Bank;
 import com.floor21.entity.Booking;
+import com.floor21.entity.Client;
 import com.floor21.entity.Receipt;
 import com.floor21.entity.User;
 import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BankRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuilderRepository;
+import com.floor21.repository.ClientRepository;
 import com.floor21.repository.ReceiptRepository;
 import com.floor21.repository.UserRepository;
 import com.floor21.security.TenantContext;
@@ -33,6 +35,8 @@ public class ReceiptService {
     private final BookingRepository bookingRepository;
     private final BuilderRepository builderRepository;
     private final BankRepository bankRepository;
+    private final ClientRepository clientRepository;
+    private final BookingOwnerService bookingOwnerService;
     private final UserRepository userRepository;
     private final UserProjectAssignmentService userProjectAssignmentService;
 
@@ -196,6 +200,7 @@ public class ReceiptService {
         entity.setChequeNo(trimToNull(form.getChequeNo()));
         entity.setBankName(trimToNull(form.getBankName()));
         applyDepositTarget(entity, form, builderId);
+        applyPaidByClient(entity, form, booking, builderId);
         entity.setDishonoured(Boolean.TRUE.equals(form.getDishonoured()));
         entity.setRemarks(trimToNull(form.getRemarks()));
 
@@ -269,6 +274,25 @@ public class ReceiptService {
             entity.setDepositBank(null);
             entity.setDepositAccount(trimToNull(form.getDepositAccount()));
         }
+    }
+
+    private void applyPaidByClient(Receipt entity, Receipt form, Booking booking, UUID builderId) {
+        UUID paidById =
+                form.getPaidByClient() != null && form.getPaidByClient().getId() != null
+                        ? form.getPaidByClient().getId()
+                        : null;
+        if (paidById == null) {
+            entity.setPaidByClient(null);
+            return;
+        }
+        if (!bookingOwnerService.isOwner(booking.getId(), paidById)) {
+            throw new IllegalArgumentException("Paid by must be the primary client or a co-owner on this booking.");
+        }
+        Client payer =
+                clientRepository
+                        .findByIdAndBuilder_Id(paidById, builderId)
+                        .orElseThrow(() -> new IllegalArgumentException("Paid-by client not found."));
+        entity.setPaidByClient(payer);
     }
 
     private static String buildDepositAccountLabel(Bank bank) {

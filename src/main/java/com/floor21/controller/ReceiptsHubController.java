@@ -10,6 +10,7 @@ import com.floor21.repository.BuilderRepository;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
 import com.floor21.service.BankService;
+import com.floor21.service.BookingOwnerService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.ReceiptPrintService;
 import com.floor21.service.ReceiptService;
@@ -86,6 +87,19 @@ public class ReceiptsHubController {
                         }
                     }
                 });
+        binder.registerCustomEditor(
+                UUID.class,
+                "paidByClient.id",
+                new PropertyEditorSupport() {
+                    @Override
+                    public void setAsText(String text) {
+                        if (text == null || text.isBlank()) {
+                            setValue(null);
+                        } else {
+                            setValue(UUID.fromString(text));
+                        }
+                    }
+                });
     }
 
     private final BuildingService buildingService;
@@ -93,6 +107,7 @@ public class ReceiptsHubController {
     private final BuilderRepository builderRepository;
     private final BookingRepository bookingRepository;
     private final ReceiptService receiptService;
+    private final BookingOwnerService bookingOwnerService;
     private final BankService bankService;
     private final ReceiptPrintService receiptPrintService;
     private final ReceiptWordExportService receiptWordExportService;
@@ -233,9 +248,10 @@ public class ReceiptsHubController {
     public ResponseEntity<byte[]> downloadWord(
             @PathVariable UUID id,
             @RequestParam UUID bookingId,
-            @RequestParam(required = false) UUID builderId) {
+            @RequestParam(required = false) UUID builderId,
+            @RequestParam(defaultValue = "false") boolean allOwners) {
         Receipt receipt = receiptService.getForPrint(id, bookingId, builderId);
-        byte[] body = receiptWordExportService.generate(receipt);
+        byte[] body = receiptWordExportService.generate(receipt, allOwners);
         String filename = receiptWordExportService.suggestedFilename(receipt);
         ContentDisposition disposition = ContentDisposition.attachment().filename(filename).build();
         return ResponseEntity.ok()
@@ -326,6 +342,7 @@ public class ReceiptsHubController {
         }
 
         model.addAttribute("selectedBooking", booking);
+        model.addAttribute("bookingOwners", bookingOwnerService.ownersInOrder(booking));
         model.addAttribute("summary", receiptService.summarizeBooking(bookingId, builderId));
         List<Receipt> history = receiptService.listHistoryForBooking(bookingId, builderId);
         model.addAttribute("receiptHistory", history);

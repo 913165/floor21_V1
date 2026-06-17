@@ -50,6 +50,7 @@ public class SlabScheduleExportService {
 
     private final BookingPaymentSlabService bookingPaymentSlabService;
     private final SlabScheduleLedgerService slabScheduleLedgerService;
+    private final BookingOwnerService bookingOwnerService;
 
     @Transactional(readOnly = true)
     public byte[] exportExcel(UUID bookingId) {
@@ -196,7 +197,7 @@ public class SlabScheduleExportService {
         }
         SlabScheduleLedgerSummary summary = slabScheduleLedgerService.summarizeLedger(rows);
         BigDecimal base = bookingPaymentSlabService.baseConsideration(booking);
-        return new ExportContext(booking, rows, summary, base);
+        return new ExportContext(booking, rows, summary, base, bookingOwnerService.ownersDisplayName(booking));
     }
 
     private String baseFilename(UUID bookingId) {
@@ -215,13 +216,12 @@ public class SlabScheduleExportService {
 
     private static int writeSummaryBlock(Sheet sheet, int startRow, ExportContext ctx, CellStyle boldStyle) {
         Booking booking = ctx.booking();
-        Client client = booking.getClient();
         Flat flat = booking.getFlat();
         Building building = flat != null ? flat.getBuilding() : null;
         String[][] lines = {
             {"Slab payment schedule export", ""},
             {"Booking code", nullToDash(booking.getBookingCode())},
-            {"Client", client != null ? nullToDash(client.displayName()) : "—"},
+            {"Owners", nullToDash(ctx.ownersDisplayName())},
             {
                 "Flat",
                 flat != null
@@ -255,12 +255,11 @@ public class SlabScheduleExportService {
 
     private static Paragraph summaryParagraph(ExportContext ctx, Font labelFont, Font bodyFont) {
         Booking booking = ctx.booking();
-        Client client = booking.getClient();
         Flat flat = booking.getFlat();
         Building building = flat != null ? flat.getBuilding() : null;
         StringBuilder sb = new StringBuilder();
         appendLine(sb, "Booking code", nullToDash(booking.getBookingCode()));
-        appendLine(sb, "Client", client != null ? nullToDash(client.displayName()) : "—");
+        appendLine(sb, "Owners", nullToDash(ctx.ownersDisplayName()));
         appendLine(
                 sb,
                 "Flat",
@@ -367,5 +366,6 @@ public class SlabScheduleExportService {
             Booking booking,
             List<SlabScheduleLedgerRow> rows,
             SlabScheduleLedgerSummary summary,
-            BigDecimal baseAmount) {}
+            BigDecimal baseAmount,
+            String ownersDisplayName) {}
 }

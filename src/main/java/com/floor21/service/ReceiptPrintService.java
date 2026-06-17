@@ -2,6 +2,7 @@ package com.floor21.service;
 
 import com.floor21.dto.ReceiptLetterView;
 import com.floor21.entity.Bank;
+import com.floor21.entity.Booking;
 import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
 import com.floor21.entity.Client;
@@ -14,7 +15,9 @@ import com.floor21.util.IndianRupeesFormatter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
@@ -28,11 +31,19 @@ public class ReceiptPrintService {
             DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
 
     private final UserProjectAssignmentRepository userProjectAssignmentRepository;
+    private final BookingOwnerService bookingOwnerService;
 
     public ReceiptLetterView buildLetterView(Receipt receipt) {
+        return buildLetterView(receipt, false);
+    }
+
+    public ReceiptLetterView buildLetterView(Receipt receipt, boolean allOwners) {
         Flat flat = receipt.getBooking().getFlat();
         Building building = flat.getBuilding();
-        Client client = receipt.getBooking().getClient();
+        Client payer =
+                receipt.getPaidByClient() != null ? receipt.getPaidByClient() : receipt.getBooking().getClient();
+        String payerNames =
+                allOwners ? resolveAllOwnerNames(receipt.getBooking()) : resolvePayerNames(payer);
         String receiptNumber =
                 receipt.getReceiptNumber() != null && !receipt.getReceiptNumber().isBlank()
                         ? receipt.getReceiptNumber().trim()
@@ -43,7 +54,7 @@ public class ReceiptPrintService {
                 formatDate(receipt.getChequeDate() != null ? receipt.getChequeDate() : receipt.getReceiptDate()),
                 IndianRupeesFormatter.formatFigures(receipt.getAmount()),
                 IndianRupeesFormatter.formatWordsOnly(receipt.getAmount()),
-                resolvePayerNames(client),
+                payerNames,
                 buildPaymentInstrument(receipt),
                 resolveDrawnOn(receipt),
                 buildPurposeNarrative(receipt),
@@ -78,6 +89,9 @@ public class ReceiptPrintService {
     }
 
     private static String resolvePayerNames(Client client) {
+        if (client == null) {
+            return "—";
+        }
         if (client.getNamePlateInfo() != null && !client.getNamePlateInfo().isBlank()) {
             return client.getNamePlateInfo().trim();
         }
@@ -85,6 +99,20 @@ public class ReceiptPrintService {
             return client.getCompanyName().trim();
         }
         return client.displayName();
+    }
+
+    private String resolveAllOwnerNames(Booking booking) {
+        Set<String> names = new LinkedHashSet<>();
+        for (Client owner : bookingOwnerService.ownersInOrder(booking)) {
+            String name = resolvePayerNames(owner);
+            if (name != null && !name.isBlank() && !"—".equals(name)) {
+                names.add(name);
+            }
+        }
+        if (names.isEmpty()) {
+            return "—";
+        }
+        return String.join(" & ", names);
     }
 
     private static String buildPaymentInstrument(Receipt receipt) {

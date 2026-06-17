@@ -43,8 +43,8 @@
                   th:value="${bk.id}"
                   th:selected="${selectedBookingId != null && selectedBookingId == bk.id}"
                   th:text="${selectedBuildingId == null && bk.flat != null && bk.flat.building != null}
-                    ? |${bk.flat.building.buildingName} ? ${bk.flat.flatNumber} ? ${bk.client.displayName()}|
-                    : |${bk.flat != null ? bk.flat.flatNumber : '?'} ? ${bk.client.displayName()}|"></option>
+                    ? |${bk.flat.building.buildingName} ? ${bk.flat.flatNumber} ? ${@bookingOwnerService.ownersDisplayName(bk.id)}|
+                    : |${bk.flat != null ? bk.flat.flatNumber : '?'} ? ${@bookingOwnerService.ownersDisplayName(bk.id)}|"></option>
         </select>
       </div>
       <div class="col-md-3">
@@ -87,7 +87,7 @@
         <div class="col-md-2"><span class="text-muted">Building</span><br/><span th:text="${selectedBooking.flat != null && selectedBooking.flat.building != null ? selectedBooking.flat.building.buildingName : '???'}">???</span></div>
         <div class="col-md-3"><span class="text-muted">Deal total (vault)</span><br/><span class="slab-amt--base" th:text="${amountForm != null && amountForm.totalConsideration != null ? amt.formatAmountDisplay(amountForm.totalConsideration) : '???'}">???</span></div>
         <div class="col-md-3"><span class="text-muted">Booked</span><br/><span th:text="${dfmt.formatDisplay(selectedBooking.bookingDate)}">—</span></div>
-        <div class="col-md-6"><span class="text-muted">Client</span><br/><span th:text="${selectedBooking.client.displayName()}">???</span></div>
+        <div class="col-md-6"><span class="text-muted">Owners</span><br/><span th:text="${@bookingOwnerService.ownersDisplayName(selectedBooking.id)}">???</span></div>
         <div class="col-md-6"><span class="text-muted">Booking code</span><br/><span th:text="${selectedBooking.bookingCode}">???</span></div>
       </div>
     </div>

@@ -53,6 +53,7 @@ public class BookingService {
     private final BuilderRepository builderRepository;
     private final PartnerFlatAllocationService partnerFlatAllocationService;
     private final UserProjectAssignmentService userProjectAssignmentService;
+    private final BookingOwnerService bookingOwnerService;
     private final BookingSlabPaymentRepository bookingSlabPaymentRepository;
     private final BookingPaymentSlabRepository bookingPaymentSlabRepository;
     private final ReceiptRepository receiptRepository;
@@ -206,6 +207,11 @@ public class BookingService {
 
     @Transactional
     public Booking save(Booking form) {
+        return save(form, List.of());
+    }
+
+    @Transactional
+    public Booking save(Booking form, List<UUID> coOwnerIds) {
         UUID builderId = TenantContext.requireBuilderId();
         var builder = builderRepository.findById(builderId).orElseThrow();
 
@@ -301,7 +307,9 @@ public class BookingService {
         }
 
         entity.setUpdatedAt(Instant.now());
-        return bookingRepository.save(entity);
+        Booking saved = bookingRepository.save(entity);
+        bookingOwnerService.syncOwners(saved, coOwnerIds, builderId);
+        return saved;
     }
 
     @Transactional

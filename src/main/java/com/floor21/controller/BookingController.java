@@ -9,6 +9,7 @@ import com.floor21.service.UserProjectAssignmentService;
 import com.floor21.service.BookingService;
 import com.floor21.service.BrokerService;
 import com.floor21.service.ClientService;
+import com.floor21.service.BookingOwnerService;
 import com.floor21.service.ReceiptService;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
@@ -37,6 +38,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class BookingController {
 
     private final BookingService bookingService;
+    private final BookingOwnerService bookingOwnerService;
     private final ClientService clientService;
     private final BrokerService brokerService;
     private final BuilderRepository builderRepository;
@@ -167,6 +169,7 @@ public class BookingController {
         var builderId = TenantContext.requireBuilderId();
         model.addAttribute("flats", bookingService.listFlatsForBookingForm(builderId));
         model.addAttribute("executives", userProjectAssignmentService.listActiveUsersForProject(builderId));
+        model.addAttribute("selectedCoOwnerIds", List.<UUID>of());
         return "bookings/form";
     }
 
@@ -189,6 +192,8 @@ public class BookingController {
                 platformAdminView
                         ? receiptService.totalForBooking(id, builderId)
                         : receiptService.totalForBooking(id));
+        model.addAttribute("coOwners", bookingOwnerService.ownersInOrder(booking));
+        model.addAttribute("ownersDisplayName", bookingOwnerService.ownersDisplayName(booking));
         return "bookings/detail";
     }
 
@@ -209,18 +214,29 @@ public class BookingController {
                 bookingService.listFlatsForBookingFormEdit(
                         builderId, booking.getFlat() != null ? booking.getFlat().getId() : null));
         model.addAttribute("executives", userProjectAssignmentService.listActiveUsersForProject(builderId));
+        model.addAttribute("selectedCoOwnerIds", bookingOwnerService.listCoOwnerIds(id));
         return "bookings/form";
     }
 
     @PostMapping("/save")
-    public String save(@ModelAttribute Booking booking, RedirectAttributes ra) {
+    public String save(
+            @ModelAttribute Booking booking,
+            @RequestParam(required = false) List<UUID> coOwnerIds,
+            RedirectAttributes ra) {
         if (isPlatformAdmin()) {
             ra.addFlashAttribute("errorMessage", "Read-only for platform admin.");
             return "redirect:/bookings";
         }
-        Booking saved = bookingService.save(booking);
-        ra.addFlashAttribute("successMessage", "Booking saved");
-        return "redirect:/bookings/" + saved.getId();
+        try {
+            Booking saved = bookingService.save(booking, coOwnerIds != null ? coOwnerIds : List.of());
+            ra.addFlashAttribute("successMessage", "Booking saved");
+            return "redirect:/bookings/" + saved.getId();
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+            return booking.getId() != null
+                    ? "redirect:/bookings/" + booking.getId() + "/edit"
+                    : "redirect:/bookings/new";
+        }
     }
 
     @PostMapping("/{id}/remove")

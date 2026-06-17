@@ -52,7 +52,7 @@
           <option th:each="bk : ${bookings}"
                   th:value="${bk.id}"
                   th:selected="${selectedBookingId != null && selectedBookingId == bk.id}"
-                  th:text="|${bk.flat != null ? bk.flat.flatNumber : '—'} — ${bk.client.displayName()}|"></option>
+                  th:text="|${bk.flat != null ? bk.flat.flatNumber : '—'} — ${@bookingOwnerService.ownersDisplayName(bk.id)}|"></option>
         </select>
         <p class="form-text small slab-schedule-picker__hint-slot mb-0" th:if="${platformAdminView}"></p>
       </div>
@@ -97,7 +97,8 @@
         <div class="booking-schedule-summary__hero-main">
           <div class="booking-schedule-summary__avatar" th:text="${client.avatarInitials()}">MG</div>
           <div class="min-w-0">
-            <p class="booking-schedule-summary__hero-name mb-0" th:text="${client.displayName()}">Client</p>
+            <p class="booking-schedule-summary__hero-name mb-0"
+               th:text="${@bookingOwnerService.ownersDisplayName(selectedBooking.id)}">Client</p>
             <p class="booking-schedule-summary__hero-meta mb-0">
               <span th:if="${flat != null && flat.flatNumber != null}">Flat <span th:text="${flat.flatNumber}">—</span></span><span th:if="${flat != null && flat.flatNumber != null && buildingName != null}"> · </span><span th:if="${buildingName != null}" th:text="${buildingName}">Building</span><span th:if="${buildingName != null && wingLabel != dash}"> · </span><span th:if="${wingLabel != dash}" th:text="${wingLabel}">Wing</span><span th:if="${wingLabel != dash && floorLabel != dash}"> · </span><span th:if="${floorLabel != dash}" th:text="${floorLabel}">Floor</span>
             </p>
@@ -206,7 +207,13 @@
 
     <div class="card shadow-sm mb-3">
       <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 py-2">
-        <span class="fw-semibold">Payment receipts</span>
+        <div class="d-flex align-items-center flex-wrap gap-3">
+          <span class="fw-semibold">Payment receipts</span>
+          <div class="form-check form-check-inline mb-0 small" th:if="${!#lists.isEmpty(receiptHistory)}">
+            <input class="form-check-input" type="checkbox" id="receipt-print-all-owners"/>
+            <label class="form-check-label" for="receipt-print-all-owners">All owners on print</label>
+          </div>
+        </div>
         <button th:unless="${readonlyView or editingReceipt}" type="button" class="btn btn-primary btn-sm"
                 data-bs-toggle="modal" data-bs-target="#receipt-form-modal">
           New Payment receipt
@@ -253,11 +260,10 @@
               </td>
               <td class="small" th:text="${r.enteredByDisplay != null && !#strings.isEmpty(r.enteredByDisplay) ? r.enteredByDisplay : '—'}">—</td>
               <td class="text-end text-nowrap">
-                <div class="d-inline-flex flex-wrap gap-1 justify-content-end receipt-history-actions">
-                  <a class="btn btn-sm btn-outline-secondary receipt-action-btn" target="_blank" rel="noopener"
-                     th:href="@{/receipts/{id}/print(id=${r.id}, bookingId=${selectedBooking.id}, builderId=${scheduleBuilderId})}">Print</a>
-                  <a class="btn btn-sm btn-outline-primary receipt-action-btn" data-turbo="false"
-                     th:href="@{/receipts/{id}/download-word(id=${r.id}, bookingId=${selectedBooking.id}, builderId=${scheduleBuilderId})}">Word</a>
+                <div class="d-inline-flex flex-wrap gap-1 justify-content-end align-items-center receipt-history-actions">
+                  <a class="btn btn-sm btn-outline-secondary receipt-action-btn receipt-print-link" data-turbo="false"
+                     th:href="@{/receipts/{id}/download-word(id=${r.id}, bookingId=${selectedBooking.id}, builderId=${scheduleBuilderId})}"
+                     th:attr="data-print-base=@{/receipts/{id}/download-word(id=${r.id}, bookingId=${selectedBooking.id}, builderId=${scheduleBuilderId})}">Print</a>
                   <a class="btn btn-sm btn-outline-primary receipt-action-btn" th:unless="${readonlyView}"
                      th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, editReceiptId=${r.id})}">Edit</a>
                 </div>
@@ -332,6 +338,15 @@
               <div class="col-md-3">
                 <label class="form-label">Cheque date</label>
                 <input class="form-control" type="date" th:field="*{chequeDate}"/>
+              </div>
+              <div class="col-md-6" th:if="${bookingOwners != null and !#lists.isEmpty(bookingOwners)}">
+                <label class="form-label">Paid by <span class="text-muted fw-normal">(optional)</span></label>
+                <select class="form-select" th:field="*{paidByClient.id}">
+                  <option value="">— Primary / unspecified —</option>
+                  <option th:each="owner : ${bookingOwners}"
+                          th:value="${owner.id}"
+                          th:text="${owner.displayName()}"></option>
+                </select>
               </div>
               <div class="col-md-3 d-flex align-items-end">
                 <div class="form-check">
@@ -433,6 +448,31 @@
 
     <script>
       (function () {
+        function syncReceiptPrintLinks() {
+          var toggle = document.getElementById("receipt-print-all-owners");
+          if (!toggle) {
+            return;
+          }
+          var allOwners = toggle.checked;
+          document.querySelectorAll(".receipt-print-link").forEach(function (link) {
+            var base = link.getAttribute("data-print-base");
+            if (!base) {
+              return;
+            }
+            link.href = allOwners ? base + (base.indexOf("?") >= 0 ? "&" : "?") + "allOwners=true" : base;
+          });
+        }
+
+        function bindReceiptPrintToggle() {
+          var toggle = document.getElementById("receipt-print-all-owners");
+          if (!toggle || toggle.dataset.bound === "true") {
+            return;
+          }
+          toggle.dataset.bound = "true";
+          toggle.addEventListener("change", syncReceiptPrintLinks);
+          syncReceiptPrintLinks();
+        }
+
         function openReceiptModalIfNeeded() {
           var modalEl = document.getElementById('receipt-form-modal');
           if (!modalEl || modalEl.getAttribute('data-open-on-load') !== 'true') {
@@ -442,12 +482,19 @@
             bootstrap.Modal.getOrCreateInstance(modalEl).show();
           }
         }
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', openReceiptModalIfNeeded);
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", function () {
+            bindReceiptPrintToggle();
+            openReceiptModalIfNeeded();
+          });
         } else {
+          bindReceiptPrintToggle();
           openReceiptModalIfNeeded();
         }
-        document.addEventListener('turbo:load', openReceiptModalIfNeeded);
+        document.addEventListener("turbo:load", function () {
+          bindReceiptPrintToggle();
+          openReceiptModalIfNeeded();
+        });
       })();
     </script>
   </th:block>

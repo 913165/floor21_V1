@@ -5,6 +5,7 @@ import com.floor21.entity.Booking;
 import com.floor21.entity.Client;
 import com.floor21.entity.Flat;
 import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.repository.BookingOwnerRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.ClientRepository;
@@ -35,6 +36,7 @@ public class ClientService {
     private final ClientRepository clientRepository;
     private final BuilderRepository builderRepository;
     private final BookingRepository bookingRepository;
+    private final BookingOwnerRepository bookingOwnerRepository;
 
     @Transactional(readOnly = true)
     public Page<Client> listPage(int page, int size, String q, UUID projectId, UUID buildingId) {
@@ -148,7 +150,7 @@ public class ClientService {
         Client client = get(clientId);
         UUID builderId = client.getBuilder().getId();
         List<Booking> bookings =
-                bookingRepository.findActiveByClientWithFlatAndBuilding(builderId, clientId);
+                bookingOwnerRepository.findActiveByClientOrCoOwner(builderId, clientId);
         Map<UUID, ClientBuildingNavDto> byBuilding = new LinkedHashMap<>();
         for (Booking b : bookings) {
             Flat flat = b.getFlat();

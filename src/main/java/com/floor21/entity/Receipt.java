@@ -84,6 +84,11 @@ public class Receipt {
     @JoinColumn(name = "deposit_bank_id")
     private Bank depositBank;
 
+    /** Client who paid (cheque / transfer); must be a booking owner when set. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "paid_by_client_id")
+    private Client paidByClient;
+
     @Column(nullable = false)
     private Boolean dishonoured = Boolean.FALSE;
 

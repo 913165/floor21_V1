@@ -58,8 +58,8 @@
                   th:value="${bk.id}"
                   th:selected="${selectedBookingId != null && selectedBookingId == bk.id}"
                   th:text="${!platformAdminView and selectedBuildingId == null and bk.flat != null and bk.flat.building != null}
-                    ? |${bk.flat.building.buildingName} - ${bk.flat.flatNumber} - ${bk.client.displayName()}|
-                    : |${bk.flat != null ? bk.flat.flatNumber : '-'} - ${bk.client.displayName()}|"></option>
+                    ? |${bk.flat.building.buildingName} - ${bk.flat.flatNumber} - ${@bookingOwnerService.ownersDisplayName(bk.id)}|
+                    : |${bk.flat != null ? bk.flat.flatNumber : '-'} - ${@bookingOwnerService.ownersDisplayName(bk.id)}|"></option>
         </select>
         <p class="form-text small slab-schedule-picker__hint-slot mb-0" th:if="${platformAdminView}"></p>
       </div>
@@ -118,7 +118,8 @@
         <div class="booking-schedule-summary__hero-main">
           <div class="booking-schedule-summary__avatar" th:text="${client.avatarInitials()}">MG</div>
           <div class="min-w-0">
-            <p class="booking-schedule-summary__hero-name mb-0" th:text="${client.displayName()}">Client</p>
+            <p class="booking-schedule-summary__hero-name mb-0"
+               th:text="${@bookingOwnerService.ownersDisplayName(selectedBooking.id)}">Client</p>
             <p class="booking-schedule-summary__hero-meta mb-0">
               <span th:if="${flat != null && flat.flatNumber != null}">Flat <span th:text="${flat.flatNumber}">—</span></span><span th:if="${flat != null && flat.flatNumber != null && buildingName != null}"> · </span><span th:if="${buildingName != null}" th:text="${buildingName}">Building</span><span th:if="${buildingName != null && wingLabel != dash}"> · </span><span th:if="${wingLabel != dash}" th:text="${wingLabel}">Wing</span><span th:if="${wingLabel != dash && floorLabel != dash}"> · </span><span th:if="${floorLabel != dash}" th:text="${floorLabel}">Floor</span>
             </p>
