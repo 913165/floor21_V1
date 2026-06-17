@@ -40,6 +40,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class BookingPaymentSlabService {
 
+    public static final BigDecimal DEFAULT_INTEREST_RATE_PERCENT = new BigDecimal("15");
+
     private static final BigDecimal ZERO = BigDecimal.ZERO;
 
     private final BookingRepository bookingRepository;
@@ -95,6 +97,32 @@ public class BookingPaymentSlabService {
             throw new ResourceNotFoundException("Booking not found");
         }
         return booking;
+    }
+
+    /** Annual interest % for slab ledger; uses booking override or {@link #DEFAULT_INTEREST_RATE_PERCENT}. */
+    public static BigDecimal effectiveInterestRatePercent(Booking booking) {
+        if (booking != null && booking.getInterestRatePercent() != null) {
+            return booking.getInterestRatePercent();
+        }
+        return DEFAULT_INTEREST_RATE_PERCENT;
+    }
+
+    @Transactional
+    public void saveInterestRatePercent(UUID bookingId, BigDecimal ratePercent) {
+        Booking booking = getBookingForSchedule(bookingId);
+        applyInterestRatePercent(booking, ratePercent);
+        booking.setUpdatedAt(Instant.now());
+        bookingRepository.save(booking);
+    }
+
+    private static void applyInterestRatePercent(Booking booking, BigDecimal ratePercent) {
+        if (ratePercent == null) {
+            throw new IllegalArgumentException("Interest rate is required.");
+        }
+        if (ratePercent.compareTo(ZERO) < 0 || ratePercent.compareTo(new BigDecimal("100")) > 0) {
+            throw new IllegalArgumentException("Interest rate must be between 0 and 100.");
+        }
+        booking.setInterestRatePercent(ratePercent);
     }
 
     @Transactional(readOnly = true)
@@ -870,6 +898,11 @@ public class BookingPaymentSlabService {
             throw new IllegalArgumentException("Booking is required");
         }
         Booking booking = getBookingForSchedule(form.getBookingId());
+        if (form.getInterestRatePercent() != null) {
+            applyInterestRatePercent(booking, form.getInterestRatePercent());
+            booking.setUpdatedAt(Instant.now());
+            bookingRepository.save(booking);
+        }
         Instant now = Instant.now();
         if (form.getLines() == null || form.getLines().isEmpty()) {
             throw new IllegalArgumentException("No slab rows to save. Reload the booking and try again.");

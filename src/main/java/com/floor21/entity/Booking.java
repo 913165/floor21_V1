@@ -73,6 +73,9 @@ public class Booking {
     @Column(name = "final_amt", precision = 15, scale = 2)
     private BigDecimal finalAmount = BigDecimal.ZERO;
 
+    @Column(name = "interest_rate_percent", precision = 5, scale = 2)
+    private BigDecimal interestRatePercent;
+
     @Column(name = "due_amount_date")
     private LocalDate dueAmountDate;
 

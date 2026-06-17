@@ -4,6 +4,7 @@ import com.floor21.dto.ReceiptSlabAllocationSlice;
 import com.floor21.dto.SlabLedgerRowType;
 import com.floor21.dto.SlabScheduleLedgerRow;
 import com.floor21.dto.SlabScheduleLedgerSummary;
+import com.floor21.entity.Booking;
 import com.floor21.entity.BookingPaymentSlab;
 import com.floor21.util.IndianRupeesFormatter;
 import com.floor21.util.SlabReceiptWaterfall;
@@ -23,8 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class SlabScheduleLedgerService {
 
-    private static final BigDecimal DEFAULT_ANNUAL_RATE_PERCENT = new BigDecimal("15");
-
     private static final BigDecimal ZERO = BigDecimal.ZERO;
     private static final BigDecimal DAYS_IN_YEAR = new BigDecimal("365");
 
@@ -34,25 +33,31 @@ public class SlabScheduleLedgerService {
     /** Ledger from milestone definitions + live receipt waterfall (not from stored slab payments). */
     @Transactional
     public List<SlabScheduleLedgerRow> buildLedger(UUID bookingId) {
+        Booking booking = bookingPaymentSlabService.getBookingForSchedule(bookingId);
+        BigDecimal interestRate = BookingPaymentSlabService.effectiveInterestRatePercent(booking);
         Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab =
                 receiptSlabAllocationService.allocateBySlab(bookingId);
         List<BookingPaymentSlab> slabs =
                 bookingPaymentSlabService.listUniqueSlabsForSchedule(bookingId);
-        return buildLedgerRows(slabs, bySlab);
+        return buildLedgerRows(slabs, bySlab, interestRate);
     }
 
     /** Read-only ledger for platform admin (no milestone sync on load). */
     @Transactional(readOnly = true)
     public List<SlabScheduleLedgerRow> buildLedgerReadOnly(UUID bookingId, UUID builderId) {
+        Booking booking = bookingPaymentSlabService.getBookingForScheduleReadOnly(bookingId, builderId);
+        BigDecimal interestRate = BookingPaymentSlabService.effectiveInterestRatePercent(booking);
         Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab =
                 receiptSlabAllocationService.allocateBySlab(bookingId, builderId);
         List<BookingPaymentSlab> slabs =
                 bookingPaymentSlabService.listUniqueSlabsForScheduleReadOnly(bookingId, builderId);
-        return buildLedgerRows(slabs, bySlab);
+        return buildLedgerRows(slabs, bySlab, interestRate);
     }
 
     private List<SlabScheduleLedgerRow> buildLedgerRows(
-            List<BookingPaymentSlab> slabs, Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab) {
+            List<BookingPaymentSlab> slabs,
+            Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab,
+            BigDecimal annualRatePercent) {
         LocalDate today = LocalDate.now();
         List<SlabScheduleLedgerRow> rows = new ArrayList<>();
 
@@ -109,7 +114,7 @@ public class SlabScheduleLedgerService {
                 LocalDate interestFrom =
                         slab.getDueDate() != null ? slab.getDueDate() : today;
                 int days = (int) Math.max(0, ChronoUnit.DAYS.between(interestFrom, today));
-                BigDecimal interest = simpleInterest(outstanding, DEFAULT_ANNUAL_RATE_PERCENT, days);
+                BigDecimal interest = simpleInterest(outstanding, annualRatePercent, days);
                 String info =
                         IndianRupeesFormatter.formatComma(interest)
                                 + " as interest for "
@@ -117,7 +122,7 @@ public class SlabScheduleLedgerService {
                                 + " days for "
                                 + IndianRupeesFormatter.formatComma(outstanding)
                                 + " @ "
-                                + DEFAULT_ANNUAL_RATE_PERCENT.stripTrailingZeros().toPlainString()
+                                + annualRatePercent.stripTrailingZeros().toPlainString()
                                 + " %";
                 rows.add(
                         new SlabScheduleLedgerRow(

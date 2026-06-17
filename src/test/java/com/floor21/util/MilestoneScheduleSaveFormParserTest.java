@@ -54,4 +54,20 @@ class MilestoneScheduleSaveFormParserTest {
 
         assertThat(form.getLines().getFirst().getDueDate()).isEqualTo(LocalDate.of(2026, 3, 28));
     }
+
+    @Test
+    void parsesInterestRatePercentWhenPresent() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addParameter("bookingId", UUID.randomUUID().toString());
+        request.addParameter("interestRatePercent", "12.5");
+        request.addParameter("lines[0].id", UUID.randomUUID().toString());
+        request.addParameter("lines[0].milestoneLabel", "Slab");
+        request.addParameter("lines[0].percent", "10");
+        request.addParameter("lines[0].agreedAmount", "100");
+        request.addParameter("lines[0].extraAmount", "0");
+
+        BookingPaymentSlabBatchForm form = MilestoneScheduleSaveFormParser.parse(request);
+
+        assertThat(form.getInterestRatePercent()).isEqualByComparingTo("12.5");
+    }
 }

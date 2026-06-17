@@ -329,6 +329,10 @@ body > .dropdown-menu.floor21-profile-menu__panel {
   --f21-nav-section-text: #475569;
   --f21-nav-section-border: #4ade80;
   --f21-nav-section-active-bg: rgba(34, 197, 94, 0.14);
+  --f21-vault-text: #9a6700;
+  --f21-vault-active-bg: rgba(180, 120, 20, 0.14);
+  --f21-expenses-text: #6d28d9;
+  --f21-expenses-active-bg: rgba(109, 40, 217, 0.12);
 }
 
 [data-bs-theme="dark"] .floor21-sidebar {
@@ -478,6 +482,36 @@ body > .dropdown-menu.floor21-profile-menu__panel {
 .floor21-nav__link--expenses.is-active::before {
   background: #c4a0e8;
   box-shadow: 0 0 8px rgba(196, 160, 232, 0.45);
+}
+
+[data-bs-theme="light"] .floor21-nav__link--vault:hover,
+[data-bs-theme="light"] .floor21-nav__link--vault:focus-visible {
+  color: #7c4a03;
+}
+
+[data-bs-theme="light"] .floor21-nav__link--vault.is-active {
+  color: #7c4a03;
+  background: rgba(180, 120, 20, 0.16);
+}
+
+[data-bs-theme="light"] .floor21-nav__link--vault.is-active::before {
+  background: #b45309;
+  box-shadow: 0 0 6px rgba(180, 83, 9, 0.35);
+}
+
+[data-bs-theme="light"] .floor21-nav__link--expenses:hover,
+[data-bs-theme="light"] .floor21-nav__link--expenses:focus-visible {
+  color: #5b21b6;
+}
+
+[data-bs-theme="light"] .floor21-nav__link--expenses.is-active {
+  color: #5b21b6;
+  background: rgba(109, 40, 217, 0.14);
+}
+
+[data-bs-theme="light"] .floor21-nav__link--expenses.is-active::before {
+  background: #7c3aed;
+  box-shadow: 0 0 6px rgba(124, 58, 237, 0.35);
 }
 
 .floor21-panel {
@@ -4908,6 +4942,11 @@ body > .modal .modal-content button {
   max-width: 10.5rem;
   margin: 0 auto;
   cursor: pointer;
+}
+
+.milestone-interest-rate-input {
+  width: 5.5rem;
+  max-width: 100%;
 }
 
 /* Slabs — payment schedule page */

@@ -28,6 +28,11 @@ public final class MilestoneScheduleSaveFormParser {
         }
         form.setBookingId(UUID.fromString(bookingId.trim()));
 
+        String interestRate = firstNonBlank(request, "interestRatePercent");
+        if (interestRate != null) {
+            form.setInterestRatePercent(new BigDecimal(interestRate.replace(",", "").trim()));
+        }
+
         Map<Integer, BookingPaymentSlabBatchForm.Line> byIndex = new TreeMap<>();
         for (Map.Entry<String, String[]> entry : request.getParameterMap().entrySet()) {
             Matcher matcher = LINE_PARAM.matcher(entry.getKey());

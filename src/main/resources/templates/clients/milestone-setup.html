@@ -106,6 +106,49 @@
           <td th:text="${selectedBooking.bookingDate != null ? #temporals.format(selectedBooking.bookingDate, 'dd-MMM-yyyy') : '—'}">—</td>
         </tr>
         <tr>
+          <th class="text-muted">Interest rate</th>
+          <td colspan="3">
+            <th:block th:if="${editable}">
+              <th:block th:if="${!#lists.isEmpty(slabs)}">
+                <div class="d-inline-flex align-items-center gap-2 flex-wrap">
+                  <div class="d-inline-flex align-items-center gap-1">
+                    <input type="text" inputmode="decimal"
+                           class="form-control form-control-sm milestone-interest-rate-input"
+                           id="msInterestRate"
+                           name="interestRatePercent"
+                           form="scheduleSaveForm"
+                           th:value="${saveForm.interestRatePercent != null ? saveForm.interestRatePercent.stripTrailingZeros().toPlainString() : '15'}"/>
+                    <span class="text-muted small text-nowrap">% p.a.</span>
+                  </div>
+                  <span class="text-muted small">Used for payment schedule interest on outstanding slab balances.</span>
+                </div>
+              </th:block>
+              <form th:if="${#lists.isEmpty(slabs)}"
+                    class="d-inline-flex align-items-center gap-2 flex-wrap"
+                    method="post" data-turbo="false"
+                    th:action="@{/clients/milestone-setup/save-settings}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
+                <input type="hidden" name="buildingId" th:value="${selectedBuildingId}"/>
+                <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+                <div class="d-inline-flex align-items-center gap-1">
+                  <input type="text" inputmode="decimal"
+                         class="form-control form-control-sm milestone-interest-rate-input"
+                         id="msInterestRateStandalone"
+                         name="interestRatePercent"
+                         th:value="${interestRatePercent != null ? interestRatePercent.stripTrailingZeros().toPlainString() : '15'}"/>
+                  <span class="text-muted small text-nowrap">% p.a.</span>
+                </div>
+                <button class="btn btn-sm btn-outline-primary" type="submit">Save rate</button>
+              </form>
+            </th:block>
+            <th:block th:unless="${editable}">
+              <span th:text="${interestRatePercent != null ? interestRatePercent.stripTrailingZeros().toPlainString() : '15'}">15</span>
+              <span class="text-muted small">% p.a.</span>
+            </th:block>
+          </td>
+        </tr>
+        <tr>
           <th class="text-muted">Client</th>
           <td colspan="3" th:text="${selectedBooking.client.displayName()}">—</td>
         </tr>

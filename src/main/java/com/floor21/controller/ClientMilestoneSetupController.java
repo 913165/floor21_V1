@@ -179,6 +179,9 @@ public class ClientMilestoneSetupController {
         Booking booking = loadBookingForView(bookingId, builderId);
         model.addAttribute("selectedBooking", booking);
         model.addAttribute("baseAmount", bookingPaymentSlabService.baseConsideration(booking));
+        model.addAttribute(
+                "interestRatePercent",
+                BookingPaymentSlabService.effectiveInterestRatePercent(booking));
         model.addAttribute("extraExpensesTotal", sumExtraExpenses(bookingId, builderId));
         model.addAttribute(
                 "milestoneTemplatesAvailable",
@@ -195,7 +198,7 @@ public class ClientMilestoneSetupController {
 
         List<BookingPaymentSlab> slabs = listSlabsForView(bookingId, builderId);
         model.addAttribute("slabs", slabs);
-        model.addAttribute("saveForm", buildSaveForm(bookingId, slabs));
+        model.addAttribute("saveForm", buildSaveForm(bookingId, slabs, booking));
         SlabScheduleSummary summary = summarizeForView(bookingId, builderId, booking);
         model.addAttribute("scheduleSummary", summary);
 
@@ -228,6 +231,22 @@ public class ClientMilestoneSetupController {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
         }
         return redirectBack(form.getBookingId(), buildingId, projectId);
+    }
+
+    @PostMapping("/save-settings")
+    public String saveSettings(
+            @RequestParam UUID bookingId,
+            @RequestParam BigDecimal interestRatePercent,
+            @RequestParam(required = false) UUID buildingId,
+            @RequestParam(required = false) UUID projectId,
+            RedirectAttributes ra) {
+        try {
+            bookingPaymentSlabService.saveInterestRatePercent(bookingId, interestRatePercent);
+            ra.addFlashAttribute("successMessage", "Interest rate saved.");
+        } catch (IllegalArgumentException | ResourceNotFoundException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return redirectBack(bookingId, buildingId, projectId);
     }
 
     @PostMapping("/materialize")
@@ -267,9 +286,10 @@ public class ClientMilestoneSetupController {
         return redirectBack(bookingId, buildingId, projectId);
     }
 
-    private BookingPaymentSlabBatchForm buildSaveForm(UUID bookingId, List<BookingPaymentSlab> slabs) {
+    private BookingPaymentSlabBatchForm buildSaveForm(UUID bookingId, List<BookingPaymentSlab> slabs, Booking booking) {
         BookingPaymentSlabBatchForm form = new BookingPaymentSlabBatchForm();
         form.setBookingId(bookingId);
+        form.setInterestRatePercent(BookingPaymentSlabService.effectiveInterestRatePercent(booking));
         List<BookingPaymentSlabBatchForm.Line> lines = new ArrayList<>();
         for (BookingPaymentSlab slab : slabs) {
             BookingPaymentSlabBatchForm.Line line = new BookingPaymentSlabBatchForm.Line();

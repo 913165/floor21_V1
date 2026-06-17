@@ -12,6 +12,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 public class BookingPaymentSlabBatchForm {
 
     private UUID bookingId;
+    /** Annual interest % for payment schedule; null leaves stored booking value unchanged. */
+    private BigDecimal interestRatePercent;
     private List<Line> lines = new ArrayList<>();
 
     @Data
