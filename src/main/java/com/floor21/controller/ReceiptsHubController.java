@@ -12,10 +12,12 @@ import com.floor21.security.TenantContext;
 import com.floor21.service.BankService;
 import com.floor21.service.BookingOwnerService;
 import com.floor21.service.BuildingService;
+import com.floor21.service.ReceiptExcelService;
 import com.floor21.service.ReceiptPrintService;
 import com.floor21.service.ReceiptService;
 import com.floor21.service.ReceiptWordExportService;
 import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -39,6 +41,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -111,6 +114,7 @@ public class ReceiptsHubController {
     private final BankService bankService;
     private final ReceiptPrintService receiptPrintService;
     private final ReceiptWordExportService receiptWordExportService;
+    private final ReceiptExcelService receiptExcelService;
 
     @GetMapping
     public String entry(
@@ -260,6 +264,45 @@ public class ReceiptsHubController {
                         MediaType.parseMediaType(
                                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
                 .body(body);
+    }
+
+    @GetMapping("/import-template")
+    public ResponseEntity<byte[]> importTemplate() throws IOException {
+        byte[] body = receiptExcelService.buildImportTemplate();
+        ContentDisposition disposition =
+                ContentDisposition.attachment().filename("payment_receipts_import_sample.xlsx").build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(
+                        MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(body);
+    }
+
+    @PostMapping("/import")
+    public String importExcel(
+            @RequestParam UUID bookingId,
+            @RequestParam(required = false) UUID buildingId,
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam("file") MultipartFile file,
+            RedirectAttributes ra) {
+        if (isPlatformAdmin()) {
+            ra.addFlashAttribute("errorMessage", "Read-only for platform admin.");
+            return redirectToEntry(bookingId, buildingId, projectId);
+        }
+        try {
+            int imported = receiptExcelService.importForBooking(bookingId, file);
+            ra.addFlashAttribute(
+                    "successMessage",
+                    "Imported "
+                            + imported
+                            + " payment receipt"
+                            + (imported == 1 ? "" : "s")
+                            + " from Excel.");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return redirectToEntry(bookingId, buildingId, projectId);
     }
 
     private void addPageTitleAndPicker(

@@ -205,7 +205,7 @@
       <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
           <span class="fw-semibold">Slab payment schedule</span>
-          <span class="text-muted small d-block">Each slab shows its title and amount. Receipt lines and Today/interest appear only after receipts are recorded for that slab.</span>
+          <span class="text-muted small d-block">Shows milestones through the last row with a slab date in Milestone setup. Today rows appear after that date when balance remains.</span>
         </div>
         <div class="d-flex flex-wrap gap-2">
           <a class="btn btn-primary btn-sm"
@@ -236,6 +236,7 @@
             <tr>
               <th class="align-middle text-center text-nowrap">Date</th>
               <th class="align-middle text-center">Slab</th>
+              <th class="align-middle text-center text-nowrap">Check No</th>
               <th class="align-middle text-center text-nowrap">Amount</th>
               <th class="align-middle text-center text-nowrap">Receipt</th>
               <th class="align-middle text-center text-nowrap">Balance</th>
@@ -250,15 +251,17 @@
                 th:classappend="${row.rowType().name() == 'SLAB_TOTAL'} ? ' slab-ledger-row--milestone' : (${row.rowType().name() == 'TODAY'} ? ' slab-ledger-row--today' : ' slab-ledger-row--receipt')">
               <td class="text-nowrap text-muted"
                   th:text="${row.date() != null ? #temporals.format(row.date(), 'dd-MMM-yyyy') : dash}">-</td>
-              <td th:classappend="${row.rowType().name() == 'SLAB_TOTAL'} ? ' slab-ledger-milestone-title' : (${row.rowType().name() == 'TODAY'} ? ' fw-semibold text-primary' : '')"
+              <td th:classappend="${row.rowType().name() == 'SLAB_TOTAL'} ? ' slab-ledger-milestone-title' : (${row.rowType().name() == 'TODAY'} ? ' fw-semibold' : '')"
                   th:text="${row.slabLabel() != null ? row.slabLabel() : dash}">-</td>
+              <td class="text-nowrap small"
+                  th:text="${row.chequeLabel() != null and !#strings.isEmpty(row.chequeLabel()) ? row.chequeLabel() : dash}">-</td>
               <td class="text-end slab-amt--agreed"
                   th:text="${row.amountDue() != null ? amt.formatAmountDisplay(row.amountDue()) : dash}">-</td>
               <td class="text-end"
-                  th:classappend="${row.rowType().name() == 'TODAY' and row.receiptAmount() != null} ? ' slab-amt--paid text-primary fw-semibold' : (${row.rowType().name() == 'RECEIPT'} ? ' slab-amt--paid' : '')"
+                  th:classappend="${row.rowType().name() == 'RECEIPT'} ? ' slab-amt--paid' : (${row.rowType().name() == 'TODAY'} ? ' text-muted' : '')"
                   th:text="${row.receiptAmount() != null ? amt.formatAmountDisplay(row.receiptAmount()) : dash}">-</td>
               <td class="text-end"
-                  th:classappend="${row.balance() != null and row.balance().signum() > 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
+                  th:classappend="${row.balance() != null and row.balance().signum() != 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
                   th:text="${row.balance() != null ? amt.formatAmountDisplay(row.balance()) : dash}">-</td>
               <td class="text-center text-nowrap text-muted"
                   th:text="${row.days() != null ? row.days() : dash}">-</td>
@@ -272,7 +275,7 @@
             </tbody>
             <tfoot class="table-light" th:if="${ledgerSummary != null}">
             <tr class="fw-semibold">
-              <td colspan="2" class="text-end">Total</td>
+              <td colspan="3" class="text-end">Total</td>
               <td class="text-end slab-amt--agreed" th:text="${amt.formatAmountDisplay(ledgerSummary.totalAmountDue())}">0</td>
               <td class="text-end slab-amt--paid" th:text="${amt.formatAmountDisplay(ledgerSummary.totalReceipts())}">0</td>
               <td class="text-end slab-amt--balance" th:text="${amt.formatAmountDisplay(ledgerSummary.totalBalance())}">0</td>

@@ -35,8 +35,8 @@ public class ReceiptSlabAllocationService {
     public Map<UUID, List<ReceiptSlabAllocationSlice>> allocateBySlab(UUID bookingId, UUID builderId) {
         List<BookingPaymentSlab> slabs =
                 TenantContext.getBuilderIdOrNull() != null
-                        ? bookingPaymentSlabService.listUniqueSlabsForSchedule(bookingId)
-                        : bookingPaymentSlabService.listUniqueSlabsForScheduleReadOnly(bookingId, builderId);
+                        ? bookingPaymentSlabService.listSlabsForPaymentLedger(bookingId)
+                        : bookingPaymentSlabService.listSlabsForPaymentLedgerReadOnly(bookingId, builderId);
         if (slabs.isEmpty()) {
             return Map.of();
         }

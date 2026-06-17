@@ -159,7 +159,7 @@ public class BookingPaymentSlabService {
     @Transactional
     public List<SlabScheduleLineView> listLineViews(UUID bookingId) {
         prepareSlabMilestones(bookingId);
-        List<BookingPaymentSlab> slabs = listUniqueSlabsForSchedule(bookingId);
+        List<BookingPaymentSlab> slabs = listSlabsForPaymentLedger(bookingId);
         UUID builderId = TenantContext.requireBuilderId();
         var receipts =
                 receiptRepository.findActiveByBooking_IdOrderByReceiptDateAsc(bookingId, builderId);
@@ -180,7 +180,7 @@ public class BookingPaymentSlabService {
                                 null,
                                 p.paymentDate(),
                                 p.amount(),
-                                p.reference()));
+                                p.chequeLabel() != null ? p.chequeLabel() : p.reference()));
             }
             BigDecimal balance = due.subtract(paid).max(ZERO);
             views.add(new SlabScheduleLineView(slab, due, paid, balance, List.copyOf(slices)));
@@ -341,6 +341,31 @@ public class BookingPaymentSlabService {
         return orderUniqueSlabsByTemplateLabels(
                 listLinesReadOnly(bookingId, builderId),
                 milestoneLabelsForBuilding(buildingId, true));
+    }
+
+    /**
+     * Slabs shown on payment schedule / receipt waterfall: in template order, stopping at the first
+     * milestone without a due date in Milestone setup (Clients).
+     */
+    @Transactional
+    public List<BookingPaymentSlab> listSlabsForPaymentLedger(UUID bookingId) {
+        return slabsThroughLastDueDate(listUniqueSlabsForSchedule(bookingId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingPaymentSlab> listSlabsForPaymentLedgerReadOnly(UUID bookingId, UUID builderId) {
+        return slabsThroughLastDueDate(listUniqueSlabsForScheduleReadOnly(bookingId, builderId));
+    }
+
+    static List<BookingPaymentSlab> slabsThroughLastDueDate(List<BookingPaymentSlab> slabs) {
+        List<BookingPaymentSlab> result = new ArrayList<>();
+        for (BookingPaymentSlab slab : slabs) {
+            if (slab.getDueDate() == null) {
+                break;
+            }
+            result.add(slab);
+        }
+        return result;
     }
 
     /**

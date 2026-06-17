@@ -11,4 +11,5 @@ public record ReceiptSlabAllocationSlice(
         LocalDate paymentDate,
         BigDecimal amount,
         String reference,
-        String remark) {}
+        String remark,
+        String chequeLabel) {}

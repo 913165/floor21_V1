@@ -155,6 +155,17 @@ public class ReceiptService {
 
     @Transactional
     public Receipt save(UUID bookingId, Receipt form) {
+        return saveInternal(bookingId, form, null, null);
+    }
+
+    @Transactional
+    public Receipt saveImported(
+            UUID bookingId, Receipt form, String receiptNumberOverride, String enteredByOverride) {
+        return saveInternal(bookingId, form, receiptNumberOverride, enteredByOverride);
+    }
+
+    private Receipt saveInternal(
+            UUID bookingId, Receipt form, String receiptNumberOverride, String enteredByOverride) {
         UUID builderId = TenantContext.requireBuilderId();
         boolean updating = form.getId() != null;
         Booking booking =
@@ -180,11 +191,19 @@ public class ReceiptService {
             entity.setBuilder(builder);
             entity.setBooking(booking);
             entity.setCreatedAt(now);
-            entity.setEnteredByDisplay(resolveEnteredByDisplay(builderId));
             int nextSerial =
                     receiptRepository.findMaxReceiptSerialByBookingId(bookingId, builderId) + 1;
             entity.setReceiptSerial(nextSerial);
-            entity.setReceiptNumber(formatIncrementalReceiptNumber(nextSerial));
+            if (receiptNumberOverride != null && !receiptNumberOverride.isBlank()) {
+                entity.setReceiptNumber(receiptNumberOverride.trim());
+            } else {
+                entity.setReceiptNumber(formatIncrementalReceiptNumber(nextSerial));
+            }
+            if (enteredByOverride != null && !enteredByOverride.isBlank()) {
+                entity.setEnteredByDisplay(enteredByOverride.trim());
+            } else {
+                entity.setEnteredByDisplay(resolveEnteredByDisplay(builderId));
+            }
         }
 
         entity.setReceiptDate(form.getReceiptDate() != null ? form.getReceiptDate() : LocalDate.now());
@@ -316,6 +335,11 @@ public class ReceiptService {
             return booking.getFlat().getBasePrice();
         }
         return ZERO;
+    }
+
+    @Transactional(readOnly = true)
+    public Booking requireBookingForImport(UUID bookingId) {
+        return requireAccessibleBooking(bookingId, null);
     }
 
     private Booking requireAccessibleBooking(UUID bookingId, UUID platformBuilderId) {

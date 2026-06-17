@@ -9,6 +9,7 @@ public record SlabScheduleLedgerRow(
         SlabLedgerRowType rowType,
         LocalDate date,
         String slabLabel,
+        String chequeLabel,
         BigDecimal amountDue,
         BigDecimal receiptAmount,
         BigDecimal balance,

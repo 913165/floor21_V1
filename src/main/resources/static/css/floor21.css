@@ -5476,6 +5476,11 @@ body.slab-schedule-col-resizing {
 
 .slab-schedule-ledger-table .slab-ledger-row--today td {
   border-top: 1px dashed var(--bs-border-color);
+  color: var(--bs-body-color);
+}
+
+.slab-schedule-ledger-table .slab-ledger-row--today td.text-muted {
+  color: var(--bs-secondary-color) !important;
 }
 
 .slab-schedule-ledger-table .slab-ledger-row--receipt td {

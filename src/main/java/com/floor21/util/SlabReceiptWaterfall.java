@@ -42,6 +42,7 @@ public final class SlabReceiptWaterfall {
             LocalDate payDate =
                     receipt.getReceiptDate() != null ? receipt.getReceiptDate() : LocalDate.now();
             String reference = buildReceiptReference(receipt);
+            String chequeLabel = buildChequeLabel(receipt);
             String remark = receiptRemarks(receipt);
 
             for (int i = 0; i < slabs.size() && pool.compareTo(ZERO) > 0; i++) {
@@ -52,13 +53,13 @@ public final class SlabReceiptWaterfall {
                 if (apply.compareTo(ZERO) <= 0) {
                     continue;
                 }
-                addSlice(bySlab, slabs.get(i).getId(), receipt.getId(), payDate, apply, reference, remark);
+                addSlice(bySlab, slabs.get(i).getId(), receipt.getId(), payDate, apply, reference, remark, chequeLabel);
                 remainingDue[i] = remainingDue[i].subtract(apply);
                 pool = pool.subtract(apply);
             }
             if (pool.compareTo(ZERO) > 0) {
                 BookingPaymentSlab last = slabs.get(slabs.size() - 1);
-                addSlice(bySlab, last.getId(), receipt.getId(), payDate, pool, reference, remark);
+                addSlice(bySlab, last.getId(), receipt.getId(), payDate, pool, reference, remark, chequeLabel);
             }
         }
         return bySlab;
@@ -71,29 +72,18 @@ public final class SlabReceiptWaterfall {
     }
 
     public static String buildReceiptReference(Receipt receipt) {
-        StringBuilder sb = new StringBuilder();
-        if (receipt.getReceiptNumber() != null && !receipt.getReceiptNumber().isBlank()) {
-            sb.append("Rec. ").append(receipt.getReceiptNumber().trim());
+        return buildChequeLabel(receipt);
+    }
+
+    /** Cheque / ref. label for the payment schedule (legacy: {@code Chq No:097552}). */
+    public static String buildChequeLabel(Receipt receipt) {
+        if (receipt.getChequeNo() != null && !receipt.getChequeNo().isBlank()) {
+            return "Chq No:" + receipt.getChequeNo().trim();
         }
         if (receipt.getPaymentMode() != null && !receipt.getPaymentMode().isBlank()) {
-            if (sb.length() > 0) {
-                sb.append(" · ");
-            }
-            sb.append(receipt.getPaymentMode().trim());
+            return receipt.getPaymentMode().trim();
         }
-        if (receipt.getChequeNo() != null && !receipt.getChequeNo().isBlank()) {
-            if (sb.length() > 0) {
-                sb.append(" · ");
-            }
-            sb.append("Chq No:").append(receipt.getChequeNo().trim());
-        }
-        if (receipt.getBankName() != null && !receipt.getBankName().isBlank()) {
-            if (sb.length() > 0) {
-                sb.append(" · ");
-            }
-            sb.append(receipt.getBankName().trim());
-        }
-        return sb.length() > 0 ? sb.toString() : "Receipt";
+        return null;
     }
 
     private static String receiptRemarks(Receipt receipt) {
@@ -110,7 +100,8 @@ public final class SlabReceiptWaterfall {
             LocalDate payDate,
             BigDecimal amount,
             String reference,
-            String remark) {
+            String remark,
+            String chequeLabel) {
         bySlab.get(slabId)
                 .add(
                         new ReceiptSlabAllocationSlice(
@@ -119,6 +110,7 @@ public final class SlabReceiptWaterfall {
                                 payDate,
                                 amount.setScale(2, RoundingMode.HALF_UP),
                                 reference,
-                                remark));
+                                remark,
+                                chequeLabel));
     }
 }

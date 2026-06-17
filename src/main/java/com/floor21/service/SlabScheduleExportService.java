@@ -45,7 +45,7 @@ public class SlabScheduleExportService {
             DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
 
     private static final String[] LEDGER_HEADERS = {
-        "Date", "Slab", "Amount", "Receipt", "Balance", "Days", "Interest", "Info", "Remark"
+        "Date", "Slab", "Check No", "Amount", "Receipt", "Balance", "Days", "Interest", "Info", "Remark"
     };
 
     private final BookingPaymentSlabService bookingPaymentSlabService;
@@ -120,7 +120,7 @@ public class SlabScheduleExportService {
 
             PdfPTable table = new PdfPTable(LEDGER_HEADERS.length);
             table.setWidthPercentage(100f);
-            table.setWidths(new float[] {9f, 20f, 11f, 11f, 11f, 6f, 10f, 12f, 10f});
+            table.setWidths(new float[] {9f, 18f, 12f, 10f, 10f, 10f, 6f, 9f, 11f, 9f});
             for (String h : LEDGER_HEADERS) {
                 table.addCell(headerCell(h, headerFont));
             }
@@ -129,6 +129,7 @@ public class SlabScheduleExportService {
                 Font rowFont = milestone ? headerFont : bodyFont;
                 table.addCell(dataCell(formatDate(ledgerRow.date()), rowFont));
                 table.addCell(dataCell(nullToDash(ledgerRow.slabLabel()), rowFont));
+                table.addCell(dataCell(nullToDash(ledgerRow.chequeLabel()), rowFont));
                 table.addCell(dataCell(formatMoney(ledgerRow.amountDue()), rowFont, Element.ALIGN_RIGHT));
                 table.addCell(dataCell(formatMoney(ledgerRow.receiptAmount()), rowFont, Element.ALIGN_RIGHT));
                 table.addCell(dataCell(formatMoney(ledgerRow.balance()), rowFont, Element.ALIGN_RIGHT));
@@ -142,6 +143,7 @@ public class SlabScheduleExportService {
                 SlabScheduleLedgerSummary s = ctx.summary();
                 table.addCell(dataCell("", headerFont));
                 table.addCell(dataCell("Total", headerFont));
+                table.addCell(dataCell("—", headerFont));
                 table.addCell(dataCell(formatMoney(s.totalAmountDue()), headerFont, Element.ALIGN_RIGHT));
                 table.addCell(dataCell(formatMoney(s.totalReceipts()), headerFont, Element.ALIGN_RIGHT));
                 table.addCell(dataCell(formatMoney(s.totalBalance()), headerFont, Element.ALIGN_RIGHT));
@@ -298,6 +300,7 @@ public class SlabScheduleExportService {
         Object[] values = {
             formatDate(ledgerRow.date()),
             nullToDash(ledgerRow.slabLabel()),
+            nullToDash(ledgerRow.chequeLabel()),
             formatMoney(ledgerRow.amountDue()),
             formatMoney(ledgerRow.receiptAmount()),
             formatMoney(ledgerRow.balance()),
@@ -320,14 +323,15 @@ public class SlabScheduleExportService {
         Cell label = row.createCell(1);
         label.setCellValue("Total");
         label.setCellStyle(boldStyle);
-        row.createCell(2).setCellValue(formatMoney(summary.totalAmountDue()));
-        row.createCell(3).setCellValue(formatMoney(summary.totalReceipts()));
-        row.createCell(4).setCellValue(formatMoney(summary.totalBalance()));
-        row.createCell(5).setCellValue("—");
-        row.createCell(6).setCellValue(formatMoney(summary.totalInterest()));
-        row.createCell(7).setCellValue("—");
+        row.createCell(2).setCellValue("—");
+        row.createCell(3).setCellValue(formatMoney(summary.totalAmountDue()));
+        row.createCell(4).setCellValue(formatMoney(summary.totalReceipts()));
+        row.createCell(5).setCellValue(formatMoney(summary.totalBalance()));
+        row.createCell(6).setCellValue("—");
+        row.createCell(7).setCellValue(formatMoney(summary.totalInterest()));
         row.createCell(8).setCellValue("—");
-        for (int c = 2; c <= 6; c++) {
+        row.createCell(9).setCellValue("—");
+        for (int c = 3; c <= 7; c++) {
             row.getCell(c).setCellStyle(boldStyle);
         }
     }

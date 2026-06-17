@@ -214,14 +214,20 @@
             <label class="form-check-label" for="receipt-print-all-owners">All owners on print</label>
           </div>
         </div>
-        <button th:unless="${readonlyView or editingReceipt}" type="button" class="btn btn-primary btn-sm"
-                data-bs-toggle="modal" data-bs-target="#receipt-form-modal">
-          New Payment receipt
-        </button>
-        <a th:if="${!readonlyView and editingReceipt}" class="btn btn-primary btn-sm"
-           th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, openNew=true)}">
-          New Payment receipt
-        </a>
+        <div class="d-flex align-items-center flex-wrap gap-2">
+          <button th:unless="${readonlyView or editingReceipt}" type="button" class="btn btn-success btn-sm"
+                  data-bs-toggle="modal" data-bs-target="#receipt-import-modal">
+            Import
+          </button>
+          <button th:unless="${readonlyView or editingReceipt}" type="button" class="btn btn-primary btn-sm"
+                  data-bs-toggle="modal" data-bs-target="#receipt-form-modal">
+            New Payment receipt
+          </button>
+          <a th:if="${!readonlyView and editingReceipt}" class="btn btn-primary btn-sm"
+             th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, openNew=true)}">
+            New Payment receipt
+          </a>
+        </div>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -291,6 +297,99 @@
             </tr>
             </tfoot>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="receipt-import-modal" tabindex="-1"
+         th:unless="${readonlyView}"
+         aria-labelledby="receipt-import-modal-title" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content shadow">
+          <div class="modal-header py-2 px-3">
+            <h6 class="modal-title mb-0" id="receipt-import-modal-title">Import payment receipts from Excel</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body py-3 px-3">
+            <p class="text-muted small mb-2">
+              Import receipts for
+              <strong th:text="${@bookingOwnerService.ownersDisplayName(selectedBooking.id)}">Owners</strong>
+              (flat
+              <strong th:text="${selectedBooking.flat != null ? selectedBooking.flat.flatNumber : '—'}">1602</strong>).
+              Row 1 = headers; one row per receipt. Up to 500 rows per file.
+            </p>
+            <p class="text-muted small mb-3">
+              Download
+              <a th:href="@{/receipts/import-template}" data-turbo="false">payment_receipts_import_sample.xlsx</a>
+              for the exact layout. <strong>Receipt Date</strong> is required. At least one amount column must be
+              greater than zero. Leave <strong>Rec. No.</strong> blank to auto-number.
+            </p>
+
+            <h2 class="h6 fw-semibold mb-2">Sample Excel format</h2>
+            <div class="table-responsive border rounded mb-3">
+              <table class="table table-sm table-bordered mb-0 small text-nowrap">
+                <thead class="table-light">
+                <tr>
+                  <th>Sno</th>
+                  <th>Receipt Date</th>
+                  <th>Rec. No.</th>
+                  <th>Consideration</th>
+                  <th>Extra Charges</th>
+                  <th>Interest (Agreement)</th>
+                  <th>Interest (GST)</th>
+                  <th>TDS</th>
+                  <th>GST</th>
+                  <th>Payment Mode</th>
+                  <th>Cheque/Ref No.</th>
+                  <th>Cheque Date</th>
+                  <th>Bank</th>
+                  <th>Paid By</th>
+                  <th>Entered By</th>
+                  <th>Remarks</th>
+                  <th>Dishonoured</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>2026-04-26</td>
+                  <td>1</td>
+                  <td>400000</td>
+                  <td>0</td>
+                  <td>0</td>
+                  <td>0</td>
+                  <td>0</td>
+                  <td>0</td>
+                  <td>Cheque</td>
+                  <td>123456</td>
+                  <td>2026-04-26</td>
+                  <td>HDFC Bank</td>
+                  <td>Maneesha Gupta</td>
+                  <td>Pankaj Gupta</td>
+                  <td></td>
+                  <td>No</td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <form th:action="@{/receipts/import}" method="post" enctype="multipart/form-data"
+                  data-turbo="false" id="receipt-import-form">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+              <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
+              <input type="hidden" name="buildingId" th:value="${selectedBuildingId}" th:if="${selectedBuildingId != null}"/>
+              <input type="hidden" name="projectId" th:value="${filterProjectId}" th:if="${filterProjectId != null}"/>
+              <label class="form-label" for="receiptImportFile">Excel file (.xlsx / .xls)</label>
+              <input class="form-control" type="file" id="receiptImportFile" name="file" accept=".xlsx,.xls" required/>
+            </form>
+          </div>
+          <div class="modal-footer py-2 px-3">
+            <a class="btn btn-outline-secondary btn-sm"
+               th:href="@{/receipts/import-template}"
+               data-turbo="false">Download sample</a>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-success btn-sm" type="submit" form="receipt-import-form">Import receipts</button>
+          </div>
         </div>
       </div>
     </div>
