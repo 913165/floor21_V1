@@ -6,7 +6,6 @@ import com.floor21.repository.FlatRepository;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
 import com.floor21.service.UserProjectAssignmentService;
-import com.floor21.util.FlatUnitTypes;
 import com.floor21.service.BookingService;
 import com.floor21.service.BrokerService;
 import com.floor21.service.ClientService;
@@ -166,12 +165,7 @@ public class BookingController {
         model.addAttribute("clients", clientService.list());
         model.addAttribute("brokers", brokerService.list());
         var builderId = TenantContext.requireBuilderId();
-        model.addAttribute(
-                "flats",
-                flatRepository.findBookableResidentialByBuilder_IdAndStatusIn(
-                        builderId,
-                        FlatUnitTypes.nonBookableUnitTypeCodesUpper(),
-                        List.of("AVAILABLE", "HOLD")));
+        model.addAttribute("flats", bookingService.listFlatsForBookingForm(builderId));
         model.addAttribute("executives", userProjectAssignmentService.listActiveUsersForProject(builderId));
         return "bookings/form";
     }
@@ -212,10 +206,8 @@ public class BookingController {
         var builderId = TenantContext.requireBuilderId();
         model.addAttribute(
                 "flats",
-                flatRepository.findBookableResidentialByBuilder_IdAndStatusIn(
-                        builderId,
-                        FlatUnitTypes.nonBookableUnitTypeCodesUpper(),
-                        List.of("AVAILABLE", "HOLD", "BOOKED")));
+                bookingService.listFlatsForBookingFormEdit(
+                        builderId, booking.getFlat() != null ? booking.getFlat().getId() : null));
         model.addAttribute("executives", userProjectAssignmentService.listActiveUsersForProject(builderId));
         return "bookings/form";
     }

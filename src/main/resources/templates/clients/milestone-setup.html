@@ -257,7 +257,9 @@
                        th:field="*{lines[__${stat.index}__].id}"/>
                 <input type="date"
                        class="form-control form-control-sm js-ms-due-date milestone-slab-date"
-                       th:field="*{lines[__${stat.index}__].dueDate}"
+                       th:name="|lines[${stat.index}].dueDate|"
+                       th:id="|lines${stat.index}.dueDate|"
+                       th:value="${saveForm.lines[__${stat.index}__].dueDate != null ? #temporals.format(saveForm.lines[__${stat.index}__].dueDate, 'yyyy-MM-dd') : ''}"
                        th:readonly="${!editable}"/>
               </td>
               <td class="p-1">

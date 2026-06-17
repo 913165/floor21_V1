@@ -6,6 +6,7 @@ import com.floor21.entity.Client;
 import com.floor21.entity.Flat;
 import com.floor21.entity.User;
 import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.util.FlatUnitTypes;
 import com.floor21.repository.BookingPaymentSlabRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BookingSlabPaymentRepository;
@@ -24,6 +25,7 @@ import com.floor21.security.TenantContext;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -58,6 +60,44 @@ public class BookingService {
     private final ExtraExpenseRepository extraExpenseRepository;
     private final VaultBookingProfileRepository vaultBookingProfileRepository;
     private final VaultEntryRepository vaultEntryRepository;
+
+    /** Residential flats the current user may book (partner allocation + availability rules). */
+    @Transactional(readOnly = true)
+    public List<Flat> listFlatsForBookingForm(UUID builderId) {
+        List<Flat> flats =
+                flatRepository.findBookableResidentialByBuilder_IdAndStatusIn(
+                        builderId,
+                        FlatUnitTypes.nonBookableUnitTypeCodesUpper(),
+                        List.of("AVAILABLE", "HOLD"));
+        return flats.stream()
+                .filter(
+                        f ->
+                                f.getBuilding() != null
+                                        && partnerFlatAllocationService.isBookableByCurrentUser(
+                                                f.getBuilding().getId(),
+                                                partnerFlatAllocationService.getAssignedPartnerIdForFlat(
+                                                        f.getId())))
+                .toList();
+    }
+
+    /** Same as {@link #listFlatsForBookingForm(UUID)} but always includes the flat already on the booking (edit form). */
+    @Transactional(readOnly = true)
+    public List<Flat> listFlatsForBookingFormEdit(UUID builderId, UUID currentFlatId) {
+        List<Flat> flats = listFlatsForBookingForm(builderId);
+        if (currentFlatId == null || flats.stream().anyMatch(f -> currentFlatId.equals(f.getId()))) {
+            return flats;
+        }
+        return flatRepository
+                .findByIdAndBuilder_Id(currentFlatId, builderId)
+                .map(
+                        current -> {
+                            List<Flat> merged = new ArrayList<>(flats.size() + 1);
+                            merged.add(current);
+                            merged.addAll(flats);
+                            return merged;
+                        })
+                .orElse(flats);
+    }
 
     @Transactional(readOnly = true)
     public Page<Booking> listPage(int page, int size, String q, UUID projectId) {

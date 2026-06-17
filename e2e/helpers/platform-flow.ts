@@ -281,6 +281,26 @@ export function targetClientBookingCount(assignedFlatCount: number): number {
   return Math.max(1, Math.ceil(assignedFlatCount * CLIENT_BOOKING_PERCENT));
 }
 
+async function resolveFlatNumbers(
+  page: Page,
+  buildingId: string,
+  flatIds: string[],
+): Promise<Map<string, string>> {
+  const grid = await openBuildingFlatGrid(page, { buildingId });
+  const map = new Map<string, string>();
+  for (const flatId of flatIds) {
+    const card = grid.locator(`#flat-${flatId}`);
+    if ((await card.count()) === 0) {
+      continue;
+    }
+    const flatNumber = (await card.locator('.flat-number').textContent())?.trim();
+    if (flatNumber) {
+      map.set(flatId, flatNumber);
+    }
+  }
+  return map;
+}
+
 /** Create clients + bookings for ≥50% of flats assigned to one partner. Caller must be logged in as that partner. */
 export async function partnerCreateClientsAndBookings(
   page: Page,
@@ -293,6 +313,10 @@ export async function partnerCreateClientsAndBookings(
   const clients: FlowClientRecord[] = [];
   const bookings: FlowBookingRecord[] = [];
   const clientIndexOffset = partner.email === flow.user2.email ? 100 : 0;
+  const flatNumbers =
+    assignedFlatIds.length > 0
+      ? await resolveFlatNumbers(page, flow.buildingId, assignedFlatIds)
+      : new Map<string, string>();
 
   for (let i = 0; i < target; i++) {
     const client: NewClientInput =
@@ -314,13 +338,14 @@ export async function partnerCreateClientsAndBookings(
     });
 
     const flatId = assignedFlatIds[i];
-    const bookingId = await createBookingForFlat(page, flatId, displayName);
+    const { bookingId, bookingCode } = await createBookingForFlat(
+      page,
+      flatId,
+      displayName,
+      '2026-06-15',
+      flatNumbers.get(flatId),
+    );
 
-    const bookingHeading = page.getByRole('heading', { name: /^Booking / });
-    await expect(bookingHeading).toBeVisible();
-    const bookingCode =
-      (await bookingHeading.textContent())?.replace(/^Booking\s+/, '').trim() ?? '';
-    expect(bookingCode.length).toBeGreaterThan(0);
     bookings.push({
       partnerEmail: partner.email,
       flatId,
