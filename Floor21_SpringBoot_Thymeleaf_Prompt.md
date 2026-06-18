@@ -9,7 +9,7 @@
 |---|---|
 | App Name | **Floor21** |
 | Tagline | *Smart Flat Booking for Modern Builders* |
-| Backend | Spring Boot 4.x + Java 25 |
+| Backend | Spring Boot 4.x + Java 26 |
 | Frontend | Thymeleaf 3.1 + Bootstrap 5 + Vanilla JS |
 | Database | PostgreSQL 16+ |
 | Architecture | Multi-Tenant MVC Web App |
@@ -23,7 +23,7 @@
 | Layer | Technology |
 |---|---|
 | Framework | Spring Boot 4.x |
-| Language | Java 25 |
+| Language | Java 26 |
 | Database | PostgreSQL 16+ |
 | ORM | Spring Data JPA / Hibernate 7 |
 | Security | Spring Security 7 (form-based login + session) |

@@ -1,6 +1,6 @@
 # Floor21 — Ubuntu server setup
 
-Step-by-step setup for Ubuntu (VM or bare metal): JDK 25, Docker, PostgreSQL via Compose, clone the app, run Spring Boot in the background.
+Step-by-step setup for Ubuntu (VM or bare metal): JDK 26, Docker, PostgreSQL via Compose, clone the app, run Spring Boot in the background.
 
 ---
 
@@ -13,11 +13,11 @@ sudo apt upgrade -y
 
 ---
 
-## 2. JDK 25 (Oracle)
+## 2. JDK 26 (Oracle)
 
 Download page (pick the build that matches your CPU):
 
-https://www.oracle.com/java/technologies/javase/jdk25-archive-downloads.html
+https://www.oracle.com/java/technologies/downloads/
 
 ### Check architecture (VM / CPU)
 
@@ -27,15 +27,15 @@ uname -m
 
 | `uname -m`   | Debian package to use        |
 |--------------|--------------------------------|
-| `x86_64`     | `jdk-25.0.2_linux-x64_bin.deb` |
+| `x86_64`     | `jdk-26_linux-x64_bin.deb` |
 | `aarch64`    | Use the **linux-aarch64** `.deb` from Oracle (not the x64 link below) |
 
 ### Download and install (x86_64 example)
 
 ```bash
 cd /tmp
-wget https://download.oracle.com/java/25/archive/jdk-25.0.2_linux-x64_bin.deb
-sudo apt install ./jdk-25.0.2_linux-x64_bin.deb
+wget https://download.oracle.com/java/26/latest/jdk-26_linux-x64_bin.deb
+sudo apt install ./jdk-26_linux-x64_bin.deb
 ```
 
 ### Verify
@@ -47,7 +47,7 @@ java --version
 Set `JAVA_HOME` if needed (adjust path if your install differs):
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/jdk-25.0.2
+export JAVA_HOME=/usr/lib/jvm/jdk-26-oracle-x64
 export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
@@ -209,7 +209,7 @@ Run the app on the host (section 7) so Prometheus can scrape `host.docker.intern
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-# JDK 25 → java --version
+# JDK 26 → java --version
 sudo apt install -y docker.io docker-compose
 git clone https://github.com/913165/floor21_V1.git && cd floor21_V1
 docker compose up -d postgres

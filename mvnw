@@ -78,6 +78,16 @@ if [ -z "$JAVA_HOME" ]; then
   fi
 fi
 
+# Floor21: Maven must use JDK 26 (pom.xml java.version). Override stale JDK 25 JAVA_HOME.
+_floor21_jdk26="/usr/lib/jvm/jdk-26-oracle-x64"
+if [ -d "$_floor21_jdk26" ]; then
+  if [ -z "$JAVA_HOME" ] || echo "$JAVA_HOME" | grep -q 'jdk-25'; then
+    JAVA_HOME="$_floor21_jdk26"
+    export JAVA_HOME
+  fi
+fi
+unset _floor21_jdk26
+
 # For Cygwin, ensure paths are in UNIX format before anything is touched
 if $cygwin; then
   [ -n "$JAVA_HOME" ] \

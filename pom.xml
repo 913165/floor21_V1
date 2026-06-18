@@ -18,7 +18,7 @@
     <description>Multi-tenant flat booking management</description>
 
     <properties>
-        <java.version>25</java.version>
+        <java.version>26</java.version>
         <testcontainers.version>1.21.3</testcontainers.version>
     </properties>
 

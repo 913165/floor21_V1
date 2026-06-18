@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.openxml4j.opc.PackagePartName;
@@ -120,7 +121,7 @@ public class DemandLetterTemplateService {
         clearPartRelationships(destPart);
 
         Map<String, String> relIdMap = new HashMap<>();
-        for (PackageRelationship rel : srcPart.getRelationships()) {
+        for (PackageRelationship rel : partRelationships(srcPart)) {
             if (rel.getTargetMode() == TargetMode.EXTERNAL) {
                 continue;
             }
@@ -130,7 +131,7 @@ public class DemandLetterTemplateService {
                         PackagingURIHelper.createPartName(
                                 PackagingURIHelper.resolvePartUri(
                                         srcPart.getPartName().getURI(), rel.getTargetURI()));
-            } catch (Exception ex) {
+            } catch (InvalidFormatException ex) {
                 continue;
             }
             PackagePart srcRelated = srcPack.getPart(srcTargetName);
@@ -167,22 +168,34 @@ public class DemandLetterTemplateService {
     }
 
     private static PackagePartName uniquePartName(OPCPackage destPack, PackagePartName preferred)
-            throws Exception {
-        if (!destPack.containPart(preferred)) {
-            return preferred;
-        }
-        String name = preferred.getName();
-        int dot = name.lastIndexOf('.');
-        String base = dot > 0 ? name.substring(0, dot) : name;
-        String ext = dot > 0 ? name.substring(dot) : "";
-        for (int i = 1; i < 100; i++) {
-            PackagePartName candidate =
-                    PackagingURIHelper.createPartName(base + "-" + i + ext);
-            if (!destPack.containPart(candidate)) {
-                return candidate;
+            throws IOException {
+        try {
+            if (!destPack.containPart(preferred)) {
+                return preferred;
             }
+            String name = preferred.getName();
+            int dot = name.lastIndexOf('.');
+            String base = dot > 0 ? name.substring(0, dot) : name;
+            String ext = dot > 0 ? name.substring(dot) : "";
+            for (int i = 1; i < 100; i++) {
+                PackagePartName candidate =
+                        PackagingURIHelper.createPartName(base + "-" + i + ext);
+                if (!destPack.containPart(candidate)) {
+                    return candidate;
+                }
+            }
+            return PackagingURIHelper.createPartName(base + "-" + UUID.randomUUID() + ext);
+        } catch (InvalidFormatException ex) {
+            throw new IOException("Failed to resolve footer part name.", ex);
         }
-        return PackagingURIHelper.createPartName(base + "-" + UUID.randomUUID() + ext);
+    }
+
+    private static Iterable<PackageRelationship> partRelationships(PackagePart part) throws IOException {
+        try {
+            return part.getRelationships();
+        } catch (InvalidFormatException ex) {
+            throw new IOException("Failed to read document part relationships.", ex);
+        }
     }
 
     private static void copyPartBytes(PackagePart src, PackagePart dest) throws IOException {
@@ -191,9 +204,9 @@ public class DemandLetterTemplateService {
         }
     }
 
-    private static void clearPartRelationships(PackagePart part) {
+    private static void clearPartRelationships(PackagePart part) throws IOException {
         List<String> relIds = new ArrayList<>();
-        for (PackageRelationship rel : part.getRelationships()) {
+        for (PackageRelationship rel : partRelationships(part)) {
             relIds.add(rel.getId());
         }
         for (String relId : relIds) {

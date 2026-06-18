@@ -4,7 +4,7 @@ How to run the app locally and sign in.
 
 ## Prerequisites
 
-- **JDK 25** (matches the project `pom.xml`)
+- **JDK 26** (matches the project `pom.xml`)
 - **PostgreSQL 16** with a database the app can use (or Docker — see below)
 - **Maven Wrapper** (`mvnw` / `mvnw.cmd`) — already in the repo
 
@@ -68,16 +68,16 @@ Create `floor21_db` and user `floor21_user` / `floor21_pass`, or change `spring.
 
 ```powershell
 cd C:\work_floor21\floor21_V1
-$env:JAVA_HOME = "C:\Program Files\Java\jdk-25"
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-26"
 .\mvnw.cmd spring-boot:run
 ```
 
-Adjust `JAVA_HOME` if your JDK is installed elsewhere.
+Adjust `JAVA_HOME` if your JDK is installed elsewhere. Both `java --version` and `javac --version` should show **26** — Maven uses `JAVA_HOME`, not only the `java` on your PATH.
 
 **macOS / Linux:**
 
 ```bash
-export JAVA_HOME=/path/to/jdk-25
+export JAVA_HOME=/path/to/jdk-26
 ./mvnw spring-boot:run
 ```
 
@@ -108,6 +108,7 @@ Use **Logout** in the navbar, or open **http://localhost/floor21/logout** (POST 
 
 | Issue | What to try |
 |--------|-------------|
+| `release version 26 not supported` | Maven is using an older JDK. Set `JAVA_HOME` to JDK 26 and confirm `javac --version` shows 26. |
 | `JAVA_HOME not found` (Windows) | Use `$env:JAVA_HOME = "..."` in PowerShell, not `set ...`. |
 | DB connection / timezone errors | JDK on Windows may use `Asia/Calcutta`; the app normalizes to `Asia/Kolkata` at startup. Ensure Postgres is reachable. |
 | Schema validation / missing tables | Flyway uses one script: `db/migration/V1__baseline.sql`. On a DB that used the old V1–V50 files, drop/recreate the database (see [docs/DB_MIGRATIONS.md](docs/DB_MIGRATIONS.md)) and start again. |

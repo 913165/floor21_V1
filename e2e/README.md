@@ -6,7 +6,7 @@ Browser UI tests for the Spring Boot app. This folder is **additive only**: it d
 
 Same as [QUICKSTART.md](../QUICKSTART.md):
 
-- JDK 25, PostgreSQL (`floor21_db`), app on **http://localhost/floor21** (port **80**, context path `/floor21`).
+- JDK 26, PostgreSQL (`floor21_db`), app on **http://localhost/floor21** (port **80**, context path `/floor21`).
 
 ## One-time setup
 
@@ -22,7 +22,7 @@ Terminal 1 — start the app:
 
 ```powershell
 cd C:\work_floor21\floor21
-$env:JAVA_HOME = "C:\Program Files\Java\jdk-25"
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-26"
 .\mvnw.cmd spring-boot:run
 ```
 

@@ -56,6 +56,15 @@ set ERROR_CODE=0
 @REM To isolate internal variables from possible post scripts, we use another setlocal
 @setlocal
 
+@REM Floor21: Maven must use JDK 26 (pom.xml java.version). Override stale JDK 25 JAVA_HOME.
+if exist "C:\Program Files\Java\jdk-26\bin\java.exe" (
+  if "%JAVA_HOME%"=="" set "JAVA_HOME=C:\Program Files\Java\jdk-26"
+  if not "%JAVA_HOME%"=="" (
+    echo %JAVA_HOME% | findstr /I /R "jdk-25" >nul
+    if not errorlevel 1 set "JAVA_HOME=C:\Program Files\Java\jdk-26"
+  )
+)
+
 @REM ==== START VALIDATION ====
 if not "%JAVA_HOME%" == "" goto OkJHome
 

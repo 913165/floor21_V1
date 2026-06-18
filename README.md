@@ -7,7 +7,7 @@ Server-rendered with Spring MVC and Thymeleaf (form login, sessions).
 
 ## Stack
 
-- Java 25
+- Java 26
 - Spring Boot 4
 - PostgreSQL 16
 - Flyway
@@ -24,7 +24,7 @@ Typical local flow:
 
 1. Start Postgres:
    - `docker compose up postgres -d`
-2. Set `JAVA_HOME` to JDK 25
+2. Set `JAVA_HOME` to JDK 26
 3. Run app:
    - macOS/Linux: `./mvnw spring-boot:run`
    - Windows: `mvnw.cmd spring-boot:run`
