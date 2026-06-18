@@ -207,10 +207,6 @@ public class ReceiptPrintService {
         return sb.length() > 0 ? sb.toString() : "—";
     }
 
-    /**
-     * Authorised signatory uses the builder admin's company name (User Management), not the project
-     * or building marketing name shown in the receipt narrative.
-     */
     public String signatoryCompanyForBuilder(Builder builder) {
         if (builder == null) {
             return "—";
@@ -230,6 +226,33 @@ public class ReceiptPrintService {
         }
         return "—";
     }
+
+    /** GSTIN and TAN from the builder-admin user (User Management tax fields). */
+    public BuilderTaxProfile taxProfileForBuilder(Builder builder) {
+        if (builder == null) {
+            return new BuilderTaxProfile("—", "—");
+        }
+        for (UserProjectAssignment assignment :
+                userProjectAssignmentRepository.findByBuilder_IdWithUser(builder.getId())) {
+            if (!StaffBuildingAccessService.ROLE_BUILDER_ADMIN.equals(assignment.getRole())) {
+                continue;
+            }
+            User user = assignment.getUser();
+            String gstin = trimToNull(user != null ? user.getGstNumber() : null);
+            String tan = trimToNull(user != null ? user.getTanNumber() : null);
+            if (gstin != null || tan != null) {
+                return new BuilderTaxProfile(
+                        gstin != null ? gstin : "—", tan != null ? tan : "—");
+            }
+        }
+        return new BuilderTaxProfile("—", "—");
+    }
+
+    public String floorPhraseForFlat(Flat flat) {
+        return ordinalFloorPhrase(flat != null ? flat.getFloorNumber() : null);
+    }
+
+    public record BuilderTaxProfile(String gstin, String tan) {}
 
     private static Builder resolveBuilder(Receipt receipt, Building building) {
         if (building != null && building.getBuilder() != null) {

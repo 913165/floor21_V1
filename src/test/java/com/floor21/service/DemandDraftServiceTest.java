@@ -1,0 +1,57 @@
+package com.floor21.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.floor21.dto.SlabScheduleLineView;
+import com.floor21.entity.BookingPaymentSlab;
+import java.math.BigDecimal;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+class DemandDraftServiceTest {
+
+    private final DemandDraftService service =
+            new DemandDraftService(null, null, null, null, null);
+
+    @Test
+    void buildModelCalculatesTdsGstAndPayableTotals() {
+        BookingPaymentSlab slab1 = slab("Initial booking amount", "1157000");
+        BookingPaymentSlab slab2 = slab("Agreement", "2314000");
+        List<SlabScheduleLineView> lines =
+                List.of(
+                        line(slab1, "1157000", "1157000", "0"),
+                        line(slab2, "2314000", "400000", "1914000"));
+
+        DemandDraftService.DemandLetterModel model =
+                service.buildModel(
+                        lines,
+                        new DemandDraftService.ReceiptTotals(
+                                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+
+        assertThat(model.rows()).hasSize(2);
+        assertThat(model.rows().get(0).tds()).isEqualByComparingTo("11570");
+        assertThat(model.rows().get(0).gst()).isEqualByComparingTo("57850");
+        assertThat(model.rows().get(1).currentMilestone()).isTrue();
+        assertThat(model.totalInstalment()).isEqualByComparingTo("3471000");
+        assertThat(model.totalTds()).isEqualByComparingTo("34710");
+        assertThat(model.totalGst()).isEqualByComparingTo("173550");
+    }
+
+    private static BookingPaymentSlab slab(String label, String due) {
+        BookingPaymentSlab slab = new BookingPaymentSlab();
+        slab.setMilestoneLabel(label);
+        slab.setAgreedAmount(new BigDecimal(due));
+        slab.setExtraAmount(BigDecimal.ZERO);
+        return slab;
+    }
+
+    private static SlabScheduleLineView line(
+            BookingPaymentSlab slab, String due, String paid, String balance) {
+        return new SlabScheduleLineView(
+                slab,
+                new BigDecimal(due),
+                new BigDecimal(paid),
+                new BigDecimal(balance),
+                List.of());
+    }
+}

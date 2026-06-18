@@ -20,6 +20,9 @@ import lombok.Setter;
 @Table(name = "banks")
 public class Bank {
 
+    public static final String PURPOSE_INSTALMENT = "INSTALMENT";
+    public static final String PURPOSE_GST = "GST";
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -42,6 +45,10 @@ public class Bank {
 
     @Column(name = "account_holder_name", length = 200)
     private String accountHolderName;
+
+    /** {@code INSTALMENT} for flat cost; {@code GST} for GST remittance. */
+    @Column(name = "account_purpose", nullable = false, length = 32)
+    private String accountPurpose = "INSTALMENT";
 
     @Column(columnDefinition = "TEXT")
     private String notes;

@@ -1,26 +1,33 @@
 package com.floor21.service;
 
 import com.floor21.dto.SlabScheduleLineView;
-import com.floor21.dto.SlabScheduleSummary;
+import com.floor21.entity.Bank;
 import com.floor21.entity.Booking;
 import com.floor21.entity.BookingPaymentSlab;
 import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
 import com.floor21.entity.Client;
 import com.floor21.entity.Flat;
+import com.floor21.entity.Receipt;
+import com.floor21.repository.ReceiptRepository;
+import com.floor21.security.TenantContext;
 import com.floor21.util.IndianRupeesFormatter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.xwpf.usermodel.BreakType;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
+import org.apache.poi.xwpf.usermodel.UnderlinePatterns;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
@@ -36,12 +43,17 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class DemandDraftService {
 
-    private static final DateTimeFormatter DATE_FMT =
-            DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.ENGLISH);
+    private static final BigDecimal ZERO = BigDecimal.ZERO;
+    private static final BigDecimal HUNDRED = new BigDecimal("100");
+    private static final DateTimeFormatter LETTER_DATE =
+            DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
+    private static final String FONT = "Times New Roman";
 
     private final BookingPaymentSlabService bookingPaymentSlabService;
     private final ReceiptPrintService receiptPrintService;
     private final BookingOwnerService bookingOwnerService;
+    private final BankService bankService;
+    private final ReceiptRepository receiptRepository;
 
     @Transactional(readOnly = true)
     public byte[] generate(UUID bookingId) {
@@ -51,19 +63,15 @@ public class DemandDraftService {
             throw new IllegalArgumentException(
                     "No payment schedule rows for this booking. Create the slab schedule first.");
         }
-        SlabScheduleSummary summary = bookingPaymentSlabService.summarizeLines(bookingId);
-        BigDecimal amountDue =
-                summary.totalBalanceAmount() != null
-                        ? summary.totalBalanceAmount()
-                        : BigDecimal.ZERO;
+        DemandLetterModel model = buildModel(lines, receiptTotals(booking.getId()));
 
         try (XWPFDocument doc = new XWPFDocument();
                 ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-            writeDocument(doc, booking, lines, summary, amountDue);
+            writeDocument(doc, booking, model);
             doc.write(out);
             return out.toByteArray();
         } catch (IOException ex) {
-            throw new IllegalStateException("Failed to generate demand draft document", ex);
+            throw new IllegalStateException("Failed to generate demand letter document", ex);
         }
     }
 
@@ -72,138 +80,263 @@ public class DemandDraftService {
         Booking booking = bookingPaymentSlabService.getBookingForSchedule(bookingId);
         String code = booking.getBookingCode() != null ? booking.getBookingCode() : bookingId.toString();
         String safe = code.replaceAll("[^a-zA-Z0-9_-]", "_");
-        return "Demand_Draft_" + safe + "_" + LocalDate.now() + ".docx";
+        return "Demand_Letter_" + safe + "_" + LocalDate.now() + ".docx";
     }
 
-    private void writeDocument(
-            XWPFDocument doc,
-            Booking booking,
-            List<SlabScheduleLineView> lines,
-            SlabScheduleSummary summary,
-            BigDecimal amountDue) {
+    DemandLetterModel buildModel(List<SlabScheduleLineView> lines, ReceiptTotals received) {
+        List<DemandPaymentRow> rows = new ArrayList<>();
+        BigDecimal totalInstalment = ZERO;
+        BigDecimal totalTds = ZERO;
+        BigDecimal totalGst = ZERO;
+        int serial = 1;
+        for (int i = 0; i < lines.size(); i++) {
+            SlabScheduleLineView line = lines.get(i);
+            BigDecimal instalment = line.dueAmount() != null ? line.dueAmount() : ZERO;
+            BigDecimal tds = taxOnInstalment(instalment, 1);
+            BigDecimal gst = taxOnInstalment(instalment, 5);
+            totalInstalment = totalInstalment.add(instalment);
+            totalTds = totalTds.add(tds);
+            totalGst = totalGst.add(gst);
+            rows.add(
+                    new DemandPaymentRow(
+                            serial++,
+                            nullToDash(line.slab().getMilestoneLabel()),
+                            instalment,
+                            tds,
+                            gst,
+                            i == lines.size() - 1));
+        }
+        return new DemandLetterModel(
+                rows,
+                lines.get(lines.size() - 1).slab(),
+                totalInstalment,
+                totalTds,
+                totalGst,
+                received.instalment(),
+                received.tds(),
+                received.gst());
+    }
+
+    private ReceiptTotals receiptTotals(UUID bookingId) {
+        UUID builderId = TenantContext.requireBuilderId();
+        BigDecimal instalment = ZERO;
+        BigDecimal tds = ZERO;
+        BigDecimal gst = ZERO;
+        for (Receipt receipt :
+                receiptRepository.findActiveByBooking_IdOrderByReceiptDateAsc(bookingId, builderId)) {
+            if (receipt.getAmount() != null) {
+                instalment = instalment.add(receipt.getAmount());
+            }
+            if (receipt.getAmountTds() != null) {
+                tds = tds.add(receipt.getAmountTds());
+            }
+            if (receipt.getAmountGstComponent() != null) {
+                gst = gst.add(receipt.getAmountGstComponent());
+            }
+        }
+        return new ReceiptTotals(instalment, tds, gst);
+    }
+
+    private static BigDecimal taxOnInstalment(BigDecimal instalment, int percent) {
+        if (instalment == null || instalment.compareTo(ZERO) <= 0) {
+            return ZERO;
+        }
+        return instalment
+                .multiply(BigDecimal.valueOf(percent))
+                .divide(HUNDRED, 0, RoundingMode.HALF_UP);
+    }
+
+    private void writeDocument(XWPFDocument doc, Booking booking, DemandLetterModel model) {
         Builder builder = booking.getBuilder();
         Client client = booking.getClient();
-        String ownersLabel = bookingOwnerService.ownersDisplayName(booking);
         Flat flat = booking.getFlat();
         Building building = flat != null ? flat.getBuilding() : null;
-        LocalDate today = LocalDate.now();
+        LocalDate letterDate = LocalDate.now();
+        LocalDate dueDate = letterDate.plusDays(15);
+        List<Client> owners = bookingOwnerService.ownersInOrder(booking);
+        ReceiptPrintService.BuilderTaxProfile taxProfile =
+                receiptPrintService.taxProfileForBuilder(builder);
 
-        addTitle(doc, "DEMAND DRAFT");
+        addTitle(doc, "DEMAND LETTER");
+        addHeaderTable(
+                doc,
+                owners,
+                client,
+                building,
+                flat,
+                letterDate,
+                dueDate,
+                taxProfile);
         addBlankLine(doc);
 
-        if (builder != null) {
-            addParagraph(doc, builder.getCompanyName(), true, 14);
-            String builderAddr = joinNonBlank(builder.getAddress(), builder.getCity());
-            if (!builderAddr.isBlank()) {
-                addParagraph(doc, builderAddr, false, 11);
-            }
-            if (builder.getPhone() != null && !builder.getPhone().isBlank()) {
-                addParagraph(doc, "Phone: " + builder.getPhone(), false, 11);
-            }
-        }
+        addParagraph(doc, "SUBJECT: Demand Letter on basis of Work Completion.", true, 11);
+        addBlankLine(doc);
+        addParagraph(doc, buildReferenceLine(flat, building), true, 11);
         addBlankLine(doc);
 
-        addParagraph(doc, "Date: " + DATE_FMT.format(today), false, 11);
+        addParagraph(doc, "Sir,", false, 11);
         addBlankLine(doc);
-
-        addParagraph(doc, "To,", false, 11);
-        addParagraph(doc, ownersLabel, true, 12);
-        String clientAddr = clientCorrespondenceAddress(client);
-        if (!clientAddr.isBlank()) {
-            addParagraph(doc, clientAddr, false, 11);
-        }
-        String clientPhone = firstNonBlank(client.getMobile1(), client.getMobile2(), client.getPhoneResidence());
-        if (!clientPhone.isBlank()) {
-            addParagraph(doc, "Phone: " + clientPhone, false, 11);
-        }
+        addAgreementParagraph(doc, booking);
         addBlankLine(doc);
-
-        String flatNo = flat != null ? nullToDash(flat.getFlatNumber()) : "—";
-        String bhk = flat != null && flat.getBhkType() != null ? flat.getBhkType() : "—";
-        String buildingName = building != null ? nullToDash(building.getBuildingName()) : "—";
         addParagraph(
                 doc,
-                "Subject: Demand for payment — Flat "
-                        + flatNo
-                        + " ("
-                        + bhk
-                        + "), "
-                        + buildingName,
-                true,
-                12);
-        addBlankLine(doc);
-
-        addParagraph(doc, "Dear " + ownersLabel + ",", false, 11);
-        addBlankLine(doc);
-
-        addParagraph(
-                doc,
-                "This is to inform you that, as per the agreed payment schedule for your booking, the following "
-                        + "amount is outstanding as on "
-                        + DATE_FMT.format(today)
-                        + ".",
+                "We hereby inform you that the work is completed up to "
+                        + nullToDash(model.completedMilestone().getMilestoneLabel())
+                        + " and the following amounts are now due.",
                 false,
                 11);
         addBlankLine(doc);
 
-        addLabelValue(doc, "Booking code", nullToDash(booking.getBookingCode()));
-        addLabelValue(doc, "Booking date", booking.getBookingDate() != null ? DATE_FMT.format(booking.getBookingDate()) : "—");
-        addLabelValue(doc, "Flat / unit", flatNo + " (" + bhk + ")");
-        addLabelValue(doc, "Building / project", buildingName);
-        if (building != null) {
-            String siteAddr = joinNonBlank(building.getAddress(), building.getCity());
-            if (!siteAddr.isBlank()) {
-                addLabelValue(doc, "Site address", siteAddr);
+        addPaymentTable(doc, model);
+        addBlankLine(doc);
+        addBlankLine(doc);
+
+        addSignatoryBlock(doc, builder);
+        addBlankLine(doc);
+        addFooterNotes(doc);
+
+        addPageBreak(doc);
+        addBankDetailsSection(doc, builder, building);
+    }
+
+    private static void addHeaderTable(
+            XWPFDocument doc,
+            List<Client> owners,
+            Client primaryClient,
+            Building building,
+            Flat flat,
+            LocalDate letterDate,
+            LocalDate dueDate,
+            ReceiptPrintService.BuilderTaxProfile taxProfile) {
+        XWPFTable table = doc.createTable(1, 2);
+        setTableFullWidth(table);
+
+        XWPFTableCell left = table.getRow(0).getCell(0);
+        left.removeParagraph(0);
+        addCellLine(left, "To,", false);
+        if (owners.isEmpty() && primaryClient != null) {
+            addCellLine(left, primaryClient.displayName(), true);
+        } else {
+            for (Client owner : owners) {
+                addCellLine(left, owner.displayName(), true);
             }
         }
+        String address = clientCorrespondenceAddress(primaryClient);
+        if (!address.isBlank()) {
+            addCellLine(left, address, false);
+        }
+        String phones = ownerPhones(owners, primaryClient);
+        if (!phones.isBlank()) {
+            addCellLine(left, "Ph- " + phones, false);
+        }
+
+        XWPFTableCell right = table.getRow(0).getCell(1);
+        right.removeParagraph(0);
+        String project = building != null ? nullToDash(building.getBuildingName()) : "—";
+        String unitNo = flat != null ? nullToDash(flat.getFlatNumber()) : "—";
+        addCellLine(right, "Date: " + LETTER_DATE.format(letterDate), false);
+        addCellLine(right, "Due Date: " + LETTER_DATE.format(dueDate), false);
+        addCellLine(right, "Project: " + project, false);
+        addCellLine(right, "Unit No: " + unitNo, false);
+        addCellLine(right, "GSTIN: " + taxProfile.gstin(), false);
+        addCellLine(right, "TAN: " + taxProfile.tan(), false);
+    }
+
+    private void addAgreementParagraph(XWPFDocument doc, Booking booking) {
         BigDecimal consideration = bookingPaymentSlabService.baseConsideration(booking);
-        if (consideration != null && consideration.signum() > 0) {
-            addLabelValue(doc, "Consideration (base)", IndianRupeesFormatter.formatFigures(consideration));
+        if (consideration == null) {
+            consideration = booking.getConsiderationAmt() != null ? booking.getConsiderationAmt() : ZERO;
         }
-        addLabelValue(
-                doc,
-                "Total scheduled (agreed + extra)",
-                IndianRupeesFormatter.formatFigures(summary.totalAmount()));
-        addLabelValue(
-                doc,
-                "Total paid to date",
-                IndianRupeesFormatter.formatFigures(summary.totalPaidAmount()));
-        addBlankLine(doc);
+        String regPlace =
+                booking.getReference() != null && !booking.getReference().isBlank()
+                        ? booking.getReference().trim()
+                        : "the Sub-Registrar's office";
+        XWPFParagraph p = doc.createParagraph();
+        p.setAlignment(ParagraphAlignment.BOTH);
+        appendRun(p, "As per the Agreement For Sale registered at ", false);
+        appendRun(p, regPlace, true);
+        appendRun(p, " in your favour, the total agreement value is ", false);
+        appendRun(p, IndianRupeesFormatter.formatFigures(consideration), true);
+        appendRun(
+                p,
+                " /- ("
+                        + IndianRupeesFormatter.formatWordsOnly(consideration)
+                        + ").",
+                false);
+    }
 
-        addParagraph(doc, "Amount due (final outstanding)", true, 12);
-        addParagraph(doc, IndianRupeesFormatter.formatFigures(amountDue), true, 16);
-        addParagraph(doc, "(" + IndianRupeesFormatter.formatWordsOnly(amountDue) + ")", false, 11);
-        addBlankLine(doc);
+    private static String buildReferenceLine(Flat flat, Building building) {
+        String flatNo = flat != null ? nullToDash(flat.getFlatNumber()) : "—";
+        String floor =
+                flat != null && flat.getFloorNumber() != null
+                        ? ordinalEnglish(flat.getFloorNumber())
+                        : "—";
+        String project = building != null ? nullToDash(building.getBuildingName()) : "—";
+        String site = building != null ? joinNonBlank(building.getAddress(), building.getCity()) : "";
+        String atSite = site.isBlank() ? "—" : site;
+        return "REFRENCE: Flat No. "
+                + flatNo
+                + ", "
+                + floor
+                + " Floor in Proposed Project Name: \""
+                + project
+                + "\" At "
+                + atSite
+                + ".";
+    }
 
-        addParagraph(doc, "Payment schedule breakdown", true, 12);
-        addSlabTable(doc, lines, summary);
-        addBlankLine(doc);
+    private void addPaymentTable(XWPFDocument doc, DemandLetterModel model) {
+        XWPFTable table = doc.createTable(1, 5);
+        setTableFullWidth(table);
+        writePaymentHeader(table.getRow(0));
 
-        addParagraph(
-                doc,
-                "You are requested to remit the amount due of "
-                        + IndianRupeesFormatter.formatFigures(amountDue)
-                        + " ("
-                        + IndianRupeesFormatter.formatWordsOnly(amountDue)
-                        + ") within fifteen (15) days from the date of this letter. Payments may be made by "
-                        + "cheque, demand draft, NEFT/RTGS, or other mode as mutually agreed, quoting your booking "
-                        + "code "
-                        + nullToDash(booking.getBookingCode())
-                        + ".",
-                false,
-                11);
-        addBlankLine(doc);
+        for (DemandPaymentRow row : model.rows()) {
+            XWPFTableRow tableRow = table.createRow();
+            setCellText(tableRow.getCell(0), String.valueOf(row.serialNo()), row.currentMilestone());
+            setCellText(tableRow.getCell(1), row.scheduleName(), row.currentMilestone());
+            setAmountCell(tableRow.getCell(2), row.instalment(), row.currentMilestone());
+            setAmountCell(tableRow.getCell(3), row.tds(), row.currentMilestone());
+            setAmountCell(tableRow.getCell(4), row.gst(), row.currentMilestone());
+        }
 
-        addParagraph(
-                doc,
-                "This demand is issued based on the payment slab schedule recorded in our system. If you have "
-                        + "already remitted any amount not yet reflected above, please share payment details for "
-                        + "reconciliation.",
-                false,
-                11);
-        addBlankLine(doc);
-        addBlankLine(doc);
+        addSummaryRow(table, "Total Amount", model.totalInstalment(), model.totalTds(), model.totalGst());
+        addSummaryRow(
+                table,
+                "Received Amount",
+                model.receivedInstalment(),
+                model.receivedTds(),
+                model.receivedGst());
+        addSummaryRow(
+                table,
+                "Total Payable",
+                model.totalInstalment().subtract(model.receivedInstalment()),
+                model.totalTds().subtract(model.receivedTds()),
+                model.totalGst().subtract(model.receivedGst()));
+    }
 
+    private static void writePaymentHeader(XWPFTableRow row) {
+        setCellText(row.getCell(0), "Sr.no.", true);
+        setCellText(row.getCell(1), "Schedule Name", true);
+        setCellText(row.getCell(2), "Instalment", true);
+        setCellText(row.getCell(3), "TDS", true);
+        setCellText(row.getCell(4), "GST", true);
+    }
+
+    private static void addSummaryRow(
+            XWPFTable table,
+            String label,
+            BigDecimal instalment,
+            BigDecimal tds,
+            BigDecimal gst) {
+        XWPFTableRow row = table.createRow();
+        setCellText(row.getCell(0), "", true);
+        setCellText(row.getCell(1), label, true);
+        setAmountCell(row.getCell(2), instalment, true);
+        setAmountCell(row.getCell(3), tds, true);
+        setAmountCell(row.getCell(4), gst, true);
+    }
+
+    private void addSignatoryBlock(XWPFDocument doc, Builder builder) {
         addParagraph(
                 doc,
                 "For " + receiptPrintService.signatoryCompanyForBuilder(builder),
@@ -211,45 +344,119 @@ public class DemandDraftService {
                 11);
         addBlankLine(doc);
         addBlankLine(doc);
-        addParagraph(doc, "Authorised signatory", false, 11);
+        addParagraph(doc, "Authorized Signatory", false, 11);
     }
 
-    private static void addSlabTable(
-            XWPFDocument doc, List<SlabScheduleLineView> lines, SlabScheduleSummary summary) {
-        XWPFTable table = doc.createTable(1, 6);
+    private static void addFooterNotes(XWPFDocument doc) {
+        addBullet(
+                doc,
+                "TDS @ 1% to be deducted by the buyer and paid to the Government under Section 194-IA "
+                        + "of the Income Tax Act, 1961 for property value exceeding Rs. 50 Lac.");
+        addBullet(doc, "GST @ 5% is payable on demand as per the agreement.");
+        addBullet(doc, "Delay in payment attracts interest @ 18% per annum.");
+        addBullet(doc, "Please ignore if already paid.");
+    }
+
+    private void addBankDetailsSection(XWPFDocument doc, Builder builder, Building building) {
+        UUID builderId = builder != null ? builder.getId() : null;
+        Bank instalmentBank = builderId != null ? bankService.findActiveInstalmentAccount(builderId) : null;
+        Bank gstBank = builderId != null ? bankService.findActiveGstAccount(builderId) : null;
+        String branchCity =
+                building != null && building.getCity() != null && !building.getCity().isBlank()
+                        ? building.getCity().trim()
+                        : builder != null && builder.getCity() != null ? builder.getCity().trim() : "—";
+
+        addParagraph(doc, "For online payment bank details are as below", true, 11, true);
+        addBlankLine(doc);
+
+        XWPFTable table = doc.createTable(1, 3);
         setTableFullWidth(table);
-        writeHeaderRow(table.getRow(0));
+        setCellText(table.getRow(0).getCell(0), "", true);
+        setCellText(table.getRow(0).getCell(1), "For Flat cost instalment", true);
+        setCellText(table.getRow(0).getCell(2), "For GST", true);
 
-        int n = 1;
-        for (SlabScheduleLineView line : lines) {
-            BookingPaymentSlab slab = line.slab();
-            XWPFTableRow row = table.createRow();
-            setCellText(row.getCell(0), String.valueOf(n++));
-            setCellText(row.getCell(1), nullToDash(slab.getMilestoneLabel()));
-            setCellText(
-                    row.getCell(2),
-                    slab.getDueDate() != null ? DATE_FMT.format(slab.getDueDate()) : "—");
-            setCellText(row.getCell(3), IndianRupeesFormatter.formatFigures(line.dueAmount()));
-            setCellText(row.getCell(4), IndianRupeesFormatter.formatFigures(line.paidAmount()));
-            setCellText(row.getCell(5), IndianRupeesFormatter.formatFigures(line.balanceAmount()));
-        }
-
-        XWPFTableRow totalRow = table.createRow();
-        setCellText(totalRow.getCell(0), "");
-        setCellText(totalRow.getCell(1), "Total", true);
-        setCellText(totalRow.getCell(2), "");
-        setCellText(totalRow.getCell(3), IndianRupeesFormatter.formatFigures(summary.totalAmount()), true);
-        setCellText(totalRow.getCell(4), IndianRupeesFormatter.formatFigures(summary.totalPaidAmount()), true);
-        setCellText(totalRow.getCell(5), IndianRupeesFormatter.formatFigures(summary.totalBalanceAmount()), true);
+        addBankDetailRow(table, "Bank account Number", instalmentBank, gstBank, Bank::getAccountNumber);
+        addBankDetailRow(table, "Name of Account Holder", instalmentBank, gstBank, Bank::getAccountHolderName);
+        addBankDetailRow(table, "Account Type", instalmentBank, gstBank, b -> "Current");
+        addBankDetailRow(table, "Name of Bank", instalmentBank, gstBank, Bank::getBankName);
+        addBankDetailRow(table, "Branch Name", instalmentBank, gstBank, Bank::getBranch);
+        addBankDetailRow(table, "Branch City", instalmentBank, gstBank, b -> branchCity);
+        addBankDetailRow(table, "IFSC", instalmentBank, gstBank, Bank::getIfscCode);
     }
 
-    private static void writeHeaderRow(XWPFTableRow row) {
-        setCellText(row.getCell(0), "#", true);
-        setCellText(row.getCell(1), "Milestone", true);
-        setCellText(row.getCell(2), "Due date", true);
-        setCellText(row.getCell(3), "Schedule amount", true);
-        setCellText(row.getCell(4), "Paid", true);
-        setCellText(row.getCell(5), "Balance", true);
+    private static void addBankDetailRow(
+            XWPFTable table,
+            String label,
+            Bank instalmentBank,
+            Bank gstBank,
+            java.util.function.Function<Bank, String> extractor) {
+        XWPFTableRow row = table.createRow();
+        setCellText(row.getCell(0), label, true);
+        setCellText(row.getCell(1), bankField(instalmentBank, extractor), false);
+        setCellText(row.getCell(2), bankField(gstBank, extractor), false);
+    }
+
+    private static String bankField(Bank bank, java.util.function.Function<Bank, String> extractor) {
+        if (bank == null) {
+            return "—";
+        }
+        String value = extractor.apply(bank);
+        return value != null && !value.isBlank() ? value.trim() : "—";
+    }
+
+    private static void addTitle(XWPFDocument doc, String text) {
+        XWPFParagraph p = doc.createParagraph();
+        p.setAlignment(ParagraphAlignment.CENTER);
+        XWPFRun run = p.createRun();
+        run.setBold(true);
+        run.setFontSize(16);
+        run.setFontFamily(FONT);
+        run.setUnderline(UnderlinePatterns.SINGLE);
+        run.setText(text);
+        addBlankLine(doc);
+    }
+
+    private static void addParagraph(XWPFDocument doc, String text, boolean bold, int fontSize) {
+        addParagraph(doc, text, bold, fontSize, false);
+    }
+
+    private static void addParagraph(
+            XWPFDocument doc, String text, boolean bold, int fontSize, boolean underline) {
+        XWPFParagraph p = doc.createParagraph();
+        XWPFRun run = p.createRun();
+        run.setText(text != null ? text : "");
+        run.setBold(bold);
+        run.setFontSize(fontSize);
+        run.setFontFamily(FONT);
+        if (underline) {
+            run.setUnderline(UnderlinePatterns.SINGLE);
+        }
+    }
+
+    private static void addBullet(XWPFDocument doc, String text) {
+        XWPFParagraph p = doc.createParagraph();
+        p.setIndentationLeft(360);
+        XWPFRun run = p.createRun();
+        run.setText("• " + text);
+        run.setFontSize(10);
+        run.setFontFamily(FONT);
+    }
+
+    private static void appendRun(XWPFParagraph paragraph, String text, boolean bold) {
+        XWPFRun run = paragraph.createRun();
+        run.setText(text != null ? text : "");
+        run.setBold(bold);
+        run.setFontSize(11);
+        run.setFontFamily(FONT);
+    }
+
+    private static void addCellLine(XWPFTableCell cell, String text, boolean bold) {
+        XWPFParagraph p = cell.addParagraph();
+        XWPFRun run = p.createRun();
+        run.setText(text != null ? text : "");
+        run.setBold(bold);
+        run.setFontSize(10);
+        run.setFontFamily(FONT);
     }
 
     private static void setTableFullWidth(XWPFTable table) {
@@ -258,52 +465,48 @@ public class DemandDraftService {
         width.setW(java.math.BigInteger.valueOf(5000));
     }
 
-    private static void setCellText(XWPFTableCell cell, String text) {
-        setCellText(cell, text, false);
-    }
-
     private static void setCellText(XWPFTableCell cell, String text, boolean bold) {
         cell.removeParagraph(0);
         XWPFParagraph p = cell.addParagraph();
         XWPFRun run = p.createRun();
         run.setText(text != null ? text : "");
         run.setFontSize(10);
+        run.setFontFamily(FONT);
         run.setBold(bold);
     }
 
-    private static void addTitle(XWPFDocument doc, String text) {
-        XWPFParagraph p = doc.createParagraph();
-        p.setAlignment(ParagraphAlignment.CENTER);
+    private static void setAmountCell(XWPFTableCell cell, BigDecimal amount, boolean bold) {
+        cell.removeParagraph(0);
+        XWPFParagraph p = cell.addParagraph();
+        p.setAlignment(ParagraphAlignment.RIGHT);
         XWPFRun run = p.createRun();
-        run.setBold(true);
-        run.setFontSize(18);
-        run.setText(text);
-    }
-
-    private static void addParagraph(XWPFDocument doc, String text, boolean bold, int fontSize) {
-        XWPFParagraph p = doc.createParagraph();
-        XWPFRun run = p.createRun();
-        run.setText(text != null ? text : "");
+        run.setText(formatTableAmount(amount));
+        run.setFontSize(10);
+        run.setFontFamily(FONT);
         run.setBold(bold);
-        run.setFontSize(fontSize);
     }
 
-    private static void addLabelValue(XWPFDocument doc, String label, String value) {
-        XWPFParagraph p = doc.createParagraph();
-        XWPFRun labelRun = p.createRun();
-        labelRun.setBold(true);
-        labelRun.setFontSize(11);
-        labelRun.setText(label + ": ");
-        XWPFRun valueRun = p.createRun();
-        valueRun.setFontSize(11);
-        valueRun.setText(value != null ? value : "—");
+    private static String formatTableAmount(BigDecimal amount) {
+        if (amount == null) {
+            return "0";
+        }
+        return IndianRupeesFormatter.formatComma(amount.setScale(0, RoundingMode.HALF_UP));
     }
 
     private static void addBlankLine(XWPFDocument doc) {
         doc.createParagraph();
     }
 
+    private static void addPageBreak(XWPFDocument doc) {
+        XWPFParagraph p = doc.createParagraph();
+        XWPFRun run = p.createRun();
+        run.addBreak(BreakType.PAGE);
+    }
+
     private static String clientCorrespondenceAddress(Client client) {
+        if (client == null) {
+            return "";
+        }
         String comm =
                 joinNonBlank(
                         client.getCommAddress1(),
@@ -314,6 +517,17 @@ public class DemandDraftService {
             return comm;
         }
         return joinNonBlank(client.getAddress1(), client.getAddress2(), client.getAddress3(), client.getCity());
+    }
+
+    private static String ownerPhones(List<Client> owners, Client fallback) {
+        List<Client> list = owners.isEmpty() && fallback != null ? List.of(fallback) : owners;
+        return list.stream()
+                .map(
+                        c ->
+                                firstNonBlank(
+                                        c.getMobile1(), c.getMobile2(), c.getPhoneResidence()))
+                .filter(s -> s != null && !s.isBlank())
+                .collect(Collectors.joining(" , "));
     }
 
     private static String joinNonBlank(String... parts) {
@@ -334,4 +548,37 @@ public class DemandDraftService {
     private static String nullToDash(String s) {
         return s != null && !s.isBlank() ? s : "—";
     }
+
+    private static String ordinalEnglish(int n) {
+        int mod100 = n % 100;
+        if (mod100 >= 11 && mod100 <= 13) {
+            return n + "th";
+        }
+        return switch (n % 10) {
+            case 1 -> n + "st";
+            case 2 -> n + "nd";
+            case 3 -> n + "rd";
+            default -> n + "th";
+        };
+    }
+
+    record DemandPaymentRow(
+            int serialNo,
+            String scheduleName,
+            BigDecimal instalment,
+            BigDecimal tds,
+            BigDecimal gst,
+            boolean currentMilestone) {}
+
+    record DemandLetterModel(
+            List<DemandPaymentRow> rows,
+            BookingPaymentSlab completedMilestone,
+            BigDecimal totalInstalment,
+            BigDecimal totalTds,
+            BigDecimal totalGst,
+            BigDecimal receivedInstalment,
+            BigDecimal receivedTds,
+            BigDecimal receivedGst) {}
+
+    record ReceiptTotals(BigDecimal instalment, BigDecimal tds, BigDecimal gst) {}
 }

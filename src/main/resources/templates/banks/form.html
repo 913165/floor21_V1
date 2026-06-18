@@ -28,6 +28,13 @@
         <label class="form-label">Account holder name</label>
         <input class="form-control" th:field="*{accountHolderName}" maxlength="200"/>
       </div>
+      <div class="col-md-4">
+        <label class="form-label">Account purpose</label>
+        <select class="form-select" th:field="*{accountPurpose}">
+          <option value="INSTALMENT">Flat cost instalment</option>
+          <option value="GST">GST payment</option>
+        </select>
+      </div>
       <div class="col-12">
         <label class="form-label">Notes</label>
         <textarea class="form-control" rows="2" th:field="*{notes}" placeholder="MICR, UPI ID, or other reference"></textarea>
