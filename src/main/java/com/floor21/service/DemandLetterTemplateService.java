@@ -94,7 +94,7 @@ public class DemandLetterTemplateService {
             }
 
             if (!footerDoc.getFooterList().isEmpty()) {
-                cloneFooterPart(footerDoc.getFooterList().get(0), destFooter, target);
+                cloneFooterPart(footerDoc.getFooterList().get(0), destFooter, footerDoc, target);
             } else if (hasBodyContent(footerDoc)) {
                 // Footer saved in the main document body instead of Insert → Footer.
                 clearFooter(destFooter);
@@ -109,9 +109,10 @@ public class DemandLetterTemplateService {
     }
 
     /** Copy footer XML and embedded images/shapes from the template footer part. */
-    private static void cloneFooterPart(XWPFFooter srcFooter, XWPFFooter destFooter, XWPFDocument destDoc)
+    private static void cloneFooterPart(
+            XWPFFooter srcFooter, XWPFFooter destFooter, XWPFDocument srcDoc, XWPFDocument destDoc)
             throws IOException {
-        OPCPackage srcPack = srcFooter.getPackage();
+        OPCPackage srcPack = srcDoc.getPackage();
         OPCPackage destPack = destDoc.getPackage();
         PackagePart srcPart = srcFooter.getPackagePart();
         PackagePart destPart = destFooter.getPackagePart();
@@ -127,7 +128,8 @@ public class DemandLetterTemplateService {
             try {
                 srcTargetName =
                         PackagingURIHelper.createPartName(
-                                PackagingURIHelper.resolvePartUri(srcPart.getPartName(), rel.getTargetURI()));
+                                PackagingURIHelper.resolvePartUri(
+                                        srcPart.getPartName().getURI(), rel.getTargetURI()));
             } catch (Exception ex) {
                 continue;
             }
