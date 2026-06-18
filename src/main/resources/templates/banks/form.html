@@ -8,6 +8,18 @@
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
     <input type="hidden" th:field="*{id}"/>
     <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Account holder name</label>
+        <input class="form-control" th:field="*{accountHolderName}" maxlength="200"/>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Account number</label>
+        <input class="form-control" th:field="*{accountNumber}" maxlength="64" autocomplete="off"/>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">IFSC code</label>
+        <input class="form-control text-uppercase" th:field="*{ifscCode}" maxlength="20" placeholder="e.g. SBIN0001234"/>
+      </div>
       <div class="col-md-6">
         <label class="form-label">Bank name <span class="text-danger">*</span></label>
         <input class="form-control" th:field="*{bankName}" maxlength="200" required/>
@@ -17,22 +29,16 @@
         <input class="form-control" th:field="*{branch}" maxlength="200"/>
       </div>
       <div class="col-md-4">
-        <label class="form-label">IFSC code</label>
-        <input class="form-control text-uppercase" th:field="*{ifscCode}" maxlength="20" placeholder="e.g. SBIN0001234"/>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Account number</label>
-        <input class="form-control" th:field="*{accountNumber}" maxlength="64" autocomplete="off"/>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Account holder name</label>
-        <input class="form-control" th:field="*{accountHolderName}" maxlength="200"/>
-      </div>
-      <div class="col-md-4">
         <label class="form-label">Account purpose</label>
         <select class="form-select" th:field="*{accountPurpose}">
           <option value="INSTALMENT">Flat cost instalment</option>
           <option value="GST">GST payment</option>
+          <option value="RERA">RERA account</option>
+          <option value="PERSONAL">Personal</option>
+          <option value="JOINT">Joint</option>
+          <option value="CURRENT">Current account</option>
+          <option value="PERSONAL_SAVINGS">Personal savings account</option>
+          <option value="OTHERS">Others</option>
         </select>
       </div>
       <div class="col-12">

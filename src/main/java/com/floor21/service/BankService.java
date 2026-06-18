@@ -78,7 +78,7 @@ public class BankService {
         entity.setIfscCode(form.getIfscCode());
         entity.setAccountNumber(form.getAccountNumber());
         entity.setAccountHolderName(form.getAccountHolderName());
-        entity.setAccountPurpose(resolveAccountPurpose(form.getAccountPurpose()));
+        entity.setAccountPurpose(Bank.normalizePurpose(form.getAccountPurpose()));
         entity.setNotes(form.getNotes());
         entity.setActive(resolveActive(form.getActive(), form.getId() == null));
         entity.setUpdatedAt(now);
@@ -93,12 +93,5 @@ public class BankService {
             return false;
         }
         return isNew;
-    }
-
-    private static String resolveAccountPurpose(String purpose) {
-        if (Bank.PURPOSE_GST.equalsIgnoreCase(purpose)) {
-            return Bank.PURPOSE_GST;
-        }
-        return Bank.PURPOSE_INSTALMENT;
     }
 }

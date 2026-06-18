@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,6 +23,35 @@ public class Bank {
 
     public static final String PURPOSE_INSTALMENT = "INSTALMENT";
     public static final String PURPOSE_GST = "GST";
+    public static final String PURPOSE_RERA = "RERA";
+    public static final String PURPOSE_PERSONAL = "PERSONAL";
+    public static final String PURPOSE_JOINT = "JOINT";
+    public static final String PURPOSE_CURRENT = "CURRENT";
+    public static final String PURPOSE_PERSONAL_SAVINGS = "PERSONAL_SAVINGS";
+    public static final String PURPOSE_OTHERS = "OTHERS";
+
+    private static final Set<String> KNOWN_PURPOSES =
+            Set.of(
+                    PURPOSE_INSTALMENT,
+                    PURPOSE_GST,
+                    PURPOSE_RERA,
+                    PURPOSE_PERSONAL,
+                    PURPOSE_JOINT,
+                    PURPOSE_CURRENT,
+                    PURPOSE_PERSONAL_SAVINGS,
+                    PURPOSE_OTHERS);
+
+    public static boolean isKnownPurpose(String purpose) {
+        return purpose != null && KNOWN_PURPOSES.contains(purpose.trim().toUpperCase());
+    }
+
+    public static String normalizePurpose(String purpose) {
+        if (purpose == null || purpose.isBlank()) {
+            return PURPOSE_INSTALMENT;
+        }
+        String normalized = purpose.trim().toUpperCase();
+        return isKnownPurpose(normalized) ? normalized : PURPOSE_INSTALMENT;
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -46,7 +76,7 @@ public class Bank {
     @Column(name = "account_holder_name", length = 200)
     private String accountHolderName;
 
-    /** {@code INSTALMENT} for flat cost; {@code GST} for GST remittance. */
+    /** Account classification (instalment, GST, RERA, personal, joint, etc.). */
     @Column(name = "account_purpose", nullable = false, length = 32)
     private String accountPurpose = "INSTALMENT";
 
