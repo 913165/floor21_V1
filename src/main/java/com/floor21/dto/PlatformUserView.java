@@ -21,6 +21,11 @@ public record PlatformUserView(
         List<UUID> projectIds,
         boolean platformAdminAccount) {
 
+    /** Staff account with no project membership; safe to delete from user management. */
+    public boolean deletable() {
+        return !platformAdminAccount && projectIds.isEmpty();
+    }
+
     public static PlatformUserView from(
             User user, String projectNames, String role, List<String> buildingAccess, List<UUID> projectIds) {
         return new PlatformUserView(

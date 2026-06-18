@@ -120,8 +120,12 @@ public class BookingPaymentScheduleController {
 
         if (platformAdminView) {
             model.addAttribute("projects", builderRepository.findAllTenantsOrderByCompanyNameAsc());
+            UUID requestedBuildingId = buildingId;
             buildingId = buildingService.sanitizeBuildingIdForProject(buildingId, projectId);
-            if (buildingId == null) {
+            if (projectId == null) {
+                buildingId = null;
+                bookingId = null;
+            } else if (requestedBuildingId != null && buildingId == null) {
                 bookingId = null;
             }
             model.addAttribute("buildings", buildingService.listBuildingsForPlatformProject(projectId));
@@ -338,12 +342,15 @@ public class BookingPaymentScheduleController {
     }
 
     private List<Booking> listBookingsForPlatformAdmin(UUID buildingId, UUID projectId) {
-        if (buildingId == null) {
+        if (projectId == null) {
             return Collections.emptyList();
         }
         UUID builderId = resolveBuilderId(buildingId, projectId);
         if (builderId == null) {
             return Collections.emptyList();
+        }
+        if (buildingId == null) {
+            return bookingRepository.findActiveForPaymentSchedule(builderId);
         }
         return bookingRepository.findActiveForPaymentScheduleByBuilding(builderId, buildingId);
     }

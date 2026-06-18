@@ -1,11 +1,14 @@
 package com.floor21.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.floor21.dto.PlatformUserView;
 import com.floor21.entity.User;
+import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.UserRepository;
 import java.time.Instant;
@@ -24,6 +27,7 @@ class AdminUserServiceUsersPageTest {
 
     @Mock private BuilderRepository builderRepository;
     @Mock private UserRepository userRepository;
+    @Mock private BookingRepository bookingRepository;
     @Mock private StaffBuildingAccessService staffBuildingAccessService;
     @Mock private UserProjectAssignmentService userProjectAssignmentService;
     @Mock private PasswordEncoder passwordEncoder;
@@ -37,6 +41,7 @@ class AdminUserServiceUsersPageTest {
                 new AdminUserService(
                         builderRepository,
                         userRepository,
+                        bookingRepository,
                         staffBuildingAccessService,
                         userProjectAssignmentService,
                         passwordEncoder,
@@ -84,6 +89,29 @@ class AdminUserServiceUsersPageTest {
         Page<PlatformUserView> page2 = service.listUsersPage(0, 5, "companyName", "asc", null, null, null);
         assertThat(page2.getSize()).isEqualTo(5);
         assertThat(page2.getTotalPages()).isEqualTo(1);
+    }
+
+    @Test
+    void deleteUnassignedUser_removesUserWithNoProjectMembership() {
+        User user = unassignedUser("Alpha Co", "Alpha User");
+        when(userRepository.findById(user.getId())).thenReturn(java.util.Optional.of(user));
+        when(userProjectAssignmentService.hasAnyMembership(user.getId())).thenReturn(false);
+        when(bookingRepository.countByExecutive_Id(user.getId())).thenReturn(0L);
+
+        service.deleteUnassignedUser(user.getId(), "admin@floor21.com");
+
+        verify(userRepository).delete(user);
+    }
+
+    @Test
+    void deleteUnassignedUser_rejectsUserAssignedToProject() {
+        User user = unassignedUser("Alpha Co", "Alpha User");
+        when(userRepository.findById(user.getId())).thenReturn(java.util.Optional.of(user));
+        when(userProjectAssignmentService.hasAnyMembership(user.getId())).thenReturn(true);
+
+        assertThatThrownBy(() -> service.deleteUnassignedUser(user.getId(), "admin@floor21.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("assigned to a project");
     }
 
     @Test

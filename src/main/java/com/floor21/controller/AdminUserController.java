@@ -9,7 +9,9 @@ import com.floor21.util.IndianStates;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -68,6 +70,32 @@ public class AdminUserController {
         return userForm(adminUserService.requireUser(userId), model);
     }
 
+    @PostMapping("/{userId}/delete")
+    public String delete(
+            @PathVariable UUID userId,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String active,
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "companyName") String sort,
+            @RequestParam(defaultValue = "asc") String dir,
+            Authentication authentication,
+            RedirectAttributes ra) {
+        try {
+            String actor = authentication != null ? authentication.getName() : "admin";
+            adminUserService.deleteUnassignedUser(userId, actor);
+            ra.addFlashAttribute("successMessage", "User deleted.");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        } catch (DataIntegrityViolationException ex) {
+            ra.addFlashAttribute(
+                    "errorMessage",
+                    "Could not delete this user because related records still exist.");
+        }
+        return usersListRedirect(projectId, q, active, page, size, sort, dir);
+    }
+
     @PostMapping("/save")
     public String save(
             @ModelAttribute User staff,
@@ -98,5 +126,26 @@ public class AdminUserController {
             model.addAttribute("assignedProjectName", userProjectAssignmentService.formatProjectNames(staff.getId()));
         }
         return "admin/users/form";
+    }
+
+    private static String usersListRedirect(
+            UUID projectId, String q, String active, int page, int size, String sort, String dir) {
+        String sortKey = AdminUserService.normalizeUsersSort(sort);
+        boolean ascending = AdminUserService.normalizeUsersSortAscending(sortKey, dir);
+        StringBuilder url = new StringBuilder("redirect:/admin/users?");
+        url.append("page=").append(Math.max(0, page));
+        url.append("&size=").append(size);
+        url.append("&sort=").append(sortKey);
+        url.append("&dir=").append(ascending ? "asc" : "desc");
+        if (q != null && !q.isBlank()) {
+            url.append("&q=").append(java.net.URLEncoder.encode(q.trim(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+        if (active != null && !active.isBlank()) {
+            url.append("&active=").append(active.trim());
+        }
+        if (projectId != null) {
+            url.append("&projectId=").append(projectId);
+        }
+        return url.toString();
     }
 }

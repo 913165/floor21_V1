@@ -14,12 +14,13 @@
   </div>
   <p class="text-muted small" th:if="${!platformAdminView}">Receipt lines are calculated on each load from <strong>Payment Receipts</strong> only (waterfall by slab order). Slab titles and due amounts come from <strong>Milestone setup (Clients)</strong> for this booking.</p>
   <div class="alert alert-info py-2" th:if="${platformAdminView}">
-    Read-only for platform admin. Choose a project and building, then load a booking to review slab receipts and balances.
+    Read-only for platform admin. Choose a project, then pick a building (or <strong>All buildings</strong>) and load a booking.
+    Only non-cancelled bookings appear here — cancelled ones stay on the <a th:href="@{/bookings}">Bookings</a> page.
   </div>
 
   <form id="schedulePickerForm" class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/bookings/payment-schedule}"
         data-milestone-picker
-        th:attr="data-selected-building-id=${selectedBuildingId},data-selected-booking-id=${selectedBookingId}">
+        th:attr="data-selected-building-id=${selectedBuildingId},data-selected-booking-id=${selectedBookingId},data-booking-without-building=${platformAdminView}">
     <div class="row g-2 align-items-start">
       <div class="col-md-3 slab-schedule-picker__field" th:if="${platformAdminView}">
         <label class="form-label" for="scheduleProject">Project</label>
@@ -35,10 +36,9 @@
       <div class="col-md-4 slab-schedule-picker__field" th:classappend="${platformAdminView} ? '' : 'col-md-4'">
         <label class="form-label" for="scheduleBuilding">Building</label>
         <select class="form-select" name="buildingId" id="scheduleBuilding"
-                th:required="${platformAdminView}"
                 th:disabled="${platformAdminView and filterProjectId == null}">
           <option value="" th:selected="${selectedBuildingId == null}"
-                  th:text="${platformAdminView} ? 'Choose building...' : 'All buildings'">All buildings</option>
+                  th:text="${platformAdminView} ? 'All buildings' : 'All buildings'">All buildings</option>
           <option th:each="bl : ${buildings}"
                   th:value="${bl.id}"
                   th:selected="${selectedBuildingId != null && selectedBuildingId == bl.id}"
@@ -52,21 +52,26 @@
       <div class="col-md-5 slab-schedule-picker__field" th:classappend="${platformAdminView} ? 'col-md-4' : 'col-md-5'">
         <label class="form-label" for="scheduleBooking">Booking</label>
         <select class="form-select" name="bookingId" id="scheduleBooking"
-                th:disabled="${platformAdminView and (filterProjectId == null or selectedBuildingId == null)}">
+                th:disabled="${platformAdminView and filterProjectId == null}">
           <option value="" th:selected="${selectedBookingId == null}">Choose booking...</option>
           <option th:each="bk : ${bookings}"
                   th:value="${bk.id}"
                   th:selected="${selectedBookingId != null && selectedBookingId == bk.id}"
-                  th:text="${!platformAdminView and selectedBuildingId == null and bk.flat != null and bk.flat.building != null}
+                  th:text="${selectedBuildingId == null and bk.flat != null and bk.flat.building != null}
                     ? |${bk.flat.building.buildingName} - ${bk.flat.flatNumber} - ${@bookingOwnerService.ownersDisplayName(bk.id)}|
                     : |${bk.flat != null ? bk.flat.flatNumber : '-'} - ${@bookingOwnerService.ownersDisplayName(bk.id)}|"></option>
         </select>
-        <p class="form-text small slab-schedule-picker__hint-slot mb-0" th:if="${platformAdminView}"></p>
+        <p class="form-text small text-muted mb-0"
+           th:if="${platformAdminView and filterProjectId != null and bookings != null}">
+          <span th:text="|${#lists.size(bookings)} active booking(s)|">0 active booking(s)</span>
+          <span th:if="${selectedBuildingId != null}"> in this building</span>
+          <span th:if="${selectedBuildingId == null}"> across this project</span>.
+        </p>
       </div>
       <div class="col-md-3 slab-schedule-picker__field" th:classappend="${platformAdminView} ? 'col-md-1' : ''">
         <label class="form-label slab-schedule-picker__action-label" for="scheduleLoadBtn">Load</label>
         <button class="btn btn-primary w-100" id="scheduleLoadBtn" type="submit"
-                th:disabled="${platformAdminView and (filterProjectId == null or selectedBuildingId == null)}">Load booking</button>
+                th:disabled="${platformAdminView and filterProjectId == null}">Load booking</button>
         <p class="form-text small slab-schedule-picker__hint-slot mb-0" th:if="${platformAdminView}"></p>
       </div>
     </div>

@@ -227,11 +227,14 @@
       var building = form.querySelector('[name="buildingId"]');
       var booking = form.querySelector('[name="bookingId"]');
       var hasProject = !!select.value;
+      var allowBookingWithoutBuilding =
+          form.getAttribute("data-booking-without-building") === "true";
       if (building) {
         building.disabled = !hasProject;
       }
       if (booking) {
-        booking.disabled = !hasProject || !(building && building.value);
+        booking.disabled =
+            !hasProject || (!allowBookingWithoutBuilding && !(building && building.value));
       }
     }
 

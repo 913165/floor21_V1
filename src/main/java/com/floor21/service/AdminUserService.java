@@ -5,6 +5,7 @@ import com.floor21.dto.PlatformUserView;
 import com.floor21.entity.Builder;
 import com.floor21.entity.User;
 import com.floor21.entity.UserProjectAssignment;
+import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.UserRepository;
 import com.floor21.util.UserContactFields;
@@ -45,6 +46,7 @@ public class AdminUserService {
 
     private final BuilderRepository builderRepository;
     private final UserRepository userRepository;
+    private final BookingRepository bookingRepository;
     private final StaffBuildingAccessService staffBuildingAccessService;
     private final UserProjectAssignmentService userProjectAssignmentService;
     private final PasswordEncoder passwordEncoder;
@@ -219,6 +221,22 @@ public class AdminUserService {
                 .findById(userId)
                 .filter(u -> u.getBuilder() == null || !u.getBuilder().isPlatformAdmin())
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
+    }
+
+    @Transactional
+    public void deleteUnassignedUser(UUID userId, String actor) {
+        User user = requireUser(userId);
+        if (userProjectAssignmentService.hasAnyMembership(userId)) {
+            throw new IllegalArgumentException(
+                    "Cannot delete a user who is assigned to a project. Remove them from the project first.");
+        }
+        if (bookingRepository.countByExecutive_Id(userId) > 0) {
+            throw new IllegalArgumentException(
+                    "Cannot delete this user because they are linked to bookings.");
+        }
+        String email = user.getEmail();
+        userRepository.delete(user);
+        auditService.log("USER_DELETED", "user", userId.toString(), null, actor + " deleted " + email);
     }
 
     @Transactional

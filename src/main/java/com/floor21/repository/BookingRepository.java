@@ -246,4 +246,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building where b.id = :id "
                     + "and b.builder.id = :builderId")
     Optional<Booking> findByIdAndBuilder_IdForSchedule(@Param("id") UUID id, @Param("builderId") UUID builderId);
+
+    @Query("select count(b) from Booking b where b.executive.id = :userId")
+    long countByExecutive_Id(@Param("userId") UUID userId);
 }
