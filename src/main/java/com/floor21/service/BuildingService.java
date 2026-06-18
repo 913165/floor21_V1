@@ -7,8 +7,11 @@ import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.FlatRepository;
+import com.floor21.repository.PartnerFlatAssignmentRepository;
 import com.floor21.repository.PaymentSlabTemplateRepository;
 import com.floor21.repository.SlabRepository;
+import com.floor21.repository.UserBuildingAssignmentRepository;
+import com.floor21.repository.UserBuildingVaultAccessRepository;
 import com.floor21.security.TenantContext;
 import com.floor21.util.ResidentialBhkTypes;
 import com.floor21.util.SkippedFloorsUtil;
@@ -44,6 +47,9 @@ public class BuildingService {
     private final FlatRepository flatRepository;
     private final PaymentSlabTemplateRepository paymentSlabTemplateRepository;
     private final SlabRepository slabRepository;
+    private final PartnerFlatAssignmentRepository partnerFlatAssignmentRepository;
+    private final UserBuildingAssignmentRepository userBuildingAssignmentRepository;
+    private final UserBuildingVaultAccessRepository userBuildingVaultAccessRepository;
     private final BuildingFloorPlanService buildingFloorPlanService;
     private final PlatformAuditService auditService;
 
@@ -322,12 +328,15 @@ public class BuildingService {
         UUID builderId = building.getBuilder().getId();
         String buildingName = building.getBuildingName();
 
+        partnerFlatAssignmentRepository.deleteByBuilding_Id(buildingId);
+        userBuildingVaultAccessRepository.deleteByBuilding_Id(buildingId);
+        userBuildingAssignmentRepository.deleteByBuilding_Id(buildingId);
         paymentSlabTemplateRepository.deleteByBuilding_Id(buildingId);
         slabRepository.deleteByBuilding_Id(buildingId);
         flatRepository.clearUnitLinksForBuilding(buildingId);
         flatRepository.deleteByBuilding_IdAndBuilder_Id(buildingId, builderId);
         buildingFloorPlanService.deleteAllForBuilding(buildingId);
-        buildingRepository.delete(building);
+        buildingRepository.deleteById(buildingId);
 
         auditService.log(
                 "BUILDING_DELETED",

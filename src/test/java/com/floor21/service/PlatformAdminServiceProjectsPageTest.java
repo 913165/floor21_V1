@@ -15,6 +15,7 @@ import com.floor21.repository.ClientRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.repository.PlatformAuditLogRepository;
 import com.floor21.repository.SlabRepository;
+import com.floor21.repository.UserBuildingVaultAccessRepository;
 import com.floor21.repository.UserProjectAssignmentRepository;
 import com.floor21.repository.UserRepository;
 import java.time.Instant;
@@ -43,6 +44,8 @@ class PlatformAdminServiceProjectsPageTest {
     @Mock private UserProjectAssignmentRepository userProjectAssignmentRepository;
     @Mock private PlatformAuditLogRepository auditLogRepository;
     @Mock private PlatformAuditService auditService;
+    @Mock private StaffBuildingAccessService staffBuildingAccessService;
+    @Mock private UserBuildingVaultAccessRepository userBuildingVaultAccessRepository;
 
     private PlatformAdminService service;
 
@@ -61,7 +64,9 @@ class PlatformAdminServiceProjectsPageTest {
                         bankRepository,
                         userProjectAssignmentRepository,
                         auditLogRepository,
-                        auditService);
+                        auditService,
+                        staffBuildingAccessService,
+                        userBuildingVaultAccessRepository);
     }
 
     @Test

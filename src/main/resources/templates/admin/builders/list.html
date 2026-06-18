@@ -176,12 +176,22 @@
                   th:if="${!readonlyView or (currentBuilderId != null and currentBuilderId == b.id())}"
                   th:attr="data-project-id=${b.id()}, data-project-name=${b.companyName()}">Snapshot</button>
           <form class="d-inline"
-                th:if="${!readonlyView and b.buildingCount() == 0 and b.partnerCount() == 0}"
+                th:if="${!readonlyView and b.buildingCount() == 0}"
                 th:action="@{/admin/projects/{id}/delete(id=${b.id()})}" method="post"
-                onsubmit="return confirm('Delete this project permanently? This cannot be undone.');">
+                onsubmit="return confirm('Delete this project permanently? Partners and setup data will be removed. This cannot be undone.');">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" name="page" th:value="${projectPage != null ? projectPage.number : 0}"/>
+            <input type="hidden" name="size" th:value="${pageSize}"/>
+            <input type="hidden" name="sort" th:value="${sort}"/>
+            <input type="hidden" name="dir" th:value="${dir}"/>
+            <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+            <input type="hidden" name="q" th:if="${filterSearch != null and !#strings.isEmpty(filterSearch)}" th:value="${filterSearch}"/>
+            <input type="hidden" name="active" th:if="${filterActive != null and !#strings.isEmpty(filterActive)}" th:value="${filterActive}"/>
             <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
           </form>
+          <span class="text-muted small"
+                th:if="${!readonlyView and b.buildingCount() > 0}"
+                title="Remove all buildings before deleting this project.">Has buildings</span>
         </td>
       </tr>
       <tr th:if="${#lists.isEmpty(builders)}">

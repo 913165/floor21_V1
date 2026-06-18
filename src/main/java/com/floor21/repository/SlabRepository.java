@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,7 +17,9 @@ public interface SlabRepository extends JpaRepository<Slab, UUID> {
 
     void deleteByBuilder_IdAndBuildingIsNull(UUID builderId);
 
-    void deleteByBuilding_Id(UUID buildingId);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Slab s WHERE s.building.id = :buildingId")
+    void deleteByBuilding_Id(@Param("buildingId") UUID buildingId);
 
     Optional<Slab> findByIdAndBuilder_Id(UUID id, UUID builderId);
 

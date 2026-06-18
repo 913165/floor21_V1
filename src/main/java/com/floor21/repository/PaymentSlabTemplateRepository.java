@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface PaymentSlabTemplateRepository extends JpaRepository<PaymentSlabTemplate, UUID> {
 
@@ -14,5 +17,7 @@ public interface PaymentSlabTemplateRepository extends JpaRepository<PaymentSlab
 
     Optional<PaymentSlabTemplate> findByIdAndBuilding_Id(UUID id, UUID buildingId);
 
-    void deleteByBuilding_Id(UUID buildingId);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM PaymentSlabTemplate t WHERE t.building.id = :buildingId")
+    void deleteByBuilding_Id(@Param("buildingId") UUID buildingId);
 }

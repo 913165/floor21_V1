@@ -5,6 +5,7 @@ import com.floor21.entity.UserBuildingVaultAccess.GrantId;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -31,7 +32,11 @@ public interface UserBuildingVaultAccessRepository
 
     void deleteByUser_IdAndBuilding_Id(UUID userId, UUID buildingId);
 
-    @org.springframework.data.jpa.repository.Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM UserBuildingVaultAccess g WHERE g.building.id = :buildingId")
+    void deleteByBuilding_Id(@Param("buildingId") UUID buildingId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
             """
             DELETE FROM UserBuildingVaultAccess g

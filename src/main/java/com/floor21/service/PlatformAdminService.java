@@ -8,6 +8,7 @@ import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
 import com.floor21.entity.PlatformAuditLog;
 import com.floor21.entity.User;
+import com.floor21.entity.UserProjectAssignment;
 import com.floor21.repository.BankRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuildingRepository;
@@ -17,6 +18,7 @@ import com.floor21.repository.ClientRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.repository.PlatformAuditLogRepository;
 import com.floor21.repository.SlabRepository;
+import com.floor21.repository.UserBuildingVaultAccessRepository;
 import com.floor21.repository.UserProjectAssignmentRepository;
 import com.floor21.repository.UserRepository;
 import java.math.BigDecimal;
@@ -66,6 +68,8 @@ public class PlatformAdminService {
     private final UserProjectAssignmentRepository userProjectAssignmentRepository;
     private final PlatformAuditLogRepository auditLogRepository;
     private final PlatformAuditService auditService;
+    private final StaffBuildingAccessService staffBuildingAccessService;
+    private final UserBuildingVaultAccessRepository vaultAccessRepository;
 
     @Transactional(readOnly = true)
     public PlatformDashboardDto loadDashboard() {
@@ -314,15 +318,11 @@ public class PlatformAdminService {
         if (flatRepository.countByBuilder_Id(id) > 0) {
             throw new IllegalArgumentException("Cannot delete this project while flat inventory exists.");
         }
-        long partnerCount = userProjectAssignmentRepository.countByBuilder_Id(id);
-        if (partnerCount > 0) {
+        if (bookingRepository.countActiveByBuilder(id) > 0) {
             throw new IllegalArgumentException(
-                    "Remove all partners from this project first (Projects → Partners → Remove).");
+                    "Cannot delete a project that has active bookings.");
         }
-        if (!userRepository.findByBuilder_IdOrderByFullNameAsc(id).isEmpty()) {
-            throw new IllegalArgumentException(
-                    "Remove all partners from this project first (Projects → Partners → Remove).");
-        }
+        removePartnersForProject(id);
         String projectName = builder.getCompanyName();
         slabRepository.deleteByBuilder_Id(id);
         clientRepository.deleteByBuilder_Id(id);
@@ -336,6 +336,20 @@ public class PlatformAdminService {
                 id.toString(),
                 null,
                 projectName + " deleted by " + adminEmail);
+    }
+
+    private void removePartnersForProject(UUID builderId) {
+        for (UserProjectAssignment assignment :
+                userProjectAssignmentRepository.findByBuilder_IdWithUser(builderId)) {
+            UUID userId = assignment.getUser().getId();
+            staffBuildingAccessService.clearProjectBuildingAccess(builderId, userId);
+            vaultAccessRepository.deleteByUser_IdAndBuilding_Builder_Id(userId, builderId);
+        }
+        userProjectAssignmentRepository.deleteByBuilder_Id(builderId);
+        for (User user : userRepository.findByBuilder_IdOrderByFullNameAsc(builderId)) {
+            user.setBuilder(null);
+            userRepository.save(user);
+        }
     }
 
     /** Dashboard list only needs name/city; avoids per-builder count queries. */

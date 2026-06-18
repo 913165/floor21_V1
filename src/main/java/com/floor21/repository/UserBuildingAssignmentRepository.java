@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface UserBuildingAssignmentRepository extends JpaRepository<UserBuildingAssignment, AssignmentId> {
 
@@ -49,6 +50,10 @@ public interface UserBuildingAssignmentRepository extends JpaRepository<UserBuil
     List<UserBuildingAssignment> findByUser_IdAndBuilding_Builder_IdOrderByBuildingName(UUID userId, UUID builderId);
 
     boolean existsByUser_IdAndBuilding_Id(UUID userId, UUID buildingId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM UserBuildingAssignment a WHERE a.building.id = :buildingId")
+    void deleteByBuilding_Id(@Param("buildingId") UUID buildingId);
 
     long countByUser_Id(UUID userId);
 

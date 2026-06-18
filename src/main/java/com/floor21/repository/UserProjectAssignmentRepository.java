@@ -41,6 +41,8 @@ public interface UserProjectAssignmentRepository extends JpaRepository<UserProje
 
     void deleteByUser_IdAndBuilder_Id(UUID userId, UUID builderId);
 
+    void deleteByBuilder_Id(UUID builderId);
+
     @Query(
             """
             SELECT u FROM User u

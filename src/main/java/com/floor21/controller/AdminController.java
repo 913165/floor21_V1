@@ -202,16 +202,47 @@ public class AdminController {
     }
 
     @PostMapping("/{id}/delete")
-    public String delete(@PathVariable UUID id, Authentication authentication, RedirectAttributes ra) {
+    public String delete(
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String active,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "lastActivity") String sort,
+            @RequestParam(defaultValue = "desc") String dir,
+            Authentication authentication,
+            RedirectAttributes ra) {
         try {
             String actor = authentication != null ? authentication.getName() : "admin";
             platformAdminService.deleteProject(id, actor);
             ra.addFlashAttribute("successMessage", "Project deleted.");
-            return "redirect:/admin/projects";
+            return projectsListRedirect(projectId, q, active, page, size, sort, dir);
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
             return "redirect:/admin/projects/" + id + "/edit";
         }
+    }
+
+    private static String projectsListRedirect(
+            UUID projectId, String q, String active, int page, int size, String sort, String dir) {
+        String sortKey = PlatformAdminService.normalizeProjectsSort(sort);
+        boolean ascending = PlatformAdminService.normalizeProjectsSortAscending(sortKey, dir);
+        StringBuilder url = new StringBuilder("redirect:/admin/projects?");
+        url.append("page=").append(Math.max(0, page));
+        url.append("&size=").append(size);
+        url.append("&sort=").append(sortKey);
+        url.append("&dir=").append(ascending ? "asc" : "desc");
+        if (projectId != null) {
+            url.append("&projectId=").append(projectId);
+        }
+        if (q != null && !q.isBlank()) {
+            url.append("&q=").append(java.net.URLEncoder.encode(q.trim(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+        if (active != null && !active.isBlank()) {
+            url.append("&active=").append(active.trim());
+        }
+        return url.toString();
     }
 
     /** Legacy URL — use {@code /admin/buildings/new?builderId=} instead. */

@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -283,15 +284,46 @@ public class AdminPlatformController {
 
     @PostMapping("/buildings/{id}/delete")
     public String deleteBuilding(
-            @PathVariable UUID id, Authentication authentication, RedirectAttributes ra) {
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @RequestParam(defaultValue = "desc") String dir,
+            Authentication authentication,
+            RedirectAttributes ra) {
         try {
             String actor = authentication != null ? authentication.getName() : "admin";
             buildingService.deleteForPlatformAdmin(id, actor);
             ra.addFlashAttribute("successMessage", "Building deleted.");
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
+        } catch (DataIntegrityViolationException ex) {
+            ra.addFlashAttribute(
+                    "errorMessage",
+                    "Could not delete this building because related records still exist. "
+                            + "Remove bookings and linked data first.");
         }
-        return "redirect:/admin/buildings";
+        return buildingsListRedirect(projectId, q, page, size, sort, dir);
+    }
+
+    private static String buildingsListRedirect(
+            UUID projectId, String q, int page, int size, String sort, String dir) {
+        String sortKey = BuildingService.normalizeBuildingsSort(sort);
+        boolean ascending = BuildingService.normalizeBuildingsSortAscending(sortKey, dir);
+        StringBuilder url = new StringBuilder("redirect:/admin/buildings?");
+        url.append("page=").append(Math.max(0, page));
+        url.append("&size=").append(size);
+        url.append("&sort=").append(sortKey);
+        url.append("&dir=").append(ascending ? "asc" : "desc");
+        if (projectId != null) {
+            url.append("&projectId=").append(projectId);
+        }
+        if (q != null && !q.isBlank()) {
+            url.append("&q=").append(java.net.URLEncoder.encode(q.trim(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+        return url.toString();
     }
 
     @GetMapping("/activity")
