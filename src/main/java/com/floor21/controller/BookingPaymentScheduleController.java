@@ -14,6 +14,7 @@ import com.floor21.security.TenantContext;
 import com.floor21.service.BookingPaymentSlabService;
 import com.floor21.service.BuildingService;
 import com.floor21.service.DemandDraftService;
+import com.floor21.service.DemandLetterTemplateService;
 import com.floor21.service.SlabScheduleExportService;
 import com.floor21.service.SlabScheduleLedgerService;
 import jakarta.servlet.http.HttpSession;
@@ -43,6 +44,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -85,6 +87,7 @@ public class BookingPaymentScheduleController {
     private final BookingPaymentSlabService bookingPaymentSlabService;
     private final SlabScheduleLedgerService slabScheduleLedgerService;
     private final DemandDraftService demandDraftService;
+    private final DemandLetterTemplateService demandLetterTemplateService;
     private final SlabScheduleExportService slabScheduleExportService;
 
     @GetMapping
@@ -203,8 +206,13 @@ public class BookingPaymentScheduleController {
     }
 
     @GetMapping("/demand-draft")
-    public ResponseEntity<byte[]> demandDraft(@RequestParam UUID bookingId) {
-        byte[] body = demandDraftService.generate(bookingId);
+    public ResponseEntity<byte[]> demandDraft(
+            @RequestParam UUID bookingId,
+            @RequestParam(required = false, defaultValue = "true") String includeHeader,
+            @RequestParam(required = false, defaultValue = "true") String includeFooter) {
+        boolean useHeader = parseIncludeFlag(includeHeader, true);
+        boolean useFooter = parseIncludeFlag(includeFooter, true);
+        byte[] body = demandDraftService.generate(bookingId, useHeader, useFooter);
         String filename = demandDraftService.suggestedFilename(bookingId);
         ContentDisposition disposition =
                 ContentDisposition.attachment().filename(filename).build();
@@ -214,6 +222,47 @@ public class BookingPaymentScheduleController {
                         MediaType.parseMediaType(
                                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
                 .body(body);
+    }
+
+    private static boolean parseIncludeFlag(String value, boolean defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        return !"false".equalsIgnoreCase(value.trim()) && !"0".equals(value.trim());
+    }
+
+    @PostMapping("/demand-letter-template/header")
+    public String uploadDemandLetterHeader(
+            @RequestParam UUID builderId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) UUID buildingId,
+            @RequestParam(required = false) UUID bookingId,
+            RedirectAttributes ra) {
+        try {
+            demandLetterTemplateService.saveHeader(builderId, file);
+            ra.addFlashAttribute("successMessage", "Demand letter header template saved.");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return redirectBack(bookingId, buildingId, projectId);
+    }
+
+    @PostMapping("/demand-letter-template/footer")
+    public String uploadDemandLetterFooter(
+            @RequestParam UUID builderId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) UUID buildingId,
+            @RequestParam(required = false) UUID bookingId,
+            RedirectAttributes ra) {
+        try {
+            demandLetterTemplateService.saveFooter(builderId, file);
+            ra.addFlashAttribute("successMessage", "Demand letter footer template saved.");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return redirectBack(bookingId, buildingId, projectId);
     }
 
     @GetMapping("/export/excel")
@@ -312,6 +361,10 @@ public class BookingPaymentScheduleController {
         var ledgerRows = slabScheduleLedgerService.buildLedger(bookingId);
         model.addAttribute("ledgerRows", ledgerRows);
         model.addAttribute("ledgerSummary", slabScheduleLedgerService.summarizeLedger(ledgerRows));
+        if (booking.getBuilder() != null) {
+            model.addAttribute("scheduleBuilderId", booking.getBuilder().getId());
+            enrichDemandLetterTemplateModel(model, booking.getBuilder().getId());
+        }
     }
 
     private void loadSelectedBookingForPlatformAdmin(
@@ -339,6 +392,13 @@ public class BookingPaymentScheduleController {
         var ledgerRows = slabScheduleLedgerService.buildLedgerReadOnly(bookingId, builderId);
         model.addAttribute("ledgerRows", ledgerRows);
         model.addAttribute("ledgerSummary", slabScheduleLedgerService.summarizeLedger(ledgerRows));
+        enrichDemandLetterTemplateModel(model, builderId);
+    }
+
+    private void enrichDemandLetterTemplateModel(Model model, UUID builderId) {
+        model.addAttribute("demandLetterTemplateBuilderId", builderId);
+        model.addAttribute("demandLetterHeaderUploaded", demandLetterTemplateService.hasHeader(builderId));
+        model.addAttribute("demandLetterFooterUploaded", demandLetterTemplateService.hasFooter(builderId));
     }
 
     private List<Booking> listBookingsForPlatformAdmin(UUID buildingId, UUID projectId) {

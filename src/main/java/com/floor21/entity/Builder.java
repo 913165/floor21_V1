@@ -68,4 +68,11 @@ public class Builder {
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
+
+    /** Web path under upload root, e.g. media/demand-letter-templates/{id}/header.docx */
+    @Column(name = "demand_letter_header_path", length = 500)
+    private String demandLetterHeaderPath;
+
+    @Column(name = "demand_letter_footer_path", length = 500)
+    private String demandLetterFooterPath;
 }

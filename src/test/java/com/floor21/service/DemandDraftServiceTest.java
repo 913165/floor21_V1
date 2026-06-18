@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 class DemandDraftServiceTest {
 
     private final DemandDraftService service =
-            new DemandDraftService(null, null, null, null, null);
+            new DemandDraftService(null, null, null, null, null, null);
 
     @Test
     void buildModelCalculatesTdsGstAndPayableTotals() {

@@ -212,14 +212,71 @@
           <span class="fw-semibold">Slab payment schedule</span>
           <span class="text-muted small d-block">Shows milestones through the last row with a slab date in Milestone setup. Today rows appear after that date when balance remains.</span>
         </div>
-        <div class="d-flex flex-wrap gap-2">
-          <a class="btn btn-primary btn-sm"
-             th:if="${!readonlyView}"
-             th:href="@{/bookings/payment-schedule/demand-draft(bookingId=${selectedBooking.id})}"
-             data-turbo="false"
-             title="Download Word document with amount due and schedule details">
-            Demand Letter (Word)
-          </a>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <form th:if="${!readonlyView}"
+                class="d-flex flex-wrap align-items-center gap-2 mb-0"
+                method="get"
+                th:action="@{/bookings/payment-schedule/demand-draft}"
+                data-turbo="false">
+            <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
+            <input type="hidden" name="includeHeader" id="dlIncludeHeaderVal"
+                   th:value="${demandLetterHeaderUploaded} ? 'true' : 'false'"/>
+            <input type="hidden" name="includeFooter" id="dlIncludeFooterVal"
+                   th:value="${demandLetterFooterUploaded} ? 'true' : 'false'"/>
+            <div class="form-check form-check-inline mb-0" th:if="${demandLetterTemplateBuilderId != null}">
+              <input class="form-check-input" type="checkbox" id="dlIncludeHeader"
+                     th:checked="${demandLetterHeaderUploaded}"
+                     th:disabled="${!demandLetterHeaderUploaded}"
+                     onchange="document.getElementById('dlIncludeHeaderVal').value = this.checked ? 'true' : 'false'"/>
+              <label class="form-check-label small" for="dlIncludeHeader">Include header</label>
+            </div>
+            <div class="form-check form-check-inline mb-0" th:if="${demandLetterTemplateBuilderId != null}">
+              <input class="form-check-input" type="checkbox" id="dlIncludeFooter"
+                     th:checked="${demandLetterFooterUploaded}"
+                     th:disabled="${!demandLetterFooterUploaded}"
+                     onchange="document.getElementById('dlIncludeFooterVal').value = this.checked ? 'true' : 'false'"/>
+              <label class="form-check-label small" for="dlIncludeFooter">Include footer</label>
+            </div>
+            <button class="btn btn-primary btn-sm" type="submit"
+                    title="Download Word document with amount due and schedule details">
+              Demand Letter (Word)
+            </button>
+          </form>
+          <form class="d-flex align-items-center gap-1"
+                th:if="${!readonlyView and demandLetterTemplateBuilderId != null}"
+                th:action="@{/bookings/payment-schedule/demand-letter-template/header}" method="post"
+                enctype="multipart/form-data" data-turbo="false">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" name="builderId" th:value="${demandLetterTemplateBuilderId}"/>
+            <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+            <input type="hidden" name="buildingId" th:if="${selectedBuildingId != null}" th:value="${selectedBuildingId}"/>
+            <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
+            <label class="btn btn-outline-secondary btn-sm mb-0"
+                   th:classappend="${demandLetterHeaderUploaded} ? ' border-success text-success' : ''">
+              <span th:text="${demandLetterHeaderUploaded} ? 'Header ✓' : 'Upload header'">Upload header</span>
+              <input type="file" name="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="d-none" onchange="this.form.submit()"/>
+            </label>
+          </form>
+          <form class="d-flex align-items-center gap-1"
+                th:if="${!readonlyView and demandLetterTemplateBuilderId != null}"
+                th:action="@{/bookings/payment-schedule/demand-letter-template/footer}" method="post"
+                enctype="multipart/form-data" data-turbo="false">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" name="builderId" th:value="${demandLetterTemplateBuilderId}"/>
+            <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+            <input type="hidden" name="buildingId" th:if="${selectedBuildingId != null}" th:value="${selectedBuildingId}"/>
+            <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
+            <label class="btn btn-outline-secondary btn-sm mb-0"
+                   th:classappend="${demandLetterFooterUploaded} ? ' border-success text-success' : ''">
+              <span th:text="${demandLetterFooterUploaded} ? 'Footer ✓' : 'Upload footer'">Upload footer</span>
+              <input type="file" name="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="d-none" onchange="this.form.submit()"/>
+            </label>
+          </form>
+          <span class="text-muted small w-100"
+                th:if="${!readonlyView and demandLetterTemplateBuilderId != null}">
+            Letter pad: upload Word (.docx) with your header/footer design for this project.
+            For footer, use Word <strong>Insert → Footer</strong> (recommended) so logos and graphics copy correctly.
+          </span>
           <a class="btn btn-outline-success btn-sm"
              th:href="@{/bookings/payment-schedule/export/excel(bookingId=${selectedBooking.id}, builderId=${scheduleBuilderId})}"
              data-turbo="false"

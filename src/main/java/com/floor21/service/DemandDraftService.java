@@ -54,9 +54,15 @@ public class DemandDraftService {
     private final BookingOwnerService bookingOwnerService;
     private final BankService bankService;
     private final ReceiptRepository receiptRepository;
+    private final DemandLetterTemplateService demandLetterTemplateService;
 
     @Transactional(readOnly = true)
     public byte[] generate(UUID bookingId) {
+        return generate(bookingId, true, true);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] generate(UUID bookingId, boolean includeHeader, boolean includeFooter) {
         Booking booking = bookingPaymentSlabService.getBookingForSchedule(bookingId);
         List<SlabScheduleLineView> lines = bookingPaymentSlabService.listLineViews(bookingId);
         if (lines.isEmpty()) {
@@ -64,10 +70,17 @@ public class DemandDraftService {
                     "No payment schedule rows for this booking. Create the slab schedule first.");
         }
         DemandLetterModel model = buildModel(lines, receiptTotals(booking.getId()));
+        UUID builderId = booking.getBuilder() != null ? booking.getBuilder().getId() : null;
 
-        try (XWPFDocument doc = new XWPFDocument();
+        try (XWPFDocument doc =
+                        builderId != null && includeHeader
+                                ? demandLetterTemplateService.openBaseDocument(builderId)
+                                : new XWPFDocument();
                 ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             writeDocument(doc, booking, model);
+            if (builderId != null && includeFooter) {
+                demandLetterTemplateService.applyFooterTemplate(doc, builderId);
+            }
             doc.write(out);
             return out.toByteArray();
         } catch (IOException ex) {
