@@ -240,14 +240,14 @@
             <thead class="table-light">
             <tr>
               <th class="align-middle text-center text-nowrap">Date</th>
-              <th class="align-middle text-center">Slab</th>
+              <th class="align-middle text-center slab-schedule-col--slab">Slab</th>
               <th class="align-middle text-center text-nowrap">Check No</th>
               <th class="align-middle text-center text-nowrap">Amount</th>
               <th class="align-middle text-center text-nowrap">Receipt</th>
               <th class="align-middle text-center text-nowrap">Balance</th>
               <th class="align-middle text-center text-nowrap">Days</th>
               <th class="align-middle text-center text-nowrap">Interest</th>
-              <th class="align-middle text-center">Info</th>
+              <th class="align-middle text-center slab-schedule-col--info">Info</th>
               <th class="align-middle text-center">Remark</th>
             </tr>
             </thead>
@@ -256,7 +256,7 @@
                 th:classappend="${row.rowType().name() == 'SLAB_TOTAL'} ? ' slab-ledger-row--milestone' : (${row.rowType().name() == 'TODAY'} ? ' slab-ledger-row--today' : ' slab-ledger-row--receipt')">
               <td class="text-nowrap text-muted"
                   th:text="${row.date() != null ? #temporals.format(row.date(), 'dd-MMM-yyyy') : dash}">-</td>
-              <td th:classappend="${row.rowType().name() == 'SLAB_TOTAL'} ? ' slab-ledger-milestone-title' : (${row.rowType().name() == 'TODAY'} ? ' fw-semibold' : '')"
+              <td th:classappend="${row.rowType().name() == 'SLAB_TOTAL'} ? ' slab-ledger-milestone-title slab-schedule-col--slab' : (${row.rowType().name() == 'TODAY'} ? ' fw-semibold slab-schedule-col--slab' : ' slab-schedule-col--slab')"
                   th:text="${row.slabLabel() != null ? row.slabLabel() : dash}">-</td>
               <td class="text-nowrap small"
                   th:text="${row.chequeLabel() != null and !#strings.isEmpty(row.chequeLabel()) ? row.chequeLabel() : dash}">-</td>
@@ -272,7 +272,7 @@
                   th:text="${row.days() != null ? row.days() : dash}">-</td>
               <td class="text-end text-muted"
                   th:text="${row.interest() != null ? amt.formatAmountDisplay(row.interest()) : dash}">-</td>
-              <td class="small text-muted"
+              <td class="small text-muted slab-schedule-col--info"
                   th:text="${row.info() != null and !#strings.isEmpty(row.info()) ? row.info() : dash}">-</td>
               <td class="small text-muted"
                   th:text="${row.remark() != null and !#strings.isEmpty(row.remark()) ? row.remark() : dash}">-</td>

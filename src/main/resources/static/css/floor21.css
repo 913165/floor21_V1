@@ -5487,6 +5487,18 @@ body.slab-schedule-col-resizing {
   font-size: 0.875rem;
 }
 
+.slab-schedule-ledger-table .slab-schedule-col--slab {
+  min-width: 11rem;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.slab-schedule-ledger-table .slab-schedule-col--info {
+  min-width: 14rem;
+  white-space: normal;
+  word-break: break-word;
+}
+
 [data-bs-theme="dark"] .slab-schedule-ledger-table .slab-ledger-row--milestone td {
   background: rgba(110, 181, 247, 0.12);
   border-top: 2px solid rgba(110, 181, 247, 0.4) !important;
