@@ -39,8 +39,14 @@
       return false;
     }
     var exclude = link.getAttribute("data-nav-exclude");
-    if (exclude && path.startsWith(exclude)) {
-      return false;
+    if (exclude) {
+      var excluded = exclude.split(",");
+      for (var i = 0; i < excluded.length; i++) {
+        var part = excluded[i].trim();
+        if (part && path.startsWith(part)) {
+          return false;
+        }
+      }
     }
     var excludeContains = link.getAttribute("data-nav-exclude-contains");
     if (excludeContains && path.indexOf(excludeContains) !== -1) {

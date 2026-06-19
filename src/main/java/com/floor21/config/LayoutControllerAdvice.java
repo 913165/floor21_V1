@@ -94,7 +94,8 @@ public class LayoutControllerAdvice {
         if (path.startsWith("/bank-accounts")) {
             return "banking";
         }
-        if (path.startsWith("/bookings/payment-schedule")) {
+        if (path.startsWith("/bookings/payment-schedule")
+                || path.startsWith("/bookings/allottee-ledger")) {
             return "slabs";
         }
         if (path.startsWith("/receipts")) {

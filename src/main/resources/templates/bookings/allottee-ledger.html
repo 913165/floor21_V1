@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"
+       th:if="${selectedBooking == null or allotteeLedger == null}">
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Allottee Ledger</h1>
+    <div class="d-flex gap-2" th:if="${selectedBooking != null}">
+      <a class="btn btn-outline-primary btn-sm"
+         th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, projectId=${filterProjectId})}">Payment Receipts</a>
+      <a class="btn btn-outline-secondary btn-sm"
+         th:href="@{/bookings/payment-schedule(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, projectId=${filterProjectId})}">Payment schedule</a>
+    </div>
+  </div>
+  <div class="d-flex justify-content-end flex-wrap gap-2 mb-2"
+       th:if="${selectedBooking != null and allotteeLedger != null}">
+    <a class="btn btn-outline-primary btn-sm"
+       th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, projectId=${filterProjectId})}">Payment Receipts</a>
+    <a class="btn btn-outline-secondary btn-sm"
+       th:href="@{/bookings/payment-schedule(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, projectId=${filterProjectId})}">Payment schedule</a>
+  </div>
+
+  <form id="allotteePickerForm" class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/bookings/allottee-ledger}"
+        data-milestone-picker
+        th:attr="data-selected-building-id=${selectedBuildingId},data-selected-booking-id=${selectedBookingId},data-booking-without-building=${platformAdminView}">
+    <div class="row g-2 align-items-start">
+      <div class="col-md-3 slab-schedule-picker__field" th:if="${platformAdminView}">
+        <label class="form-label" for="allotteeProject">Project</label>
+        <select class="form-select" id="allotteeProject" name="projectId"
+                data-project-search-select data-submit-on-select="true">
+          <option value="" th:selected="${filterProjectId == null}">Choose project...</option>
+          <option th:each="p : ${projects}"
+                  th:value="${p.id}"
+                  th:text="${p.companyName}"
+                  th:selected="${filterProjectId != null && filterProjectId == p.id}"></option>
+        </select>
+      </div>
+      <div class="col-md-4 slab-schedule-picker__field" th:classappend="${platformAdminView} ? '' : 'col-md-4'">
+        <label class="form-label" for="allotteeBuilding">Building</label>
+        <select class="form-select" name="buildingId" id="allotteeBuilding"
+                th:disabled="${platformAdminView and filterProjectId == null}">
+          <option value="" th:selected="${selectedBuildingId == null}">All buildings</option>
+          <option th:each="bl : ${buildings}"
+                  th:value="${bl.id}"
+                  th:selected="${selectedBuildingId != null && selectedBuildingId == bl.id}"
+                  th:text="${bl.buildingName}"></option>
+        </select>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0"
+           th:if="${platformAdminView and filterProjectId == null}">Select a project first.</p>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0"
+           th:if="${platformAdminView and filterProjectId != null}"></p>
+      </div>
+      <div class="col-md-5 slab-schedule-picker__field" th:classappend="${platformAdminView} ? 'col-md-4' : 'col-md-5'">
+        <label class="form-label" for="allotteeBooking">Booking</label>
+        <select class="form-select" name="bookingId" id="allotteeBooking"
+                th:disabled="${platformAdminView and filterProjectId == null}">
+          <option value="" th:selected="${selectedBookingId == null}">Choose booking...</option>
+          <option th:each="bk : ${bookings}"
+                  th:value="${bk.id}"
+                  th:selected="${selectedBookingId != null && selectedBookingId == bk.id}"
+                  th:text="${selectedBuildingId == null and bk.flat != null and bk.flat.building != null}
+                    ? |${bk.flat.building.buildingName} - ${bk.flat.flatNumber} - ${@bookingOwnerService.ownersDisplayName(bk.id)}|
+                    : |${bk.flat != null ? bk.flat.flatNumber : '-'} - ${@bookingOwnerService.ownersDisplayName(bk.id)}|"></option>
+        </select>
+      </div>
+      <div class="col-md-3 slab-schedule-picker__field" th:classappend="${platformAdminView} ? 'col-md-1' : ''">
+        <label class="form-label slab-schedule-picker__action-label" for="allotteeLoadBtn">Load</label>
+        <button class="btn btn-primary w-100" id="allotteeLoadBtn" type="submit"
+                th:disabled="${platformAdminView and filterProjectId == null}">Load booking</button>
+        <p class="form-text small slab-schedule-picker__hint-slot mb-0" th:if="${platformAdminView}"></p>
+      </div>
+    </div>
+  </form>
+  <script>
+    (function () {
+      const project = document.getElementById('allotteeProject');
+      const building = document.getElementById('allotteeBuilding');
+      const booking = document.getElementById('allotteeBooking');
+      const form = document.getElementById('allotteePickerForm');
+      if (!building || !booking || !form) return;
+      function clearBooking() { booking.value = ''; }
+      function submitPicker() {
+        if (typeof form.requestSubmit === 'function') form.requestSubmit();
+        else form.submit();
+      }
+      if (project) {
+        project.addEventListener('change', function () {
+          building.value = '';
+          clearBooking();
+        });
+      }
+      building.addEventListener('change', function () {
+        clearBooking();
+        submitPicker();
+      });
+    })();
+  </script>
+
+  <th:block th:if="${selectedBooking != null and allotteeLedger != null}"
+            th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}, dash='-', ledger=${allotteeLedger}">
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+    <div class="allottee-ledger-doc card shadow-sm mb-3">
+      <div class="allottee-ledger-doc__toolbar d-flex flex-wrap justify-content-end gap-2">
+        <a class="btn btn-outline-success btn-sm"
+           th:href="@{/bookings/payment-schedule/export/excel(bookingId=${selectedBooking.id}, builderId=${scheduleBuilderId})}"
+           data-turbo="false">Export Excel</a>
+        <a class="btn btn-outline-danger btn-sm"
+           th:href="@{/bookings/payment-schedule/export/pdf(bookingId=${selectedBooking.id}, builderId=${scheduleBuilderId})}"
+           data-turbo="false">Export PDF</a>
+      </div>
+
+      <div class="allottee-ledger-doc__body">
+        <h2 class="allottee-ledger-doc__title">Allottee ledger</h2>
+        <p class="allottee-ledger-doc__meta">
+          <span th:text="${ledger.allotteeName()}">Allottee</span><span th:if="${ledger.panNumber() != null}"> · PAN: <span th:text="${ledger.panNumber()}">—</span></span><span> · Unit <span th:text="${ledger.unitLabel()}">—</span></span><span> · Agreement value: <span th:text="${amt.formatAmountDisplay(ledger.agreementValue())}">0</span></span>
+        </p>
+        <p class="allottee-ledger-doc__meta allottee-ledger-doc__meta--period"
+           th:if="${ledger.periodFrom() != null and ledger.periodTo() != null}">
+          Period: <span th:text="${#temporals.format(ledger.periodFrom(), 'dd MMM yyyy')}">—</span> — <span th:text="${#temporals.format(ledger.periodTo(), 'dd MMM yyyy')}">—</span> · FY <span th:text="${ledger.financialYearLabel()}">—</span>
+        </p>
+
+        <div class="allottee-ledger-doc__summary">
+          <div class="allottee-ledger-doc__stat">
+            <div class="allottee-ledger-doc__stat-label">Total receivable</div>
+            <div class="allottee-ledger-doc__stat-value" th:text="${amt.formatAmountDisplay(ledger.agreementValue())}">0</div>
+          </div>
+          <div class="allottee-ledger-doc__stat">
+            <div class="allottee-ledger-doc__stat-label">Total received</div>
+            <div class="allottee-ledger-doc__stat-value allottee-ledger-doc__stat-value--received"
+                 th:text="${amt.formatAmountDisplay(ledger.totalReceived())}">0</div>
+          </div>
+          <div class="allottee-ledger-doc__stat">
+            <div class="allottee-ledger-doc__stat-label">Balance receivable</div>
+            <div class="allottee-ledger-doc__stat-value allottee-ledger-doc__stat-value--balance"
+                 th:text="${amt.formatAmountDisplay(ledger.balanceReceivable())}">0</div>
+          </div>
+          <div class="allottee-ledger-doc__stat">
+            <div class="allottee-ledger-doc__stat-label">GST collected</div>
+            <div class="allottee-ledger-doc__stat-value" th:text="${amt.formatAmountDisplay(ledger.gstCollected())}">0</div>
+          </div>
+        </div>
+
+        <div class="table-responsive allottee-ledger-doc__table-wrap">
+          <table class="table table-sm align-middle mb-0 slab-schedule-table allottee-ledger-doc__table">
+            <colgroup>
+              <col class="allottee-ledger-col--sno">
+              <col class="allottee-ledger-col--date">
+              <col class="allottee-ledger-col--receipt">
+              <col class="allottee-ledger-col--narration">
+              <col class="allottee-ledger-col--amount">
+              <col class="allottee-ledger-col--amount">
+              <col class="allottee-ledger-col--side">
+            </colgroup>
+            <thead class="table-light">
+            <tr>
+              <th class="text-center allottee-ledger-col--sno-cell">#</th>
+              <th>Date</th>
+              <th>Receipt no.</th>
+              <th>Narration</th>
+              <th class="text-end allottee-ledger-col--amount-cell">Credit (₹)</th>
+              <th class="text-end allottee-ledger-col--amount-cell">Balance (₹)</th>
+              <th class="text-center allottee-ledger-col--side-cell">Dr / Cr</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="row : ${ledger.rows()}" th:classappend="${row.rowCssClass()}">
+              <td class="text-center text-muted allottee-ledger-col--sno-cell"
+                  th:text="${row.serialNo() != null ? row.serialNo() : dash}">—</td>
+              <td class="text-nowrap"
+                  th:text="${row.date() != null ? #temporals.format(row.date(), 'dd MMM yyyy') : dash}">—</td>
+              <td>
+                <span class="allottee-ledger-doc__receipt-badge"
+                      th:if="${row.receiptNumber() != null and !#strings.isEmpty(row.receiptNumber())}"
+                      th:text="${row.receiptNumber()}">RCP</span>
+                <span class="text-muted" th:if="${row.receiptNumber() == null or #strings.isEmpty(row.receiptNumber())}" th:text="${dash}">—</span>
+              </td>
+              <td class="allottee-ledger-doc__narration">
+                <div th:text="${row.narrationTitle()}">Narration</div>
+                <div class="allottee-ledger-doc__narration-detail text-muted"
+                     th:if="${row.narrationDetail() != null and !#strings.isEmpty(row.narrationDetail())}"
+                     th:text="${row.narrationDetail()}">Detail</div>
+              </td>
+              <td class="text-end allottee-ledger-col--amount-cell"
+                  th:classappend="${row.credit() != null} ? ' allottee-ledger-doc__credit' : ''"
+                  th:text="${row.credit() != null ? amt.formatAmountDisplay(row.credit()) : dash}">—</td>
+              <td class="text-end allottee-ledger-col--amount-cell"
+                  th:classappend="${row.balance() != null and row.balance().signum() > 0} ? ' allottee-ledger-doc__balance-due' : ''"
+                  th:text="${row.balance() != null ? amt.formatAmountDisplay(row.balance()) : dash}">—</td>
+              <td class="text-center allottee-ledger-col--side-cell"
+                  th:classappend="${row.balanceSide() == 'Dr'} ? ' allottee-ledger-doc__side-dr' : ' text-muted'"
+                  th:text="${row.balanceSide()}">Nil</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="allottee-ledger-doc__footnotes">
+          <p class="mb-1">RCP – Receipt number (payment entries only).</p>
+          <p class="mb-0">Opening balance is the agreement value receivable. Dr balance – amount still due from allottee. Amounts inclusive of GST.</p>
+        </div>
+      </div>
+    </div>
+  </th:block>
+
+  <div th:if="${selectedBooking != null and allotteeLedger == null}" class="alert alert-info">
+    <p class="mb-0">No allottee ledger is available for this booking. Set up milestones under <strong>Milestone setup (Clients)</strong> first.</p>
+  </div>
+</div>
+</body>
+</html>
