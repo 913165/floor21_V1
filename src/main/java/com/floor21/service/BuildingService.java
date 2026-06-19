@@ -152,6 +152,19 @@ public class BuildingService {
                 .orElse(null);
     }
 
+    /** Keep building selection only when it belongs to the signed-in tenant and user can access it. */
+    @Transactional(readOnly = true)
+    public UUID sanitizeBuildingIdForTenant(UUID buildingId) {
+        if (buildingId == null) {
+            return null;
+        }
+        return buildingRepository
+                .findByIdAndBuilder_Id(buildingId, TenantContext.requireBuilderId())
+                .filter(b -> TenantContext.canAccessBuilding(b.getId()))
+                .map(Building::getId)
+                .orElse(null);
+    }
+
     @Transactional(readOnly = true)
     public Page<Building> listBuildingsPage(
             int page, int size, String sort, String dir, UUID projectId, String search) {

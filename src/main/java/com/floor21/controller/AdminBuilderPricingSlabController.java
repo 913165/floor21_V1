@@ -90,11 +90,15 @@ public class AdminBuilderPricingSlabController {
         MilestoneNavSession.PickerSelection selection =
                 MilestoneNavSession.resolveProjectBuilding(session, projectId, buildingId);
         projectId = selection.projectId();
-        buildingId =
-                buildingService.sanitizeBuildingIdForProject(selection.buildingId(), projectId);
+        buildingId = selection.buildingId();
+        boolean readonlyView = !isPlatformAdmin();
+        if (readonlyView) {
+            buildingId = buildingService.sanitizeBuildingIdForTenant(buildingId);
+        } else {
+            buildingId = buildingService.sanitizeBuildingIdForProject(buildingId, projectId);
+        }
         MilestoneNavSession.rememberProjectBuilding(session, projectId, buildingId);
         String search = q != null ? q.trim() : "";
-        boolean readonlyView = !isPlatformAdmin();
         model.addAttribute("pageTitle", "Milestone Templates");
         model.addAttribute("readonlyView", readonlyView);
 
