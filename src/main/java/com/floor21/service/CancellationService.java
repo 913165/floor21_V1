@@ -5,7 +5,6 @@ import com.floor21.entity.Cancellation;
 import com.floor21.entity.Flat;
 import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BookingRepository;
-import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.CancellationRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.security.TenantContext;
@@ -25,7 +24,7 @@ public class CancellationService {
     private final CancellationRepository cancellationRepository;
     private final BookingRepository bookingRepository;
     private final FlatRepository flatRepository;
-    private final BuilderRepository builderRepository;
+    private final PartnerFlatAllocationService partnerFlatAllocationService;
 
     @Transactional(readOnly = true)
     public List<Cancellation> list() {
@@ -39,10 +38,30 @@ public class CancellationService {
                 bookingRepository
                         .findByIdAndBuilder_Id(bookingId, builderId)
                         .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        applyCancellation(booking, cancelDate, reason, refund);
+    }
+
+    @Transactional
+    public void cancelBookingForPlatformAdmin(
+            UUID bookingId, LocalDate cancelDate, String reason, BigDecimal refund) {
+        Booking booking =
+                bookingRepository
+                        .findByIdForPlatformAdminView(bookingId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        if (!partnerFlatAllocationService.isFlatPartnerUnassigned(
+                booking.getFlat() != null ? booking.getFlat().getId() : null)) {
+            throw new IllegalArgumentException(
+                    "Platform admin can only cancel bookings on flats with no partner assigned.");
+        }
+        applyCancellation(booking, cancelDate, reason, refund);
+    }
+
+    private void applyCancellation(
+            Booking booking, LocalDate cancelDate, String reason, BigDecimal refund) {
         if ("CANCELLED".equals(booking.getStatus())) {
             throw new IllegalArgumentException("Booking already cancelled");
         }
-        var builder = builderRepository.findById(builderId).orElseThrow();
+        var builder = booking.getBuilder();
         Cancellation c = new Cancellation();
         c.setBuilder(builder);
         c.setBooking(booking);

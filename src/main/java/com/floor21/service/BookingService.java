@@ -158,6 +158,14 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
+    public boolean canPlatformAdminManageUnassignedPartnerBooking(Booking booking) {
+        if (booking == null || booking.getFlat() == null) {
+            return false;
+        }
+        return partnerFlatAllocationService.isFlatPartnerUnassigned(booking.getFlat().getId());
+    }
+
+    @Transactional(readOnly = true)
     public Booking get(UUID id) {
         Booking booking =
                 bookingRepository
@@ -327,6 +335,21 @@ public class BookingService {
         if (!canViewAllBookings() && !isOwnedByCurrentStaff(booking)) {
             throw new ResourceNotFoundException("Booking not found");
         }
+        deleteCancelledBooking(booking, builderId);
+    }
+
+    @Transactional
+    public void removeCancelledForPlatformAdmin(UUID id) {
+        Booking booking = getForPlatformAdmin(id);
+        if (!canPlatformAdminManageUnassignedPartnerBooking(booking)) {
+            throw new IllegalArgumentException(
+                    "Platform admin can only remove cancelled bookings on flats with no partner assigned.");
+        }
+        deleteCancelledBooking(booking, booking.getBuilder().getId());
+    }
+
+    private void deleteCancelledBooking(Booking booking, UUID builderId) {
+        UUID id = booking.getId();
         if (!"CANCELLED".equals(booking.getStatus())) {
             throw new IllegalArgumentException("Only cancelled bookings can be removed.");
         }

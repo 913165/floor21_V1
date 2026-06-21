@@ -12,8 +12,11 @@
 
   <link rel="stylesheet" th:href="@{/css/client-detail.css(v=detail-card-v1)}" data-turbo-track="reload"/>
 
-  <div class="alert alert-info py-2 mb-3" th:if="${readonlyView}">
+  <div class="alert alert-info py-2 mb-3" th:if="${readonlyView and !platformAdminCanManageBooking}">
     Read-only for platform admin. Use Payment schedule and Receipts links to review related records.
+  </div>
+  <div class="alert alert-info py-2 mb-3" th:if="${platformAdminCanManageBooking}">
+    This flat has no partner assigned — you can cancel or remove this booking as platform admin.
   </div>
   <div class="alert alert-danger mb-3" th:if="${errorMessage}" th:text="${errorMessage}"></div>
 
@@ -294,12 +297,13 @@
        th:unless="${readonlyView}"
        th:href="@{/bookings/{id}/expenses(id=${booking.id})}">Expenses</a>
     <a class="btn btn-outline-danger btn-sm"
-       th:if="${!readonlyView and booking.status == 'ACTIVE'}"
+       th:if="${(!readonlyView or platformAdminCanManageBooking) and booking.status == 'ACTIVE'}"
        th:href="@{/bookings/{id}/cancel(id=${booking.id})}">Cancel booking</a>
-    <form class="d-inline" th:if="${!readonlyView and booking.status == 'CANCELLED'}"
+    <form class="d-inline" th:if="${(!readonlyView or platformAdminCanManageBooking) and booking.status == 'CANCELLED'}"
           th:action="@{/bookings/{id}/remove(id=${booking.id})}" method="post"
           th:attr="onsubmit=|return confirm('Remove booking ${booking.bookingCode} permanently? This cannot be undone.');|">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
       <button class="btn btn-outline-danger btn-sm" type="submit">Remove</button>
     </form>
     <a class="btn btn-link btn-sm" th:href="@{/bookings(projectId=${filterProjectId})}">Back to bookings</a>

@@ -54,6 +54,11 @@ public class SecurityConfig {
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
                                         .requestMatchers(HttpMethod.GET, "/bookings/*")
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/bookings/*/remove",
+                                                "/bookings/*/cancel/confirm")
+                                        .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
                                         .requestMatchers(HttpMethod.GET, "/admin/projects", "/admin/projects/")
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
                                         .requestMatchers(HttpMethod.GET, "/admin/projects/*/edit")

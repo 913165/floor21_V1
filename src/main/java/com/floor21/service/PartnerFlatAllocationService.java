@@ -78,6 +78,23 @@ public class PartnerFlatAllocationService {
         return assignmentRepository.findByFlat_Id(flatId).map(a -> a.getUser().getId()).orElse(null);
     }
 
+    /**
+     * True when partner flat allocation is in use for the building and this residential flat has no partner
+     * assigned.
+     */
+    @Transactional(readOnly = true)
+    public boolean isFlatPartnerUnassigned(UUID flatId) {
+        if (flatId == null) {
+            return false;
+        }
+        return flatRepository
+                .findById(flatId)
+                .map(Flat::getBuilding)
+                .filter(building -> building != null && isAllocationActive(building.getId()))
+                .map(building -> getAssignedPartnerIdForFlat(flatId) == null)
+                .orElse(false);
+    }
+
     @Transactional(readOnly = true)
     public Map<UUID, UUID> getFlatOwnerByPartnerId(UUID buildingId) {
         Map<UUID, UUID> map = new HashMap<>();

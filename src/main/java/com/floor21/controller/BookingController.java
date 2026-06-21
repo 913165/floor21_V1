@@ -194,6 +194,9 @@ public class BookingController {
                         : receiptService.totalForBooking(id));
         model.addAttribute("coOwners", bookingOwnerService.ownersInOrder(booking));
         model.addAttribute("ownersDisplayName", bookingOwnerService.ownersDisplayName(booking));
+        model.addAttribute(
+                "platformAdminCanManageBooking",
+                platformAdminView && bookingService.canPlatformAdminManageUnassignedPartnerBooking(booking));
         return "bookings/detail";
     }
 
@@ -240,19 +243,22 @@ public class BookingController {
     }
 
     @PostMapping("/{id}/remove")
-    public String remove(@PathVariable UUID id, RedirectAttributes ra) {
-        if (isPlatformAdmin()) {
-            ra.addFlashAttribute("errorMessage", "Read-only for platform admin.");
-            return "redirect:/bookings/" + id;
-        }
+    public String remove(
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID projectId,
+            RedirectAttributes ra) {
         try {
-            bookingService.removeCancelled(id);
+            if (isPlatformAdmin()) {
+                bookingService.removeCancelledForPlatformAdmin(id);
+            } else {
+                bookingService.removeCancelled(id);
+            }
             ra.addFlashAttribute("successMessage", "Booking removed");
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
-            return "redirect:/bookings/" + id;
+            return "redirect:/bookings/" + id + (projectId != null ? "?projectId=" + projectId : "");
         }
-        return "redirect:/bookings";
+        return projectId != null ? "redirect:/bookings?projectId=" + projectId : "redirect:/bookings";
     }
 
     private static boolean isPlatformAdmin() {
