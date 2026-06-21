@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -220,6 +221,11 @@ public class AdminController {
             return projectsListRedirect(projectId, q, active, page, size, sort, dir);
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/admin/projects/" + id + "/edit";
+        } catch (DataIntegrityViolationException ex) {
+            ra.addFlashAttribute(
+                    "errorMessage",
+                    "Could not delete this project because related records still exist.");
             return "redirect:/admin/projects/" + id + "/edit";
         }
     }

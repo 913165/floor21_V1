@@ -29,4 +29,6 @@ public interface PartnerFlatAssignmentRepository extends JpaRepository<PartnerFl
             """)
     List<UUID> findFlatIdsByUser_IdAndBuilding_Id(
             @Param("userId") UUID userId, @Param("buildingId") UUID buildingId);
+
+    long countByUser_Id(UUID userId);
 }

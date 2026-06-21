@@ -2,6 +2,7 @@ package com.floor21.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.floor21.dto.AdminBuilderRow;
@@ -10,14 +11,21 @@ import com.floor21.repository.BankRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BrokerRepository;
+import com.floor21.repository.BuilderExpenseRepository;
 import com.floor21.repository.BuilderRepository;
+import com.floor21.repository.CancellationRepository;
 import com.floor21.repository.ClientRepository;
+import com.floor21.repository.ExtraExpenseRepository;
 import com.floor21.repository.FlatRepository;
+import com.floor21.repository.PaymentSlabTemplateRepository;
 import com.floor21.repository.PlatformAuditLogRepository;
+import com.floor21.repository.ReceiptRepository;
 import com.floor21.repository.SlabRepository;
 import com.floor21.repository.UserBuildingVaultAccessRepository;
 import com.floor21.repository.UserProjectAssignmentRepository;
 import com.floor21.repository.UserRepository;
+import com.floor21.repository.VaultBookingProfileRepository;
+import com.floor21.repository.VaultEntryRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +49,13 @@ class PlatformAdminServiceProjectsPageTest {
     @Mock private ClientRepository clientRepository;
     @Mock private BrokerRepository brokerRepository;
     @Mock private BankRepository bankRepository;
+    @Mock private ReceiptRepository receiptRepository;
+    @Mock private VaultEntryRepository vaultEntryRepository;
+    @Mock private BuilderExpenseRepository builderExpenseRepository;
+    @Mock private CancellationRepository cancellationRepository;
+    @Mock private ExtraExpenseRepository extraExpenseRepository;
+    @Mock private VaultBookingProfileRepository vaultBookingProfileRepository;
+    @Mock private PaymentSlabTemplateRepository paymentSlabTemplateRepository;
     @Mock private UserProjectAssignmentRepository userProjectAssignmentRepository;
     @Mock private PlatformAuditLogRepository auditLogRepository;
     @Mock private PlatformAuditService auditService;
@@ -62,6 +77,13 @@ class PlatformAdminServiceProjectsPageTest {
                         clientRepository,
                         brokerRepository,
                         bankRepository,
+                        receiptRepository,
+                        vaultEntryRepository,
+                        builderExpenseRepository,
+                        cancellationRepository,
+                        extraExpenseRepository,
+                        vaultBookingProfileRepository,
+                        paymentSlabTemplateRepository,
                         userProjectAssignmentRepository,
                         auditLogRepository,
                         auditService,
@@ -123,6 +145,23 @@ class PlatformAdminServiceProjectsPageTest {
 
         assertThat(page.getTotalElements()).isEqualTo(1);
         assertThat(page.getContent().get(0).companyName()).isEqualTo("Alpha");
+    }
+
+    @Test
+    void deleteProject_purgesVaultEntriesBeforeBuilderDelete() {
+        Builder project = tenant("Empty Project", Instant.parse("2024-01-01T00:00:00Z"), null);
+        when(builderRepository.findById(project.getId())).thenReturn(Optional.of(project));
+        when(buildingRepository.countByBuilder_Id(project.getId())).thenReturn(0L);
+        when(flatRepository.countByBuilder_Id(project.getId())).thenReturn(0L);
+        when(bookingRepository.countActiveByBuilder(project.getId())).thenReturn(0L);
+        when(userProjectAssignmentRepository.findByBuilder_IdWithUser(project.getId())).thenReturn(List.of());
+        when(userRepository.findByBuilder_IdOrderByFullNameAsc(project.getId())).thenReturn(List.of());
+
+        service.deleteProject(project.getId(), "super@floor21.com");
+
+        verify(vaultEntryRepository).deleteByBuilder_Id(project.getId());
+        verify(builderExpenseRepository).deleteByBuilder_Id(project.getId());
+        verify(builderRepository).delete(project);
     }
 
     private Builder tenant(String name, Instant createdAt, Instant updatedAt) {

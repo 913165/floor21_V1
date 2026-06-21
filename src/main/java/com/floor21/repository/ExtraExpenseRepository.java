@@ -11,4 +11,6 @@ public interface ExtraExpenseRepository extends JpaRepository<ExtraExpense, UUID
             UUID bookingId, UUID builderId);
 
     void deleteByBooking_Id(UUID bookingId);
+
+    void deleteByBuilder_Id(UUID builderId);
 }

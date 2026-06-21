@@ -10,9 +10,13 @@ import com.floor21.dto.PlatformUserView;
 import com.floor21.entity.User;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuilderRepository;
+import com.floor21.repository.PartnerFlatAssignmentRepository;
+import com.floor21.repository.UserBuildingAssignmentRepository;
+import com.floor21.repository.UserBuildingVaultAccessRepository;
 import com.floor21.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +32,9 @@ class AdminUserServiceUsersPageTest {
     @Mock private BuilderRepository builderRepository;
     @Mock private UserRepository userRepository;
     @Mock private BookingRepository bookingRepository;
+    @Mock private UserBuildingAssignmentRepository userBuildingAssignmentRepository;
+    @Mock private PartnerFlatAssignmentRepository partnerFlatAssignmentRepository;
+    @Mock private UserBuildingVaultAccessRepository userBuildingVaultAccessRepository;
     @Mock private StaffBuildingAccessService staffBuildingAccessService;
     @Mock private UserProjectAssignmentService userProjectAssignmentService;
     @Mock private PasswordEncoder passwordEncoder;
@@ -42,6 +49,9 @@ class AdminUserServiceUsersPageTest {
                         builderRepository,
                         userRepository,
                         bookingRepository,
+                        userBuildingAssignmentRepository,
+                        partnerFlatAssignmentRepository,
+                        userBuildingVaultAccessRepository,
                         staffBuildingAccessService,
                         userProjectAssignmentService,
                         passwordEncoder,
@@ -59,7 +69,6 @@ class AdminUserServiceUsersPageTest {
         superAdmin.setCreatedAt(Instant.parse("2024-01-01T00:00:00Z"));
 
         when(builderRepository.findAllPlatformAdminsOrderByEmailAsc()).thenReturn(List.of(superAdmin));
-        when(userRepository.findByBuilderIsNullOrderByFullNameAsc()).thenReturn(List.of());
         when(userRepository.findAllByOrderByFullNameAsc()).thenReturn(List.of());
 
         Page<PlatformUserView> page =
@@ -76,14 +85,15 @@ class AdminUserServiceUsersPageTest {
         when(builderRepository.findAllPlatformAdminsOrderByEmailAsc()).thenReturn(List.of());
         User zulu = unassignedUser("Zulu Co", "Zulu User");
         User alpha = unassignedUser("Alpha Co", "Alpha User");
-        when(userRepository.findByBuilderIsNullOrderByFullNameAsc()).thenReturn(List.of(zulu, alpha));
         when(userRepository.findAllByOrderByFullNameAsc()).thenReturn(List.of(zulu, alpha));
-        when(userProjectAssignmentService.hasAnyMembership(any())).thenReturn(false);
+        stubUnassignedUser(zulu);
+        stubUnassignedUser(alpha);
 
         Page<PlatformUserView> page = service.listUsersPage(0, 25, "companyName", "asc", null, null, null);
 
         assertThat(page.getTotalElements()).isEqualTo(2);
         assertThat(page.getContent().get(0).companyName()).isEqualTo("Alpha Co");
+        assertThat(page.getContent().get(0).deletable()).isTrue();
         assertThat(page.getContent().get(1).companyName()).isEqualTo("Zulu Co");
 
         Page<PlatformUserView> page2 = service.listUsersPage(0, 5, "companyName", "asc", null, null, null);
@@ -94,9 +104,8 @@ class AdminUserServiceUsersPageTest {
     @Test
     void deleteUnassignedUser_removesUserWithNoProjectMembership() {
         User user = unassignedUser("Alpha Co", "Alpha User");
-        when(userRepository.findById(user.getId())).thenReturn(java.util.Optional.of(user));
-        when(userProjectAssignmentService.hasAnyMembership(user.getId())).thenReturn(false);
-        when(bookingRepository.countByExecutive_Id(user.getId())).thenReturn(0L);
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        stubDeletableChecks(user.getId());
 
         service.deleteUnassignedUser(user.getId(), "admin@floor21.com");
 
@@ -106,7 +115,7 @@ class AdminUserServiceUsersPageTest {
     @Test
     void deleteUnassignedUser_rejectsUserAssignedToProject() {
         User user = unassignedUser("Alpha Co", "Alpha User");
-        when(userRepository.findById(user.getId())).thenReturn(java.util.Optional.of(user));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(userProjectAssignmentService.hasAnyMembership(user.getId())).thenReturn(true);
 
         assertThatThrownBy(() -> service.deleteUnassignedUser(user.getId(), "admin@floor21.com"))
@@ -115,14 +124,26 @@ class AdminUserServiceUsersPageTest {
     }
 
     @Test
+    void deleteUnassignedUser_rejectsUserWithBuildingAccess() {
+        User user = unassignedUser("Alpha Co", "Alpha User");
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userProjectAssignmentService.hasAnyMembership(user.getId())).thenReturn(false);
+        when(userBuildingAssignmentRepository.countByUser_Id(user.getId())).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.deleteUnassignedUser(user.getId(), "admin@floor21.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("building access");
+    }
+
+    @Test
     void listUsersPage_filtersBySearchAndActive() {
         when(builderRepository.findAllPlatformAdminsOrderByEmailAsc()).thenReturn(List.of());
         User active = unassignedUser("Alpha Co", "Alpha User");
         User inactive = unassignedUser("Beta Co", "Beta User");
         inactive.setActive(false);
-        when(userRepository.findByBuilderIsNullOrderByFullNameAsc()).thenReturn(List.of(active, inactive));
         when(userRepository.findAllByOrderByFullNameAsc()).thenReturn(List.of(active, inactive));
-        when(userProjectAssignmentService.hasAnyMembership(any())).thenReturn(false);
+        stubUnassignedUser(active);
+        stubUnassignedUser(inactive);
 
         Page<PlatformUserView> searchPage =
                 service.listUsersPage(0, 25, "companyName", "asc", "alpha", null, null);
@@ -133,6 +154,20 @@ class AdminUserServiceUsersPageTest {
                 service.listUsersPage(0, 25, "companyName", "asc", null, true, null);
         assertThat(activePage.getTotalElements()).isEqualTo(1);
         assertThat(activePage.getContent().get(0).companyName()).isEqualTo("Alpha Co");
+    }
+
+    private void stubUnassignedUser(User user) {
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userProjectAssignmentService.listMemberships(user.getId())).thenReturn(List.of());
+        stubDeletableChecks(user.getId());
+    }
+
+    private void stubDeletableChecks(UUID userId) {
+        when(userProjectAssignmentService.hasAnyMembership(userId)).thenReturn(false);
+        when(userBuildingAssignmentRepository.countByUser_Id(userId)).thenReturn(0L);
+        when(partnerFlatAssignmentRepository.countByUser_Id(userId)).thenReturn(0L);
+        when(userBuildingVaultAccessRepository.countByUser_Id(userId)).thenReturn(0L);
+        when(bookingRepository.countByExecutive_Id(userId)).thenReturn(0L);
     }
 
     private static User unassignedUser(String company, String fullName) {

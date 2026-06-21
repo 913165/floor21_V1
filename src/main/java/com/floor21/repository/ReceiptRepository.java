@@ -79,4 +79,6 @@ public interface ReceiptRepository extends JpaRepository<Receipt, UUID> {
     long countByBooking_IdAndBuilder_Id(UUID bookingId, UUID builderId);
 
     void deleteByBooking_IdAndBuilder_Id(UUID bookingId, UUID builderId);
+
+    void deleteByBuilder_Id(UUID builderId);
 }

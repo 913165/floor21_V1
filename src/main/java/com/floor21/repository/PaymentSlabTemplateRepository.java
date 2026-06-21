@@ -20,4 +20,8 @@ public interface PaymentSlabTemplateRepository extends JpaRepository<PaymentSlab
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM PaymentSlabTemplate t WHERE t.building.id = :buildingId")
     void deleteByBuilding_Id(@Param("buildingId") UUID buildingId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM PaymentSlabTemplate t WHERE t.builder.id = :builderId")
+    void deleteByBuilder_Id(@Param("builderId") UUID builderId);
 }

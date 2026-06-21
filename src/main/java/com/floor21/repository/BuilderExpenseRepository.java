@@ -18,4 +18,6 @@ public interface BuilderExpenseRepository extends JpaRepository<BuilderExpense, 
     @Query(
             "select coalesce(sum(e.amount), 0) from BuilderExpense e where e.builder.id = :builderId")
     BigDecimal sumAmountByBuilderId(@Param("builderId") UUID builderId);
+
+    void deleteByBuilder_Id(UUID builderId);
 }

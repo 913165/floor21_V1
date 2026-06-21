@@ -7,6 +7,9 @@ import com.floor21.entity.User;
 import com.floor21.entity.UserProjectAssignment;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuilderRepository;
+import com.floor21.repository.PartnerFlatAssignmentRepository;
+import com.floor21.repository.UserBuildingAssignmentRepository;
+import com.floor21.repository.UserBuildingVaultAccessRepository;
 import com.floor21.repository.UserRepository;
 import com.floor21.util.UserContactFields;
 import java.time.Instant;
@@ -47,6 +50,9 @@ public class AdminUserService {
     private final BuilderRepository builderRepository;
     private final UserRepository userRepository;
     private final BookingRepository bookingRepository;
+    private final UserBuildingAssignmentRepository userBuildingAssignmentRepository;
+    private final PartnerFlatAssignmentRepository partnerFlatAssignmentRepository;
+    private final UserBuildingVaultAccessRepository userBuildingVaultAccessRepository;
     private final StaffBuildingAccessService staffBuildingAccessService;
     private final UserProjectAssignmentService userProjectAssignmentService;
     private final PasswordEncoder passwordEncoder;
@@ -114,24 +120,42 @@ public class AdminUserService {
             rows.add(PlatformUserView.fromPlatformAdmin(platformAdmin));
         }
         Set<UUID> seen = new LinkedHashSet<>();
-        for (User user : userRepository.findByBuilderIsNullOrderByFullNameAsc()) {
-            if (userProjectAssignmentService.hasAnyMembership(user.getId())) {
+        for (User user : userRepository.findAllByOrderByFullNameAsc()) {
+            if (user.getBuilder() != null && user.getBuilder().isPlatformAdmin()) {
                 continue;
             }
-            rows.add(PlatformUserView.unassigned(user));
-            seen.add(user.getId());
-        }
-        for (User user : userRepository.findAllByOrderByFullNameAsc()) {
             if (seen.contains(user.getId())) {
                 continue;
             }
             List<UserProjectAssignment> memberships = userProjectAssignmentService.listMemberships(user.getId());
             if (memberships.isEmpty()) {
-                continue;
+                rows.add(PlatformUserView.unassigned(user, canSuperAdminDeleteUser(user.getId())));
+            } else {
+                rows.add(toPlatformUserView(user, memberships));
             }
-            rows.add(toPlatformUserView(user, memberships));
+            seen.add(user.getId());
         }
         return rows;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canSuperAdminDeleteUser(UUID userId) {
+        if (userRepository.findById(userId).filter(this::isStaffUserRecord).isEmpty()) {
+            return false;
+        }
+        if (userProjectAssignmentService.hasAnyMembership(userId)) {
+            return false;
+        }
+        if (userBuildingAssignmentRepository.countByUser_Id(userId) > 0) {
+            return false;
+        }
+        if (partnerFlatAssignmentRepository.countByUser_Id(userId) > 0) {
+            return false;
+        }
+        if (userBuildingVaultAccessRepository.countByUser_Id(userId) > 0) {
+            return false;
+        }
+        return bookingRepository.countByExecutive_Id(userId) == 0;
     }
 
     public static String normalizeUsersSort(String sort) {
@@ -226,17 +250,35 @@ public class AdminUserService {
     @Transactional
     public void deleteUnassignedUser(UUID userId, String actor) {
         User user = requireUser(userId);
-        if (userProjectAssignmentService.hasAnyMembership(userId)) {
-            throw new IllegalArgumentException(
-                    "Cannot delete a user who is assigned to a project. Remove them from the project first.");
-        }
-        if (bookingRepository.countByExecutive_Id(userId) > 0) {
-            throw new IllegalArgumentException(
-                    "Cannot delete this user because they are linked to bookings.");
+        if (!canSuperAdminDeleteUser(userId)) {
+            throw new IllegalArgumentException(buildDeleteBlockedMessage(userId));
         }
         String email = user.getEmail();
         userRepository.delete(user);
         auditService.log("USER_DELETED", "user", userId.toString(), null, actor + " deleted " + email);
+    }
+
+    private String buildDeleteBlockedMessage(UUID userId) {
+        if (userProjectAssignmentService.hasAnyMembership(userId)) {
+            return "Cannot delete a user who is assigned to a project. Remove them from the project first.";
+        }
+        if (userBuildingAssignmentRepository.countByUser_Id(userId) > 0) {
+            return "Cannot delete this user because they still have building access assigned.";
+        }
+        if (partnerFlatAssignmentRepository.countByUser_Id(userId) > 0) {
+            return "Cannot delete this user because they are assigned to partner flats.";
+        }
+        if (userBuildingVaultAccessRepository.countByUser_Id(userId) > 0) {
+            return "Cannot delete this user because they still have vault access assigned.";
+        }
+        if (bookingRepository.countByExecutive_Id(userId) > 0) {
+            return "Cannot delete this user because they are linked to bookings.";
+        }
+        return "This user cannot be deleted.";
+    }
+
+    private boolean isStaffUserRecord(User user) {
+        return user.getBuilder() == null || !user.getBuilder().isPlatformAdmin();
     }
 
     @Transactional

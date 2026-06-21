@@ -74,4 +74,6 @@ public interface VaultEntryRepository extends JpaRepository<VaultEntry, UUID> {
     long countByBooking_Id(UUID bookingId);
 
     void deleteByBooking_Id(UUID bookingId);
+
+    void deleteByBuilder_Id(UUID builderId);
 }

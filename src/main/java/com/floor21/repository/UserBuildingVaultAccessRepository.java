@@ -44,4 +44,6 @@ public interface UserBuildingVaultAccessRepository
             """)
     void deleteByUser_IdAndBuilding_Builder_Id(
             @Param("userId") UUID userId, @Param("builderId") UUID builderId);
+
+    long countByUser_Id(UUID userId);
 }

@@ -124,6 +124,8 @@ public class AdminUserController {
         model.addAttribute("assignedToProject", assignedToProject);
         if (assignedToProject) {
             model.addAttribute("assignedProjectName", userProjectAssignmentService.formatProjectNames(staff.getId()));
+        } else if (staff.getId() != null) {
+            model.addAttribute("deletableUser", adminUserService.canSuperAdminDeleteUser(staff.getId()));
         }
         return "admin/users/form";
     }

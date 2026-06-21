@@ -10,4 +10,6 @@ public interface CancellationRepository extends JpaRepository<Cancellation, UUID
     List<Cancellation> findByBuilder_IdOrderByCancelDateDesc(UUID builderId);
 
     void deleteByBooking_Id(UUID bookingId);
+
+    void deleteByBuilder_Id(UUID builderId);
 }

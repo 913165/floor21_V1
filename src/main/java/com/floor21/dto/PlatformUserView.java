@@ -19,12 +19,8 @@ public record PlatformUserView(
         UUID builderId,
         String builderCompanyName,
         List<UUID> projectIds,
-        boolean platformAdminAccount) {
-
-    /** Staff account with no project membership; safe to delete from user management. */
-    public boolean deletable() {
-        return !platformAdminAccount && projectIds.isEmpty();
-    }
+        boolean platformAdminAccount,
+        boolean deletable) {
 
     public static PlatformUserView from(
             User user, String projectNames, String role, List<String> buildingAccess, List<UUID> projectIds) {
@@ -41,6 +37,7 @@ public record PlatformUserView(
                 null,
                 projectNames,
                 projectIds,
+                false,
                 false);
     }
 
@@ -54,7 +51,7 @@ public record PlatformUserView(
                 projectIds);
     }
 
-    public static PlatformUserView unassigned(User user) {
+    public static PlatformUserView unassigned(User user, boolean deletable) {
         return new PlatformUserView(
                 user.getId(),
                 user.getFullName(),
@@ -68,7 +65,8 @@ public record PlatformUserView(
                 null,
                 "—",
                 List.of(),
-                false);
+                false,
+                deletable);
     }
 
     /** Platform super-admin login stored on {@code builders} (not {@code users}). */
@@ -86,7 +84,8 @@ public record PlatformUserView(
                 null,
                 "—",
                 List.of(),
-                true);
+                true,
+                false);
     }
 
     private static String displayCompanyName(User user) {

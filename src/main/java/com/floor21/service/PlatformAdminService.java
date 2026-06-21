@@ -13,14 +13,21 @@ import com.floor21.repository.BankRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BrokerRepository;
+import com.floor21.repository.BuilderExpenseRepository;
 import com.floor21.repository.BuilderRepository;
+import com.floor21.repository.CancellationRepository;
 import com.floor21.repository.ClientRepository;
+import com.floor21.repository.ExtraExpenseRepository;
 import com.floor21.repository.FlatRepository;
+import com.floor21.repository.PaymentSlabTemplateRepository;
 import com.floor21.repository.PlatformAuditLogRepository;
+import com.floor21.repository.ReceiptRepository;
 import com.floor21.repository.SlabRepository;
 import com.floor21.repository.UserBuildingVaultAccessRepository;
 import com.floor21.repository.UserProjectAssignmentRepository;
 import com.floor21.repository.UserRepository;
+import com.floor21.repository.VaultBookingProfileRepository;
+import com.floor21.repository.VaultEntryRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.YearMonth;
@@ -65,6 +72,13 @@ public class PlatformAdminService {
     private final ClientRepository clientRepository;
     private final BrokerRepository brokerRepository;
     private final BankRepository bankRepository;
+    private final ReceiptRepository receiptRepository;
+    private final VaultEntryRepository vaultEntryRepository;
+    private final BuilderExpenseRepository builderExpenseRepository;
+    private final CancellationRepository cancellationRepository;
+    private final ExtraExpenseRepository extraExpenseRepository;
+    private final VaultBookingProfileRepository vaultBookingProfileRepository;
+    private final PaymentSlabTemplateRepository paymentSlabTemplateRepository;
     private final UserProjectAssignmentRepository userProjectAssignmentRepository;
     private final PlatformAuditLogRepository auditLogRepository;
     private final PlatformAuditService auditService;
@@ -323,6 +337,7 @@ public class PlatformAdminService {
                     "Cannot delete a project that has active bookings.");
         }
         removePartnersForProject(id);
+        purgeProjectOperationalData(id);
         String projectName = builder.getCompanyName();
         slabRepository.deleteByBuilder_Id(id);
         clientRepository.deleteByBuilder_Id(id);
@@ -350,6 +365,16 @@ public class PlatformAdminService {
             user.setBuilder(null);
             userRepository.save(user);
         }
+    }
+
+    private void purgeProjectOperationalData(UUID builderId) {
+        vaultEntryRepository.deleteByBuilder_Id(builderId);
+        builderExpenseRepository.deleteByBuilder_Id(builderId);
+        receiptRepository.deleteByBuilder_Id(builderId);
+        cancellationRepository.deleteByBuilder_Id(builderId);
+        extraExpenseRepository.deleteByBuilder_Id(builderId);
+        vaultBookingProfileRepository.deleteByBuilder_Id(builderId);
+        paymentSlabTemplateRepository.deleteByBuilder_Id(builderId);
     }
 
     /** Dashboard list only needs name/city; avoids per-builder count queries. */
