@@ -158,11 +158,8 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
-    public boolean canPlatformAdminManageUnassignedPartnerBooking(Booking booking) {
-        if (booking == null || booking.getFlat() == null) {
-            return false;
-        }
-        return partnerFlatAllocationService.isFlatPartnerUnassigned(booking.getFlat().getId());
+    public boolean canPlatformAdminManageBookingWithoutExecutive(Booking booking) {
+        return booking != null && booking.getExecutive() == null;
     }
 
     @Transactional(readOnly = true)
@@ -335,17 +332,21 @@ public class BookingService {
         if (!canViewAllBookings() && !isOwnedByCurrentStaff(booking)) {
             throw new ResourceNotFoundException("Booking not found");
         }
+        if (canPlatformAdminManageBookingWithoutExecutive(booking)) {
+            deleteBookingRecords(booking, builderId, true);
+            return;
+        }
         deleteCancelledBooking(booking, builderId);
     }
 
     @Transactional
-    public void removeCancelledForPlatformAdmin(UUID id) {
+    public void removeForPlatformAdminWithoutExecutive(UUID id) {
         Booking booking = getForPlatformAdmin(id);
-        if (!canPlatformAdminManageUnassignedPartnerBooking(booking)) {
+        if (!canPlatformAdminManageBookingWithoutExecutive(booking)) {
             throw new IllegalArgumentException(
-                    "Platform admin can only remove cancelled bookings on flats with no partner assigned.");
+                    "Platform admin can only remove bookings with no executive (Booked by) assigned.");
         }
-        deleteCancelledBooking(booking, booking.getBuilder().getId());
+        deleteBookingRecords(booking, booking.getBuilder().getId(), true);
     }
 
     private void deleteCancelledBooking(Booking booking, UUID builderId) {
@@ -353,16 +354,37 @@ public class BookingService {
         if (!"CANCELLED".equals(booking.getStatus())) {
             throw new IllegalArgumentException("Only cancelled bookings can be removed.");
         }
-        if (receiptRepository.countByBooking_IdAndBuilder_Id(id, builderId) > 0) {
-            throw new IllegalArgumentException(
-                    "This booking has payment receipts. Remove cannot proceed while receipts exist.");
+        deleteBookingRecords(booking, builderId, false);
+    }
+
+    private void deleteBookingRecords(Booking booking, UUID builderId, boolean cascadeFinancialRecords) {
+        UUID id = booking.getId();
+        if (!cascadeFinancialRecords) {
+            if (receiptRepository.countByBooking_IdAndBuilder_Id(id, builderId) > 0) {
+                throw new IllegalArgumentException(
+                        "This booking has payment receipts. Remove cannot proceed while receipts exist.");
+            }
+            if (vaultEntryRepository.countByBooking_Id(id) > 0) {
+                throw new IllegalArgumentException(
+                        "This booking has vault entries. Remove cannot proceed while vault records exist.");
+            }
         }
-        if (vaultEntryRepository.countByBooking_Id(id) > 0) {
-            throw new IllegalArgumentException(
-                    "This booking has vault entries. Remove cannot proceed while vault records exist.");
+
+        if ("ACTIVE".equals(booking.getStatus())) {
+            if (!cascadeFinancialRecords) {
+                throw new IllegalArgumentException("Only cancelled bookings can be removed.");
+            }
+            Flat flat = booking.getFlat();
+            if (flat != null) {
+                flat.setStatus("AVAILABLE");
+                flatRepository.save(flat);
+            }
+        } else if (!"CANCELLED".equals(booking.getStatus())) {
+            throw new IllegalArgumentException("Only active or cancelled bookings can be removed.");
         }
 
         bookingSlabPaymentRepository.deleteAllForBooking(id);
+        receiptRepository.deleteByBooking_IdAndBuilder_Id(id, builderId);
         bookingPaymentSlabRepository.deleteByBooking_Id(id);
         vaultBookingProfileRepository.deleteById(id);
         vaultEntryRepository.deleteByBooking_Id(id);

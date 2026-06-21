@@ -5,7 +5,10 @@
 <body>
 <div th:fragment="content" th:with="dfmt=${T(com.floor21.util.Floor21DateFormatter)}">
   <div class="alert alert-info py-2" th:if="${platformAdminView}">
-    Read-only for platform admin, except <strong>cancel / remove</strong> on bookings whose flat has <strong>no partner assigned</strong> (partner allocation active for that building).
+    Read-only for platform admin, except <strong>cancel / delete</strong> on bookings with no <strong>Booked by</strong> user assigned (related receipts are removed too).
+  </div>
+  <div class="alert alert-info py-2" th:unless="${platformAdminView or readonlyView}">
+    Bookings with no <strong>Booked by</strong> user can be deleted; related receipts and payment records are removed with the booking.
   </div>
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <h1 class="h3 mb-0" th:text="${pageTitle}">Bookings</h1>
@@ -50,7 +53,7 @@
     <div class="col-md-5 col-lg-4">
       <label class="form-label small mb-1" for="booking-search-q">Search</label>
       <input class="form-control form-control-sm" id="booking-search-q" name="q" th:value="${filterSearch}"
-             placeholder="Code, client, flat, building, project" autocomplete="off" spellcheck="false"/>
+             placeholder="Code, client, flat, building, project, user" autocomplete="off" spellcheck="false"/>
     </div>
     <div class="col-auto">
       <button class="btn btn-primary btn-sm" type="submit">Filter</button>
@@ -68,6 +71,7 @@
         <th>Code</th>
         <th>Date</th>
         <th>Client</th>
+        <th th:if="${platformAdminView}">Booked by</th>
         <th>Building</th>
         <th>Flat</th>
         <th>Status</th>
@@ -81,6 +85,9 @@
         <td th:text="${b.bookingCode}"></td>
         <td th:text="${dfmt.formatDisplay(b.bookingDate)}"></td>
         <td th:text="${@bookingOwnerService.ownersDisplayName(b.id)}"></td>
+        <td th:if="${platformAdminView}"
+            th:classappend="${b.executive == null} ? 'text-muted'"
+            th:text="${b.executive != null ? b.executive.fullName : '—'}">—</td>
         <td>
           <a th:if="${b.flat != null and b.flat.building != null}"
              class="link-primary"
@@ -101,9 +108,17 @@
           <a class="btn btn-sm btn-outline-primary"
              th:href="@{/bookings/{id}(id=${b.id}, projectId=${filterProjectId})}">View</a>
           <form class="d-inline"
-                th:if="${(!readonlyView or @bookingService.canPlatformAdminManageUnassignedPartnerBooking(b)) and b.status == 'CANCELLED'}"
+                th:if="${b.executive == null and b.status == 'ACTIVE' and (platformAdminView or !readonlyView)}"
                 th:action="@{/bookings/{id}/remove(id=${b.id})}" method="post"
-                th:attr="onsubmit=|return confirm('Remove booking ${b.bookingCode} permanently? This cannot be undone.');|">
+                th:attr="onsubmit=|return confirm('Delete booking ${b.bookingCode} permanently? All related receipts and payment records will also be removed.');|">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+            <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+          </form>
+          <form class="d-inline"
+                th:if="${b.status == 'CANCELLED' and (b.executive == null ? (platformAdminView or !readonlyView) : (!readonlyView or @bookingService.canPlatformAdminManageBookingWithoutExecutive(b)))}"
+                th:action="@{/bookings/{id}/remove(id=${b.id})}" method="post"
+                th:attr="onsubmit=${b.executive == null} ? |return confirm('Remove booking ${b.bookingCode} permanently? All related receipts and payment records will also be removed.');| : |return confirm('Remove booking ${b.bookingCode} permanently? This cannot be undone.');|">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
             <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
             <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
@@ -111,7 +126,7 @@
         </td>
       </tr>
       <tr th:if="${#lists.isEmpty(bookings)}">
-        <td th:colspan="${platformAdminView ? 8 : 7}"
+        <td th:colspan="${platformAdminView ? 9 : 7}"
             class="text-muted text-center py-4">No bookings found.</td>
       </tr>
       </tbody>

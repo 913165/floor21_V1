@@ -24,7 +24,6 @@ public class CancellationService {
     private final CancellationRepository cancellationRepository;
     private final BookingRepository bookingRepository;
     private final FlatRepository flatRepository;
-    private final PartnerFlatAllocationService partnerFlatAllocationService;
 
     @Transactional(readOnly = true)
     public List<Cancellation> list() {
@@ -48,10 +47,9 @@ public class CancellationService {
                 bookingRepository
                         .findByIdForPlatformAdminView(bookingId)
                         .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
-        if (!partnerFlatAllocationService.isFlatPartnerUnassigned(
-                booking.getFlat() != null ? booking.getFlat().getId() : null)) {
+        if (booking.getExecutive() != null) {
             throw new IllegalArgumentException(
-                    "Platform admin can only cancel bookings on flats with no partner assigned.");
+                    "Platform admin can only cancel bookings with no executive (Booked by) assigned.");
         }
         applyCancellation(booking, cancelDate, reason, refund);
     }

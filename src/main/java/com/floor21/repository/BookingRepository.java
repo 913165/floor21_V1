@@ -18,6 +18,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     @Query(
             value =
                     "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                            + "left join fetch b.executive "
                             + "where b.builder.id = :builderId order by b.bookingDate desc, b.createdAt desc",
             countQuery = "select count(b) from Booking b where b.builder.id = :builderId")
     Page<Booking> findByBuilder_IdForListUi(@Param("builderId") UUID builderId, Pageable pageable);
@@ -25,13 +26,14 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     @Query(
             value =
                     "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
+                            + "left join fetch b.executive "
                             + "where b.builder.id = :builderId order by b.bookingDate desc, b.createdAt desc")
     List<Booking> findByBuilder_IdForListUi(@Param("builderId") UUID builderId);
 
     @Query(
             value =
                     "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
-                            + "join fetch b.builder br where br.platformAdmin = false "
+                            + "left join fetch b.executive join fetch b.builder br where br.platformAdmin = false "
                             + "order by lower(br.companyName), b.bookingDate desc, b.createdAt desc",
             countQuery =
                     "select count(b) from Booking b join b.builder br where br.platformAdmin = false")
@@ -40,14 +42,14 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     @Query(
             value =
                     "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
-                            + "join fetch b.builder br where br.platformAdmin = false "
+                            + "left join fetch b.executive join fetch b.builder br where br.platformAdmin = false "
                             + "order by lower(br.companyName), b.bookingDate desc, b.createdAt desc")
     List<Booking> findAllForPlatformAdminListUi();
 
     @Query(
             value =
                     "select b from Booking b join fetch b.client c join fetch b.flat f join fetch f.building bl "
-                            + "join fetch b.builder br where br.platformAdmin = false and ("
+                            + "left join fetch b.executive join fetch b.builder br where br.platformAdmin = false and ("
                             + "lower(b.bookingCode) like lower(concat('%', :q, '%')) or "
                             + "lower(concat(coalesce(c.firstName, ''), ' ', coalesce(c.lastName, ''))) like "
                             + "lower(concat('%', :q, '%')) or "
@@ -69,6 +71,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     @Query(
             value =
                     "select b from Booking b join fetch b.client c join fetch b.flat f join fetch f.building bl "
+                            + "left join fetch b.executive "
                             + "where b.builder.id = :builderId and ("
                             + "lower(b.bookingCode) like lower(concat('%', :q, '%')) or "
                             + "lower(concat(coalesce(c.firstName, ''), ' ', coalesce(c.lastName, ''))) like "
@@ -102,7 +105,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     @Query(
             "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building "
-                    + "join fetch b.builder br where b.id = :id and br.platformAdmin = false")
+                    + "left join fetch b.executive join fetch b.builder br where b.id = :id and br.platformAdmin = false")
     Optional<Booking> findByIdForPlatformAdminView(@Param("id") UUID id);
 
     @Query(

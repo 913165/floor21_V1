@@ -4,7 +4,6 @@ import com.floor21.entity.Booking;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.service.BookingService;
 import com.floor21.service.CancellationService;
-import com.floor21.service.PartnerFlatAllocationService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -25,7 +24,6 @@ public class CancellationController {
 
     private final CancellationService cancellationService;
     private final BookingService bookingService;
-    private final PartnerFlatAllocationService partnerFlatAllocationService;
 
     @GetMapping("/cancellations")
     public String list(Model model) {
@@ -38,12 +36,10 @@ public class CancellationController {
     public String cancelForm(@PathVariable UUID id, Model model, RedirectAttributes ra) {
         Booking booking =
                 isPlatformAdmin() ? bookingService.getForPlatformAdmin(id) : bookingService.get(id);
-        if (isPlatformAdmin()
-                && !partnerFlatAllocationService.isFlatPartnerUnassigned(
-                        booking.getFlat() != null ? booking.getFlat().getId() : null)) {
+        if (isPlatformAdmin() && booking.getExecutive() != null) {
             ra.addFlashAttribute(
                     "errorMessage",
-                    "Platform admin can only cancel bookings on flats with no partner assigned.");
+                    "Platform admin can only cancel bookings with no executive (Booked by) assigned.");
             return "redirect:/bookings/" + id;
         }
         model.addAttribute("pageTitle", "Cancel Booking");

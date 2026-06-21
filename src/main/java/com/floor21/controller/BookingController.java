@@ -196,7 +196,7 @@ public class BookingController {
         model.addAttribute("ownersDisplayName", bookingOwnerService.ownersDisplayName(booking));
         model.addAttribute(
                 "platformAdminCanManageBooking",
-                platformAdminView && bookingService.canPlatformAdminManageUnassignedPartnerBooking(booking));
+                platformAdminView && bookingService.canPlatformAdminManageBookingWithoutExecutive(booking));
         return "bookings/detail";
     }
 
@@ -249,7 +249,7 @@ public class BookingController {
             RedirectAttributes ra) {
         try {
             if (isPlatformAdmin()) {
-                bookingService.removeCancelledForPlatformAdmin(id);
+                bookingService.removeForPlatformAdminWithoutExecutive(id);
             } else {
                 bookingService.removeCancelled(id);
             }
