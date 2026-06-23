@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class VaultPinService {
+public class DocsLockerPinService {
 
     private static final Pattern PIN_PATTERN = Pattern.compile("^\\d{4,8}$");
 
@@ -24,14 +24,14 @@ public class VaultPinService {
 
     @Transactional(readOnly = true)
     public boolean hasPinConfigured() {
-        String hash = findBuilder().getVaultPinHash();
+        String hash = findBuilder().getDocsLockerPinHash();
         return hash != null && !hash.isBlank();
     }
 
     @Transactional(readOnly = true)
     public boolean verifyPin(String pin) {
         Builder builder = findBuilder();
-        String hash = builder.getVaultPinHash();
+        String hash = builder.getDocsLockerPinHash();
         if (hash == null || hash.isBlank()) {
             return false;
         }
@@ -42,34 +42,33 @@ public class VaultPinService {
     @Transactional
     public void setPin(String pin) {
         validatePinFormat(pin);
-        assertDistinctFromPin1(pin);
+        assertDistinctFromPin2(pin);
         Builder builder = findBuilder();
-        builder.setVaultPinHash(passwordEncoder.encode(pin));
+        builder.setDocsLockerPinHash(passwordEncoder.encode(pin));
         builderRepository.save(builder);
     }
 
     @Transactional
     public void changePin(String currentPin, String newPin) {
         if (!verifyPin(currentPin)) {
-            throw new IllegalArgumentException("Current PIN2 is incorrect.");
+            throw new IllegalArgumentException("Current PIN1 is incorrect.");
         }
         if (currentPin.equals(newPin)) {
-            throw new IllegalArgumentException("New PIN must be different from the current PIN2.");
+            throw new IllegalArgumentException("New PIN must be different from the current PIN1.");
         }
         setPin(newPin);
     }
 
-    /** Resets PIN2 after verifying the signed-in user's login password. */
     @Transactional
     public void resetPinWithAccountPassword(String accountPassword, String newPin) {
         verifyAccountPassword(accountPassword);
         validatePinFormat(newPin);
-        assertDistinctFromPin1(newPin);
+        assertDistinctFromPin2(newPin);
         if (hasPinConfigured() && verifyPin(newPin)) {
-            throw new IllegalArgumentException("New PIN must be different from the current PIN2.");
+            throw new IllegalArgumentException("New PIN must be different from the current PIN1.");
         }
         Builder builder = findBuilder();
-        builder.setVaultPinHash(passwordEncoder.encode(newPin));
+        builder.setDocsLockerPinHash(passwordEncoder.encode(newPin));
         builderRepository.save(builder);
     }
 
@@ -79,7 +78,7 @@ public class VaultPinService {
         }
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof Floor21UserPrincipal principal)) {
-            throw new IllegalStateException("You must be signed in to change PIN2.");
+            throw new IllegalStateException("You must be signed in to change PIN1.");
         }
         if (!passwordEncoder.matches(accountPassword, principal.getPassword())) {
             throw new IllegalArgumentException("Account password is incorrect.");
@@ -88,14 +87,14 @@ public class VaultPinService {
 
     public static void validatePinFormat(String pin) {
         if (pin == null || !PIN_PATTERN.matcher(pin.trim()).matches()) {
-            throw new IllegalArgumentException("PIN2 must be 4–8 digits.");
+            throw new IllegalArgumentException("PIN1 must be 4–8 digits.");
         }
     }
 
-    private void assertDistinctFromPin1(String pin) {
-        String pin1Hash = findBuilder().getDocsLockerPinHash();
-        if (pin1Hash != null && !pin1Hash.isBlank() && passwordEncoder.matches(pin, pin1Hash)) {
-            throw new IllegalArgumentException("PIN2 must be different from PIN1.");
+    private void assertDistinctFromPin2(String pin) {
+        String pin2Hash = findBuilder().getVaultPinHash();
+        if (pin2Hash != null && !pin2Hash.isBlank() && passwordEncoder.matches(pin, pin2Hash)) {
+            throw new IllegalArgumentException("PIN1 must be different from PIN2.");
         }
     }
 

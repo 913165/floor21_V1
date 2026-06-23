@@ -27,6 +27,12 @@ public record FlatGridFlatDto(
         /** Secondary line: phone, email, or booking code (booked only). */
         String ownerDetail,
         String bookingCode,
+        /** Active booking id when status is BOOKED; null otherwise. */
+        UUID bookingId,
+        /** Agreement consideration received (receipts); booked flats only. */
+        BigDecimal paymentReceived,
+        /** Agreement balance remaining; booked flats only. */
+        BigDecimal remainingBalance,
         String buyerPhone,
         String buyerEmail,
         /** Space-separated CSS classes for the card (includes {@code flat-card}). */

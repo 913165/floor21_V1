@@ -1,8 +1,8 @@
 package com.floor21.interceptor;
 
-import com.floor21.service.VaultAccessService;
+import com.floor21.security.DocsLockerSession;
 import com.floor21.security.TenantContext;
-import com.floor21.security.VaultSession;
+import com.floor21.service.VaultAccessService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -15,7 +15,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
 @RequiredArgsConstructor
-public class VaultAccessInterceptor implements HandlerInterceptor {
+public class DocsLockerAccessInterceptor implements HandlerInterceptor {
 
     private final VaultAccessService vaultAccessService;
 
@@ -30,7 +30,7 @@ public class VaultAccessInterceptor implements HandlerInterceptor {
         if (contextPath != null && !contextPath.isEmpty() && path.startsWith(contextPath)) {
             path = path.substring(contextPath.length());
         }
-        if (!path.startsWith("/vault")) {
+        if (!path.startsWith("/docs-locker")) {
             return true;
         }
         if (!vaultAccessService.canCurrentUserAccessVault()) {
@@ -38,14 +38,7 @@ public class VaultAccessInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        if (path.equals("/vault/unlock")
-                || path.startsWith("/vault/unlock/")
-                || path.equals("/vault/pins")
-                || path.startsWith("/vault/pins/")
-                || path.equals("/vault/change-pin")
-                || path.startsWith("/vault/change-pin/")
-                || path.equals("/vault/reset-pin")
-                || path.startsWith("/vault/reset-pin/")) {
+        if (path.equals("/docs-locker/change-pin") || path.startsWith("/docs-locker/change-pin/")) {
             return true;
         }
 
@@ -57,7 +50,7 @@ public class VaultAccessInterceptor implements HandlerInterceptor {
 
         HttpSession session = request.getSession(false);
         Duration maxAge = Duration.ofMinutes(unlockTimeoutMinutes);
-        if (VaultSession.isUnlocked(session, builderId, maxAge)) {
+        if (DocsLockerSession.isUnlocked(session, builderId, maxAge)) {
             return true;
         }
 

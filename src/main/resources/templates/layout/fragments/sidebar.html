@@ -75,7 +75,7 @@
        th:if="${vaultMenuVisible}"
        th:href="@{/vault}"
        data-nav-prefix="/vault"
-       th:classappend="${#strings.startsWith(path, '/vault')} ? ' is-active' : ''">Vault</a>
+       th:classappend="${#strings.startsWith(path, '/docs-locker') or (#strings.startsWith(path, '/vault') and path != '/vault/unlock' and path != '/vault/pins' and !#strings.startsWith(path, '/vault/pins/') and !#strings.startsWith(path, '/vault/reset-pin') and !#strings.startsWith(path, '/vault/change-pin'))} ? ' is-active' : ''">Vault</a>
     <a class="floor21-nav__link floor21-nav__link--expenses" data-turbo-frame="floor21-main" sec:authorize="hasRole('BUILDER_ADMIN')"
        th:href="@{/expenses}"
        data-nav-prefix="/expenses"

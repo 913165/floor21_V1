@@ -7,33 +7,55 @@
   <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
 
   <h1 class="h3 mb-2" th:text="${pageTitle}">Vault config</h1>
-  <p class="text-muted small mb-4">
-    Vault is <strong>off by default</strong> for everyone. Access is only what you add here: one
-    <strong>user</strong> + one <strong>building</strong>, then <strong>Save</strong>.
+  <p class="text-muted small mb-4" th:if="${!tenantScope}">
+    Vault is <strong>off by default</strong> for everyone. Choose <strong>project</strong>, then
+    <strong>building</strong>, then <strong>user</strong>, click <strong>Add to list</strong>, and
+    <strong>Save</strong>. Use <strong>Edit</strong> on a row to change building or user, or the table
+    filter to focus on one project.
+  </p>
+  <p class="text-muted small mb-4" th:if="${tenantScope}">
+    Choose a <strong>building</strong> and <strong>user</strong> for this project, click
+    <strong>Add to list</strong>, then <strong>Save</strong>. Partners need a row here before they
+    can use Vault.
   </p>
 
-  <form th:action="@{/admin/vault-config}" method="post" id="vault-config-form">
+  <form th:action="@{${formAction}}" method="post" id="vault-config-form"
+        th:attr="data-tenant-scope=${tenantScope},
+                 data-preselected-project-id=${selectedProjectId}">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
     <div class="row g-2 align-items-end mb-3">
-      <div class="col-md-5">
-        <label class="form-label small" for="vault-user-picker">User</label>
-        <select class="form-select" id="vault-user-picker">
-          <option value="">— Select user —</option>
-          <option th:each="u : ${cfg.users()}"
-                  th:value="${u.id()}"
-                  th:attr="data-builder-id=${u.builderId()}"
-                  th:text="${u.label()}">User</option>
+      <div class="col-md-3" th:if="${!tenantScope}">
+        <label class="form-label small" for="vault-project-picker">Project</label>
+        <select class="form-select" id="vault-project-picker">
+          <option value="">— Select project —</option>
+          <option th:each="p : ${cfg.projects()}"
+                  th:value="${p.id()}"
+                  th:attr="data-builder-id=${p.builderId()}"
+                  th:text="${p.label()}">Project</option>
         </select>
       </div>
-      <div class="col-md-5">
+      <div class="col-md-3" th:if="${tenantScope and !#lists.isEmpty(cfg.projects())}">
+        <label class="form-label small">Project</label>
+        <p class="form-control-plaintext mb-0 fw-semibold" th:text="${cfg.projects()[0].label()}">Project</p>
+        <select class="form-select d-none" id="vault-project-picker" disabled>
+          <option th:each="p : ${cfg.projects()}"
+                  th:value="${p.id()}"
+                  th:selected="true"
+                  th:attr="data-builder-id=${p.builderId()}"
+                  th:text="${p.label()}">Project</option>
+        </select>
+      </div>
+      <div th:class="${tenantScope} ? 'col-md-4' : 'col-md-3'">
         <label class="form-label small" for="vault-building-picker">Building</label>
-        <select class="form-select" id="vault-building-picker">
-          <option value="">— Select building —</option>
-          <option th:each="b : ${cfg.buildings()}"
-                  th:value="${b.id()}"
-                  th:attr="data-builder-id=${b.builderId()}"
-                  th:text="${b.label()}">Building</option>
+        <select class="form-select" id="vault-building-picker" disabled>
+          <option value="">— Select project first —</option>
+        </select>
+      </div>
+      <div th:class="${tenantScope} ? 'col-md-4' : 'col-md-4'">
+        <label class="form-label small" for="vault-user-picker">User</label>
+        <select class="form-select" id="vault-user-picker" disabled>
+          <option value="">— Select project first —</option>
         </select>
       </div>
       <div class="col-md-2">
@@ -41,11 +63,37 @@
       </div>
     </div>
 
+    <template id="vault-building-options-template">
+      <option th:each="b : ${cfg.buildings()}"
+              th:value="${b.id()}"
+              th:attr="data-builder-id=${b.builderId()}"
+              th:text="${b.label()}">Building</option>
+    </template>
+    <template id="vault-user-options-template">
+      <option th:each="u : ${cfg.users()}"
+              th:value="${u.id()}"
+              th:attr="data-builder-id=${u.builderId()}"
+              th:text="${u.label()}">User</option>
+    </template>
+
     <div id="vault-grant-inputs">
       <input type="hidden"
              th:each="g : ${cfg.grants()}"
              name="grants"
              th:value="${g.userId() + '|' + g.buildingId()}"/>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-end gap-2 mb-2" th:if="${!tenantScope}">
+      <div>
+        <label class="form-label small mb-1" for="vault-grants-filter">Filter saved rows</label>
+        <select class="form-select form-select-sm" id="vault-grants-filter" style="min-width:14rem">
+          <option value="">All projects</option>
+          <option th:each="p : ${cfg.projects()}"
+                  th:value="${p.label()}"
+                  th:selected="${selectedProjectId != null && selectedProjectId == p.id()}"
+                  th:text="${p.label()}">Project</option>
+        </select>
+      </div>
     </div>
 
     <div class="table-responsive border rounded mb-3">
@@ -55,41 +103,188 @@
           <th>User</th>
           <th>Building</th>
           <th>Builder</th>
-          <th class="text-end" style="width:6rem"></th>
+          <th class="text-end" style="width:10rem">Actions</th>
         </tr>
         </thead>
         <tbody id="vault-grants-tbody">
         <tr th:each="g : ${cfg.grants()}"
             th:attr="data-user-id=${g.userId()},data-building-id=${g.buildingId()},
+                     data-builder-id=${g.builderId()},
                      data-user-label=${g.userLabel()},data-building-label=${g.buildingLabel()},
                      data-builder-name=${g.builderName()}">
           <td th:text="${g.userLabel()}">User</td>
           <td th:text="${g.buildingLabel()}">Building</td>
           <td class="small text-muted" th:text="${g.builderName()}">Builder</td>
-          <td class="text-end">
+          <td class="text-end text-nowrap">
+            <button type="button" class="btn btn-sm btn-outline-secondary vault-grant-edit me-1">Edit</button>
             <button type="button" class="btn btn-sm btn-outline-danger vault-grant-remove">Remove</button>
           </td>
         </tr>
         </tbody>
       </table>
     </div>
+    <p id="vault-edit-hint" class="text-info small mb-2 d-none">
+      Editing a row — change building or user above, then click <strong>Update row</strong>.
+      <button type="button" class="btn btn-link btn-sm p-0 align-baseline" id="vault-edit-cancel">Cancel edit</button>
+    </p>
     <p id="vault-grants-empty" class="text-muted small mb-3"
        th:classappend="${!#lists.isEmpty(cfg.grants())} ? 'd-none' : ''">
       No vault access rows yet.
     </p>
 
-    <button class="btn btn-primary" type="submit">Save</button>
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-primary" type="submit">Save</button>
+      <a class="btn btn-outline-secondary" th:if="${!tenantScope}" th:href="@{/admin/projects}">Back to projects</a>
+      <a class="btn btn-outline-secondary" th:if="${tenantScope}" th:href="@{/dashboard}">Back to dashboard</a>
+    </div>
   </form>
 
   <script>
     (function () {
+      const form = document.getElementById('vault-config-form');
       const SEP = '|';
+      const tenantScope = form && form.dataset.tenantScope === 'true';
+      const preselectedProjectId = form ? form.dataset.preselectedProjectId || '' : '';
+      const projectPicker = document.getElementById('vault-project-picker');
       const userPicker = document.getElementById('vault-user-picker');
       const buildingPicker = document.getElementById('vault-building-picker');
+      const grantsFilter = document.getElementById('vault-grants-filter');
       const addBtn = document.getElementById('vault-add-btn');
       const tbody = document.getElementById('vault-grants-tbody');
       const inputsHost = document.getElementById('vault-grant-inputs');
       const emptyMsg = document.getElementById('vault-grants-empty');
+      const editHint = document.getElementById('vault-edit-hint');
+      const editCancel = document.getElementById('vault-edit-cancel');
+      let editingGrant = null;
+
+      function readTemplateOptions(templateId) {
+        const tpl = document.getElementById(templateId);
+        if (!tpl) return [];
+        return Array.from(tpl.content.querySelectorAll('option')).map(function (opt) {
+          return {
+            value: opt.value,
+            builderId: opt.dataset.builderId || '',
+            label: opt.textContent.trim(),
+          };
+        });
+      }
+
+      const allBuildings = readTemplateOptions('vault-building-options-template');
+      const allUsers = readTemplateOptions('vault-user-options-template');
+
+      function rebuildSelect(selectEl, placeholder, items, builderId) {
+        selectEl.innerHTML = '';
+        const ph = document.createElement('option');
+        ph.value = '';
+        ph.textContent = placeholder;
+        selectEl.appendChild(ph);
+        items.forEach(function (item) {
+          if (item.builderId !== builderId) return;
+          const opt = document.createElement('option');
+          opt.value = item.value;
+          opt.dataset.builderId = item.builderId;
+          opt.textContent = item.label;
+          selectEl.appendChild(opt);
+        });
+        selectEl.disabled = false;
+      }
+
+      function resetDependentPickers() {
+        buildingPicker.innerHTML = '<option value="">— Select project first —</option>';
+        buildingPicker.disabled = true;
+        buildingPicker.value = '';
+        userPicker.innerHTML = '<option value="">— Select project first —</option>';
+        userPicker.disabled = true;
+        userPicker.value = '';
+      }
+
+      function onProjectChange() {
+        const builderId = projectPicker.value;
+        if (!builderId) {
+          resetDependentPickers();
+          return;
+        }
+        rebuildSelect(buildingPicker, '— Select building —', allBuildings, builderId);
+        rebuildSelect(userPicker, '— Select user —', allUsers, builderId);
+      }
+
+      function setEditMode(on) {
+        if (editHint) editHint.classList.toggle('d-none', !on);
+        if (addBtn) addBtn.textContent = on ? 'Update row' : 'Add to list';
+      }
+
+      function actionsCellHtml() {
+        return (
+          '<td class="text-end text-nowrap">' +
+          '<button type="button" class="btn btn-sm btn-outline-secondary vault-grant-edit me-1">Edit</button>' +
+          '<button type="button" class="btn btn-sm btn-outline-danger vault-grant-remove">Remove</button>' +
+          '</td>'
+        );
+      }
+
+      function startEdit(tr) {
+        if (!tr) return;
+        if (editingGrant) {
+          cancelEdit();
+        }
+        editingGrant = {
+          userId: tr.dataset.userId,
+          buildingId: tr.dataset.buildingId,
+          builderId: tr.dataset.builderId || '',
+          userLabel: tr.dataset.userLabel || '',
+          buildingLabel: tr.dataset.buildingLabel || '',
+          builderName: tr.dataset.builderName || '',
+        };
+        removeGrant(tr.dataset.userId, tr.dataset.buildingId);
+        const builderId = editingGrant.builderId;
+        if (projectPicker && builderId) {
+          projectPicker.value = builderId;
+          onProjectChange();
+          buildingPicker.value = editingGrant.buildingId;
+          userPicker.value = editingGrant.userId;
+        }
+        setEditMode(true);
+        if (addBtn) {
+          addBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+
+      function cancelEdit() {
+        if (!editingGrant) return;
+        addGrant(
+          editingGrant.userId,
+          editingGrant.buildingId,
+          editingGrant.userLabel,
+          editingGrant.buildingLabel,
+          editingGrant.builderName,
+          editingGrant.builderId
+        );
+        editingGrant = null;
+        setEditMode(false);
+        if (!tenantScope && projectPicker) {
+          projectPicker.value = '';
+          resetDependentPickers();
+        } else if (tenantScope && projectPicker) {
+          userPicker.value = '';
+          buildingPicker.value = '';
+        }
+      }
+
+      function finishEdit() {
+        editingGrant = null;
+        setEditMode(false);
+        userPicker.value = '';
+        buildingPicker.value = '';
+      }
+
+      function applyGrantsFilter() {
+        if (!grantsFilter) return;
+        const projectName = grantsFilter.value;
+        tbody.querySelectorAll('tr[data-user-id]').forEach(function (tr) {
+          const match = !projectName || tr.dataset.builderName === projectName;
+          tr.classList.toggle('d-none', !match);
+        });
+      }
 
       function grantKey(userId, buildingId) {
         return userId + SEP + buildingId;
@@ -123,9 +318,18 @@
         );
         if (row) row.remove();
         syncEmpty();
+        applyGrantsFilter();
       }
 
-      function addGrant(userId, buildingId, userLabel, buildingLabel, builderName) {
+      function labelAfterProject(fullLabel) {
+        const sep = ' — ';
+        if (fullLabel.includes(sep)) {
+          return fullLabel.substring(fullLabel.indexOf(sep) + sep.length).trim();
+        }
+        return fullLabel;
+      }
+
+      function addGrant(userId, buildingId, userLabel, buildingLabel, builderName, builderId) {
         if (hasGrant(userId, buildingId)) return;
         const inp = document.createElement('input');
         inp.type = 'hidden';
@@ -136,6 +340,7 @@
         const tr = document.createElement('tr');
         tr.dataset.userId = userId;
         tr.dataset.buildingId = buildingId;
+        tr.dataset.builderId = builderId || (projectPicker ? projectPicker.value : '');
         tr.dataset.userLabel = userLabel;
         tr.dataset.buildingLabel = buildingLabel;
         tr.dataset.builderName = builderName;
@@ -143,45 +348,85 @@
           '<td>' + escapeHtml(userLabel) + '</td>' +
           '<td>' + escapeHtml(buildingLabel) + '</td>' +
           '<td class="small text-muted">' + escapeHtml(builderName) + '</td>' +
-          '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger vault-grant-remove">Remove</button></td>';
+          actionsCellHtml();
         tbody.appendChild(tr);
         syncEmpty();
+        applyGrantsFilter();
+      }
+
+      if (projectPicker) {
+        projectPicker.addEventListener('change', onProjectChange);
+      }
+      if (grantsFilter) {
+        grantsFilter.addEventListener('change', applyGrantsFilter);
       }
 
       addBtn.addEventListener('click', function () {
+        const projectId = projectPicker ? projectPicker.value : '';
         const userId = userPicker.value;
         const buildingId = buildingPicker.value;
-        if (!userId || !buildingId) {
-          alert('Select a user and a building.');
+        if (!projectId) {
+          alert('Select a project first.');
           return;
         }
+        if (!buildingId || !userId) {
+          alert('Select a building and a user for this project.');
+          return;
+        }
+        const projectLabel = projectPicker.selectedOptions[0].textContent.trim();
         const uOpt = userPicker.selectedOptions[0];
         const bOpt = buildingPicker.selectedOptions[0];
-        if (uOpt.dataset.builderId !== bOpt.dataset.builderId) {
-          alert('User and building must belong to the same builder.');
+        if (uOpt.dataset.builderId !== projectId || bOpt.dataset.builderId !== projectId) {
+          alert('Building and user must belong to the selected project.');
           return;
         }
-        const userFull = uOpt.textContent.trim();
-        const buildingFull = bOpt.textContent.trim();
-        const sep = ' — ';
-        const builderName = userFull.includes(sep) ? userFull.split(sep)[0].trim() : '';
-        const userLabel = userFull.includes(sep) ? userFull.substring(userFull.indexOf(sep) + sep.length).trim() : userFull;
-        const buildingLabel = buildingFull.includes(sep)
-          ? buildingFull.substring(buildingFull.indexOf(sep) + sep.length).trim()
-          : buildingFull;
-        addGrant(userId, buildingId, userLabel, buildingLabel, builderName);
-        userPicker.value = '';
-        buildingPicker.value = '';
+        const userLabel = labelAfterProject(uOpt.textContent.trim());
+        const buildingLabel = labelAfterProject(bOpt.textContent.trim());
+        addGrant(userId, buildingId, userLabel, buildingLabel, projectLabel, projectId);
+        if (editingGrant) {
+          finishEdit();
+        } else {
+          userPicker.value = '';
+          buildingPicker.value = '';
+        }
       });
 
+      if (editCancel) {
+        editCancel.addEventListener('click', cancelEdit);
+      }
+
       tbody.addEventListener('click', function (e) {
+        const editBtn = e.target.closest('.vault-grant-edit');
+        if (editBtn) {
+          const tr = editBtn.closest('tr[data-user-id]');
+          if (tr) startEdit(tr);
+          return;
+        }
         const btn = e.target.closest('.vault-grant-remove');
         if (!btn) return;
         const tr = btn.closest('tr[data-user-id]');
         if (!tr) return;
+        if (
+          editingGrant &&
+          editingGrant.userId === tr.dataset.userId &&
+          editingGrant.buildingId === tr.dataset.buildingId
+        ) {
+          cancelEdit();
+          return;
+        }
         removeGrant(tr.dataset.userId, tr.dataset.buildingId);
       });
 
+      if (tenantScope && preselectedProjectId && projectPicker) {
+        projectPicker.value = preselectedProjectId;
+        onProjectChange();
+      } else if (preselectedProjectId && projectPicker) {
+        projectPicker.value = preselectedProjectId;
+        onProjectChange();
+      } else {
+        resetDependentPickers();
+      }
+      applyGrantsFilter();
       syncEmpty();
     })();
   </script>

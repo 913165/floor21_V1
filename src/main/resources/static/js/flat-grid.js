@@ -305,6 +305,13 @@
         duplexSecondary: "false",
         mergeSecondary: "false",
         clientId: slotEl.getAttribute("data-client-id") || "",
+        ownerDisplay: slotEl.getAttribute("data-owner-display") || "",
+        ownerDetail: slotEl.getAttribute("data-owner-detail") || "",
+        bookingCode: slotEl.getAttribute("data-booking-code") || "",
+        buyerPhone: slotEl.getAttribute("data-buyer-phone") || "",
+        buyerEmail: slotEl.getAttribute("data-buyer-email") || "",
+        paymentReceived: slotEl.getAttribute("data-payment-received") || "",
+        remainingBalance: slotEl.getAttribute("data-remaining-balance") || "",
         hasLayoutImage: slotEl.getAttribute("data-has-layout-image") || "false",
       },
     };
@@ -330,6 +337,20 @@
       if (flat.basePrice != null) {
         slotEl.dataset.price = String(flat.basePrice);
         slotEl.setAttribute("data-price", String(flat.basePrice));
+      }
+      if (flat.paymentReceived != null) {
+        slotEl.dataset.paymentReceived = String(flat.paymentReceived);
+        slotEl.setAttribute("data-payment-received", String(flat.paymentReceived));
+      } else {
+        delete slotEl.dataset.paymentReceived;
+        slotEl.removeAttribute("data-payment-received");
+      }
+      if (flat.remainingBalance != null) {
+        slotEl.dataset.remainingBalance = String(flat.remainingBalance);
+        slotEl.setAttribute("data-remaining-balance", String(flat.remainingBalance));
+      } else {
+        delete slotEl.dataset.remainingBalance;
+        slotEl.removeAttribute("data-remaining-balance");
       }
       if (flat.status != null) slotEl.setAttribute("data-status", flat.status);
       if (flat.flatNumber != null) slotEl.setAttribute("data-flat-number", flat.flatNumber);
@@ -1487,6 +1508,12 @@
     if (flat.balconyAreaSqft != null) cardEl.dataset.balconyArea = String(flat.balconyAreaSqft);
     else delete cardEl.dataset.balconyArea;
     if (flat.basePrice != null) cardEl.dataset.price = String(flat.basePrice);
+    if (flat.bookingId) cardEl.dataset.bookingId = String(flat.bookingId);
+    else delete cardEl.dataset.bookingId;
+    if (flat.paymentReceived != null) cardEl.dataset.paymentReceived = String(flat.paymentReceived);
+    else delete cardEl.dataset.paymentReceived;
+    if (flat.remainingBalance != null) cardEl.dataset.remainingBalance = String(flat.remainingBalance);
+    else delete cardEl.dataset.remainingBalance;
     if (flat.status != null) {
       cardEl.dataset.status = flat.status;
       syncFlatCardStatusLabel(cardEl, flat.status);
@@ -1978,8 +2005,11 @@
       delete el.dataset.ownerDisplay;
       delete el.dataset.ownerDetail;
       delete el.dataset.bookingCode;
+      delete el.dataset.bookingId;
       delete el.dataset.buyerPhone;
       delete el.dataset.buyerEmail;
+      delete el.dataset.paymentReceived;
+      delete el.dataset.remainingBalance;
     }
   }
 
@@ -2183,6 +2213,22 @@
     } else {
       delete el.dataset.clientId;
     }
+    if (flat.ownerDisplay) el.dataset.ownerDisplay = flat.ownerDisplay;
+    else delete el.dataset.ownerDisplay;
+    if (flat.ownerDetail) el.dataset.ownerDetail = flat.ownerDetail;
+    else delete el.dataset.ownerDetail;
+    if (flat.bookingCode) el.dataset.bookingCode = flat.bookingCode;
+    else delete el.dataset.bookingCode;
+    if (flat.bookingId) el.dataset.bookingId = flat.bookingId;
+    else delete el.dataset.bookingId;
+    if (flat.buyerPhone) el.dataset.buyerPhone = flat.buyerPhone;
+    else delete el.dataset.buyerPhone;
+    if (flat.buyerEmail) el.dataset.buyerEmail = flat.buyerEmail;
+    else delete el.dataset.buyerEmail;
+    if (flat.paymentReceived != null) el.dataset.paymentReceived = String(flat.paymentReceived);
+    else delete el.dataset.paymentReceived;
+    if (flat.remainingBalance != null) el.dataset.remainingBalance = String(flat.remainingBalance);
+    else delete el.dataset.remainingBalance;
     syncBuyerTooltip(el, flat);
     syncCardOwner(el, flat);
     var typeSpan = el.querySelector(".flat-type");
@@ -4441,6 +4487,7 @@
       if (selected) {
         syncActionButtons(selected);
         syncClientDetailsPanel(selected);
+        syncPaymentSummaryPanel(selected);
       }
     }
     scheduleDuplexLinks();
@@ -4617,6 +4664,36 @@
       }
       stripNonBookableHover(card);
     });
+  }
+
+  function formatPanelAmount(value) {
+    if (value == null || value === "") return "—";
+    var n = parseFloat(String(value).replace(/,/g, ""));
+    if (!Number.isFinite(n)) return "—";
+    if (window.Floor21Amount && Floor21Amount.formatRupee) {
+      return Floor21Amount.formatRupee(n);
+    }
+    return String(n);
+  }
+
+  function syncPaymentSummaryPanel(cardEl) {
+    var panel = document.getElementById("panel-payment-summary");
+    if (!panel) return;
+    var show =
+      cardEl &&
+      cardEl.dataset.status === "BOOKED" &&
+      !selectedParkingSection &&
+      !selectedParkingSlot;
+    panel.classList.toggle("d-none", !show);
+    if (!show) return;
+    var receivedEl = document.getElementById("panel-payment-received");
+    var balanceEl = document.getElementById("panel-remaining-balance");
+    if (receivedEl) {
+      receivedEl.textContent = formatPanelAmount(cardEl.dataset.paymentReceived);
+    }
+    if (balanceEl) {
+      balanceEl.textContent = formatPanelAmount(cardEl.dataset.remainingBalance);
+    }
   }
 
   function syncClientDetailsPanel(cardEl) {
@@ -4893,6 +4970,7 @@
     syncShopSlotAdminFields(slotEl);
     syncActionButtons(actionTarget);
     syncClientDetailsPanel(actionTarget);
+    syncPaymentSummaryPanel(actionTarget);
     syncUserPricePanel(actionTarget);
     if (showModal !== false) {
       openFlatDetailsModal();
@@ -4937,6 +5015,7 @@
     applyBookingSelectionHighlight();
     syncActionButtons(el);
     syncClientDetailsPanel(el);
+    syncPaymentSummaryPanel(el);
     syncAdminPanel(el);
     syncFlatParkingLinksPanel(el);
     if (showModal !== false) {

@@ -3,6 +3,7 @@ package com.floor21.config;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.ImpersonationSession;
 import com.floor21.service.AccountService;
+import com.floor21.service.TenantVaultConfigService;
 import com.floor21.service.VaultAccessService;
 import com.floor21.util.FlatUnitTypes;
 import com.floor21.util.ResidentialBhkTypes;
@@ -24,6 +25,7 @@ public class LayoutControllerAdvice {
 
     private final AccountService accountService;
     private final VaultAccessService vaultAccessService;
+    private final TenantVaultConfigService tenantVaultConfigService;
 
     @Value("${server.servlet.session.timeout:3600s}")
     private Duration serverSessionTimeout;
@@ -78,6 +80,11 @@ public class LayoutControllerAdvice {
         return vaultAccessService.canCurrentUserAccessVault();
     }
 
+    @ModelAttribute("tenantVaultConfigVisible")
+    public boolean tenantVaultConfigVisible() {
+        return tenantVaultConfigService.canCurrentUserManageTenantVaultConfig();
+    }
+
     static String resolveNavArea(String path) {
         if (path == null) {
             path = "";
@@ -87,6 +94,12 @@ public class LayoutControllerAdvice {
         }
         if (path.startsWith("/vault")) {
             return "vault";
+        }
+        if (path.startsWith("/docs-locker")) {
+            return "vault";
+        }
+        if (path.startsWith("/settings/vault-access")) {
+            return "platform";
         }
         if (path.startsWith("/expenses")) {
             return "expenses";

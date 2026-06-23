@@ -1,6 +1,7 @@
 package com.floor21.repository;
 
 import com.floor21.entity.Receipt;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -59,6 +60,14 @@ public interface ReceiptRepository extends JpaRepository<Receipt, UUID> {
                     + "and (r.dishonoured = false or r.dishonoured is null)")
     java.math.BigDecimal sumAgreementCredits(
             @Param("bookingId") UUID bookingId, @Param("builderId") UUID builderId);
+
+    @Query(
+            "select r.booking.id, coalesce(sum(coalesce(r.amountConsideration,0) + coalesce(r.amountInterestAgreement,0) + "
+                    + "coalesce(r.amountExtraCharges,0) + coalesce(r.amountTds,0)),0) from Receipt r "
+                    + "where r.booking.id in :bookingIds and r.builder.id = :builderId "
+                    + "and (r.dishonoured = false or r.dishonoured is null) group by r.booking.id")
+    List<Object[]> sumAgreementCreditsGrouped(
+            @Param("bookingIds") Collection<UUID> bookingIds, @Param("builderId") UUID builderId);
 
     @Query(
             "select coalesce(sum(coalesce(r.amountGstComponent,0) + coalesce(r.amountInterestGst,0)),0) "

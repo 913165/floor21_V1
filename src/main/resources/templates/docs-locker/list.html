@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h1 class="h3 mb-0" th:text="${pageTitle}">Documents</h1>
+    <div class="d-flex flex-wrap gap-2">
+      <form class="m-0" th:action="@{/docs-locker/lock}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <button class="btn btn-outline-warning" type="submit">Lock</button>
+      </form>
+    </div>
+  </div>
+
+  <p class="text-muted small mb-3">
+    Upload and store confidential documents. Nothing here appears on receipts or dashboards.
+  </p>
+
+  <div class="alert alert-warning small" th:unless="${docsPinConfigured}">
+      PIN1 is not set up yet. Contact your builder admin.
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header py-2 fw-semibold">Upload document</div>
+    <div class="card-body">
+      <form th:action="@{/docs-locker/upload}" method="post" enctype="multipart/form-data">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">File <span class="text-danger">*</span></label>
+            <input class="form-control" type="file" name="file" required
+                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,application/pdf,image/*"/>
+            <div class="form-text">PDF, Word, or image — max 8 MB.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Title</label>
+            <input class="form-control" type="text" name="title" maxlength="500"
+                   placeholder="e.g. Sale agreement signed copy"/>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Link to booking <span class="text-muted fw-normal">(optional)</span></label>
+            <select class="form-select" name="bookingId">
+              <option value="">— General / not linked —</option>
+              <option th:each="bk : ${bookings}"
+                      th:value="${bk.id}"
+                      th:text="${bk.flat != null && bk.flat.building != null}
+                        ? |${bk.flat.building.buildingName} · ${bk.flat.flatNumber} · ${@bookingOwnerService.ownersDisplayName(bk.id)}|
+                        : |${bk.flat != null ? bk.flat.flatNumber : '?'} · ${@bookingOwnerService.ownersDisplayName(bk.id)}|"></option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Notes</label>
+            <input class="form-control" type="text" name="notes" maxlength="2000" placeholder="Optional"/>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-primary" type="submit">Upload</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header py-2 fw-semibold d-flex justify-content-between align-items-center">
+      <span>Stored documents</span>
+      <span class="text-muted small" th:text="${#lists.size(documents)} + ' file(s)'">0 file(s)</span>
+    </div>
+    <div class="table-responsive" th:if="${!#lists.isEmpty(documents)}">
+      <table class="table table-sm table-hover mb-0 align-middle">
+        <thead class="table-light">
+        <tr>
+          <th>Title / file</th>
+          <th>Booking</th>
+          <th>Uploaded</th>
+          <th class="text-end">Size</th>
+          <th class="text-end" style="width:9rem">Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="doc : ${documents}">
+          <td>
+            <div class="fw-semibold" th:text="${doc.title != null ? doc.title : doc.originalFilename}">Title</div>
+            <div class="small text-muted" th:if="${doc.title != null}" th:text="${doc.originalFilename}">file.pdf</div>
+            <div class="small text-muted" th:if="${doc.notes != null}" th:text="${doc.notes}"></div>
+          </td>
+          <td class="small">
+            <span th:if="${doc.booking != null && doc.booking.flat != null}"
+                  th:text="${doc.booking.flat.flatNumber}">1602</span>
+            <span th:if="${doc.booking == null}" class="text-muted">—</span>
+          </td>
+          <td class="small text-nowrap"
+              th:text="${doc.createdAt != null ? #temporals.format(doc.createdAt, 'dd MMM yyyy HH:mm') : '—'}">—</td>
+          <td class="small text-end text-nowrap">
+            <span th:if="${doc.fileSizeBytes != null}"
+                  th:text="${#numbers.formatInteger(doc.fileSizeBytes / 1024, 0)} + ' KB'">—</span>
+          </td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-outline-primary"
+               th:href="@{/docs-locker/{id}/download(id=${doc.id})}">Download</a>
+            <form class="d-inline" th:action="@{/docs-locker/{id}/delete(id=${doc.id})}" method="post"
+                  onsubmit="return confirm('Remove this document?');">
+              <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+              <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body text-muted small" th:if="${#lists.isEmpty(documents)}">
+      No documents uploaded yet.
+    </div>
+  </div>
+</div>
+</body>
+</html>

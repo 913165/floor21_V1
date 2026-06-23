@@ -17,7 +17,11 @@ import com.floor21.security.TenantContext;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -110,6 +114,56 @@ public class ReceiptService {
                 .gstReceived(gstReceived)
                 .gstBalance(gstBalance)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<UUID, BookingReceiptSummary> summarizeBookings(
+            Collection<Booking> bookings, UUID platformBuilderId) {
+        if (bookings == null || bookings.isEmpty()) {
+            return Map.of();
+        }
+        UUID builderId = effectiveBuilderId(platformBuilderId);
+        List<UUID> bookingIds =
+                bookings.stream()
+                        .filter(Objects::nonNull)
+                        .map(Booking::getId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        if (bookingIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, BigDecimal> receivedByBookingId = new HashMap<>();
+        for (Object[] row : receiptRepository.sumAgreementCreditsGrouped(bookingIds, builderId)) {
+            if (row == null || row.length < 2 || row[0] == null) {
+                continue;
+            }
+            UUID bookingId = (UUID) row[0];
+            BigDecimal received = row[1] instanceof BigDecimal b ? b : ZERO;
+            receivedByBookingId.put(bookingId, received);
+        }
+        Map<UUID, BookingReceiptSummary> summaries = new HashMap<>();
+        for (Booking booking : bookings) {
+            if (booking == null || booking.getId() == null || summaries.containsKey(booking.getId())) {
+                continue;
+            }
+            UUID bookingId = booking.getId();
+            BigDecimal agreementTotal = agreementBase(booking);
+            BigDecimal agreementReceived = receivedByBookingId.getOrDefault(bookingId, ZERO);
+            BigDecimal agreementBalance = agreementTotal.subtract(agreementReceived);
+            summaries.put(
+                    bookingId,
+                    BookingReceiptSummary.builder()
+                            .agreementTotal(agreementTotal)
+                            .agreementReceived(agreementReceived)
+                            .agreementBalance(agreementBalance)
+                            .showGstRow(false)
+                            .gstTotal(ZERO)
+                            .gstReceived(ZERO)
+                            .gstBalance(ZERO)
+                            .build());
+        }
+        return summaries;
     }
 
     @Transactional(readOnly = true)

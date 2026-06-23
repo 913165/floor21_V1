@@ -2,6 +2,7 @@ package com.floor21.controller;
 
 import com.floor21.service.AdminVaultConfigService;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,9 +20,12 @@ public class AdminVaultConfigController {
     private final AdminVaultConfigService adminVaultConfigService;
 
     @GetMapping
-    public String page(Model model) {
+    public String page(@RequestParam(required = false) UUID projectId, Model model) {
         model.addAttribute("pageTitle", "Vault config");
         model.addAttribute("config", adminVaultConfigService.load());
+        model.addAttribute("tenantScope", false);
+        model.addAttribute("selectedProjectId", projectId);
+        model.addAttribute("formAction", "/admin/vault-config");
         return "admin/vault-config";
     }
 

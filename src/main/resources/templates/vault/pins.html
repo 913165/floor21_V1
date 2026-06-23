@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3 mb-2">Change PIN</h1>
+  <p class="text-muted small mb-4">PIN1 and PIN2 must be different. Each must be 4–8 digits.</p>
+
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header py-2 fw-semibold d-flex justify-content-between align-items-center">
+          <span>PIN1</span>
+          <span class="badge"
+                th:classappend="${pin1Configured} ? 'text-bg-success' : 'text-bg-secondary'"
+                th:text="${pin1Configured} ? 'Set' : 'Not set'">—</span>
+        </div>
+        <div class="card-body">
+          <form th:action="@{/vault/pins/pin1}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <th:block th:if="${pin1Configured}">
+              <div class="mb-3">
+                <label class="form-label">Current PIN1</label>
+                <input class="form-control" type="password" name="currentPin" inputmode="numeric"
+                       pattern="[0-9]{4,8}" maxlength="8" autocomplete="off" required/>
+              </div>
+            </th:block>
+            <th:block th:unless="${pin1Configured}">
+              <div class="mb-3">
+                <label class="form-label">Login password</label>
+                <input class="form-control" type="password" name="accountPassword" autocomplete="current-password" required/>
+                <div class="form-text">Required to create PIN1 for the first time.</div>
+              </div>
+            </th:block>
+            <div class="mb-3">
+              <label class="form-label" th:text="${pin1Configured} ? 'New PIN1' : 'PIN1'">PIN1</label>
+              <input class="form-control" type="password" name="newPin" inputmode="numeric"
+                     pattern="[0-9]{4,8}" maxlength="8" autocomplete="new-password" required/>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Confirm PIN1</label>
+              <input class="form-control" type="password" name="confirmPin" inputmode="numeric"
+                     pattern="[0-9]{4,8}" maxlength="8" autocomplete="new-password" required/>
+            </div>
+            <button class="btn btn-primary" type="submit" th:text="${pin1Configured} ? 'Update PIN1' : 'Create PIN1'">Save</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header py-2 fw-semibold d-flex justify-content-between align-items-center">
+          <span>PIN2</span>
+          <span class="badge"
+                th:classappend="${pin2Configured} ? 'text-bg-success' : 'text-bg-secondary'"
+                th:text="${pin2Configured} ? 'Set' : 'Not set'">—</span>
+        </div>
+        <div class="card-body">
+          <form th:action="@{/vault/pins/pin2}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <th:block th:if="${pin2Configured}">
+              <div class="mb-3">
+                <label class="form-label">Current PIN2</label>
+                <input class="form-control" type="password" name="currentPin" inputmode="numeric"
+                       pattern="[0-9]{4,8}" maxlength="8" autocomplete="off" required/>
+              </div>
+            </th:block>
+            <th:block th:unless="${pin2Configured}">
+              <div class="mb-3">
+                <label class="form-label">Login password</label>
+                <input class="form-control" type="password" name="accountPassword" autocomplete="current-password" required/>
+                <div class="form-text">Required to create PIN2 for the first time.</div>
+              </div>
+            </th:block>
+            <div class="mb-3">
+              <label class="form-label" th:text="${pin2Configured} ? 'New PIN2' : 'PIN2'">PIN2</label>
+              <input class="form-control" type="password" name="newPin" inputmode="numeric"
+                     pattern="[0-9]{4,8}" maxlength="8" autocomplete="new-password" required/>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Confirm PIN2</label>
+              <input class="form-control" type="password" name="confirmPin" inputmode="numeric"
+                     pattern="[0-9]{4,8}" maxlength="8" autocomplete="new-password" required/>
+            </div>
+            <button class="btn btn-primary" type="submit" th:text="${pin2Configured} ? 'Update PIN2' : 'Create PIN2'">Save</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <a class="btn btn-link btn-sm mt-3 px-0" th:href="@{/vault/unlock}">Back</a>
+</div>
+</body>
+</html>

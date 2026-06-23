@@ -1,5 +1,6 @@
 package com.floor21.service;
 
+import com.floor21.dto.BookingReceiptSummary;
 import com.floor21.dto.BuildingConfigDto;
 import com.floor21.dto.FlatAddToFloorDto;
 import com.floor21.dto.ColumnTypeDefaultsDto;
@@ -92,6 +93,7 @@ public class FlatService {
     private final PartnerFlatAllocationService partnerFlatAllocationService;
     private final BuildingFloorPlanService buildingFloorPlanService;
     private final BookingOwnerService bookingOwnerService;
+    private final ReceiptService receiptService;
 
     @Transactional(readOnly = true)
     public long countFlatsForBuilding(UUID buildingId) {
@@ -124,6 +126,8 @@ public class FlatService {
         Map<UUID, UUID> partnerIds = partnerFlatAllocationService.getFlatOwnerByPartnerId(buildingId);
         Map<UUID, String> partnerLabels = partnerFlatAllocationService.getFlatPartnerLabels(buildingId);
         Map<UUID, Booking> bookingByFlatId = activeBookingsByFlatId(builderId, allFlats);
+        Map<UUID, BookingReceiptSummary> receiptSummaries =
+                receiptSummariesByBookingId(builderId, bookingByFlatId);
         Map<UUID, Flat> flatById =
                 allFlats.stream().collect(Collectors.toMap(Flat::getId, f -> f, (a, b) -> a, HashMap::new));
         Map<Integer, List<Flat>> byFloor =
@@ -146,7 +150,8 @@ public class FlatService {
                                                     flatById,
                                                     buildingId,
                                                     partnerIds,
-                                                    partnerLabels))
+                                                    partnerLabels,
+                                                    receiptSummaries))
                             .toList();
             boolean parkingSection =
                     !cells.isEmpty() && cells.stream().allMatch(FlatGridFlatDto::parking);
@@ -220,6 +225,8 @@ public class FlatService {
                 flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
                         buildingId, builderId);
         Map<UUID, Booking> bookingByFlatId = activeBookingsByFlatId(builderId, shopFlats);
+        Map<UUID, BookingReceiptSummary> receiptSummaries =
+                receiptSummariesByBookingId(builderId, bookingByFlatId);
         Map<UUID, Flat> flatById =
                 allFlats.stream()
                         .collect(Collectors.toMap(Flat::getId, f -> f, (a, b) -> a, HashMap::new));
@@ -233,7 +240,8 @@ public class FlatService {
                                                 flatById,
                                                 buildingId,
                                                 partnerIds,
-                                                partnerLabels))
+                                                partnerLabels,
+                                                receiptSummaries))
                         .toList();
         boolean configured = GroundFloorShopConfigUtil.isConfigured(building) && !shops.isEmpty();
         GroundFloorStoredConfig stored = GroundFloorShopConfigUtil.readStored(building);
@@ -990,6 +998,8 @@ public class FlatService {
         int n = shops.size();
         UUID builderId = building.getBuilder().getId();
         Map<UUID, Booking> bookingByFlatId = activeBookingsByFlatId(builderId, shops);
+        Map<UUID, BookingReceiptSummary> receiptSummaries =
+                receiptSummariesByBookingId(builderId, bookingByFlatId);
         Map<UUID, UUID> partnerIds = partnerFlatAllocationService.getFlatOwnerByPartnerId(buildingId);
         GroundFloorStoredConfig stored = GroundFloorShopConfigUtil.readStored(building);
         ParkingFloorConfigUtil.FloorConfig config = stored.shops();
@@ -1067,6 +1077,15 @@ public class FlatService {
             Flat shop = shops.get(i);
             Booking booking = bookingByFlatId.get(shop.getId());
             UUID clientId = booking != null && booking.getClient() != null ? booking.getClient().getId() : null;
+            BigDecimal paymentReceived = null;
+            BigDecimal remainingBalance = null;
+            if (booking != null && "BOOKED".equals(shop.getStatus())) {
+                BookingReceiptSummary summary = receiptSummaries.get(booking.getId());
+                if (summary != null) {
+                    paymentReceived = summary.getAgreementReceived();
+                    remainingBalance = summary.getAgreementBalance();
+                }
+            }
             UUID assignedPartnerId = partnerIds.get(shop.getId());
             boolean bookable =
                     partnerFlatAllocationService.isBookableByCurrentUser(
@@ -1080,7 +1099,9 @@ public class FlatService {
                             shop.getBasePrice(),
                             shop.getStatus(),
                             bookable,
-                            clientId));
+                            clientId,
+                            paymentReceived,
+                            remainingBalance));
         }
         return new GroundFloorShopPlanDto(
                 n,
@@ -1789,6 +1810,14 @@ public class FlatService {
         String first = cells.get(0).flatNumber();
         String last = cells.get(cells.size() - 1).flatNumber();
         return cells.size() == 1 ? first : first + "–" + last;
+    }
+
+    private Map<UUID, BookingReceiptSummary> receiptSummariesByBookingId(
+            UUID builderId, Map<UUID, Booking> bookingByFlatId) {
+        if (bookingByFlatId == null || bookingByFlatId.isEmpty()) {
+            return Map.of();
+        }
+        return receiptService.summarizeBookings(bookingByFlatId.values(), builderId);
     }
 
     private Map<UUID, Booking> activeBookingsByFlatId(UUID builderId, List<Flat> flats) {
@@ -3333,7 +3362,8 @@ public class FlatService {
             Map<UUID, Flat> flatById,
             UUID buildingId,
             Map<UUID, UUID> partnerIds,
-            Map<UUID, String> partnerLabels) {
+            Map<UUID, String> partnerLabels,
+            Map<UUID, BookingReceiptSummary> receiptSummaries) {
         Booking b = resolveBookingForGridCard(f, bookingByFlatId, flatById);
         Client bookedClient = b != null && bookingShowsOnCard(f, flatById, b) ? b.getClient() : null;
         UUID assignedPartnerId = partnerIds.get(f.getId());
@@ -3351,6 +3381,18 @@ public class FlatService {
         String partnerFlatNumber = duplexPartnerFlatNumber(f, flatById);
         UUID partnerFlatId = duplexPartnerFlatId(f);
         Flat mergeAbsorbed = mergeAbsorbedFlat(f, flatById);
+        UUID bookingId = null;
+        BigDecimal paymentReceived = null;
+        BigDecimal remainingBalance = null;
+        if (b != null && "BOOKED".equals(f.getStatus())) {
+            bookingId = b.getId();
+            BookingReceiptSummary summary =
+                    receiptSummaries != null ? receiptSummaries.get(bookingId) : null;
+            if (summary != null) {
+                paymentReceived = summary.getAgreementReceived();
+                remainingBalance = summary.getAgreementBalance();
+            }
+        }
         return new FlatGridFlatDto(
                 f.getId(),
                 f.getFlatNumber(),
@@ -3369,6 +3411,9 @@ public class FlatService {
                 ownerTitle,
                 ownerDetail,
                 bookable ? bookingCodeForTooltip(b) : null,
+                bookingId,
+                paymentReceived,
+                remainingBalance,
                 bookedClient != null ? pickPhone(bookedClient) : null,
                 bookedClient != null ? pickEmail(bookedClient) : null,
                 cardClass,

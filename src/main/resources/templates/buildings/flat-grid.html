@@ -464,6 +464,9 @@
                       data-owner-display=${flat.ownerDisplay()},
                       data-owner-detail=${flat.ownerDetail()},
                       data-booking-code=${flat.bookingCode()},
+                      data-booking-id=${flat.bookingId()},
+                      data-payment-received=${flat.paymentReceived()},
+                      data-remaining-balance=${flat.remainingBalance()},
                       data-buyer-phone=${flat.buyerPhone()},
                       data-buyer-email=${flat.buyerEmail()},
                       data-has-layout-image=${flat.hasLayoutImage()},
@@ -788,6 +791,12 @@
                 </div>
                 <p class="text-danger small mb-0 mt-1 d-none" id="user-price-error"></p>
               </th:block>
+              <div id="panel-payment-summary" class="d-none mt-2">
+                <div class="text-muted small">Payment received</div>
+                <p id="panel-payment-received" class="mb-1">—</p>
+                <div class="text-muted small">Remaining balance</div>
+                <p id="panel-remaining-balance" class="mb-0">—</p>
+              </div>
             </div>
             <div class="col-12 d-none admin-edit-field mt-2 pt-1" id="admin-save-row" sec:authorize="hasRole('SUPER_ADMIN')">
               <div class="d-flex flex-wrap align-items-center gap-2">
@@ -1142,9 +1151,10 @@
       </div>
     </div>
   </div>
+  <script defer th:src="@{/js/amount-format.js(v=panel-payment-v1)}"></script>
   <script defer th:src="@{/js/floor21-area-unit.js(v=area-unit-prefs-v2)}"></script>
   <script defer th:src="@{/js/floor21-panel-resize.js(v=panel-resize-v8)}"></script>
-  <script defer th:src="@{/js/flat-grid.js(v=panel-resize-v9)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=panel-payment-v1)}"></script>
   <script defer th:src="@{/js/ground-floor-shops.js(v=panel-resize-v10)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=7)}"></script>
 </div>

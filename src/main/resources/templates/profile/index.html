@@ -26,17 +26,8 @@
       <div class="card card-body shadow-sm h-100">
         <h2 class="h6 text-muted text-uppercase mb-3">Security</h2>
         <ul class="list-unstyled mb-0">
-          <li class="mb-2">
+          <li class="mb-0">
             <a class="btn btn-outline-primary btn-sm" th:href="@{/profile/change-password}">Change login password</a>
-          </li>
-          <li class="mb-2" th:if="${profile.vaultAccess()}">
-            <a class="btn btn-outline-secondary btn-sm" th:href="@{/vault/change-pin}">Change vault PIN</a>
-            <span class="badge ms-1"
-                  th:classappend="${profile.vaultPinConfigured()} ? 'text-bg-success' : 'text-bg-secondary'"
-                  th:text="${profile.vaultPinConfigured()} ? 'Set' : 'Not set'">—</span>
-          </li>
-          <li class="mb-0" th:if="${profile.vaultAccess()}">
-            <a class="text-muted small" th:href="@{/vault/reset-pin(redirect='/profile')}">Forgot vault PIN? Reset with password</a>
           </li>
         </ul>
       </div>

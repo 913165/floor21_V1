@@ -5,9 +5,11 @@ import com.floor21.entity.Booking;
 import com.floor21.entity.VaultEntry;
 import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BookingRepository;
+import com.floor21.security.DocsLockerSession;
 import com.floor21.security.TenantContext;
 import com.floor21.security.VaultSession;
 import com.floor21.service.BuildingService;
+import com.floor21.service.DocsLockerPinService;
 import com.floor21.service.VaultBookingProfileService;
 import com.floor21.service.VaultEntryService;
 import com.floor21.service.VaultPinService;
@@ -41,6 +43,7 @@ public class VaultController {
     private final VaultEntryService vaultEntryService;
     private final VaultBookingProfileService vaultBookingProfileService;
     private final VaultPinService vaultPinService;
+    private final DocsLockerPinService docsLockerPinService;
     private final BuildingService buildingService;
     private final BookingRepository bookingRepository;
 
@@ -77,8 +80,7 @@ public class VaultController {
 
     @GetMapping("/unlock")
     public String unlockForm(@RequestParam(required = false) String redirect, Model model) {
-        model.addAttribute("pageTitle", "Vault access");
-        model.addAttribute("pinSetupRequired", !vaultPinService.hasPinConfigured());
+        model.addAttribute("pageTitle", "Vault");
         model.addAttribute("redirectPath", sanitizeRedirect(redirect));
         model.addAttribute("unlockTimeoutMinutes", unlockTimeoutMinutes);
         return "vault/unlock";
@@ -87,41 +89,29 @@ public class VaultController {
     @PostMapping("/unlock")
     public String unlockSubmit(
             @RequestParam(required = false) String pin,
-            @RequestParam(required = false) String newPin,
-            @RequestParam(required = false) String confirmPin,
             @RequestParam(required = false) String redirect,
             HttpSession session,
             RedirectAttributes ra) {
         String target = sanitizeRedirect(redirect);
-        boolean setup = !vaultPinService.hasPinConfigured();
         try {
-            if (setup) {
-                if (newPin == null || confirmPin == null || !newPin.equals(confirmPin)) {
-                    ra.addFlashAttribute("errorMessage", "New PIN and confirmation must match.");
-                    return "redirect:/vault/unlock?setup=true&redirect=" + encodeRedirect(target);
-                }
-                VaultPinService.validatePinFormat(newPin);
-                vaultPinService.setPin(newPin);
-                VaultSession.unlock(session, TenantContext.requireBuilderId());
-                ra.addFlashAttribute("successMessage", "Vault PIN created. Vault is now unlocked.");
-            } else {
-                if (pin == null || pin.isBlank()) {
-                    ra.addFlashAttribute("errorMessage", "Enter your vault PIN.");
-                    return "redirect:/vault/unlock?redirect=" + encodeRedirect(target);
-                }
-                if (!vaultPinService.verifyPin(pin)) {
-                    ra.addFlashAttribute("errorMessage", "Incorrect vault PIN.");
-                    return "redirect:/vault/unlock?redirect=" + encodeRedirect(target);
-                }
-                VaultSession.unlock(session, TenantContext.requireBuilderId());
-                ra.addFlashAttribute("successMessage", "Vault unlocked.");
+            if (pin == null || pin.isBlank()) {
+                ra.addFlashAttribute("errorMessage", "Enter your PIN.");
+                return "redirect:/vault/unlock?redirect=" + encodeRedirect(target);
             }
-            return "redirect:" + target;
+            if (docsLockerPinService.verifyPin(pin)) {
+                DocsLockerSession.unlock(session, TenantContext.requireBuilderId());
+                ra.addFlashAttribute("successMessage", "Unlocked.");
+                return "redirect:/docs-locker";
+            }
+            if (vaultPinService.verifyPin(pin)) {
+                VaultSession.unlock(session, TenantContext.requireBuilderId());
+                ra.addFlashAttribute("successMessage", "Unlocked.");
+                return "redirect:" + vaultRedirectTarget(target);
+            }
+            ra.addFlashAttribute("errorMessage", "Incorrect PIN.");
+            return "redirect:/vault/unlock?redirect=" + encodeRedirect(target);
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("errorMessage", ex.getMessage());
-            if (setup) {
-                return "redirect:/vault/unlock?setup=true&redirect=" + encodeRedirect(target);
-            }
             return "redirect:/vault/unlock?redirect=" + encodeRedirect(target);
         }
     }
@@ -129,7 +119,7 @@ public class VaultController {
     @PostMapping("/lock")
     public String lock(HttpSession session, RedirectAttributes ra) {
         VaultSession.clear(session);
-        ra.addFlashAttribute("successMessage", "Vault locked.");
+        ra.addFlashAttribute("successMessage", "Locked.");
         return "redirect:/vault/unlock";
     }
 
@@ -349,62 +339,82 @@ public class VaultController {
         return redirectToVault(bookingId, buildingId);
     }
 
+    @GetMapping("/pins")
+    public String pinsForm(Model model) {
+        model.addAttribute("pageTitle", "Change PIN");
+        model.addAttribute("pin1Configured", docsLockerPinService.hasPinConfigured());
+        model.addAttribute("pin2Configured", vaultPinService.hasPinConfigured());
+        return "vault/pins";
+    }
+
+    @PostMapping("/pins/pin1")
+    public String pinsPin1Submit(
+            @RequestParam(required = false) String currentPin,
+            @RequestParam String newPin,
+            @RequestParam String confirmPin,
+            @RequestParam(required = false) String accountPassword,
+            RedirectAttributes ra) {
+        try {
+            if (!newPin.equals(confirmPin)) {
+                throw new IllegalArgumentException("New PIN and confirmation must match.");
+            }
+            DocsLockerPinService.validatePinFormat(newPin);
+            if (docsLockerPinService.hasPinConfigured()) {
+                docsLockerPinService.changePin(currentPin, newPin);
+            } else {
+                docsLockerPinService.resetPinWithAccountPassword(accountPassword, newPin);
+            }
+            ra.addFlashAttribute("successMessage", "PIN1 updated.");
+            return "redirect:/vault/pins";
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/vault/pins";
+        }
+    }
+
+    @PostMapping("/pins/pin2")
+    public String pinsPin2Submit(
+            @RequestParam(required = false) String currentPin,
+            @RequestParam String newPin,
+            @RequestParam String confirmPin,
+            @RequestParam(required = false) String accountPassword,
+            RedirectAttributes ra) {
+        try {
+            if (!newPin.equals(confirmPin)) {
+                throw new IllegalArgumentException("New PIN and confirmation must match.");
+            }
+            VaultPinService.validatePinFormat(newPin);
+            if (vaultPinService.hasPinConfigured()) {
+                vaultPinService.changePin(currentPin, newPin);
+            } else {
+                vaultPinService.resetPinWithAccountPassword(accountPassword, newPin);
+            }
+            ra.addFlashAttribute("successMessage", "PIN2 updated.");
+            return "redirect:/vault/pins";
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/vault/pins";
+        }
+    }
+
     @GetMapping("/change-pin")
-    public String changePinForm(Model model) {
-        model.addAttribute("pageTitle", "Change vault PIN");
-        return "vault/change-pin";
+    public String changePinForm() {
+        return "redirect:/vault/pins";
     }
 
     @PostMapping("/change-pin")
-    public String changePinSubmit(
-            @RequestParam String currentPin,
-            @RequestParam String newPin,
-            @RequestParam String confirmPin,
-            RedirectAttributes ra) {
-        try {
-            if (!newPin.equals(confirmPin)) {
-                throw new IllegalArgumentException("New PIN and confirmation must match.");
-            }
-            VaultPinService.validatePinFormat(newPin);
-            vaultPinService.changePin(currentPin, newPin);
-            ra.addFlashAttribute("successMessage", "Vault PIN updated.");
-            return "redirect:/vault";
-        } catch (IllegalArgumentException ex) {
-            ra.addFlashAttribute("errorMessage", ex.getMessage());
-            return "redirect:/vault/change-pin";
-        }
+    public String changePinSubmit() {
+        return "redirect:/vault/pins";
     }
 
     @GetMapping("/reset-pin")
-    public String resetPinForm(@RequestParam(required = false) String redirect, Model model) {
-        model.addAttribute("pageTitle", "Reset vault PIN");
-        model.addAttribute("redirectPath", sanitizeRedirect(redirect));
-        model.addAttribute("pinAlreadyConfigured", vaultPinService.hasPinConfigured());
-        return "vault/reset-pin";
+    public String resetPinForm() {
+        return "redirect:/vault/pins";
     }
 
     @PostMapping("/reset-pin")
-    public String resetPinSubmit(
-            @RequestParam String accountPassword,
-            @RequestParam String newPin,
-            @RequestParam String confirmPin,
-            @RequestParam(required = false) String redirect,
-            HttpSession session,
-            RedirectAttributes ra) {
-        String target = sanitizeRedirect(redirect);
-        try {
-            if (!newPin.equals(confirmPin)) {
-                throw new IllegalArgumentException("New PIN and confirmation must match.");
-            }
-            VaultPinService.validatePinFormat(newPin);
-            vaultPinService.resetPinWithAccountPassword(accountPassword, newPin);
-            VaultSession.unlock(session, TenantContext.requireBuilderId());
-            ra.addFlashAttribute("successMessage", "Vault PIN has been reset. Vault is now unlocked.");
-            return "redirect:" + target;
-        } catch (IllegalArgumentException ex) {
-            ra.addFlashAttribute("errorMessage", ex.getMessage());
-            return "redirect:/vault/reset-pin?redirect=" + encodeRedirect(target);
-        }
+    public String resetPinSubmit() {
+        return "redirect:/vault/pins";
     }
 
     private String saveIncomeInternal(
@@ -544,13 +554,26 @@ public class VaultController {
     }
 
     private static String sanitizeRedirect(String redirect) {
-        if (redirect == null || redirect.isBlank() || !redirect.startsWith("/vault")) {
+        if (redirect == null || redirect.isBlank()) {
             return "/vault";
         }
         if (redirect.startsWith("/vault/unlock") || redirect.startsWith("/vault/reset-pin")) {
             return "/vault";
         }
-        return redirect;
+        if (redirect.startsWith("/docs-locker")) {
+            return redirect;
+        }
+        if (redirect.startsWith("/vault")) {
+            return redirect;
+        }
+        return "/vault";
+    }
+
+    private static String vaultRedirectTarget(String redirect) {
+        if (redirect != null && redirect.startsWith("/docs-locker")) {
+            return "/vault";
+        }
+        return sanitizeRedirect(redirect);
     }
 
     private static String encodeRedirect(String path) {

@@ -38,6 +38,10 @@ public class Builder {
     @Column(name = "expenses_pin_hash", length = 255)
     private String expensesPinHash;
 
+    /** BCrypt hash of the sensitive-docs locker PIN; separate from vault PIN. */
+    @Column(name = "docs_locker_pin_hash", length = 255)
+    private String docsLockerPinHash;
+
     @Column(length = 20)
     private String phone;
 

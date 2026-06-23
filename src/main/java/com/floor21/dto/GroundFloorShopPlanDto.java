@@ -60,7 +60,11 @@ public record GroundFloorShopPlanDto(
 
             boolean bookableByCurrentUser,
 
-            UUID clientId) {}
+            UUID clientId,
+
+            BigDecimal paymentReceived,
+
+            BigDecimal remainingBalance) {}
 
 
 

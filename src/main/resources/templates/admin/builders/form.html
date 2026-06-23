@@ -71,6 +71,9 @@
       <a class="btn btn-outline-primary"
          th:if="${!readonlyView and builder.id != null}"
          th:href="@{/admin/projects/{id}/staff(id=${builder.id})}">Partners</a>
+      <a class="btn btn-outline-secondary"
+         th:if="${!readonlyView and builder.id != null}"
+         th:href="@{/admin/vault-config(projectId=${builder.id})}">Vault access</a>
       <a class="btn btn-link" th:href="@{/admin/projects}">Back</a>
     </div>
   </form>

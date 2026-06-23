@@ -33,10 +33,6 @@
           <li><hr class="dropdown-divider"/></li>
           <li><a class="dropdown-item" th:href="@{/profile}" data-turbo-frame="floor21-main">My profile</a></li>
           <li><a class="dropdown-item" th:href="@{/profile/change-password}" data-turbo-frame="floor21-main">Change password</a></li>
-          <li th:if="${vaultMenuVisible}"><hr class="dropdown-divider"/></li>
-          <li th:if="${vaultMenuVisible}">
-            <a class="dropdown-item" th:href="@{/vault/change-pin}" data-turbo-frame="floor21-main">Vault PIN</a>
-          </li>
           <li><hr class="dropdown-divider"/></li>
           <li>
             <form class="m-0 px-2 pb-1" th:action="@{/logout}" method="post" data-turbo="false">

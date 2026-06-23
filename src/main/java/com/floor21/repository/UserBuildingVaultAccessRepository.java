@@ -22,6 +22,18 @@ public interface UserBuildingVaultAccessRepository
             """)
     List<UserBuildingVaultAccess> findAllForAdminOrderByLabels();
 
+    @Query(
+            """
+            select g from UserBuildingVaultAccess g
+            join fetch g.user u
+            join fetch g.building b
+            join fetch b.builder br
+            where b.builder.id = :builderId
+            order by lower(u.fullName), lower(b.buildingName)
+            """)
+    List<UserBuildingVaultAccess> findAllForAdminByBuilderIdOrderByLabels(
+            @Param("builderId") UUID builderId);
+
     boolean existsByUser_IdAndEnabledTrue(UUID userId);
 
     boolean existsByBuilding_Builder_IdAndEnabledTrue(UUID builderId);
@@ -44,6 +56,10 @@ public interface UserBuildingVaultAccessRepository
             """)
     void deleteByUser_IdAndBuilding_Builder_Id(
             @Param("userId") UUID userId, @Param("builderId") UUID builderId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM UserBuildingVaultAccess g WHERE g.building.builder.id = :builderId")
+    void deleteByBuilding_Builder_Id(@Param("builderId") UUID builderId);
 
     long countByUser_Id(UUID userId);
 }

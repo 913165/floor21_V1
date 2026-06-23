@@ -316,6 +316,10 @@
       (slot.bookableByCurrentUser !== false ? "true" : "false") +
       '" data-client-id="' +
       (slot.clientId || "") +
+      '" data-payment-received="' +
+      (slot.paymentReceived != null ? slot.paymentReceived : "") +
+      '" data-remaining-balance="' +
+      (slot.remainingBalance != null ? slot.remainingBalance : "") +
       '" title="' +
       title.replace(/"/g, "&quot;") +
       '"' +
