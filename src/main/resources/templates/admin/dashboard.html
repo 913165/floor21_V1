@@ -63,7 +63,7 @@
 
       <article class="f21-stat-card f21-stat-card--value">
         <div class="f21-stat-card__head">
-          <span class="f21-stat-card__icon f21-stat-card__icon--rupee" aria-hidden="true">?</span>
+          <span class="f21-stat-card__icon f21-stat-card__icon--rupee" aria-hidden="true">₹</span>
           <span class="f21-stat-card__label">Bookings this month</span>
         </div>
         <div class="f21-stat-card__value" th:text="${pd.bookingsThisMonth()}">0</div>
@@ -184,7 +184,7 @@
               <span class="f21-dashboard-panel__count" th:text="${#lists.size(pd.recentBuilders())}">0</span>
             </div>
             <a class="f21-dashboard-panel__link" th:href="@{/admin/projects}" data-turbo-frame="floor21-main">
-              View all <span aria-hidden="true">?</span>
+              View all <span aria-hidden="true">→</span>
             </a>
           </div>
           <ul class="f21-dashboard-list">
