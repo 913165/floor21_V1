@@ -14,7 +14,7 @@ class DemandDraftServiceTest {
             new DemandDraftService(null, null, null, null, null, null);
 
     @Test
-    void buildModelCalculatesGstAndPayableTotals() {
+    void buildModelUsesUptoAndCurrentMilestoneRows() {
         BookingPaymentSlab slab1 = slab("Initial booking amount", "1157000");
         BookingPaymentSlab slab2 = slab("Agreement", "2314000");
         List<SlabScheduleLineView> lines =
@@ -29,10 +29,33 @@ class DemandDraftServiceTest {
                                 BigDecimal.ZERO, BigDecimal.ZERO));
 
         assertThat(model.rows()).hasSize(2);
+        assertThat(model.rows().get(0).scheduleName())
+                .isEqualTo("Upto – Initial booking amount");
+        assertThat(model.rows().get(0).instalment()).isEqualByComparingTo("1157000");
         assertThat(model.rows().get(0).gst()).isEqualByComparingTo("57850");
+        assertThat(model.rows().get(0).currentMilestone()).isFalse();
+        assertThat(model.rows().get(1).scheduleName()).isEqualTo("Current Milestone Completed");
+        assertThat(model.rows().get(1).instalment()).isEqualByComparingTo("2314000");
+        assertThat(model.rows().get(1).gst()).isEqualByComparingTo("115700");
         assertThat(model.rows().get(1).currentMilestone()).isTrue();
         assertThat(model.totalInstalment()).isEqualByComparingTo("3471000");
         assertThat(model.totalGst()).isEqualByComparingTo("173550");
+    }
+
+    @Test
+    void buildModelWithSingleMilestoneShowsOnlyCurrentRow() {
+        BookingPaymentSlab slab1 = slab("Initial booking amount", "1157000");
+        List<SlabScheduleLineView> lines = List.of(line(slab1, "1157000", "0", "1157000"));
+
+        DemandDraftService.DemandLetterModel model =
+                service.buildModel(
+                        lines,
+                        new DemandDraftService.ReceiptTotals(
+                                BigDecimal.ZERO, BigDecimal.ZERO));
+
+        assertThat(model.rows()).hasSize(1);
+        assertThat(model.rows().get(0).scheduleName()).isEqualTo("Current Milestone Completed");
+        assertThat(model.rows().get(0).instalment()).isEqualByComparingTo("1157000");
     }
 
     private static BookingPaymentSlab slab(String label, String due) {

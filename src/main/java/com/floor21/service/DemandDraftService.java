@@ -98,26 +98,40 @@ public class DemandDraftService {
 
     DemandLetterModel buildModel(List<SlabScheduleLineView> lines, ReceiptTotals received) {
         List<DemandPaymentRow> rows = new ArrayList<>();
-        BigDecimal totalInstalment = ZERO;
-        BigDecimal totalGst = ZERO;
-        int serial = 1;
-        for (int i = 0; i < lines.size(); i++) {
-            SlabScheduleLineView line = lines.get(i);
-            BigDecimal instalment = line.dueAmount() != null ? line.dueAmount() : ZERO;
-            BigDecimal gst = taxOnInstalment(instalment, 5);
-            totalInstalment = totalInstalment.add(instalment);
-            totalGst = totalGst.add(gst);
-            rows.add(
-                    new DemandPaymentRow(
-                            serial++,
-                            nullToDash(line.slab().getMilestoneLabel()),
-                            instalment,
-                            gst,
-                            i == lines.size() - 1));
+        int lastIndex = lines.size() - 1;
+        BigDecimal uptoInstalment = ZERO;
+        BigDecimal uptoGst = ZERO;
+
+        if (lastIndex > 0) {
+            for (int i = 0; i < lastIndex; i++) {
+                BigDecimal instalment =
+                        lines.get(i).dueAmount() != null ? lines.get(i).dueAmount() : ZERO;
+                uptoInstalment = uptoInstalment.add(instalment);
+                uptoGst = uptoGst.add(taxOnInstalment(instalment, 5));
+            }
+            String uptoLabel =
+                    "Upto – "
+                            + nullToDash(lines.get(lastIndex - 1).slab().getMilestoneLabel());
+            rows.add(new DemandPaymentRow(1, uptoLabel, uptoInstalment, uptoGst, false));
         }
+
+        SlabScheduleLineView currentLine = lines.get(lastIndex);
+        BigDecimal currentInstalment =
+                currentLine.dueAmount() != null ? currentLine.dueAmount() : ZERO;
+        BigDecimal currentGst = taxOnInstalment(currentInstalment, 5);
+        rows.add(
+                new DemandPaymentRow(
+                        rows.size() + 1,
+                        "Current Milestone Completed",
+                        currentInstalment,
+                        currentGst,
+                        true));
+
+        BigDecimal totalInstalment = uptoInstalment.add(currentInstalment);
+        BigDecimal totalGst = uptoGst.add(currentGst);
         return new DemandLetterModel(
                 rows,
-                lines.get(lines.size() - 1).slab(),
+                lines.get(lastIndex).slab(),
                 totalInstalment,
                 totalGst,
                 received.instalment(),
