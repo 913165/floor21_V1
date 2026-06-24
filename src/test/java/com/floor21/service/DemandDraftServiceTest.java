@@ -14,7 +14,7 @@ class DemandDraftServiceTest {
             new DemandDraftService(null, null, null, null, null, null);
 
     @Test
-    void buildModelCalculatesTdsGstAndPayableTotals() {
+    void buildModelCalculatesGstAndPayableTotals() {
         BookingPaymentSlab slab1 = slab("Initial booking amount", "1157000");
         BookingPaymentSlab slab2 = slab("Agreement", "2314000");
         List<SlabScheduleLineView> lines =
@@ -26,14 +26,12 @@ class DemandDraftServiceTest {
                 service.buildModel(
                         lines,
                         new DemandDraftService.ReceiptTotals(
-                                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+                                BigDecimal.ZERO, BigDecimal.ZERO));
 
         assertThat(model.rows()).hasSize(2);
-        assertThat(model.rows().get(0).tds()).isEqualByComparingTo("11570");
         assertThat(model.rows().get(0).gst()).isEqualByComparingTo("57850");
         assertThat(model.rows().get(1).currentMilestone()).isTrue();
         assertThat(model.totalInstalment()).isEqualByComparingTo("3471000");
-        assertThat(model.totalTds()).isEqualByComparingTo("34710");
         assertThat(model.totalGst()).isEqualByComparingTo("173550");
     }
 

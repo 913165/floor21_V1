@@ -99,23 +99,19 @@ public class DemandDraftService {
     DemandLetterModel buildModel(List<SlabScheduleLineView> lines, ReceiptTotals received) {
         List<DemandPaymentRow> rows = new ArrayList<>();
         BigDecimal totalInstalment = ZERO;
-        BigDecimal totalTds = ZERO;
         BigDecimal totalGst = ZERO;
         int serial = 1;
         for (int i = 0; i < lines.size(); i++) {
             SlabScheduleLineView line = lines.get(i);
             BigDecimal instalment = line.dueAmount() != null ? line.dueAmount() : ZERO;
-            BigDecimal tds = taxOnInstalment(instalment, 1);
             BigDecimal gst = taxOnInstalment(instalment, 5);
             totalInstalment = totalInstalment.add(instalment);
-            totalTds = totalTds.add(tds);
             totalGst = totalGst.add(gst);
             rows.add(
                     new DemandPaymentRow(
                             serial++,
                             nullToDash(line.slab().getMilestoneLabel()),
                             instalment,
-                            tds,
                             gst,
                             i == lines.size() - 1));
         }
@@ -123,31 +119,25 @@ public class DemandDraftService {
                 rows,
                 lines.get(lines.size() - 1).slab(),
                 totalInstalment,
-                totalTds,
                 totalGst,
                 received.instalment(),
-                received.tds(),
                 received.gst());
     }
 
     private ReceiptTotals receiptTotals(UUID bookingId) {
         UUID builderId = TenantContext.requireBuilderId();
         BigDecimal instalment = ZERO;
-        BigDecimal tds = ZERO;
         BigDecimal gst = ZERO;
         for (Receipt receipt :
                 receiptRepository.findActiveByBooking_IdOrderByReceiptDateAsc(bookingId, builderId)) {
             if (receipt.getAmount() != null) {
                 instalment = instalment.add(receipt.getAmount());
             }
-            if (receipt.getAmountTds() != null) {
-                tds = tds.add(receipt.getAmountTds());
-            }
             if (receipt.getAmountGstComponent() != null) {
                 gst = gst.add(receipt.getAmountGstComponent());
             }
         }
-        return new ReceiptTotals(instalment, tds, gst);
+        return new ReceiptTotals(instalment, gst);
     }
 
     private static BigDecimal taxOnInstalment(BigDecimal instalment, int percent) {
@@ -299,7 +289,7 @@ public class DemandDraftService {
     }
 
     private void addPaymentTable(XWPFDocument doc, DemandLetterModel model) {
-        XWPFTable table = doc.createTable(1, 5);
+        XWPFTable table = doc.createTable(1, 4);
         setTableFullWidth(table);
         writePaymentHeader(table.getRow(0));
 
@@ -308,22 +298,19 @@ public class DemandDraftService {
             setCellText(tableRow.getCell(0), String.valueOf(row.serialNo()), row.currentMilestone());
             setCellText(tableRow.getCell(1), row.scheduleName(), row.currentMilestone());
             setAmountCell(tableRow.getCell(2), row.instalment(), row.currentMilestone());
-            setAmountCell(tableRow.getCell(3), row.tds(), row.currentMilestone());
-            setAmountCell(tableRow.getCell(4), row.gst(), row.currentMilestone());
+            setAmountCell(tableRow.getCell(3), row.gst(), row.currentMilestone());
         }
 
-        addSummaryRow(table, "Total Amount", model.totalInstalment(), model.totalTds(), model.totalGst());
+        addSummaryRow(table, "Total Amount", model.totalInstalment(), model.totalGst());
         addSummaryRow(
                 table,
                 "Received Amount",
                 model.receivedInstalment(),
-                model.receivedTds(),
                 model.receivedGst());
         addSummaryRow(
                 table,
                 "Total Payable",
                 model.totalInstalment().subtract(model.receivedInstalment()),
-                model.totalTds().subtract(model.receivedTds()),
                 model.totalGst().subtract(model.receivedGst()));
     }
 
@@ -331,22 +318,19 @@ public class DemandDraftService {
         setCellText(row.getCell(0), "Sr.no.", true);
         setCellText(row.getCell(1), "Schedule Name", true);
         setCellText(row.getCell(2), "Instalment", true);
-        setCellText(row.getCell(3), "TDS", true);
-        setCellText(row.getCell(4), "GST", true);
+        setCellText(row.getCell(3), "GST", true);
     }
 
     private static void addSummaryRow(
             XWPFTable table,
             String label,
             BigDecimal instalment,
-            BigDecimal tds,
             BigDecimal gst) {
         XWPFTableRow row = table.createRow();
         setCellText(row.getCell(0), "", true);
         setCellText(row.getCell(1), label, true);
         setAmountCell(row.getCell(2), instalment, true);
-        setAmountCell(row.getCell(3), tds, true);
-        setAmountCell(row.getCell(4), gst, true);
+        setAmountCell(row.getCell(3), gst, true);
     }
 
     private void addSignatoryBlock(XWPFDocument doc, Builder builder) {
@@ -579,7 +563,6 @@ public class DemandDraftService {
             int serialNo,
             String scheduleName,
             BigDecimal instalment,
-            BigDecimal tds,
             BigDecimal gst,
             boolean currentMilestone) {}
 
@@ -587,11 +570,9 @@ public class DemandDraftService {
             List<DemandPaymentRow> rows,
             BookingPaymentSlab completedMilestone,
             BigDecimal totalInstalment,
-            BigDecimal totalTds,
             BigDecimal totalGst,
             BigDecimal receivedInstalment,
-            BigDecimal receivedTds,
             BigDecimal receivedGst) {}
 
-    record ReceiptTotals(BigDecimal instalment, BigDecimal tds, BigDecimal gst) {}
+    record ReceiptTotals(BigDecimal instalment, BigDecimal gst) {}
 }

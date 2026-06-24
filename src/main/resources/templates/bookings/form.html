@@ -55,10 +55,16 @@
       <div class="card-body">
         <div class="row g-3">
           <div class="col-md-4">
-            <label class="form-label" for="bookingFlatNoDisplay">Flat no</label>
-            <p class="form-control-plaintext fw-semibold mb-0 py-1 border rounded px-2 bg-body-secondary"
-               id="bookingFlatNoDisplay">—</p>
-            <p class="form-text small mb-0">Taken from the flat selected above.</p>
+            <label class="form-label" for="bookingFlatNoSelect">Flat no</label>
+            <select class="form-select" id="bookingFlatNoSelect" required>
+              <option value="">— Select flat —</option>
+              <option th:each="f : ${flats}"
+                      th:value="${f.id}"
+                      th:attr="data-flat-number=${f.flatNumber}"
+                      th:text="${f.flatNumber + ' — ' + f.building.buildingName + ' (' + f.bhkType + ')'}"
+                      th:selected="${booking.flat != null and booking.flat.id == f.id}"></option>
+            </select>
+            <p class="form-text small mb-0">Choose the flat for this booking.</p>
           </div>
           <div class="col-md-4">
             <label class="form-label">Consideration</label>
@@ -166,17 +172,24 @@
   <script>
     (function () {
       var flatSelect = document.getElementById('bookingFlatSelect');
-      var display = document.getElementById('bookingFlatNoDisplay');
-      if (!flatSelect || !display) {
+      var flatNoSelect = document.getElementById('bookingFlatNoSelect');
+      if (!flatSelect || !flatNoSelect) {
         return;
       }
-      function syncFlatNo() {
-        var opt = flatSelect.options[flatSelect.selectedIndex];
-        var flatNo = opt && opt.getAttribute('data-flat-number');
-        display.textContent = flatNo && flatNo.trim() ? flatNo.trim() : '—';
+      function syncFromFlatSelect() {
+        if (flatSelect.value) {
+          flatNoSelect.value = flatSelect.value;
+        }
       }
-      flatSelect.addEventListener('change', syncFlatNo);
-      syncFlatNo();
+      function syncFromFlatNoSelect() {
+        if (!flatNoSelect.value) {
+          return;
+        }
+        flatSelect.value = flatNoSelect.value;
+      }
+      flatSelect.addEventListener('change', syncFromFlatSelect);
+      flatNoSelect.addEventListener('change', syncFromFlatNoSelect);
+      syncFromFlatSelect();
     })();
   </script>
 </div>
