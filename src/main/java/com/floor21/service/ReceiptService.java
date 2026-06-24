@@ -285,6 +285,17 @@ public class ReceiptService {
         return receiptRepository.save(entity);
     }
 
+    @Transactional
+    public void delete(UUID receiptId, UUID bookingId) {
+        UUID builderId = TenantContext.requireBuilderId();
+        requireAccessibleBooking(bookingId, null);
+        Receipt receipt =
+                receiptRepository
+                        .findByIdAndBooking_IdAndBuilder_Id(receiptId, bookingId, builderId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Receipt not found"));
+        receiptRepository.delete(receipt);
+    }
+
     private static BigDecimal computeTotal(Receipt r) {
         return zeroIfNull(r.getAmountConsideration())
                 .add(zeroIfNull(r.getAmountExtraCharges()))

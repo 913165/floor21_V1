@@ -78,8 +78,79 @@
           form.submit();
         }
       });
+      booking.addEventListener('change', function () {
+        if (!booking.value) {
+          return;
+        }
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit();
+        } else {
+          form.submit();
+        }
+      });
     })();
   </script>
+
+  <div class="card shadow-sm mb-3" th:if="${selectedBooking == null and recentReceipts != null}">
+    <div class="card-header py-2">
+      <span class="fw-semibold">Recent payment receipts</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle f21-list-table">
+          <thead class="table-light">
+          <tr>
+            <th style="width:3rem;">Sno</th>
+            <th>Date</th>
+            <th>Rec. no.</th>
+            <th>Booking</th>
+            <th class="text-end">Amount</th>
+            <th class="text-end">Action</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="r, iter : ${recentReceipts}">
+            <td th:text="${iter.count}">1</td>
+            <td th:text="${r.receiptDate}">—</td>
+            <td th:text="${r.receiptNumber != null && !#strings.isEmpty(r.receiptNumber) ? r.receiptNumber : '—'}">—</td>
+            <td class="small">
+              <span th:if="${r.booking != null and r.booking.flat != null}"
+                    th:text="${r.booking.flat.flatNumber}">—</span>
+              <span th:if="${r.booking != null}"> — </span>
+              <span th:if="${r.booking != null}"
+                    th:text="${@bookingOwnerService.ownersDisplayName(r.booking.id)}">Owners</span>
+            </td>
+            <td class="text-end" th:text="${amt.formatAmountDisplay(r.amount)}">0</td>
+            <td class="text-end text-nowrap">
+              <div class="d-inline-flex flex-wrap gap-1 justify-content-end"
+                   th:if="${r.booking != null}">
+                <a class="btn btn-sm btn-outline-primary"
+                   th:href="@{/receipts(bookingId=${r.booking.id}, buildingId=${r.booking.flat != null and r.booking.flat.building != null ? r.booking.flat.building.id : null})}">
+                  Open
+                </a>
+                <form class="d-inline" th:unless="${readonlyView}"
+                      th:action="@{/receipts/{id}/delete(id=${r.id})}" method="post"
+                      onsubmit="return confirm('Delete this payment receipt? This cannot be undone.');">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <input type="hidden" name="bookingId" th:value="${r.booking.id}"/>
+                  <input type="hidden" name="buildingId"
+                         th:if="${r.booking.flat != null and r.booking.flat.building != null}"
+                         th:value="${r.booking.flat.building.id}"/>
+                  <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(recentReceipts)}">
+            <td colspan="6" class="text-muted text-center py-4">
+              No payment receipts yet. Choose a booking above to record one.
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <th:block th:if="${selectedBooking != null}" th:with="dash='-'">
     <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
@@ -272,6 +343,15 @@
                      th:attr="data-print-base=@{/receipts/{id}/download-word(id=${r.id}, bookingId=${selectedBooking.id}, builderId=${scheduleBuilderId})}">Print</a>
                   <a class="btn btn-sm btn-outline-primary receipt-action-btn" th:unless="${readonlyView}"
                      th:href="@{/receipts(bookingId=${selectedBooking.id}, buildingId=${selectedBuildingId}, editReceiptId=${r.id})}">Edit</a>
+                  <form class="d-inline" th:unless="${readonlyView}"
+                        th:action="@{/receipts/{id}/delete(id=${r.id})}" method="post"
+                        onsubmit="return confirm('Delete this payment receipt? This cannot be undone.');">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
+                    <input type="hidden" name="buildingId" th:if="${selectedBuildingId != null}"
+                           th:value="${selectedBuildingId}"/>
+                    <button class="btn btn-sm btn-outline-danger receipt-action-btn" type="submit">Delete</button>
+                  </form>
                 </div>
               </td>
             </tr>

@@ -26,19 +26,22 @@ class DemandDraftServiceTest {
                 service.buildModel(
                         lines,
                         new DemandDraftService.ReceiptTotals(
-                                BigDecimal.ZERO, BigDecimal.ZERO));
+                                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
 
         assertThat(model.rows()).hasSize(2);
         assertThat(model.rows().get(0).scheduleName())
                 .isEqualTo("Upto – Initial booking amount");
         assertThat(model.rows().get(0).instalment()).isEqualByComparingTo("1157000");
+        assertThat(model.rows().get(0).tds()).isEqualByComparingTo("11570");
         assertThat(model.rows().get(0).gst()).isEqualByComparingTo("57850");
         assertThat(model.rows().get(0).currentMilestone()).isFalse();
         assertThat(model.rows().get(1).scheduleName()).isEqualTo("Current Milestone Completed");
         assertThat(model.rows().get(1).instalment()).isEqualByComparingTo("2314000");
+        assertThat(model.rows().get(1).tds()).isEqualByComparingTo("23140");
         assertThat(model.rows().get(1).gst()).isEqualByComparingTo("115700");
         assertThat(model.rows().get(1).currentMilestone()).isTrue();
         assertThat(model.totalInstalment()).isEqualByComparingTo("3471000");
+        assertThat(model.totalTds()).isEqualByComparingTo("34710");
         assertThat(model.totalGst()).isEqualByComparingTo("173550");
     }
 
@@ -51,7 +54,7 @@ class DemandDraftServiceTest {
                 service.buildModel(
                         lines,
                         new DemandDraftService.ReceiptTotals(
-                                BigDecimal.ZERO, BigDecimal.ZERO));
+                                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
 
         assertThat(model.rows()).hasSize(1);
         assertThat(model.rows().get(0).scheduleName()).isEqualTo("Current Milestone Completed");
