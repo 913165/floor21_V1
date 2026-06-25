@@ -503,9 +503,21 @@ export async function assignShopToPartner(
 
   const modal = page.locator('#flat-details-modal');
   await expect(modal).toHaveClass(/show/, { timeout: 15_000 });
-  await savePartnerAssignmentFromModal(page, shopFlatId, partner, modal);
 
-  await expect(slot.locator('.shop-plan__partner-tag')).toContainText(partner.companyName);
+  const gridRefresh = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/flats/data') &&
+      response.ok(),
+    { timeout: 30_000 },
+  );
+  await savePartnerAssignmentFromModal(page, shopFlatId, partner, modal);
+  await gridRefresh.catch(() => undefined);
+
+  // Ground-floor shops show partner company name inside the bay (not .shop-plan__partner-tag).
+  await expect(slot.locator('.shop-plan__partner-in-bay')).toContainText(partner.companyName, {
+    timeout: 15_000,
+  });
 }
 
 export async function assignFirstGroundFloorShopToPartner(
