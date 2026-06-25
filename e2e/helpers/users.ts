@@ -46,6 +46,40 @@ export function sampleUserData(index: number): NewUserInput {
 
 export { openNewUserForm, openUsersList } from './nav';
 
+export async function openUserEditForm(page: Page, user: NewUserInput): Promise<Locator> {
+  const list = await filterUsersListByEmail(page, user.email);
+  const row = userRow(list, user);
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await row.getByRole('link', { name: 'Edit' }).click();
+  const panel = await waitForMainPanel(page);
+  await expect(panel.getByRole('heading', { name: 'Edit user' })).toBeVisible();
+  const form = panel.locator('form[action*="/admin/users/save"]').last();
+  await expect(form).toBeVisible();
+  return form;
+}
+
+/** Assigned users keep email read-only but full name must remain editable. */
+export async function editAssignedUserFullName(
+  page: Page,
+  user: NewUserInput,
+  newFullName: string,
+): Promise<void> {
+  const form = await openUserEditForm(page, user);
+  const fullName = form.locator('#user-full-name');
+  await expect(fullName).toBeVisible();
+  await expect(fullName).toBeEditable();
+  await expect(form.locator('#user-full-name-ro')).toHaveCount(0);
+  await fullName.fill(newFullName);
+  await Promise.all([
+    page.waitForURL(/\/admin\/users(?:\?|$)/, { timeout: 20_000 }),
+    form.getByRole('button', { name: 'Save changes' }).click(),
+  ]);
+  const list = await waitForMainPanel(page);
+  await expect(list.locator('.alert-success').filter({ hasText: 'User saved.' }).first()).toBeVisible();
+  const filtered = await filterUsersListByEmail(page, user.email);
+  await expect(userRow(filtered, user)).toContainText(newFullName);
+}
+
 export async function fillNewUserForm(main: Locator, user: NewUserInput) {
   await main.locator('#user-full-name').fill(user.fullName);
   await main.locator('#user-company-name').fill(user.companyName);
@@ -89,6 +123,18 @@ export async function createUser(page: Page, user: NewUserInput): Promise<Locato
 
 export function userRow(list: Locator, user: NewUserInput) {
   return list.locator('tbody tr').filter({ hasText: user.email });
+}
+
+/** Filter the users list by email so the row is found even when paginated. */
+export async function filterUsersListByEmail(page: Page, email: string): Promise<Locator> {
+  const list = await openUsersList(page);
+  await list.locator('#user-search-q').fill(email);
+  await list.locator('#users-filter-form').getByRole('button', { name: 'Search' }).click();
+  const filtered = await waitForMainPanel(page);
+  await expect(filtered.locator('tbody tr').filter({ hasText: email }).first()).toBeVisible({
+    timeout: 20_000,
+  });
+  return filtered;
 }
 
 /** Pick a user on Add owner/partner (server-backed search combobox). */

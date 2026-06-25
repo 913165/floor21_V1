@@ -98,6 +98,8 @@ Expand **Floor21 — full flow (admin + partner)**, then click ▶ on each step 
 
 **Admin before partner:** Partner steps read credentials from `e2e/.flow-state.json`, written after each admin step. Run **Admin — 1** through **Admin — 5b** before any **Partner —** step (or run the full file top to bottom). If partner login fails with “Flow state missing”, run the admin steps first.
 
+**Admin — 4b / 5 (users & allocation):** Assigned partners keep email read-only but **full name** stays editable on the user form. Flat/shop cards show the partner **company name** (`Company:` label), not personal name. **Save partner** closes the flat details popup automatically; step 5 also assigns the first ground-floor shop when shops exist.
+
 **Admin — 3e (floor configure):** Ground floor — **Add ground floor** + configure shops; parking floor 1 — open Configure and save. Size sliders were removed; panel edge-drag handles resize instead. Tests verify modals have no car/shop size bars and saved config keeps default size % (140 shops / 180 parking). See `helpers/floor-size-config.ts`.
 
 **Partner — 6 (receipts):** After bookings exist, records **5 waterfall receipts** for **Client1 Buyer** (`client1@example.com`) across milestone slabs 1–3 (₹50L consideration), plus one receipt for partner 2’s first client, then attaches **payment schedule** full-page screenshots to the Playwright report.

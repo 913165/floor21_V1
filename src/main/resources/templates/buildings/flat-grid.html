@@ -862,7 +862,7 @@
                   <option value="">— Unassigned —</option>
                   <option th:each="p : ${partnerAllocationPartners}"
                           th:value="${p.id}"
-                          th:text="${p.fullName}">Partner</option>
+                          th:text="${T(com.floor21.service.PartnerFlatAllocationService).partnerSelectLabel(p)}">Partner</option>
                 </select>
               </div>
               <div class="col-md-3 d-flex align-items-end">
@@ -1172,7 +1172,7 @@
   <script defer th:src="@{/js/amount-format.js(v=panel-payment-v1)}"></script>
   <script defer th:src="@{/js/floor21-area-unit.js(v=area-unit-prefs-v2)}"></script>
   <script defer th:src="@{/js/floor21-panel-resize.js(v=panel-resize-v8)}"></script>
-  <script defer th:src="@{/js/flat-grid.js(v=floor-convert-v7)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=floor-convert-v8)}"></script>
   <script defer th:src="@{/js/ground-floor-shops.js(v=shop-partner-v1)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=7)}"></script>
 </div>

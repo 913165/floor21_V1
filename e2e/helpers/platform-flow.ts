@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import {
   createBuilding,
   expectedFlatCountForType,
@@ -43,12 +43,19 @@ import {
   configureAndVerifyFloorSizes,
   type FloorSizeConfigTestRecord,
 } from './floor-size-config';
-import { closeFlatDetailsModal } from './modals';
 import {
   configureAndApplyUnitTypeDefaults,
   E2E_2BHK_UNIT_DEFAULTS,
   type UnitTypeDefaultsInput,
 } from './unit-type-defaults';
+
+export type PartnerAssignInput = Pick<NewUserInput, 'fullName' | 'companyName'>;
+
+export function partnerSelectOptionLabel(partner: PartnerAssignInput): string {
+  const fullName = partner.fullName.trim();
+  const company = partner.companyName.trim();
+  return company ? `${fullName} (${company})` : fullName;
+}
 
 export { PARKING_LINK_SAMPLE_SIZE } from './parking';
 /** Share of residential flats assigned to partners (remainder stays unassigned). */
@@ -267,11 +274,13 @@ export async function adminAssignFlats(page: Page, flow: PlatformFlowState) {
   flow.assignToUser2 = toAssign.slice(splitAt);
 
   for (const flatId of flow.assignToUser1) {
-    await assignFlatToPartner(page, flatId, flow.user1.fullName);
+    await assignFlatToPartner(page, flatId, flow.user1);
   }
   for (const flatId of flow.assignToUser2) {
-    await assignFlatToPartner(page, flatId, flow.user2.fullName);
+    await assignFlatToPartner(page, flatId, flow.user2);
   }
+
+  await assignFirstGroundFloorShopToPartner(page, flow.user1);
 
   const assignedTotal = flow.assignToUser1.length + flow.assignToUser2.length;
   expect(assignedTotal).toBeGreaterThanOrEqual(Math.ceil(flatIds.length * FLAT_ASSIGN_PERCENT));
@@ -468,14 +477,69 @@ export async function expectOwnerBookableFlatCount(
   }
 }
 
-export async function assignFlatToPartner(page: Page, flatId: string, partnerName: string) {
+export async function assignFlatToPartner(
+  page: Page,
+  flatId: string,
+  partner: PartnerAssignInput,
+) {
   const modal = await openFlatDetailsForFlat(page, flatId);
+  await savePartnerAssignmentFromModal(page, flatId, partner, modal);
+
+  const card = page.locator(`#flat-${flatId}`);
+  await expect(card).toContainText('Company:');
+  await expect(card.locator('.flat-partner-tag')).toContainText(partner.companyName);
+}
+
+export async function assignShopToPartner(
+  page: Page,
+  shopFlatId: string,
+  partner: PartnerAssignInput,
+) {
+  const section = page.locator('#flat-ground-floor-section');
+  await section.scrollIntoViewIfNeeded();
+  const slot = section.locator(`.shop-plan__slot--shop[data-shop-flat-id="${shopFlatId}"]`);
+  await expect(slot).toBeVisible({ timeout: 15_000 });
+  await slot.click();
+
+  const modal = page.locator('#flat-details-modal');
+  await expect(modal).toHaveClass(/show/, { timeout: 15_000 });
+  await savePartnerAssignmentFromModal(page, shopFlatId, partner, modal);
+
+  await expect(slot.locator('.shop-plan__partner-tag')).toContainText(partner.companyName);
+}
+
+export async function assignFirstGroundFloorShopToPartner(
+  page: Page,
+  partner: PartnerAssignInput,
+) {
+  const section = page.locator('#flat-ground-floor-section');
+  if ((await section.count()) === 0) {
+    return;
+  }
+  const firstShop = section.locator('.shop-plan__slot--shop').first();
+  if ((await firstShop.count()) === 0) {
+    return;
+  }
+  const shopFlatId = await firstShop.getAttribute('data-shop-flat-id');
+  if (!shopFlatId) {
+    return;
+  }
+  await assignShopToPartner(page, shopFlatId, partner);
+}
+
+async function savePartnerAssignmentFromModal(
+  page: Page,
+  flatId: string,
+  partner: PartnerAssignInput,
+  modal: Locator,
+) {
   const partnerSelect = modal.locator('#admin-partner');
   await expect(partnerSelect).toBeVisible({ timeout: 15_000 });
-  await expect(partnerSelect.getByRole('option', { name: partnerName })).toHaveCount(1, {
+  const optionLabel = partnerSelectOptionLabel(partner);
+  await expect(partnerSelect.getByRole('option', { name: optionLabel })).toHaveCount(1, {
     timeout: 15_000,
   });
-  await partnerSelect.selectOption({ label: partnerName });
+  await partnerSelect.selectOption({ label: optionLabel });
   await expect(partnerSelect).not.toHaveValue('');
 
   const saveBtn = modal.locator('#admin-partner-save');
@@ -494,10 +558,11 @@ export async function assignFlatToPartner(page: Page, flatId: string, partnerNam
     `Partner save failed (${response.status()}): ${await response.text()}`,
   ).toBeTruthy();
 
-  const card = page.locator(`#flat-${flatId}`);
-  await expect(card).toContainText(partnerName);
+  const body = (await response.json()) as { partnerName?: string };
+  expect(body.partnerName).toBe(partner.companyName);
 
-  await closeFlatDetailsModal(page, modal);
+  await expect(modal).toBeHidden({ timeout: 10_000 });
+  await expect(page.locator('.modal-backdrop')).toHaveCount(0, { timeout: 10_000 });
 }
 
 function shuffle<T>(items: T[]): T[] {

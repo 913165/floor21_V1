@@ -315,7 +315,7 @@ public class PartnerFlatAllocationService {
     }
 
     /** Label shown on flat/shop cards for partner assignment. */
-    static String partnerCardDisplayName(User user) {
+    public static String partnerCardDisplayName(User user) {
         if (user == null) {
             return null;
         }
@@ -325,6 +325,22 @@ public class PartnerFlatAllocationService {
         }
         String fullName = user.getFullName();
         return fullName != null && !fullName.isBlank() ? fullName.trim() : null;
+    }
+
+    /** Partner dropdown label: full name with company in parentheses when set. */
+    public static String partnerSelectLabel(User user) {
+        if (user == null) {
+            return "";
+        }
+        String fullName = user.getFullName() != null ? user.getFullName().trim() : "";
+        String company = user.getCompanyName() != null ? user.getCompanyName().trim() : "";
+        if (!fullName.isEmpty() && !company.isEmpty()) {
+            return fullName + " (" + company + ")";
+        }
+        if (!fullName.isEmpty()) {
+            return fullName;
+        }
+        return company;
     }
 
     private static void requirePlatformAdmin() {

@@ -5173,6 +5173,15 @@
     }
   };
 
+  function partnerSelectLabel(partner) {
+    if (!partner) return "";
+    if (partner.label) return String(partner.label);
+    var fullName = partner.fullName ? String(partner.fullName).trim() : "";
+    var company = partner.companyName ? String(partner.companyName).trim() : "";
+    if (fullName && company) return fullName + " (" + company + ")";
+    return fullName || company || (partner.id ? String(partner.id) : "");
+  }
+
   async function loadSalesPartnersIntoSelect() {
     var select = document.getElementById("admin-partner");
     var grid = document.getElementById("flat-grid");
@@ -5189,7 +5198,7 @@
     partners.forEach(function (p) {
       var opt = document.createElement("option");
       opt.value = p.id;
-      opt.textContent = p.fullName || p.id;
+      opt.textContent = partnerSelectLabel(p);
       select.appendChild(opt);
     });
     if (current) select.value = current;

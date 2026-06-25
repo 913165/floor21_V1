@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { login } from '../helpers/auth';
+import { login, loginAsSuperAdmin } from '../helpers/auth';
 import { openAdminBuildingFlatGrid } from '../helpers/nav';
 import { expectBookingInList } from '../helpers/bookings';
 import { E2E_PRIMARY_BUYER } from '../helpers/clients';
@@ -33,6 +33,7 @@ import {
   type FlowBookingRecord,
   type PlatformFlowState,
 } from '../helpers/platform-flow';
+import { editAssignedUserFullName } from '../helpers/users';
 import {
   createPaymentReceipt,
   E2E_MIN_RECEIPTS_FOR_SLAB_TEST,
@@ -192,6 +193,17 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     await adminAddPartners(page, flow);
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-partners-added');
+  });
+
+  test('Admin — 4b. Edit assigned partner full name', async ({ page }, testInfo) => {
+    loadFlow();
+    requireFlowState(flow);
+    await loginAsSuperAdmin(page);
+    const updatedName = `${flow.user1.fullName} Updated`;
+    await editAssignedUserFullName(page, flow.user1, updatedName);
+    flow.user1.fullName = updatedName;
+    writeFlowStateFile(flow);
+    emitFlowCredentials(flow, testInfo, 'credentials-partner-name-updated');
   });
 
   test('Admin — 5. Assign ~90% flats between partners', async ({ page }, testInfo) => {

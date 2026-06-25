@@ -362,7 +362,17 @@ public class BuildingController {
     @ResponseBody
     public List<Map<String, Object>> salesPartners(@PathVariable UUID id) {
         return partnerFlatAllocationService.listPartnersForBuilding(id).stream()
-                .map(u -> Map.<String, Object>of("id", u.getId(), "fullName", u.getFullName()))
+                .map(
+                        u ->
+                                Map.<String, Object>of(
+                                        "id",
+                                        u.getId(),
+                                        "fullName",
+                                        u.getFullName(),
+                                        "companyName",
+                                        u.getCompanyName() != null ? u.getCompanyName() : "",
+                                        "label",
+                                        PartnerFlatAllocationService.partnerSelectLabel(u)))
                 .toList();
     }
 
