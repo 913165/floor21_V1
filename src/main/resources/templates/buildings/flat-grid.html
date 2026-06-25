@@ -824,7 +824,7 @@
             Shared parking section — slots are allocated across flats on partner assignment, not booked as individual units.
           </div>
           <div id="panel-shop-note" class="alert alert-info py-2 small d-none mb-3">
-            Retail shop — sold independently of residential flats. Bookings can be for external buyers; parking links and partner flat tools do not apply.
+            Retail shop — sold independently of residential flats. Assign a partner below so only that partner can book this shop.
           </div>
           <div id="panel-flat-layout-actions" class="flat-details-layout-links d-flex flex-wrap align-items-center gap-2 mb-3">
             <button type="button"
@@ -841,6 +841,7 @@
             <a id="book-btn" href="#" class="btn btn-success">Book this flat</a>
           </div>
           <div id="flat-admin-panel" class="border-top pt-3 mt-3 d-none" sec:authorize="hasRole('SUPER_ADMIN')">
+            <div id="admin-layout-tools-intro" class="admin-layout-only">
             <h6 class="text-primary mb-2">Platform admin — layout tools</h6>
             <p class="text-muted small mb-2">
               Set unit type to a BHK, <strong>PKG (parking)</strong>, or an amenity (GYM, CLUB, etc.).
@@ -853,7 +854,8 @@
               Same-floor merges hide the absorbed unit but can be restored with <strong>Restore merged flat</strong>.
               After deleting a unit, use <strong>+ Add unit</strong> on that floor row to add a replacement slot.
             </p>
-            <div class="row g-2 align-items-end border-top pt-2 mt-2">
+            </div>
+            <div class="row g-2 align-items-end border-top pt-2 mt-2" id="admin-partner-row">
               <div class="col-md-6">
                 <label class="form-label small mb-0" for="admin-partner">Partner</label>
                 <select class="form-select form-select-sm" id="admin-partner">
@@ -867,19 +869,19 @@
                 <button type="button" class="btn btn-sm btn-outline-primary w-100" id="admin-partner-save">Save partner</button>
               </div>
             </div>
-            <div class="row g-2 align-items-end border-top pt-2 mt-2 d-none" id="admin-split-merge-row">
+            <div class="row g-2 align-items-end border-top pt-2 mt-2 d-none admin-layout-only" id="admin-split-merge-row">
               <div class="col-md-8" id="admin-split-merge-col">
                 <div class="text-muted small mb-1" id="admin-split-merge-label">Same-floor merge — restore hidden unit</div>
                 <button type="button" class="btn btn-sm btn-outline-warning w-100" id="admin-split-merge-btn">Restore merged flat</button>
               </div>
             </div>
-            <div class="row g-2 align-items-end border-top pt-2 mt-2 d-none" id="admin-split-row">
+            <div class="row g-2 align-items-end border-top pt-2 mt-2 d-none admin-layout-only" id="admin-split-row">
               <div class="col-md-6" id="admin-split-col">
                 <div class="text-muted small mb-1">Linked duplex — undo merge</div>
                 <button type="button" class="btn btn-sm btn-outline-warning w-100" id="admin-split-duplex-btn">Split duplex back to two flats</button>
               </div>
             </div>
-            <div class="row g-2 align-items-end border-top pt-2 mt-2" id="admin-merge-row">
+            <div class="row g-2 align-items-end border-top pt-2 mt-2 admin-layout-only" id="admin-merge-row">
               <div class="col-md-6">
                 <label class="form-label small mb-0" for="admin-merge-remove">Merge / duplex: link another unit</label>
                 <select class="form-select form-select-sm" id="admin-merge-remove">
@@ -890,7 +892,7 @@
                 <button type="button" class="btn btn-sm btn-outline-primary w-100" id="admin-merge-btn">Merge / create duplex</button>
               </div>
             </div>
-            <div class="row g-2 align-items-end">
+            <div class="row g-2 align-items-end admin-layout-only">
               <div class="col-md-9 d-flex align-items-end flex-wrap gap-2">
                 <button type="button" class="btn btn-sm btn-outline-danger" id="admin-delete-btn">Deactivate this flat</button>
                 <button type="button" class="btn btn-sm btn-danger" id="admin-remove-flat-btn">Delete flat</button>
@@ -1170,8 +1172,8 @@
   <script defer th:src="@{/js/amount-format.js(v=panel-payment-v1)}"></script>
   <script defer th:src="@{/js/floor21-area-unit.js(v=area-unit-prefs-v2)}"></script>
   <script defer th:src="@{/js/floor21-panel-resize.js(v=panel-resize-v8)}"></script>
-  <script defer th:src="@{/js/flat-grid.js(v=floor-convert-v5)}"></script>
-  <script defer th:src="@{/js/ground-floor-shops.js(v=panel-resize-v10)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=floor-convert-v6)}"></script>
+  <script defer th:src="@{/js/ground-floor-shops.js(v=shop-partner-v1)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=7)}"></script>
 </div>
 </body>

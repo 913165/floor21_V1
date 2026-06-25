@@ -320,6 +320,10 @@
       (slot.paymentReceived != null ? slot.paymentReceived : "") +
       '" data-remaining-balance="' +
       (slot.remainingBalance != null ? slot.remainingBalance : "") +
+      '" data-partner-id="' +
+      (slot.assignedPartnerId || "") +
+      '" data-partner-name="' +
+      (slot.assignedPartnerName || "").replace(/"/g, "&quot;") +
       '" title="' +
       title.replace(/"/g, "&quot;") +
       '"' +
@@ -331,6 +335,9 @@
       slot.slotNumber +
       "</span>" +
       (slot.flatNumber ? '<span class="shop-plan__unit-no">' + slot.flatNumber + "</span>" : "") +
+      (slot.assignedPartnerName
+        ? '<span class="shop-plan__partner-tag">' + slot.assignedPartnerName + "</span>"
+        : "") +
       "</div>"
     );
   }
@@ -1230,9 +1237,16 @@
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
+  function canOpenShopSlot(slotEl) {
+    if (!slotEl) return false;
+    if (isPlatformAdminEdit()) return true;
+    return slotEl.getAttribute("data-bookable") === "true";
+  }
+
   function selectShopSlot(slotEl) {
     if (!slotEl || !window.floor21SelectShop) return;
     if (slotEl.classList.contains("shop-plan__slot--parking")) return;
+    if (!canOpenShopSlot(slotEl)) return;
     window.floor21SelectShop(slotEl);
   }
 

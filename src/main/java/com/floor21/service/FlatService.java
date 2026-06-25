@@ -1015,6 +1015,7 @@ public class FlatService {
         Map<UUID, BookingReceiptSummary> receiptSummaries =
                 receiptSummariesByBookingId(builderId, bookingByFlatId);
         Map<UUID, UUID> partnerIds = partnerFlatAllocationService.getFlatOwnerByPartnerId(buildingId);
+        Map<UUID, String> partnerLabels = partnerFlatAllocationService.getFlatPartnerLabels(buildingId);
         GroundFloorStoredConfig stored = GroundFloorShopConfigUtil.readStored(building);
         ParkingFloorConfigUtil.FloorConfig config = stored.shops();
         int parkingCount = stored.parkingSlotCount();
@@ -1101,6 +1102,7 @@ public class FlatService {
                 }
             }
             UUID assignedPartnerId = partnerIds.get(shop.getId());
+            String assignedPartnerName = partnerLabels.get(shop.getId());
             boolean bookable =
                     partnerFlatAllocationService.isBookableByCurrentUser(
                             buildingId, assignedPartnerId);
@@ -1115,7 +1117,9 @@ public class FlatService {
                             bookable,
                             clientId,
                             paymentReceived,
-                            remainingBalance));
+                            remainingBalance,
+                            assignedPartnerId,
+                            assignedPartnerName));
         }
         return new GroundFloorShopPlanDto(
                 n,

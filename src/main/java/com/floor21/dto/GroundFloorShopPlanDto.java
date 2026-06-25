@@ -64,7 +64,11 @@ public record GroundFloorShopPlanDto(
 
             BigDecimal paymentReceived,
 
-            BigDecimal remainingBalance) {}
+            BigDecimal remainingBalance,
+
+            UUID assignedPartnerId,
+
+            String assignedPartnerName) {}
 
 
 

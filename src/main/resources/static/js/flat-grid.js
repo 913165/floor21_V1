@@ -321,9 +321,11 @@
     if (!slotEl) return;
     var price = document.getElementById("admin-price");
     var bhk = document.getElementById("admin-bhk");
+    var partner = document.getElementById("admin-partner");
     setAreaPair("admin-super-builder-area", slotEl.dataset.area || slotEl.getAttribute("data-area"));
     if (price) price.value = slotEl.dataset.price || slotEl.getAttribute("data-price") || "";
     if (bhk) bhk.value = "SHOP";
+    if (partner) partner.value = slotEl.getAttribute("data-partner-id") || slotEl.dataset.partnerId || "";
     showAdminError("");
   }
 
@@ -354,6 +356,14 @@
       }
       if (flat.status != null) slotEl.setAttribute("data-status", flat.status);
       if (flat.flatNumber != null) slotEl.setAttribute("data-flat-number", flat.flatNumber);
+      if (flat.bookableByCurrentUser !== undefined) {
+        var bookable = flat.bookableByCurrentUser !== false ? "true" : "false";
+        slotEl.setAttribute("data-bookable", bookable);
+        slotEl.dataset.bookable = bookable;
+      }
+      if (flat.assignedPartnerId) {
+        syncShopPartnerTag(slotEl, flat.assignedPartnerId, flat.assignedPartnerName);
+      }
     });
     if (
       selectedShopSlotElement &&
@@ -399,6 +409,54 @@
     return !isNonBookableUnit(cardEl);
   }
 
+  function syncShopPartnerTag(slotEl, partnerId, partnerName) {
+    if (!slotEl) return;
+    if (partnerId) {
+      slotEl.setAttribute("data-partner-id", partnerId);
+      slotEl.dataset.partnerId = partnerId;
+    } else {
+      slotEl.removeAttribute("data-partner-id");
+      delete slotEl.dataset.partnerId;
+    }
+    if (partnerName) {
+      slotEl.setAttribute("data-partner-name", partnerName);
+      slotEl.dataset.partnerName = partnerName;
+    } else {
+      slotEl.removeAttribute("data-partner-name");
+      delete slotEl.dataset.partnerName;
+    }
+    var tag = slotEl.querySelector(".shop-plan__partner-tag");
+    var name = partnerName ? String(partnerName).trim() : "";
+    if (!name) {
+      if (tag) tag.remove();
+      return;
+    }
+    if (!tag) {
+      tag = document.createElement("span");
+      tag.className = "shop-plan__partner-tag";
+      slotEl.appendChild(tag);
+    }
+    tag.textContent = name;
+  }
+
+  function syncShopAdminPanelVisibility() {
+    var shop = selectedShopUnit;
+    var parkingMode = selectedParkingSection || selectedParkingSlot;
+    var panel = document.getElementById("flat-admin-panel");
+    if (!panel) return;
+    if (!isPlatformAdminEdit() || parkingMode) {
+      panel.classList.add("d-none");
+      return;
+    }
+    panel.classList.remove("d-none");
+    var partnerOnly = !!shop;
+    panel.querySelectorAll(".admin-layout-only").forEach(function (el) {
+      el.classList.toggle("d-none", partnerOnly);
+    });
+    var partnerRow = document.getElementById("admin-partner-row");
+    if (partnerRow) partnerRow.classList.remove("d-none");
+  }
+
   function syncParkingDetailsPanelMode() {
     var section = selectedParkingSection;
     var slot = selectedParkingSlot;
@@ -419,7 +477,6 @@
     var parkingLinks = document.getElementById("panel-parking-links");
     var parkingSlotActions = document.getElementById("panel-parking-slot-actions");
     var flatLayoutActions = document.getElementById("panel-flat-layout-actions");
-    var adminPanel = document.getElementById("flat-admin-panel");
     var saveRow = document.getElementById("admin-save-row");
     var saveBtn = document.getElementById("admin-save-btn");
     var applyFloor = document.getElementById("admin-apply-floor-btn");
@@ -434,7 +491,7 @@
     if (parkingLinks) parkingLinks.classList.toggle("d-none", parkingMode || shop);
     if (parkingSlotActions) parkingSlotActions.classList.toggle("d-none", !slot);
     if (flatLayoutActions) flatLayoutActions.classList.toggle("d-none", parkingMode || shop);
-    if (adminPanel) adminPanel.classList.toggle("d-none", parkingMode || shop);
+    syncShopAdminPanelVisibility();
     if (saveRow && (section || slot || shop)) {
       saveRow.classList.toggle("d-none", !isPlatformAdminEdit());
     }
@@ -6775,11 +6832,19 @@
       return;
     }
     var data = await res.json();
-    var card = document.getElementById("flat-" + selectedFlatId);
     var pid = data.partnerUserId ? String(data.partnerUserId) : "";
     var pname = data.partnerName ? String(data.partnerName) : "";
-    syncPartnerTag(card, pid || null, pname || null);
     if (partnerSel) partnerSel.value = pid;
+    if (selectedShopUnit) {
+      showGridToast("Partner saved");
+      closeFlatDetailsModal();
+      selectedFlatId = null;
+      setShopUnitMode(false);
+      await refreshGrid();
+      return;
+    }
+    var card = document.getElementById("flat-" + selectedFlatId);
+    syncPartnerTag(card, pid || null, pname || null);
     showGridToast("Partner saved");
     closeFlatDetailsModal();
   }

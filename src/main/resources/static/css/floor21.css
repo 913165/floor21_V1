@@ -6293,6 +6293,23 @@ body.slab-schedule-col-resizing {
   color: var(--bs-secondary-color);
 }
 
+.shop-plan__partner-tag {
+  display: block;
+  font-size: 0.52rem;
+  line-height: 1.1;
+  color: var(--bs-secondary-color);
+  margin-top: 0.1rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-plan__slot--shop[data-bookable="false"]:not(.shop-plan__slot--booked):not(.shop-plan__slot--hold) {
+  opacity: 0.45;
+  filter: grayscale(0.35);
+}
+
 .shop-plan__slot--available .shop-plan__bay {
   background: #d1e7dd;
   border-color: #198754;
