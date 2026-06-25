@@ -108,7 +108,7 @@ public class PartnerFlatAllocationService {
     public Map<UUID, String> getFlatPartnerLabels(UUID buildingId) {
         Map<UUID, String> labels = new HashMap<>();
         for (PartnerFlatAssignment row : assignmentRepository.findByBuilding_Id(buildingId)) {
-            labels.put(row.getFlat().getId(), row.getUser().getFullName());
+            labels.put(row.getFlat().getId(), partnerCardDisplayName(row.getUser()));
         }
         return labels;
     }
@@ -183,7 +183,7 @@ public class PartnerFlatAllocationService {
                                                 "User is not a partner on this building."));
         Building building = buildingService.resolveForAccess(buildingId);
         assignmentRepository.save(new PartnerFlatAssignment(partner, flat, building));
-        return partner.getFullName();
+        return partnerCardDisplayName(partner);
     }
 
     @Transactional
@@ -312,6 +312,19 @@ public class PartnerFlatAllocationService {
             return null;
         }
         return principal.getStaffUserId();
+    }
+
+    /** Label shown on flat/shop cards for partner assignment. */
+    static String partnerCardDisplayName(User user) {
+        if (user == null) {
+            return null;
+        }
+        String company = user.getCompanyName();
+        if (company != null && !company.isBlank()) {
+            return company.trim();
+        }
+        String fullName = user.getFullName();
+        return fullName != null && !fullName.isBlank() ? fullName.trim() : null;
     }
 
     private static void requirePlatformAdmin() {

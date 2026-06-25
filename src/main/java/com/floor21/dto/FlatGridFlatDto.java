@@ -39,7 +39,7 @@ public record FlatGridFlatDto(
         String cardClass,
         /** Assigned sales partner user id; null if none. */
         UUID assignedPartnerId,
-        /** Sales partner display name on the card; null if none. */
+        /** Sales partner company (or name) shown on the card; null if none. */
         String assignedPartnerName,
         /** False when another partner owns this flat and the viewer cannot book or hold it. */
         boolean bookableByCurrentUser,

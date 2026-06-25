@@ -362,6 +362,7 @@ public class AdminUserService {
             entity.setPasswordHash(passwordEncoder.encode(password));
         }
         entity.setAdminVisiblePassword(password);
+        entity.setFullName(form.getFullName().trim());
         entity.setCompanyName(form.getCompanyName().trim());
         UserContactFields.applyFromForm(entity, form);
     }

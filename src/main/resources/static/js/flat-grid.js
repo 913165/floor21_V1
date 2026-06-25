@@ -1675,7 +1675,7 @@
       row.className = "flat-card-partner";
       var labelEl = document.createElement("span");
       labelEl.className = "flat-partner-label";
-      labelEl.textContent = "Partner name:";
+      labelEl.textContent = "Company:";
       var tag = document.createElement("span");
       tag.className = "flat-partner-tag";
       row.appendChild(labelEl);
