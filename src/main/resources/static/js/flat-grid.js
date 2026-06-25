@@ -442,12 +442,12 @@
       saveBtn.classList.toggle("d-none", section);
       if (shop) {
         saveBtn.textContent = "Save shop area / price";
+      } else if (slot) {
+        saveBtn.textContent = "Save slot type / area / price";
+      } else if (section) {
+        saveBtn.textContent = "Save unit type / area / price";
       } else {
-        saveBtn.textContent = slot
-          ? "Save slot area / price"
-          : section
-            ? "Save unit type / area / price"
-            : "Save unit type / area / price";
+        saveBtn.textContent = "Save unit type / area / price";
       }
     }
     if (applyFloor) applyFloor.classList.toggle("d-none", !(section || slot) || shop);
@@ -457,7 +457,7 @@
           "Retail shop — set area and price for this unit. Shops are sold independently of residential flats.";
       } else if (slot) {
         saveHint.textContent =
-          "Set a different size per slot here. Configure on the floor sets the default for newly added slots.";
+          "Choose PKG for parking, or pick a BHK to convert this slot back to a residential flat. Configure on the floor sets defaults for new slots.";
       } else if (section) {
         saveHint.textContent =
           "Platform admin only. Apply to whole floor sets the same type/area on every slot.";
@@ -484,8 +484,10 @@
         bhk.value = "SHOP";
         bhk.disabled = true;
       } else if (slot) {
-        bhk.value = "PKG";
-        bhk.disabled = true;
+        if (!bhk.value || bhk.value === "SHOP") {
+          bhk.value = "PKG";
+        }
+        bhk.disabled = false;
       } else if (!section) {
         bhk.disabled = false;
       }
@@ -2511,6 +2513,16 @@
     var configureLink = isPlatformAdminEdit()
       ? '<button type="button" class="flat-parking-configure-link btn btn-link btn-sm px-0">Configure</button>'
       : "";
+    var convertResidentialLink =
+      isPlatformAdminEdit() && floor.convertibleFloorUse === true
+        ? '<button type="button" class="flat-convert-residential-btn btn btn-link btn-sm px-0 text-warning" data-floor-number="' +
+          floor.floorNumber +
+          '">Convert to residential</button>'
+        : "";
+    var bookingHint =
+      isPlatformAdminEdit() && floor.floorHasActiveBooking === true
+        ? '<span class="text-muted small flat-floor-booking-hint" title="Cancel or complete bookings on this floor before converting">Bookings on floor</span>'
+        : "";
     return (
       '<div class="flat-parking-section__layout">' +
       '<div class="flat-parking-section__summary">' +
@@ -2522,6 +2534,8 @@
       "</div>" +
       note +
       configureLink +
+      convertResidentialLink +
+      bookingHint +
       buildParkingLayoutLinksHtml(floor) +
       "</div>" +
       '<div class="flat-parking-section__plan" aria-hidden="true">' +
@@ -4344,6 +4358,77 @@
     return el;
   }
 
+  function syncFloorRailActions(floor) {
+    if (!isPlatformAdminEdit()) return;
+    var floorRow = findFloorRow(floor.floorNumber);
+    if (!floorRow) return;
+    var rail = floorRow.querySelector(".flat-floor-row__rail");
+    if (!rail) return;
+    var addBtn = rail.querySelector(".flat-add-unit-btn");
+    var toParkingBtn = rail.querySelector(".flat-convert-parking-btn");
+    var bookingHint = rail.querySelector(".flat-floor-booking-hint");
+    var parkingSection = floor.parkingSection === true;
+    var convertible = floor.convertibleFloorUse === true;
+    var hasBooking = floor.floorHasActiveBooking === true;
+    if (addBtn) addBtn.classList.toggle("d-none", parkingSection);
+    if (toParkingBtn) {
+      toParkingBtn.classList.toggle("d-none", parkingSection || !convertible);
+    } else if (!parkingSection && convertible) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn btn-sm btn-outline-warning flat-convert-parking-btn";
+      btn.setAttribute("data-floor-number", String(floor.floorNumber));
+      btn.textContent = "Convert to parking";
+      rail.appendChild(btn);
+    }
+    if (bookingHint) {
+      bookingHint.classList.toggle("d-none", !hasBooking);
+    } else if (hasBooking) {
+      var hint = document.createElement("span");
+      hint.className = "text-muted small flat-floor-booking-hint";
+      hint.title = "Cancel or complete bookings on this floor before converting";
+      hint.textContent = "Bookings on floor";
+      rail.appendChild(hint);
+    }
+    syncParkingConvertLink(floor);
+  }
+
+  function syncParkingConvertLink(floor) {
+    if (!isPlatformAdminEdit()) return;
+    var section = parkingSectionForFloor(floor.floorNumber);
+    if (!section) return;
+    var summary = section.querySelector(".flat-parking-section__summary");
+    if (!summary) return;
+    var link = summary.querySelector(".flat-convert-residential-btn");
+    var convertible = floor.convertibleFloorUse === true;
+    var hasBooking = floor.floorHasActiveBooking === true;
+    if (link) {
+      link.classList.toggle("d-none", !convertible);
+    } else if (convertible) {
+      link = document.createElement("button");
+      link.type = "button";
+      link.className = "flat-convert-residential-btn btn btn-link btn-sm px-0 text-warning";
+      link.setAttribute("data-floor-number", String(floor.floorNumber));
+      link.textContent = "Convert to residential";
+      var configure = summary.querySelector(".flat-parking-configure-link");
+      if (configure && configure.parentNode) {
+        configure.insertAdjacentElement("afterend", link);
+      } else {
+        summary.appendChild(link);
+      }
+    }
+    var bookingHint = summary.querySelector(".flat-floor-booking-hint");
+    if (bookingHint) {
+      bookingHint.classList.toggle("d-none", !hasBooking);
+    } else if (hasBooking) {
+      var hint = document.createElement("span");
+      hint.className = "text-muted small flat-floor-booking-hint";
+      hint.title = "Cancel or complete bookings on this floor before converting";
+      hint.textContent = "Bookings on floor";
+      summary.appendChild(hint);
+    }
+  }
+
   function upsertParkingSection(floor) {
     var floorRow = findFloorRow(floor.floorNumber);
     if (!floorRow) return;
@@ -4362,6 +4447,7 @@
     }
     var addBtn = floorRow.querySelector(".flat-add-unit-btn");
     if (addBtn) addBtn.classList.add("d-none");
+    syncFloorRailActions(floor);
   }
 
   function syncResidentialFloor(floor) {
@@ -4374,6 +4460,7 @@
     }
     var addBtn = floorRow.querySelector(".flat-add-unit-btn");
     if (addBtn) addBtn.classList.remove("d-none");
+    syncFloorRailActions(floor);
   }
 
   function reorderFloorCards(floorNumber) {
@@ -5018,6 +5105,12 @@
     syncPaymentSummaryPanel(el);
     syncAdminPanel(el);
     syncFlatParkingLinksPanel(el);
+    var isParkingCard = el.dataset.parking === "true";
+    setParkingExtraAreaFieldsVisible(!isParkingCard);
+    ["panel-column-number-col", "panel-column-type-col"].forEach(function (id) {
+      var col = document.getElementById(id);
+      if (col) col.classList.toggle("d-none", isParkingCard);
+    });
     if (showModal !== false) {
       openFlatDetailsModal();
     }
@@ -6551,7 +6644,8 @@
     adminSave.disabled = true;
     adminSave.textContent = "Saving…";
     var form = readAdminForm({
-      includeColumnType: !selectedParkingSlot && !selectedParkingSection && !selectedShopUnit,
+      includeColumnType:
+        !selectedParkingSlot && !selectedParkingSection && !selectedShopUnit,
     });
     var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
     var res;
@@ -6588,6 +6682,22 @@
       return;
     }
     if (selectedParkingSlot) {
+      var becameResidential =
+        flat &&
+        flat.parking !== true &&
+        flat.bhkType &&
+        flat.bhkType !== "PKG" &&
+        form.bhkType &&
+        form.bhkType !== "PKG";
+      if (becameResidential) {
+        finishAdminSaveSuccess();
+        showGridToast(ADMIN_SAVE_SUCCESS_MSG);
+        closeFlatDetailsModal();
+        setParkingSlotMode(false);
+        selectedFlatId = null;
+        await refreshGrid();
+        return;
+      }
       document.getElementById("panel-price").textContent =
         flat.basePrice != null ? String(flat.basePrice) : "";
       setAreaPanelFromFlat(flat);
@@ -6599,6 +6709,13 @@
       return;
     }
     var card = document.getElementById("flat-" + selectedFlatId);
+    var wasParkingCard = card && card.dataset.parking === "true";
+    var becameResidential =
+      wasParkingCard &&
+      flat &&
+      flat.parking !== true &&
+      flat.bhkType &&
+      flat.bhkType !== "PKG";
     applyFlatDataToCard(card, flat);
     document.getElementById("panel-type").textContent = flat.bhkType || "";
     syncColumnTypePanelFromFlat(flat);
@@ -6611,6 +6728,9 @@
       syncAdminPanel(card);
     }
     finishAdminSaveSuccess();
+    if (becameResidential) {
+      await refreshGrid();
+    }
   }
 
   function ensureAdminCloseClickBinding() {
@@ -6660,6 +6780,8 @@
     var pname = data.partnerName ? String(data.partnerName) : "";
     syncPartnerTag(card, pid || null, pname || null);
     if (partnerSel) partnerSel.value = pid;
+    showGridToast("Partner saved");
+    closeFlatDetailsModal();
   }
 
   function ensureAdminPartnerSaveBinding() {
@@ -6865,6 +6987,74 @@
     document.addEventListener("click", window.__f21ParkingSaveClickHandler, true);
   }
 
+  async function convertFloorUse(floorNumber, target) {
+    if (!isPlatformAdminEdit()) {
+      window.alert("Only platform super admins can convert a whole floor.");
+      return;
+    }
+    var grid = document.getElementById("flat-grid");
+    var buildingId = grid ? grid.getAttribute("data-building-id") : null;
+    if (!buildingId || !floorNumber) return;
+    var message =
+      target === "PARKING"
+        ? "Replace every unit on floor " +
+          floorNumber +
+          " with parking slots? Configure slot count after conversion. This cannot be undone without converting back."
+        : "Replace every parking slot on floor " +
+          floorNumber +
+          " with residential units using the building BHK column layout?";
+    if (!window.confirm(message)) return;
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    var res = await fetch(
+      appRoot() +
+        "/buildings/" +
+        buildingId +
+        "/flats/floor/" +
+        encodeURIComponent(floorNumber) +
+        "/convert-use",
+      {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify({ target: target }),
+      }
+    );
+    if (!res.ok) {
+      window.alert(await parseErrorResponse(res));
+      return;
+    }
+    selectedFlatId = null;
+    selectedParkingSection = false;
+    selectedParkingFloorNumber = null;
+    selectedParkingSlot = false;
+    await refreshGrid();
+  }
+
+  function ensureConvertFloorClickBinding() {
+    if (window.__f21ConvertFloorClickHandler) {
+      document.removeEventListener("click", window.__f21ConvertFloorClickHandler, true);
+    }
+    window.__f21ConvertFloorClickHandler = function (e) {
+      var parkingBtn = e.target.closest(".flat-convert-parking-btn");
+      if (parkingBtn) {
+        var grid = document.getElementById("flat-grid");
+        if (!grid || !grid.contains(parkingBtn)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        void convertFloorUse(parkingBtn.getAttribute("data-floor-number"), "PARKING");
+        return;
+      }
+      var residentialBtn = e.target.closest(".flat-convert-residential-btn");
+      if (residentialBtn) {
+        var gridRes = document.getElementById("flat-grid");
+        if (!gridRes || !gridRes.contains(residentialBtn)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        void convertFloorUse(residentialBtn.getAttribute("data-floor-number"), "RESIDENTIAL");
+      }
+    };
+    document.addEventListener("click", window.__f21ConvertFloorClickHandler, true);
+  }
+
   onPageReady(function () {
     mountModalsOnBody();
     ensureAdminSaveClickBinding();
@@ -6874,6 +7064,7 @@
     ensureAdminLifecycleClickBinding();
     ensureParkingConfigSaveBinding();
     ensureParkingSlotPanelBindings();
+    ensureConvertFloorClickBinding();
     bindBuildingSnapshotInteractions();
     initBuildingSnapshotButtons();
     var grid = document.getElementById("flat-grid");
@@ -7117,6 +7308,7 @@
     }
 
     var addFloorNumber = null;
+
     grid.querySelectorAll(".flat-add-unit-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         addFloorNumber = btn.getAttribute("data-floor-number");

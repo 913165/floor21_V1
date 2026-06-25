@@ -85,6 +85,8 @@ public class SecurityConfig {
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/buildings/*/flats/floor/*/details")
                                         .hasRole("SUPER_ADMIN")
+                                        .requestMatchers(HttpMethod.POST, "/buildings/*/flats/floor/*/convert-use")
+                                        .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/buildings/*/flats/floor/*/parking-config")
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/buildings/*/ground-floor-config")

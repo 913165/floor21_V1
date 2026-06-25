@@ -380,9 +380,15 @@
         <span class="floor-label text-nowrap" th:text="${floor.label()}">Floor</span>
         <span class="flat-floor-row__divider" aria-hidden="true"></span>
         <button type="button" class="btn btn-sm btn-outline-secondary flat-add-unit-btn"
-                sec:authorize="hasRole('SUPER_ADMIN')"
+                th:if="${platformAdminView}"
                 th:classappend="${floor.parkingSection()} ? ' d-none' : ''"
                 th:attr="data-floor-number=${floor.floorNumber()}">+ Add unit</button>
+        <button type="button" class="btn btn-sm btn-outline-warning flat-convert-parking-btn"
+                th:if="${platformAdminView and !floor.parkingSection() and floor.convertibleFloorUse()}"
+                th:attr="data-floor-number=${floor.floorNumber()}">Convert to parking</button>
+        <span class="text-muted small flat-floor-booking-hint"
+              th:if="${platformAdminView and floor.floorHasActiveBooking()}"
+              title="Cancel or complete bookings on this floor before converting">Bookings on floor</span>
       </div>
       <div class="flat-card-row">
         <div th:if="${floor.parkingSection()}"
@@ -418,6 +424,13 @@
               <button type="button"
                       class="flat-parking-configure-link btn btn-link btn-sm px-0"
                       th:if="${platformAdminView}">Configure</button>
+              <button type="button"
+                      class="flat-convert-residential-btn btn btn-link btn-sm px-0 text-warning"
+                      th:if="${platformAdminView and floor.convertibleFloorUse()}"
+                      th:attr="data-floor-number=${floor.floorNumber()}">Convert to residential</button>
+              <span class="text-muted small"
+                    th:if="${platformAdminView and floor.floorHasActiveBooking()}"
+                    title="Cancel or complete bookings on this floor before converting">Bookings on floor</span>
               <div class="flat-parking-section__layout-links d-flex flex-wrap align-items-center gap-2">
                 <button type="button"
                         class="flat-parking-layout-upload-link btn btn-link btn-sm px-0"
@@ -831,7 +844,10 @@
             <h6 class="text-primary mb-2">Platform admin — layout tools</h6>
             <p class="text-muted small mb-2">
               Set unit type to a BHK, <strong>PKG (parking)</strong>, or an amenity (GYM, CLUB, etc.).
-              Use <strong>Apply to whole floor</strong> to convert every unit on that floor at once.
+              Use <strong>Convert to parking</strong> / <strong>Convert to residential</strong> on a floor row to replace the whole floor
+              (only when no unit on that floor has an active booking).
+              For a single slot, open it and change unit type from <strong>PKG</strong> to a BHK (or the reverse).
+              Use <strong>Apply to whole floor</strong> to set the same BHK type on every residential unit without changing floor mode.
               To create a <strong>vertical duplex</strong> (e.g. 1301 + 1401), pick the adjacent same-stack unit below and merge —
               the lower floor becomes the bookable primary. To undo, open either half and use <strong>Split duplex</strong>.
               Same-floor merges hide the absorbed unit but can be restored with <strong>Restore merged flat</strong>.
@@ -1154,7 +1170,7 @@
   <script defer th:src="@{/js/amount-format.js(v=panel-payment-v1)}"></script>
   <script defer th:src="@{/js/floor21-area-unit.js(v=area-unit-prefs-v2)}"></script>
   <script defer th:src="@{/js/floor21-panel-resize.js(v=panel-resize-v8)}"></script>
-  <script defer th:src="@{/js/flat-grid.js(v=panel-payment-v1)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=floor-convert-v5)}"></script>
   <script defer th:src="@{/js/ground-floor-shops.js(v=panel-resize-v10)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=7)}"></script>
 </div>

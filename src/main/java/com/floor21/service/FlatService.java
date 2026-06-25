@@ -178,6 +178,18 @@ public class FlatService {
             boolean parkingHasLayoutImage =
                     parkingSection
                             && ParkingFloorConfigUtil.layoutImagePath(building, floor) != null;
+            List<Flat> floorFlats = byFloor.get(floor);
+            boolean floorHasActiveBooking =
+                    floorFlats.stream().anyMatch(f -> bookingByFlatId.containsKey(f.getId()));
+            boolean hasStructuralBlock =
+                    floorFlats.stream()
+                            .anyMatch(
+                                    f ->
+                                            FlatUnitTypes.isDuplexPrimary(f)
+                                                    || FlatUnitTypes.isDuplexSecondary(f)
+                                                    || FlatUnitTypes.isMergePrimary(f)
+                                                    || FlatUnitTypes.isMergeAbsorbed(f));
+            boolean convertibleFloorUse = !floorHasActiveBooking && !hasStructuralBlock;
             rows.add(
                     new FlatGridFloorDto(
                             floor,
@@ -196,7 +208,9 @@ public class FlatService {
                             parkingConfigured
                                     ? ParkingFloorConfigUtil.resolveSlotAreaSqft(parkingConfig)
                                     : null,
-                            parkingHasLayoutImage));
+                            parkingHasLayoutImage,
+                            floorHasActiveBooking,
+                            convertibleFloorUse));
         }
         return rows;
     }
@@ -1293,10 +1307,6 @@ public class FlatService {
         }
         int slotCount = dto.slotCount();
         Building building = buildingService.resolveForAccess(buildingId);
-        int parkingFloors = building.getParkingFloors() != null ? building.getParkingFloors() : 0;
-        if (floorNumber > parkingFloors) {
-            throw new IllegalArgumentException("Floor " + floorNumber + " is not a parking floor.");
-        }
         UUID builderId = building.getBuilder().getId();
         List<Flat> existing =
                 new ArrayList<>(
@@ -2541,6 +2551,175 @@ public class FlatService {
                     dto.basePrice());
         }
         return flatRepository.saveAll(flats);
+    }
+
+    public enum FloorUse {
+        PARKING,
+        RESIDENTIAL
+    }
+
+    /**
+     * Replaces every unit on a floor with parking slots or residential flats. Blocked when any unit
+     * on the floor has an active booking, or when duplex/merge layout must be undone first.
+     */
+    @Transactional
+    public Map<String, Object> convertFloorUse(UUID buildingId, int floorNumber, FloorUse target) {
+        if (floorNumber < 1) {
+            throw new IllegalArgumentException("Only floors 1 and above can be converted.");
+        }
+        if (ParkingFloorConfigUtil.isBasementFloor(floorNumber)) {
+            throw new IllegalArgumentException("Basement floors use a separate configuration flow.");
+        }
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        List<Flat> flats =
+                new ArrayList<>(
+                        flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                buildingId, builderId, floorNumber));
+        if (flats.isEmpty()) {
+            throw new IllegalArgumentException("No units on floor " + floorNumber + ".");
+        }
+        validateFloorReadyForUseConversion(flats);
+        boolean anyParking =
+                flats.stream()
+                        .anyMatch(
+                                f ->
+                                        Boolean.TRUE.equals(f.getParking())
+                                                || FlatUnitTypes.isParkingCode(f.getBhkType()));
+        boolean currentlyParking =
+                !flats.isEmpty()
+                        && flats.stream()
+                                .allMatch(
+                                        f ->
+                                                Boolean.TRUE.equals(f.getParking())
+                                                        || FlatUnitTypes.isParkingCode(f.getBhkType()));
+        if (anyParking && !currentlyParking && target != FloorUse.PARKING) {
+            throw new IllegalArgumentException(
+                    "Floor "
+                            + floorNumber
+                            + " has mixed parking and residential units. Convert to parking first, or make the floor uniform.");
+        }
+        if (target == FloorUse.PARKING && currentlyParking) {
+            throw new IllegalArgumentException("Floor " + floorNumber + " is already a parking floor.");
+        }
+        if (target == FloorUse.RESIDENTIAL && !currentlyParking) {
+            throw new IllegalArgumentException("Floor " + floorNumber + " is already a residential floor.");
+        }
+        Builder builder = building.getBuilder();
+        Instant now = Instant.now();
+        String layoutPath = ParkingFloorConfigUtil.layoutImagePath(building, floorNumber);
+        deleteFlatsForFloorConversion(flats, buildingId, builderId);
+        flatRepository.flush();
+        ParkingFloorConfigUtil.removeFloor(building, floorNumber);
+        buildingFloorPlanService.deleteStoredWebPath(layoutPath);
+        List<Flat> created = new ArrayList<>();
+        if (target == FloorUse.PARKING) {
+            int slotCount =
+                    building.getFlatsPerFloor() != null && building.getFlatsPerFloor() > 0
+                            ? building.getFlatsPerFloor()
+                            : flats.size();
+            for (int unit = 1; unit <= slotCount; unit++) {
+                created.add(parkingFlat(builder, building, floorNumber, unit, now));
+            }
+        } else {
+            int perFloor =
+                    building.getFlatsPerFloor() != null && building.getFlatsPerFloor() > 0
+                            ? building.getFlatsPerFloor()
+                            : 0;
+            List<String> columnOrder =
+                    ResidentialBhkTypes.resolveColumnOrder(
+                            ResidentialBhkTypes.columnOrderFromBuilding(building),
+                            ResidentialBhkTypes.countsFromBuilding(building),
+                            perFloor);
+            if (columnOrder.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Set flats per floor and BHK mix in Generate flats before converting to residential.");
+            }
+            appendResidentialFloorFlats(created, builder, building, floorNumber, columnOrder, now);
+        }
+        flatRepository.saveAll(created);
+        syncParkingFloorsFromGrid(building, buildingId, builderId);
+        buildingRepository.save(building);
+        return Map.of(
+                "ok",
+                true,
+                "floorNumber",
+                floorNumber,
+                "target",
+                target.name(),
+                "unitCount",
+                created.size(),
+                "parkingFloors",
+                building.getParkingFloors() != null ? building.getParkingFloors() : 0);
+    }
+
+    private void validateFloorReadyForUseConversion(List<Flat> flats) {
+        if (flats.stream().anyMatch(f -> FlatUnitTypes.isDuplexPrimary(f) || FlatUnitTypes.isDuplexSecondary(f))) {
+            throw new IllegalArgumentException("Split duplex unit(s) on this floor before converting it.");
+        }
+        if (flats.stream().anyMatch(f -> FlatUnitTypes.isMergePrimary(f) || FlatUnitTypes.isMergeAbsorbed(f))) {
+            throw new IllegalArgumentException("Restore merged unit(s) on this floor before converting it.");
+        }
+        for (Flat flat : flats) {
+            assertNoActiveBooking(
+                    flat.getId(),
+                    "Cannot convert floor "
+                            + flat.getFloorNumber()
+                            + " while flat "
+                            + flat.getFlatNumber()
+                            + " has an active booking.");
+            if ("BOOKED".equals(flat.getStatus())) {
+                throw new IllegalArgumentException(
+                        "Cannot convert floor "
+                                + flat.getFloorNumber()
+                                + " while flat "
+                                + flat.getFlatNumber()
+                                + " is booked. Cancel the booking first.");
+            }
+        }
+    }
+
+    private void deleteFlatsForFloorConversion(
+            List<Flat> flats, UUID buildingId, UUID builderId) {
+        for (Flat flat : flats) {
+            if (!FlatUnitTypes.isParkingCode(flat.getBhkType())
+                    && !Boolean.TRUE.equals(flat.getParking())) {
+                flatRepository
+                        .findLinkedParkingByResidentialFlatId(buildingId, builderId, flat.getId())
+                        .forEach(
+                                parking -> {
+                                    parking.setLinkedResidentialFlatId(null);
+                                    flatRepository.save(parking);
+                                });
+            }
+            partnerFlatAllocationService.clearAssignmentForFlat(flat.getId());
+            buildingFloorPlanService.deleteStoredWebPath(flat.getLayoutImagePath());
+            flatRepository.delete(flat);
+        }
+    }
+
+    private void syncParkingFloorsFromGrid(Building building, UUID buildingId, UUID builderId) {
+        int topFloor =
+                flatRepository.findMaxFloorNumberByBuilding_IdAndBuilder_Id(buildingId, builderId);
+        int maxParkingFloor = 0;
+        for (int floor = 1; floor <= topFloor; floor++) {
+            List<Flat> floorFlats =
+                    flatRepository.findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                            buildingId, builderId, floor);
+            if (floorFlats.isEmpty()) {
+                continue;
+            }
+            boolean allParking =
+                    floorFlats.stream()
+                            .allMatch(
+                                    f ->
+                                            Boolean.TRUE.equals(f.getParking())
+                                                    || FlatUnitTypes.isParkingCode(f.getBhkType()));
+            if (allParking) {
+                maxParkingFloor = Math.max(maxParkingFloor, floor);
+            }
+        }
+        building.setParkingFloors(maxParkingFloor);
     }
 
     @Transactional

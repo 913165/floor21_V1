@@ -18,10 +18,12 @@ public record FlatGridFloorDto(
         int parkingPassengerLiftCount,
         int parkingGateCount,
         BigDecimal parkingSlotAreaSqft,
-        boolean parkingHasLayoutImage) {
+        boolean parkingHasLayoutImage,
+        boolean floorHasActiveBooking,
+        boolean convertibleFloorUse) {
 
     /** Residential or mixed floor row. */
     public FlatGridFloorDto(int floorNumber, String label, List<FlatGridFlatDto> flats) {
-        this(floorNumber, label, flats, false, 0, null, false, 100, 1, 1, 0, 0, 1, null, false);
+        this(floorNumber, label, flats, false, 0, null, false, 100, 1, 1, 0, 0, 1, null, false, false, false);
     }
 }

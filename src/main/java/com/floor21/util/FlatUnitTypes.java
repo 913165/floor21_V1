@@ -132,6 +132,7 @@ public final class FlatUnitTypes {
             }
             return;
         }
+        flat.setLinkedResidentialFlatId(null);
         if (isShopCode(normalized)) {
             flat.setParking(false);
             flat.setAreaSqft(areaSqft != null ? areaSqft : BigDecimal.valueOf(350));
