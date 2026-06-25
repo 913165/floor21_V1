@@ -25,6 +25,16 @@
     return grid && grid.getAttribute("data-platform-admin-edit") === "true";
   }
 
+  function canLinkParking() {
+    var grid = document.getElementById("flat-grid");
+    return grid && grid.getAttribute("data-parking-link-enabled") === "true";
+  }
+
+  function groundParkingSlotCanLink(slot, canEdit) {
+    if (canEdit) return true;
+    return canLinkParking() && !!(slot && slot.linkableByCurrentUser);
+  }
+
   function buildingId() {
     var grid = document.getElementById("flat-grid");
     return grid ? grid.getAttribute("data-building-id") : null;
@@ -280,6 +290,14 @@
     );
   }
 
+  function escapeShopHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   function renderShopPlanSlot(slot, placement, canEdit) {
     if (!slot) return "";
     var statusClass = shopStatusClass(slot.status);
@@ -296,6 +314,12 @@
         ? " · " + formatAreaDualDisplay(slot.areaSqft)
         : "";
     var title = "Shop " + slot.slotNumber + (slot.flatNumber ? " — " + slot.flatNumber : "") + areaLabel;
+    var partnerName = slot.assignedPartnerName ? String(slot.assignedPartnerName).trim() : "";
+    var bayHtml = partnerName
+      ? '<span class="shop-plan__label">Shop</span><span class="shop-plan__partner-in-bay">' +
+        escapeShopHtml(partnerName) +
+        "</span>"
+      : '<span class="shop-plan__label">Shop</span>';
     return (
       '<div class="shop-plan__slot shop-plan__slot--clickable shop-plan__slot--shop ' +
       statusClass +
@@ -330,14 +354,15 @@
       (canEdit ? ' draggable="true"' : "") +
       gridStyle +
       ">" +
-      '<div class="shop-plan__bay"><span class="shop-plan__label">Shop</span></div>' +
+      '<div class="shop-plan__bay' +
+      (partnerName ? " shop-plan__bay--has-partner" : "") +
+      '">' +
+      bayHtml +
+      "</div>" +
       '<span class="shop-plan__slot-no">' +
       slot.slotNumber +
       "</span>" +
       (slot.flatNumber ? '<span class="shop-plan__unit-no">' + slot.flatNumber + "</span>" : "") +
-      (slot.assignedPartnerName
-        ? '<span class="shop-plan__partner-tag">' + slot.assignedPartnerName + "</span>"
-        : "") +
       "</div>"
     );
   }
@@ -346,7 +371,8 @@
     if (!slot) return "";
     var linked = slot.linkedResidentialFlatNumber || "";
     var linkedClass = linked ? " shop-plan__slot--linked" : "";
-    var interactive = canEdit || snapshotReadOnly;
+    var canLink = groundParkingSlotCanLink(slot, canEdit);
+    var interactive = canLink || snapshotReadOnly;
     var clickable = interactive ? " shop-plan__slot--clickable" : "";
     var orientClass =
       placement && placement.orientation === "horizontal"
@@ -362,7 +388,7 @@
       : "";
     var title = linked
       ? "Parking " + slot.slotNumber + " — linked to flat " + linked
-      : canEdit
+      : canLink
         ? "Parking " + slot.slotNumber + " — guest parking (click to link to a flat)"
         : "Parking " + slot.slotNumber + " — guest parking";
     return (
@@ -378,6 +404,7 @@
       '" data-flat-number="' +
       (slot.flatNumber || "") +
       '"' +
+      (canLink ? ' data-parking-linkable="true"' : "") +
       (slot.linkedResidentialFlatId
         ? ' data-linked-flat-id="' + slot.linkedResidentialFlatId + '"'
         : "") +

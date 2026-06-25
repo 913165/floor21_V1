@@ -6279,12 +6279,37 @@ body.slab-schedule-col-resizing {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.shop-plan__bay--has-partner {
+  flex-direction: column;
+  gap: 0.08rem;
+  padding: 0.12rem 0.1rem;
+  justify-content: center;
+}
+
+.shop-plan__partner-in-bay {
+  font-size: clamp(0.42rem, 7cqh, 0.58rem);
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  color: inherit;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+  flex-shrink: 0;
 }
 
 .shop-plan__slot-no {
   font-size: 0.65rem;
   font-weight: 600;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .shop-plan__unit-no {
@@ -6428,6 +6453,7 @@ body.slab-schedule-col-resizing {
 }
 
 .flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__label,
+.flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__partner-in-bay,
 .flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__slot-no,
 .flat-ground-floor-section__panel.floor21-resizable-panel .shop-plan__unit-no {
   font-size: clamp(0.5rem, 2.5cqh, 0.75rem);

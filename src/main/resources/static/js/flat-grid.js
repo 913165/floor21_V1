@@ -234,6 +234,31 @@
     return grid && grid.getAttribute("data-platform-admin-edit") === "true";
   }
 
+  function canLinkParking() {
+    var grid = document.getElementById("flat-grid");
+    return grid && grid.getAttribute("data-parking-link-enabled") === "true";
+  }
+
+  function isParkingSlotLinkable(slotEl) {
+    if (!slotEl) return false;
+    if (isPlatformAdminEdit()) return true;
+    return canLinkParking() && slotEl.getAttribute("data-parking-linkable") === "true";
+  }
+
+  function parkingSlotCanLink(slot) {
+    if (!canLinkParking()) return false;
+    if (isPlatformAdminEdit()) return true;
+    return !!(slot && slot.linkableByCurrentUser);
+  }
+
+  function syncParkingLinkUiForRole() {
+    var admin = isPlatformAdminEdit();
+    var orientRow = document.getElementById("parking-link-orientation-row");
+    if (orientRow) orientRow.classList.toggle("d-none", !admin);
+    var slotOrientRow = document.getElementById("panel-parking-slot-orientation-row");
+    if (slotOrientRow) slotOrientRow.classList.toggle("d-none", !admin);
+  }
+
   function amenityTypeCodes() {
     var grid = document.getElementById("flat-grid");
     if (!grid) return [];
@@ -425,31 +450,42 @@
       slotEl.removeAttribute("data-partner-name");
       delete slotEl.dataset.partnerName;
     }
-    var tag = slotEl.querySelector(".shop-plan__partner-tag");
+    var bay = slotEl.querySelector(".shop-plan__bay");
+    if (!bay) return;
     var name = partnerName ? String(partnerName).trim() : "";
+    var inBay = bay.querySelector(".shop-plan__partner-in-bay");
     if (!name) {
-      if (tag) tag.remove();
+      bay.classList.remove("shop-plan__bay--has-partner");
+      if (inBay) inBay.remove();
       return;
     }
-    if (!tag) {
-      tag = document.createElement("span");
-      tag.className = "shop-plan__partner-tag";
-      slotEl.appendChild(tag);
+    if (!bay.querySelector(".shop-plan__label")) {
+      var shopLabel = document.createElement("span");
+      shopLabel.className = "shop-plan__label";
+      shopLabel.textContent = "Shop";
+      bay.insertBefore(shopLabel, bay.firstChild);
     }
-    tag.textContent = name;
+    bay.classList.add("shop-plan__bay--has-partner");
+    if (!inBay) {
+      inBay = document.createElement("span");
+      inBay.className = "shop-plan__partner-in-bay";
+      bay.appendChild(inBay);
+    }
+    inBay.textContent = name;
   }
 
   function syncShopAdminPanelVisibility() {
     var shop = selectedShopUnit;
-    var parkingMode = selectedParkingSection || selectedParkingSlot;
+    var slot = selectedParkingSlot;
+    var section = selectedParkingSection;
     var panel = document.getElementById("flat-admin-panel");
     if (!panel) return;
-    if (!isPlatformAdminEdit() || parkingMode) {
+    if (!isPlatformAdminEdit() || section) {
       panel.classList.add("d-none");
       return;
     }
     panel.classList.remove("d-none");
-    var partnerOnly = !!shop;
+    var partnerOnly = !!shop || !!slot;
     panel.querySelectorAll(".admin-layout-only").forEach(function (el) {
       el.classList.toggle("d-none", partnerOnly);
     });
@@ -468,6 +504,7 @@
       modal.classList.toggle("modal--shop-unit", shop);
     }
     var clientDetails = document.getElementById("panel-client-details");
+    var parkingMode = section || slot;
     if (clientDetails && (parkingMode || shop)) {
       clientDetails.classList.add("d-none");
     }
@@ -481,15 +518,17 @@
     var saveBtn = document.getElementById("admin-save-btn");
     var applyFloor = document.getElementById("admin-apply-floor-btn");
     var saveHint = document.getElementById("admin-save-hint");
-    var parkingMode = section || slot;
-    if (note) note.classList.toggle("d-none", !parkingMode);
+    if (note) note.classList.toggle("d-none", !slot);
     if (shopNote) shopNote.classList.toggle("d-none", !shop);
     if (actions) actions.classList.toggle("d-none", parkingMode);
     if (parkingMode) {
       hideUserPriceEditor();
     }
     if (parkingLinks) parkingLinks.classList.toggle("d-none", parkingMode || shop);
-    if (parkingSlotActions) parkingSlotActions.classList.toggle("d-none", !slot);
+    if (parkingSlotActions) {
+      parkingSlotActions.classList.toggle("d-none", !slot || !canLinkParking());
+    }
+    syncParkingLinkUiForRole();
     if (flatLayoutActions) flatLayoutActions.classList.toggle("d-none", parkingMode || shop);
     syncShopAdminPanelVisibility();
     if (saveRow && (section || slot || shop)) {
@@ -2705,11 +2744,14 @@
     };
   }
 
-  function renderParkingPlanSlot(slot, canLink, placement, snapshotReadOnly) {
+  function renderParkingPlanSlot(slot, canEdit, placement, snapshotReadOnly) {
     if (!slot) return "";
     var slotNumber = slot.slotNumber;
     var flatNumber = slot.flatNumber || "";
     var linked = slot.linkedResidentialFlatNumber || "";
+    var partnerName = slot.assignedPartnerName ? String(slot.assignedPartnerName).trim() : "";
+    var partnerId = slot.assignedPartnerId ? String(slot.assignedPartnerId) : "";
+    var canLink = parkingSlotCanLink(slot);
     var linkedClass = linked ? " parking-plan__slot--linked" : "";
     var interactive = canLink || snapshotReadOnly;
     var clickable = interactive ? " parking-plan__slot--clickable" : "";
@@ -2717,7 +2759,7 @@
       placement && placement.orientation === "horizontal"
         ? " parking-plan__slot--horizontal"
         : " parking-plan__slot--vertical";
-    var dragClass = canLink && !snapshotReadOnly ? " parking-plan__slot--draggable" : "";
+    var dragClass = canEdit && !snapshotReadOnly ? " parking-plan__slot--draggable" : "";
     var areaLabel =
       slot.areaSqft != null && slot.areaSqft !== ""
         ? " · " + formatAreaDualDisplay(slot.areaSqft)
@@ -2755,10 +2797,13 @@
         ? ' data-linked-flat-id="' + slot.linkedResidentialFlatId + '"'
         : "") +
       (linked ? ' data-linked-flat-number="' + linked + '"' : "") +
+      (partnerId ? ' data-partner-id="' + partnerId + '"' : "") +
+      (partnerName ? ' data-partner-name="' + partnerName.replace(/"/g, "&quot;") + '"' : "") +
+      (canLink ? ' data-parking-linkable="true"' : "") +
       ' title="' +
       title.replace(/"/g, "&quot;") +
       '"' +
-      (canLink && !snapshotReadOnly ? ' draggable="true"' : "") +
+      (canEdit && !snapshotReadOnly ? ' draggable="true"' : "") +
       gridStyle +
       ">" +
       '<div class="parking-plan__bay">' +
@@ -2770,6 +2815,9 @@
       '">' +
       slotNumber +
       "</span>" +
+      (partnerName
+        ? '<span class="shop-plan__partner-tag">' + partnerName.replace(/</g, "&lt;") + "</span>"
+        : "") +
       "</div>"
     );
   }
@@ -4027,7 +4075,7 @@
   }
 
   async function openParkingLinkModal(slotEl) {
-    if (!slotEl || !isPlatformAdminEdit()) return;
+    if (!slotEl || !isParkingSlotLinkable(slotEl)) return;
     mountModalsOnBody();
     parkingLinkParkingFlatId = slotEl.getAttribute("data-parking-flat-id");
     var section = slotEl.closest(".flat-parking-section");
@@ -4068,6 +4116,7 @@
       select.disabled = true;
     }
     stackModalAboveFlatDetails(modalEl);
+    syncParkingLinkUiForRole();
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
     var options = await loadResidentialFlatOptions(false);
     if (!select) return;
@@ -4206,8 +4255,8 @@
       return;
     }
     var slots = await res.json();
-    renderFlatParkingLinksList(slots, isPlatformAdminEdit());
-    if (isPlatformAdminEdit()) {
+    renderFlatParkingLinksList(slots, canLinkParking());
+    if (canLinkParking()) {
       await populateParkingSlotAddSelect(flatId, slots);
     }
   }
@@ -4268,7 +4317,7 @@
       return;
     }
     if (admin) {
-      admin.classList.toggle("d-none", !isPlatformAdminEdit());
+      admin.classList.toggle("d-none", !canLinkParking());
     }
     if (cardEl.dataset.flatId) {
       loadFlatParkingLinks(cardEl.dataset.flatId);
@@ -4276,7 +4325,7 @@
   }
 
   async function linkParkingFromFlatPanel() {
-    if (!selectedFlatId || !isPlatformAdminEdit()) return;
+    if (!selectedFlatId || !canLinkParking()) return;
     var select = document.getElementById("panel-parking-add");
     if (!select || !select.value) {
       showFlatParkingLinksError("Select a parking slot to link.");
@@ -4299,7 +4348,7 @@
   }
 
   async function unlinkParkingFromFlatPanel(parkingFlatId, floorNumber) {
-    if (!parkingFlatId || !isPlatformAdminEdit()) return;
+    if (!parkingFlatId || !canLinkParking()) return;
     showFlatParkingLinksError("");
     var res = await postParkingLink(parkingFlatId, null);
     if (!res.ok) {
@@ -4310,7 +4359,7 @@
   }
 
   async function unlinkParkingFromSlotPanel() {
-    if (!selectedFlatId || !isPlatformAdminEdit()) return;
+    if (!selectedFlatId || !canLinkParking()) return;
     showParkingSlotLinkError("");
     var res = await postParkingLink(selectedFlatId, null);
     if (!res.ok) {
@@ -4922,13 +4971,45 @@
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
+  function syncParkingSlotPartnerTag(slotEl, partnerId, partnerName) {
+    if (!slotEl) return;
+    if (partnerId) {
+      slotEl.setAttribute("data-partner-id", partnerId);
+      slotEl.dataset.partnerId = partnerId;
+    } else {
+      slotEl.removeAttribute("data-partner-id");
+      delete slotEl.dataset.partnerId;
+    }
+    if (partnerName) {
+      slotEl.setAttribute("data-partner-name", partnerName);
+      slotEl.dataset.partnerName = partnerName;
+    } else {
+      slotEl.removeAttribute("data-partner-name");
+      delete slotEl.dataset.partnerName;
+    }
+    var name = partnerName ? String(partnerName).trim() : "";
+    var tag = slotEl.querySelector(".parking-plan__partner-tag, .shop-plan__partner-tag");
+    if (!name) {
+      if (tag) tag.remove();
+      return;
+    }
+    if (!tag) {
+      tag = document.createElement("span");
+      tag.className = "shop-plan__partner-tag";
+      slotEl.appendChild(tag);
+    }
+    tag.textContent = name;
+  }
+
   function syncParkingSlotAdminFields(slotEl) {
     if (!slotEl) return;
     var price = document.getElementById("admin-price");
     var bhk = document.getElementById("admin-bhk");
+    var partner = document.getElementById("admin-partner");
     setAreaPair("admin-super-builder-area", slotEl.dataset.area);
     if (price) price.value = slotEl.dataset.price || "0";
     if (bhk) bhk.value = "PKG";
+    if (partner) partner.value = slotEl.getAttribute("data-partner-id") || slotEl.dataset.partnerId || "";
     showAdminError("");
   }
 
@@ -5005,7 +5086,11 @@
   }
 
   window.floor21SelectParkingSlot = function (slotEl, showModal) {
-    if (!slotEl || !isPlatformAdminEdit()) return;
+    if (!slotEl || !isParkingSlotLinkable(slotEl)) return;
+    if (!isPlatformAdminEdit() && canLinkParking()) {
+      void openParkingLinkModal(slotEl);
+      return;
+    }
     setShopUnitMode(false);
     var flatId = slotEl.getAttribute("data-parking-flat-id");
     if (!flatId) return;
@@ -6850,6 +6935,12 @@
       selectedFlatId = null;
       setShopUnitMode(false);
       await refreshGrid();
+      return;
+    }
+    if (selectedParkingSlot) {
+      syncParkingSlotPartnerTag(selectedParkingSlotElement, pid || null, pname || null);
+      showGridToast("Partner saved");
+      closeFlatDetailsModal();
       return;
     }
     var card = document.getElementById("flat-" + selectedFlatId);

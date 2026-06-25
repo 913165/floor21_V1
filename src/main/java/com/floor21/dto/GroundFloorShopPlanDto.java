@@ -78,6 +78,7 @@ public record GroundFloorShopPlanDto(
             String flatNumber,
             BigDecimal areaSqft,
             UUID linkedResidentialFlatId,
-            String linkedResidentialFlatNumber) {}
+            String linkedResidentialFlatNumber,
+            boolean linkableByCurrentUser) {}
 }
 

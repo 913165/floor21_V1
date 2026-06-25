@@ -143,6 +143,21 @@ public class BuildingController {
         return isPlatformAdmin();
     }
 
+    private static boolean isParkingLinkEnabled() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof Floor21UserPrincipal)) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(
+                        a -> {
+                            String role = a.getAuthority();
+                            return "ROLE_SUPER_ADMIN".equals(role)
+                                    || "ROLE_BUILDER_ADMIN".equals(role)
+                                    || "ROLE_EXECUTIVE".equals(role);
+                        });
+    }
+
     /**
      * Serves uploaded floor plan bytes for the current tenant. Uses an explicit URL so Thymeleaf and browsers
      * always resolve paths correctly with {@code server.servlet.context-path}.
@@ -303,6 +318,7 @@ public class BuildingController {
         model.addAttribute("flatCount", flatCount);
         model.addAttribute("activeBookingCount", activeBookings);
         model.addAttribute("platformAdminView", isPlatformAdmin());
+        model.addAttribute("parkingLinkEnabled", isParkingLinkEnabled());
         model.addAttribute("partnerAllocationActive", partnerFlatAllocationService.isAllocationActive(id));
         model.addAttribute(
                 "partnerAllocationPartners",
@@ -876,7 +892,7 @@ public class BuildingController {
     }
 
     @GetMapping("/{id}/parking-slots-for-link")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BUILDER_ADMIN','EXECUTIVE')")
     @ResponseBody
     public ResponseEntity<?> parkingSlotsForLink(@PathVariable UUID id) {
         try {

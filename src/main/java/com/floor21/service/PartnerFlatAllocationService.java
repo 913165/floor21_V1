@@ -151,8 +151,8 @@ public class PartnerFlatAllocationService {
                         .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
         UUID buildingId = flat.getBuilding().getId();
         buildingService.resolveForAccess(buildingId);
-        if (FlatUnitTypes.isNonBookable(flat)) {
-            throw new IllegalArgumentException("Parking and amenity units cannot be assigned to a partner.");
+        if (FlatUnitTypes.cannotAssignPartner(flat)) {
+            throw new IllegalArgumentException("This unit cannot be assigned to a partner.");
         }
         if (bookingRepository.countActiveByFlatId(flatId) > 0) {
             throw new IllegalArgumentException(
@@ -289,6 +289,18 @@ public class PartnerFlatAllocationService {
         if (!isBookableByCurrentUser(buildingId, assignedPartnerId)) {
             throw new IllegalArgumentException("This flat is assigned to another partner.");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canManageFlatForParkingLink(UUID buildingId, UUID flatId) {
+        if (flatId == null) {
+            return false;
+        }
+        if (canBypassPartnerFlatRestriction()) {
+            return true;
+        }
+        UUID assignedPartnerId = getAssignedPartnerIdForFlat(flatId);
+        return isBookableByCurrentUser(buildingId, assignedPartnerId);
     }
 
     private static boolean canBypassPartnerFlatRestriction() {

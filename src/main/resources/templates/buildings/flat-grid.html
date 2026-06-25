@@ -330,6 +330,7 @@
        th:attr="data-building-id=${building.id},
                 data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''},
                 data-platform-admin-edit=${platformAdminView},
+                data-parking-link-enabled=${parkingLinkEnabled},
                 data-amenity-types=${#strings.listJoin(flatAmenityTypes, ',')}">
     <svg id="flat-grid-duplex-links" class="flat-duplex-links-overlay" aria-hidden="true"></svg>
     <div class="flat-grid-legend mb-2" th:if="${!#lists.isEmpty(floors)}">
@@ -740,7 +741,7 @@
                 <h6 class="mb-2">Linked parking</h6>
                 <ul id="panel-parking-links-list" class="flat-parking-links-list list-unstyled mb-2"></ul>
                 <p class="text-muted small mb-2 d-none" id="panel-parking-links-empty">No parking slots linked to this flat.</p>
-                <div id="panel-parking-links-admin" class="d-none" sec:authorize="hasRole('SUPER_ADMIN')">
+                <div id="panel-parking-links-admin" class="d-none">
                   <div class="row g-2">
                     <div class="col-12">
                       <label class="form-label small mb-0" for="panel-parking-add">Add parking slot</label>
@@ -755,12 +756,12 @@
                 </div>
                 <p class="text-danger small mb-0 d-none" id="panel-parking-links-error"></p>
               </div>
-              <div id="panel-parking-slot-actions" class="d-none mt-2" sec:authorize="hasRole('SUPER_ADMIN')">
+              <div id="panel-parking-slot-actions" class="d-none mt-2">
                 <div class="d-flex flex-wrap gap-2">
                   <button type="button" class="btn btn-sm btn-outline-primary" id="panel-parking-slot-link-btn">Link to residential flat</button>
                   <button type="button" class="btn btn-sm btn-outline-danger d-none" id="panel-parking-slot-unlink-btn">Unlink</button>
                 </div>
-                <div class="d-flex align-items-center justify-content-between gap-2 mt-2 pt-2 border-top">
+                <div class="d-flex align-items-center justify-content-between gap-2 mt-2 pt-2 border-top" id="panel-parking-slot-orientation-row">
                   <div>
                     <div class="text-muted small">Orientation</div>
                     <div class="small fw-semibold" id="panel-parking-slot-orientation-value">Vertical</div>
@@ -820,8 +821,8 @@
               <span class="text-muted small d-block mt-1" id="admin-save-hint">Leave fields blank to keep this unit only. Building-wide defaults are set in the Unit type defaults panel above the grid.</span>
             </div>
           </div>
-          <div id="panel-parking-note" class="alert alert-secondary py-2 small d-none mb-3">
-            Shared parking section — slots are allocated across flats on partner assignment, not booked as individual units.
+          <div id="panel-parking-note" class="alert alert-info py-2 small d-none mb-3">
+            Parking slot — assign a partner below.
           </div>
           <div id="panel-shop-note" class="alert alert-info py-2 small d-none mb-3">
             Retail shop — sold independently of residential flats. Assign a partner below so only that partner can book this shop.
@@ -985,7 +986,7 @@
           <select class="form-select form-select-sm" id="parking-link-flat">
             <option value="">— Not linked —</option>
           </select>
-          <div class="d-flex align-items-center justify-content-between gap-2 mt-3 pt-2 border-top">
+          <div id="parking-link-orientation-row" class="d-flex align-items-center justify-content-between gap-2 mt-3 pt-2 border-top">
             <div>
               <div class="text-muted small">Orientation</div>
               <div class="small fw-semibold" id="parking-link-orientation-value">Vertical</div>
@@ -1172,8 +1173,8 @@
   <script defer th:src="@{/js/amount-format.js(v=panel-payment-v1)}"></script>
   <script defer th:src="@{/js/floor21-area-unit.js(v=area-unit-prefs-v2)}"></script>
   <script defer th:src="@{/js/floor21-panel-resize.js(v=panel-resize-v8)}"></script>
-  <script defer th:src="@{/js/flat-grid.js(v=floor-convert-v8)}"></script>
-  <script defer th:src="@{/js/ground-floor-shops.js(v=shop-partner-v1)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=parking-link-user-v1)}"></script>
+  <script defer th:src="@{/js/ground-floor-shops.js(v=parking-link-user-v1)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=7)}"></script>
 </div>
 </body>

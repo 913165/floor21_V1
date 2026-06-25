@@ -161,7 +161,7 @@ public class SecurityConfig {
                                         .requestMatchers(HttpMethod.POST, "/flats/*/merge")
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/flats/*/parking-link")
-                                        .hasRole("SUPER_ADMIN")
+                                        .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
                                         .requestMatchers(HttpMethod.GET, "/flats/*/merge-candidates")
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.GET, "/flats/*/linked-parking")

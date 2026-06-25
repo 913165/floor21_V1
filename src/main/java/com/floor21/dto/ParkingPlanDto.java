@@ -28,5 +28,8 @@ public record ParkingPlanDto(
             String flatNumber,
             UUID linkedResidentialFlatId,
             String linkedResidentialFlatNumber,
-            BigDecimal areaSqft) {}
+            BigDecimal areaSqft,
+            UUID assignedPartnerId,
+            String assignedPartnerName,
+            boolean linkableByCurrentUser) {}
 }

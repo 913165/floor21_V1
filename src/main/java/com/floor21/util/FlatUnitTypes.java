@@ -95,6 +95,17 @@ public final class FlatUnitTypes {
         return isAmenityCode(flat.getBhkType());
     }
 
+    /** Parking and shops may be assigned to a partner; amenities and absorbed units may not. */
+    public static boolean cannotAssignPartner(Flat flat) {
+        if (flat == null) {
+            return true;
+        }
+        if (isDuplexSecondary(flat) || isMergeAbsorbed(flat)) {
+            return true;
+        }
+        return isAmenityCode(flat.getBhkType());
+    }
+
     public static String normalize(String unitType) {
         if (unitType == null || unitType.isBlank()) {
             throw new IllegalArgumentException("Unit type is required.");

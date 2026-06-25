@@ -1084,7 +1084,9 @@ public class FlatService {
                                 parking.getFlatNumber(),
                                 parking.getAreaSqft(),
                                 linkedId,
-                                linkedNumber));
+                                linkedNumber,
+                                partnerFlatAllocationService.canManageFlatForParkingLink(
+                                        buildingId, parking.getId())));
             }
         }
         List<GroundFloorShopPlanDto.ShopPlanSlotDto> slots = new ArrayList<>();
@@ -1380,6 +1382,10 @@ public class FlatService {
                         buildingId, builderId)
                 .stream()
                 .filter(this::isLinkableResidentialFlat)
+                .filter(
+                        f ->
+                                partnerFlatAllocationService.canManageFlatForParkingLink(
+                                        buildingId, f.getId()))
                 .sorted(
                         Comparator.comparing(Flat::getFloorNumber)
                                 .thenComparing(Flat::getUnitNumber))
@@ -1405,10 +1411,15 @@ public class FlatService {
             return List.of();
         }
         UUID buildingId = residential.getBuilding().getId();
+        partnerFlatAllocationService.assertCanManageFlat(buildingId, residentialFlatId);
         UUID builderId = residential.getBuilding().getBuilder().getId();
         return flatRepository
                 .findLinkedParkingByResidentialFlatId(buildingId, builderId, residentialFlatId)
                 .stream()
+                .filter(
+                        f ->
+                                partnerFlatAllocationService.canManageFlatForParkingLink(
+                                        buildingId, f.getId()))
                 .map(
                         f ->
                                 new LinkedParkingSlotDto(
@@ -1467,6 +1478,10 @@ public class FlatService {
                         : flatRepository.findAllById(linkedIds).stream()
                                 .collect(Collectors.toMap(Flat::getId, f -> f));
         return parkingFlats.stream()
+                .filter(
+                        p ->
+                                partnerFlatAllocationService.canManageFlatForParkingLink(
+                                        buildingId, p.getId()))
                 .sorted(
                         Comparator.comparing(Flat::getFloorNumber)
                                 .thenComparing(Flat::getUnitNumber))
@@ -1499,15 +1514,18 @@ public class FlatService {
                 && !Boolean.TRUE.equals(parking.getParking())) {
             throw new IllegalArgumentException("Only parking slots can be linked to a flat.");
         }
+        UUID buildingId = parking.getBuilding().getId();
+        partnerFlatAllocationService.assertCanManageFlat(buildingId, parkingFlatId);
         UUID residentialId = dto != null ? dto.residentialFlatId() : null;
         String linkedNumber = null;
         if (residentialId == null) {
             parking.setLinkedResidentialFlatId(null);
         } else {
             Flat residential = requireLinkableResidentialFlat(residentialId);
-            if (!residential.getBuilding().getId().equals(parking.getBuilding().getId())) {
+            if (!residential.getBuilding().getId().equals(buildingId)) {
                 throw new IllegalArgumentException("Residential flat must be in the same building.");
             }
+            partnerFlatAllocationService.assertCanManageFlat(buildingId, residentialId);
             parking.setLinkedResidentialFlatId(residentialId);
             linkedNumber = residential.getFlatNumber();
         }
@@ -1516,13 +1534,25 @@ public class FlatService {
                 parking.getUnitNumber() != null && parking.getUnitNumber() > 0
                         ? parking.getUnitNumber()
                         : 0;
+        UUID assignedPartnerId = partnerFlatAllocationService.getAssignedPartnerIdForFlat(parking.getId());
+        String assignedPartnerName =
+                assignedPartnerId != null
+                        ? partnerFlatAllocationService
+                                .getFlatPartnerLabels(buildingId)
+                                .get(parking.getId())
+                        : null;
+        boolean linkable =
+                partnerFlatAllocationService.canManageFlatForParkingLink(buildingId, parking.getId());
         return new ParkingPlanDto.ParkingPlanSlotDto(
                 slotNumber,
                 parking.getId(),
                 parking.getFlatNumber(),
                 residentialId,
                 linkedNumber,
-                parking.getAreaSqft());
+                parking.getAreaSqft(),
+                assignedPartnerId,
+                assignedPartnerName,
+                linkable);
     }
 
     private boolean isLinkableResidentialFlat(Flat flat) {
@@ -1578,6 +1608,9 @@ public class FlatService {
         }
         List<ParkingGridPlacementDto> placements =
                 resolveGridPlacements(config, n, gridCols, gridRows);
+        UUID buildingId = building.getId();
+        Map<UUID, UUID> partnerIds = partnerFlatAllocationService.getFlatOwnerByPartnerId(buildingId);
+        Map<UUID, String> partnerLabels = partnerFlatAllocationService.getFlatPartnerLabels(buildingId);
         List<ParkingPlanDto.ParkingPlanSlotDto> slots = new ArrayList<>();
         java.util.Set<UUID> linkedIds =
                 flats.stream()
@@ -1606,7 +1639,11 @@ public class FlatService {
                             parking.getFlatNumber(),
                             linkedId,
                             linkedNumber,
-                            parking.getAreaSqft()));
+                            parking.getAreaSqft(),
+                            partnerIds.get(parking.getId()),
+                            partnerLabels.get(parking.getId()),
+                            partnerFlatAllocationService.canManageFlatForParkingLink(
+                                    buildingId, parking.getId())));
         }
         int carSizePercent = ParkingFloorConfigUtil.resolveCarSizePercent(config);
         List<ParkingFixturePlacementDto> fixtureDtos = toFixtureDtos(config);

@@ -176,7 +176,7 @@ public class FlatController {
     }
 
     @PostMapping(value = "/flats/{id}/parking-link", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BUILDER_ADMIN','EXECUTIVE')")
     @ResponseBody
     public ResponseEntity<?> linkParkingToResidential(
             @PathVariable UUID id, @RequestBody ParkingLinkDto body) {
