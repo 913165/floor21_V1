@@ -233,6 +233,9 @@ public class BookingService {
         if (flat.getBuilding() != null) {
             partnerFlatAllocationService.assertCanManageFlat(flat.getBuilding().getId(), flat.getId());
         }
+        if (form.getClient() == null || form.getClient().getId() == null) {
+            throw new IllegalArgumentException("Select a primary client.");
+        }
         Client client =
                 clientRepository
                         .findByIdAndBuilder_Id(form.getClient().getId(), builderId)

@@ -16,6 +16,7 @@
           <div class="col-md-4">
             <label class="form-label">Primary client</label>
             <select class="form-select" th:field="*{client.id}" id="bookingPrimaryClient" required>
+              <option value="">— Select client —</option>
               <option th:each="c : ${clients}" th:value="${c.id}" th:text="${c.displayName()}"></option>
             </select>
           </div>
