@@ -133,7 +133,10 @@
       '      <button type="button" class="f21-date-picker__nav" data-step="year-prev" aria-label="Previous year">&laquo;</button>' +
       '      <button type="button" class="f21-date-picker__nav" data-step="month-prev" aria-label="Previous month">&lsaquo;</button>' +
       '    </div>' +
-      '    <div class="f21-date-picker__title" aria-live="polite"></div>' +
+      '    <div class="f21-date-picker__title">' +
+      '      <select class="f21-date-picker__select f21-date-picker__month" aria-label="Month"></select>' +
+      '      <select class="f21-date-picker__select f21-date-picker__year" aria-label="Year"></select>' +
+      '    </div>' +
       '    <div class="f21-date-picker__nav-group">' +
       '      <button type="button" class="f21-date-picker__nav" data-step="month-next" aria-label="Next month">&rsaquo;</button>' +
       '      <button type="button" class="f21-date-picker__nav" data-step="year-next" aria-label="Next year">&raquo;</button>' +
@@ -160,7 +163,80 @@
     });
 
     shell.addEventListener('click', onPickerClick);
+    shell.addEventListener('change', onPickerSelectChange);
     return shell;
+  }
+
+  function yearRangeForInput(input) {
+    var nowYear = new Date().getFullYear();
+    var minYear = nowYear - 100;
+    var maxYear = nowYear + 20;
+    if (input.min && input.min.length >= 4) {
+      minYear = parseInt(input.min.slice(0, 4), 10);
+    }
+    if (input.max && input.max.length >= 4) {
+      maxYear = parseInt(input.max.slice(0, 4), 10);
+    }
+    if (input.dataset.f21DatePastDefault) {
+      minYear = Math.min(minYear, nowYear - 100);
+      maxYear = Math.min(maxYear, nowYear);
+    }
+    if (minYear > maxYear) {
+      minYear = maxYear;
+    }
+    return { minYear: minYear, maxYear: maxYear };
+  }
+
+  function syncPickerSelects(shell, ctx) {
+    var monthSelect = shell.querySelector('.f21-date-picker__month');
+    var yearSelect = shell.querySelector('.f21-date-picker__year');
+    if (!monthSelect || !yearSelect) {
+      return;
+    }
+
+    if (!monthSelect.dataset.f21Built) {
+      MONTHS_LONG.forEach(function (name, index) {
+        var opt = document.createElement('option');
+        opt.value = String(index);
+        opt.textContent = name;
+        monthSelect.appendChild(opt);
+      });
+      monthSelect.dataset.f21Built = 'true';
+    }
+
+    var range = yearRangeForInput(ctx.input);
+    var selectedYear = String(ctx.viewYear);
+    yearSelect.innerHTML = '';
+    for (var year = range.maxYear; year >= range.minYear; year -= 1) {
+      var yearOpt = document.createElement('option');
+      yearOpt.value = String(year);
+      yearOpt.textContent = String(year);
+      yearSelect.appendChild(yearOpt);
+    }
+    if (!yearSelect.querySelector('option[value="' + selectedYear + '"]')) {
+      ctx.viewYear = range.maxYear;
+      selectedYear = String(ctx.viewYear);
+    }
+
+    monthSelect.value = String(ctx.viewMonth);
+    yearSelect.value = selectedYear;
+  }
+
+  function onPickerSelectChange(event) {
+    if (!activeContext || !activePicker) {
+      return;
+    }
+    var target = event.target;
+    if (!target.classList.contains('f21-date-picker__select')) {
+      return;
+    }
+    if (target.classList.contains('f21-date-picker__month')) {
+      activeContext.viewMonth = parseInt(target.value, 10);
+    }
+    if (target.classList.contains('f21-date-picker__year')) {
+      activeContext.viewYear = parseInt(target.value, 10);
+    }
+    renderPickerMonth(activePicker, activeContext);
   }
 
   function isDisabledDate(date, input) {
@@ -178,9 +254,8 @@
   }
 
   function renderPickerMonth(shell, ctx) {
-    var title = shell.querySelector('.f21-date-picker__title');
     var grid = shell.querySelector('.f21-date-picker__grid');
-    title.textContent = MONTHS_LONG[ctx.viewMonth] + ' ' + ctx.viewYear;
+    syncPickerSelects(shell, ctx);
 
     grid.innerHTML = '';
     var first = new Date(ctx.viewYear, ctx.viewMonth, 1);
@@ -281,8 +356,17 @@
     activeAnchor = ctx.wrap;
     activePicker = shell;
 
-    ctx.viewYear = selected ? selected.getFullYear() : now.getFullYear();
-    ctx.viewMonth = selected ? selected.getMonth() : now.getMonth();
+    var pastDefault = parseInt(ctx.input.dataset.f21DatePastDefault || '0', 10);
+    if (selected) {
+      ctx.viewYear = selected.getFullYear();
+      ctx.viewMonth = selected.getMonth();
+    } else if (pastDefault > 0) {
+      ctx.viewYear = now.getFullYear() - pastDefault;
+      ctx.viewMonth = now.getMonth();
+    } else {
+      ctx.viewYear = now.getFullYear();
+      ctx.viewMonth = now.getMonth();
+    }
 
     renderPickerMonth(shell, ctx);
     positionPicker(shell, ctx.wrap);

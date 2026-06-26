@@ -103,15 +103,19 @@
     </div>
     <div class="col-md-3">
       <label class="form-label" th:for="${bound ? 'dob' : idPrefix + 'Dob'}">Date of birth</label>
-      <input class="form-control" th:if="${bound}" id="dob" type="date" th:field="*{dob}"/>
+      <input class="form-control" th:if="${bound}" id="dob" type="date" th:field="*{dob}"
+             th:attr="data-f21-date-past-default=30,max=${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}"/>
       <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'Dob'}" type="date"
-             data-api-field="dob" autocomplete="off"/>
+             data-api-field="dob" data-f21-date-past-default="30" autocomplete="off"
+             th:attr="max=${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}"/>
     </div>
     <div class="col-md-3">
       <label class="form-label" th:for="${bound ? 'dateOfMarriage' : idPrefix + 'DateOfMarriage'}">Date of marriage</label>
-      <input class="form-control" th:if="${bound}" id="dateOfMarriage" type="date" th:field="*{dateOfMarriage}"/>
+      <input class="form-control" th:if="${bound}" id="dateOfMarriage" type="date" th:field="*{dateOfMarriage}"
+             th:attr="data-f21-date-past-default=15,max=${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}"/>
       <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'DateOfMarriage'}" type="date"
-             data-api-field="dateOfMarriage" autocomplete="off"/>
+             data-api-field="dateOfMarriage" data-f21-date-past-default="15" autocomplete="off"
+             th:attr="max=${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}"/>
     </div>
   </div>
 
