@@ -245,14 +245,26 @@
     return canLinkParking() && slotEl.getAttribute("data-parking-linkable") === "true";
   }
 
+  function isPartnerAllocationActive() {
+    var grid = document.getElementById("flat-grid");
+    return grid && grid.getAttribute("data-partner-allocation-active") === "true";
+  }
+
+  function parkingSlotOwnedByViewer(slot) {
+    if (!slot) return false;
+    if (isPlatformAdminEdit()) return true;
+    return !!slot.linkableByCurrentUser;
+  }
+
   function parkingSlotCanLink(slot) {
     if (!canLinkParking()) return false;
-    if (isPlatformAdminEdit()) return true;
-    return !!(slot && slot.linkableByCurrentUser);
+    return parkingSlotOwnedByViewer(slot);
   }
 
   function parkingSlotRestrictedForViewer(slot) {
-    return canLinkParking() && !parkingSlotCanLink(slot);
+    if (isPlatformAdminEdit()) return false;
+    if (!isPartnerAllocationActive() && !canLinkParking()) return false;
+    return !parkingSlotOwnedByViewer(slot);
   }
 
   function syncParkingLinkUiForRole() {

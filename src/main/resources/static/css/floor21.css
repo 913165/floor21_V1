@@ -2493,16 +2493,87 @@ body > .modal .modal-content button {
 
 /* Partner view: slots linked to another partner or otherwise not manageable. */
 .parking-plan__slot--other-partner,
-.shop-plan__slot--parking.parking-plan__slot--other-partner {
-  opacity: 0.42;
-  filter: grayscale(0.45) blur(0.65px);
+.parking-plan__slot[data-parking-restricted="true"],
+.shop-plan__slot--parking.parking-plan__slot--other-partner,
+.shop-plan__slot--parking[data-parking-restricted="true"] {
+  opacity: 0.46;
   cursor: not-allowed;
   pointer-events: none;
 }
 
+.parking-plan__slot--other-partner .parking-plan__car-wheel,
+.parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-wheel {
+  fill: #3a4652;
+}
+
+.parking-plan__slot--other-partner .parking-plan__car-shell,
+.parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-shell {
+  fill: #5c6b7a;
+}
+
+.parking-plan__slot--other-partner .parking-plan__car-hood,
+.parking-plan__slot--other-partner .parking-plan__car-cabin,
+.parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-hood,
+.parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-cabin {
+  fill: #4a5662;
+}
+
+.parking-plan__slot--other-partner .parking-plan__car-glass-front,
+.parking-plan__slot--other-partner .parking-plan__car-glass-rear,
+.parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-glass-front,
+.parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-glass-rear {
+  fill: #8a96a3;
+  opacity: 0.72;
+}
+
+.parking-plan__slot--other-partner .parking-plan__car-light-front,
+.parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-light-front {
+  fill: #9aa5b0;
+}
+
+.parking-plan__slot--other-partner .parking-plan__car-light-rear,
+.parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-light-rear {
+  fill: #7a8794;
+}
+
+.parking-plan__slot--other-partner .parking-plan__car-bumper,
+.parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-bumper {
+  fill: #3a4652;
+}
+
+.parking-plan__slot--other-partner .shop-plan__car-body,
+.parking-plan__slot[data-parking-restricted="true"] .shop-plan__car-body,
+.shop-plan__slot--parking.parking-plan__slot--other-partner .shop-plan__car-body,
+.shop-plan__slot--parking[data-parking-restricted="true"] .shop-plan__car-body {
+  fill: #6c757d;
+}
+
+.parking-plan__slot--other-partner .shop-plan__car-roof,
+.parking-plan__slot[data-parking-restricted="true"] .shop-plan__car-roof,
+.shop-plan__slot--parking.parking-plan__slot--other-partner .shop-plan__car-roof,
+.shop-plan__slot--parking[data-parking-restricted="true"] .shop-plan__car-roof {
+  fill: #8a939c;
+}
+
+.parking-plan__slot--other-partner .shop-plan__car-wheel,
+.parking-plan__slot[data-parking-restricted="true"] .shop-plan__car-wheel,
+.shop-plan__slot--parking.parking-plan__slot--other-partner .shop-plan__car-wheel,
+.shop-plan__slot--parking[data-parking-restricted="true"] .shop-plan__car-wheel {
+  fill: #495057;
+}
+
 .parking-plan__slot--other-partner .parking-plan__slot-no,
-.shop-plan__slot--parking.parking-plan__slot--other-partner .shop-plan__slot-no {
+.parking-plan__slot[data-parking-restricted="true"] .parking-plan__slot-no,
+.shop-plan__slot--parking.parking-plan__slot--other-partner .shop-plan__slot-no,
+.shop-plan__slot--parking[data-parking-restricted="true"] .shop-plan__slot-no {
   color: var(--bs-secondary-color);
+}
+
+.parking-plan__slot--other-partner.parking-plan__slot--clickable:hover,
+.parking-plan__slot[data-parking-restricted="true"].parking-plan__slot--clickable:hover,
+.shop-plan__slot--parking.parking-plan__slot--other-partner.shop-plan__slot--clickable:hover,
+.shop-plan__slot--parking[data-parking-restricted="true"].shop-plan__slot--clickable:hover {
+  transform: none;
 }
 
 .parking-plan__slot--clickable:hover {
@@ -2725,17 +2796,42 @@ body > .modal .modal-content button {
   border: none;
 }
 
-[data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked) .parking-plan__car-shell {
+[data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked):not(.parking-plan__slot--other-partner):not([data-parking-restricted="true"]) .parking-plan__car-shell {
   fill: #2a6cb0;
 }
 
-[data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked) .parking-plan__car-hood,
-[data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked) .parking-plan__car-cabin {
+[data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked):not(.parking-plan__slot--other-partner):not([data-parking-restricted="true"]) .parking-plan__car-hood,
+[data-bs-theme="dark"] .parking-plan__slot:not(.parking-plan__slot--linked):not(.parking-plan__slot--other-partner):not([data-parking-restricted="true"]) .parking-plan__car-cabin {
   fill: #0f3a66;
 }
 
-[data-bs-theme="dark"] .parking-plan__slot--clickable:not(.parking-plan__slot--linked):hover .parking-plan__car-shell {
+[data-bs-theme="dark"] .parking-plan__slot--clickable:not(.parking-plan__slot--linked):not(.parking-plan__slot--other-partner):not([data-parking-restricted="true"]):hover .parking-plan__car-shell {
   fill: #3580c9;
+}
+
+[data-bs-theme="dark"] .parking-plan__slot--other-partner .parking-plan__car-shell,
+[data-bs-theme="dark"] .parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-shell {
+  fill: #4f5d6b;
+}
+
+[data-bs-theme="dark"] .parking-plan__slot--other-partner .parking-plan__car-hood,
+[data-bs-theme="dark"] .parking-plan__slot--other-partner .parking-plan__car-cabin,
+[data-bs-theme="dark"] .parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-hood,
+[data-bs-theme="dark"] .parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-cabin {
+  fill: #3d4854;
+}
+
+[data-bs-theme="dark"] .parking-plan__slot--other-partner .parking-plan__car-wheel,
+[data-bs-theme="dark"] .parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-wheel {
+  fill: #2f3842;
+}
+
+[data-bs-theme="dark"] .parking-plan__slot--other-partner .parking-plan__car-glass-front,
+[data-bs-theme="dark"] .parking-plan__slot--other-partner .parking-plan__car-glass-rear,
+[data-bs-theme="dark"] .parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-glass-front,
+[data-bs-theme="dark"] .parking-plan__slot[data-parking-restricted="true"] .parking-plan__car-glass-rear {
+  fill: #6b7784;
+  opacity: 0.7;
 }
 
 [data-bs-theme="dark"] .parking-plan__slot--linked .parking-plan__car-shell {

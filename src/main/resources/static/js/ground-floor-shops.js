@@ -30,13 +30,24 @@
     return grid && grid.getAttribute("data-parking-link-enabled") === "true";
   }
 
+  function isPartnerAllocationActive() {
+    var grid = document.getElementById("flat-grid");
+    return grid && grid.getAttribute("data-partner-allocation-active") === "true";
+  }
+
+  function groundParkingSlotOwnedByViewer(slot) {
+    return !!(slot && slot.linkableByCurrentUser);
+  }
+
   function groundParkingSlotCanLink(slot, canEdit) {
     if (canEdit) return true;
-    return canLinkParking() && !!(slot && slot.linkableByCurrentUser);
+    return canLinkParking() && groundParkingSlotOwnedByViewer(slot);
   }
 
   function groundParkingSlotRestrictedForViewer(slot, canEdit) {
-    return !canEdit && canLinkParking() && !groundParkingSlotCanLink(slot, canEdit);
+    if (canEdit) return false;
+    if (!isPartnerAllocationActive() && !canLinkParking()) return false;
+    return !groundParkingSlotOwnedByViewer(slot);
   }
 
   function buildingId() {

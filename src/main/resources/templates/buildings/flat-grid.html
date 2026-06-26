@@ -331,6 +331,7 @@
                 data-focus-flat-id=${focusFlatId != null ? focusFlatId : ''},
                 data-platform-admin-edit=${platformAdminView},
                 data-parking-link-enabled=${parkingLinkEnabled},
+                data-partner-allocation-active=${partnerAllocationActive},
                 data-amenity-types=${#strings.listJoin(flatAmenityTypes, ',')}">
     <svg id="flat-grid-duplex-links" class="flat-duplex-links-overlay" aria-hidden="true"></svg>
     <div class="flat-grid-legend mb-2" th:if="${!#lists.isEmpty(floors)}">
@@ -1173,8 +1174,8 @@
   <script defer th:src="@{/js/amount-format.js(v=panel-payment-v1)}"></script>
   <script defer th:src="@{/js/floor21-area-unit.js(v=area-unit-prefs-v2)}"></script>
   <script defer th:src="@{/js/floor21-panel-resize.js(v=panel-resize-v8)}"></script>
-  <script defer th:src="@{/js/flat-grid.js(v=parking-link-user-v3)}"></script>
-  <script defer th:src="@{/js/ground-floor-shops.js(v=parking-link-user-v3)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=parking-restrict-v4)}"></script>
+  <script defer th:src="@{/js/ground-floor-shops.js(v=parking-restrict-v4)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=7)}"></script>
 </div>
 </body>
