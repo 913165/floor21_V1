@@ -35,6 +35,10 @@
     return canLinkParking() && !!(slot && slot.linkableByCurrentUser);
   }
 
+  function groundParkingSlotRestrictedForViewer(slot, canEdit) {
+    return !canEdit && canLinkParking() && !groundParkingSlotCanLink(slot, canEdit);
+  }
+
   function buildingId() {
     var grid = document.getElementById("flat-grid");
     return grid ? grid.getAttribute("data-building-id") : null;
@@ -372,6 +376,9 @@
     var linked = slot.linkedResidentialFlatNumber || "";
     var linkedClass = linked ? " shop-plan__slot--linked" : "";
     var canLink = groundParkingSlotCanLink(slot, canEdit);
+    var restrictedClass = groundParkingSlotRestrictedForViewer(slot, canEdit)
+      ? " parking-plan__slot--other-partner"
+      : "";
     var interactive = canLink || snapshotReadOnly;
     var clickable = interactive ? " shop-plan__slot--clickable" : "";
     var orientClass =
@@ -394,6 +401,7 @@
     return (
       '<div class="shop-plan__slot shop-plan__slot--parking shop-plan__slot--parking-shared' +
       linkedClass +
+      restrictedClass +
       clickable +
       orientClass +
       dragClass +
@@ -405,6 +413,7 @@
       (slot.flatNumber || "") +
       '"' +
       (canLink ? ' data-parking-linkable="true"' : "") +
+      (restrictedClass ? ' data-parking-restricted="true"' : "") +
       (slot.linkedResidentialFlatId
         ? ' data-linked-flat-id="' + slot.linkedResidentialFlatId + '"'
         : "") +
@@ -1753,6 +1762,12 @@
       if (parkingSlot) {
         e.preventDefault();
         e.stopPropagation();
+        if (
+          parkingSlot.getAttribute("data-parking-restricted") === "true" ||
+          parkingSlot.getAttribute("data-parking-linkable") !== "true"
+        ) {
+          return;
+        }
         selectGroundParkingSlot(parkingSlot);
         return;
       }

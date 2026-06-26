@@ -251,6 +251,10 @@
     return !!(slot && slot.linkableByCurrentUser);
   }
 
+  function parkingSlotRestrictedForViewer(slot) {
+    return canLinkParking() && !parkingSlotCanLink(slot);
+  }
+
   function syncParkingLinkUiForRole() {
     var admin = isPlatformAdminEdit();
     var orientRow = document.getElementById("parking-link-orientation-row");
@@ -2752,6 +2756,9 @@
     var partnerName = slot.assignedPartnerName ? String(slot.assignedPartnerName).trim() : "";
     var partnerId = slot.assignedPartnerId ? String(slot.assignedPartnerId) : "";
     var canLink = parkingSlotCanLink(slot);
+    var restrictedClass = parkingSlotRestrictedForViewer(slot)
+      ? " parking-plan__slot--other-partner"
+      : "";
     var linkedClass = linked ? " parking-plan__slot--linked" : "";
     var interactive = canLink || snapshotReadOnly;
     var clickable = interactive ? " parking-plan__slot--clickable" : "";
@@ -2781,6 +2788,7 @@
     return (
       '<div class="parking-plan__slot' +
       linkedClass +
+      restrictedClass +
       clickable +
       orientClass +
       dragClass +
@@ -2800,6 +2808,7 @@
       (partnerId ? ' data-partner-id="' + partnerId + '"' : "") +
       (partnerName ? ' data-partner-name="' + partnerName.replace(/"/g, "&quot;") + '"' : "") +
       (canLink ? ' data-parking-linkable="true"' : "") +
+      (restrictedClass ? ' data-parking-restricted="true"' : "") +
       ' title="' +
       title.replace(/"/g, "&quot;") +
       '"' +
@@ -7711,6 +7720,12 @@
           if (parkingSlot) {
             e.preventDefault();
             e.stopPropagation();
+            if (
+              parkingSlot.getAttribute("data-parking-restricted") === "true" ||
+              !isParkingSlotLinkable(parkingSlot)
+            ) {
+              return;
+            }
             window.floor21SelectParkingSlot(parkingSlot);
             return;
           }

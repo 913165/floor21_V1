@@ -292,15 +292,32 @@ public class PartnerFlatAllocationService {
     }
 
     @Transactional(readOnly = true)
-    public boolean canManageFlatForParkingLink(UUID buildingId, UUID flatId) {
-        if (flatId == null) {
+    public boolean canManageFlatForParkingLink(UUID buildingId, UUID parkingFlatId) {
+        if (parkingFlatId == null) {
             return false;
         }
-        if (canBypassPartnerFlatRestriction()) {
+        if (canBypassPartnerFlatRestriction() || !isAllocationActive(buildingId)) {
             return true;
         }
-        UUID assignedPartnerId = getAssignedPartnerIdForFlat(flatId);
-        return isBookableByCurrentUser(buildingId, assignedPartnerId);
+        UUID staffUserId = currentStaffUserId();
+        if (staffUserId == null) {
+            return true;
+        }
+        Flat parking = flatRepository.findById(parkingFlatId).orElse(null);
+        if (parking == null) {
+            return false;
+        }
+        UUID directPartner = getAssignedPartnerIdForFlat(parkingFlatId);
+        if (directPartner != null) {
+            return directPartner.equals(staffUserId);
+        }
+        UUID linkedResidentialId = parking.getLinkedResidentialFlatId();
+        if (linkedResidentialId != null) {
+            UUID linkedPartner = getAssignedPartnerIdForFlat(linkedResidentialId);
+            return linkedPartner != null && linkedPartner.equals(staffUserId);
+        }
+        // Unlinked guest slot — not assigned to this partner.
+        return false;
     }
 
     private static boolean canBypassPartnerFlatRestriction() {

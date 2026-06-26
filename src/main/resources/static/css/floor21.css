@@ -2491,6 +2491,20 @@ body > .modal .modal-content button {
   cursor: pointer;
 }
 
+/* Partner view: slots linked to another partner or otherwise not manageable. */
+.parking-plan__slot--other-partner,
+.shop-plan__slot--parking.parking-plan__slot--other-partner {
+  opacity: 0.42;
+  filter: grayscale(0.45) blur(0.65px);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.parking-plan__slot--other-partner .parking-plan__slot-no,
+.shop-plan__slot--parking.parking-plan__slot--other-partner .shop-plan__slot-no {
+  color: var(--bs-secondary-color);
+}
+
 .parking-plan__slot--clickable:hover {
   transform: scale(1.06);
 }
