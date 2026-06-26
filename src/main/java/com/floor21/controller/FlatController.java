@@ -22,6 +22,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
@@ -69,6 +70,34 @@ public class FlatController {
                             name != null ? name : ""));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/flats/{id}/partner-apply-parking-floor",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> applyParkingPartnerToUnassignedOnFloor(
+            @PathVariable UUID id, @RequestBody FlatPartnerAssignDto body) {
+        try {
+            UUID partnerUserId = body != null ? body.partnerUserId() : null;
+            PartnerFlatAllocationService.ParkingFloorPartnerApplyResult result =
+                    partnerFlatAllocationService.assignPartnerToUnassignedParkingOnFlatFloor(
+                            id, partnerUserId);
+            return ResponseEntity.ok(
+                    Map.of(
+                            "ok",
+                            true,
+                            "assignedCount",
+                            result.assignedCount(),
+                            "partnerName",
+                            result.partnerName() != null ? result.partnerName() : ""));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (ResourceNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", ex.getMessage()));
         }
     }
 

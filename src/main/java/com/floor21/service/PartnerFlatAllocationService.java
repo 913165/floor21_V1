@@ -186,6 +186,73 @@ public class PartnerFlatAllocationService {
         return partnerCardDisplayName(partner);
     }
 
+    public record ParkingFloorPartnerApplyResult(int assignedCount, String partnerName) {}
+
+    /**
+     * Assigns the given partner to every parking slot on the floor that has no partner yet.
+     */
+    @Transactional
+    public ParkingFloorPartnerApplyResult assignPartnerToUnassignedParkingOnFloor(
+            UUID buildingId, int floorNumber, UUID partnerUserId) {
+        requirePlatformAdmin();
+        if (partnerUserId == null) {
+            throw new IllegalArgumentException("Choose a partner to apply.");
+        }
+        Building building = buildingService.resolveForAccess(buildingId);
+        UUID builderId = building.getBuilder().getId();
+        User partner =
+                listPartnersForBuilding(buildingId).stream()
+                        .filter(p -> p.getId().equals(partnerUserId))
+                        .findFirst()
+                        .orElseThrow(
+                                () ->
+                                        new IllegalArgumentException(
+                                                "User is not a partner on this building."));
+        List<Flat> parkingSlots =
+                flatRepository
+                        .findByBuilding_IdAndBuilder_IdAndFloorNumberOrderByUnitNumberAsc(
+                                buildingId, builderId, floorNumber)
+                        .stream()
+                        .filter(
+                                f ->
+                                        FlatUnitTypes.isParkingCode(f.getBhkType())
+                                                || Boolean.TRUE.equals(f.getParking()))
+                        .toList();
+        if (parkingSlots.isEmpty()) {
+            throw new IllegalArgumentException("No parking slots on this floor.");
+        }
+        int assigned = 0;
+        for (Flat flat : parkingSlots) {
+            if (assignmentRepository.findByFlat_Id(flat.getId()).isPresent()) {
+                continue;
+            }
+            if (FlatUnitTypes.cannotAssignPartner(flat)) {
+                continue;
+            }
+            if (bookingRepository.countActiveByFlatId(flat.getId()) > 0) {
+                continue;
+            }
+            assignmentRepository.save(new PartnerFlatAssignment(partner, flat, building));
+            assigned++;
+        }
+        return new ParkingFloorPartnerApplyResult(assigned, partnerCardDisplayName(partner));
+    }
+
+    @Transactional
+    public ParkingFloorPartnerApplyResult assignPartnerToUnassignedParkingOnFlatFloor(
+            UUID parkingFlatId, UUID partnerUserId) {
+        Flat parking =
+                flatRepository
+                        .findByIdWithBuilding(parkingFlatId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Flat not found"));
+        if (!FlatUnitTypes.isParkingCode(parking.getBhkType())
+                && !Boolean.TRUE.equals(parking.getParking())) {
+            throw new IllegalArgumentException("Only parking slots support floor-wide partner apply.");
+        }
+        return assignPartnerToUnassignedParkingOnFloor(
+                parking.getBuilding().getId(), parking.getFloorNumber(), partnerUserId);
+    }
+
     @Transactional
     public void clearAssignmentForFlat(UUID flatId) {
         assignmentRepository.findByFlat_Id(flatId).ifPresent(assignmentRepository::delete);

@@ -823,7 +823,7 @@
             </div>
           </div>
           <div id="panel-parking-note" class="alert alert-info py-2 small d-none mb-3">
-            Parking slot — assign a partner below.
+            Parking slot — assign a partner below, or apply to every unassigned slot on this floor.
           </div>
           <div id="panel-shop-note" class="alert alert-info py-2 small d-none mb-3">
             Retail shop — sold independently of residential flats. Assign a partner below so only that partner can book this shop.
@@ -869,6 +869,12 @@
               </div>
               <div class="col-md-3 d-flex align-items-end">
                 <button type="button" class="btn btn-sm btn-outline-primary w-100" id="admin-partner-save">Save partner</button>
+              </div>
+              <div class="col-12 d-none" id="admin-parking-partner-apply-row">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="admin-parking-partner-apply-floor-btn">
+                  Apply partner to unassigned slots on this floor
+                </button>
+                <p class="text-muted small mb-0 mt-1">Saves this slot and assigns the same partner to every other unassigned parking slot on this floor.</p>
               </div>
             </div>
             <div class="row g-2 align-items-end border-top pt-2 mt-2 d-none admin-layout-only" id="admin-split-merge-row">
@@ -1174,7 +1180,7 @@
   <script defer th:src="@{/js/amount-format.js(v=panel-payment-v1)}"></script>
   <script defer th:src="@{/js/floor21-area-unit.js(v=area-unit-prefs-v2)}"></script>
   <script defer th:src="@{/js/floor21-panel-resize.js(v=panel-resize-v8)}"></script>
-  <script defer th:src="@{/js/flat-grid.js(v=parking-restrict-v4)}"></script>
+  <script defer th:src="@{/js/flat-grid.js(v=parking-partner-floor-v3)}"></script>
   <script defer th:src="@{/js/ground-floor-shops.js(v=parking-restrict-v4)}"></script>
   <script defer th:src="@{/js/basement-parking.js(v=7)}"></script>
 </div>

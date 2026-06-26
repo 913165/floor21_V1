@@ -3,6 +3,7 @@ package com.floor21.controller;
 import com.floor21.dto.BuildingConfigDto;
 import com.floor21.dto.FlatAddToFloorDto;
 import com.floor21.dto.FlatAdminUpdateDto;
+import com.floor21.dto.FlatPartnerAssignDto;
 import com.floor21.dto.FloorUseConvertDto;
 import com.floor21.dto.FlatGridDataDto;
 import com.floor21.exception.ResourceNotFoundException;
@@ -29,6 +30,7 @@ import com.floor21.util.ResidentialBhkTypes;
 import com.floor21.util.SkippedFloorsUtil;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -785,6 +787,35 @@ public class BuildingController {
         try {
             int updated = flatService.updateFloorAsPlatformAdmin(id, floorNumber, body).size();
             return ResponseEntity.ok(Map.of("ok", true, "floorNumber", floorNumber, "updatedCount", updated));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping(
+            value = "/{id}/flats/floor/{floorNumber}/parking-partner-apply",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @ResponseBody
+    public ResponseEntity<?> applyParkingPartnerToUnassignedOnFloor(
+            @PathVariable UUID id,
+            @PathVariable int floorNumber,
+            @RequestBody FlatPartnerAssignDto body) {
+        try {
+            UUID partnerUserId = body != null ? body.partnerUserId() : null;
+            PartnerFlatAllocationService.ParkingFloorPartnerApplyResult result =
+                    partnerFlatAllocationService.assignPartnerToUnassignedParkingOnFloor(
+                            id, floorNumber, partnerUserId);
+            return ResponseEntity.ok(
+                    Map.of(
+                            "ok",
+                            true,
+                            "floorNumber",
+                            floorNumber,
+                            "assignedCount",
+                            result.assignedCount(),
+                            "partnerName",
+                            result.partnerName() != null ? result.partnerName() : ""));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }

@@ -85,6 +85,10 @@ public class SecurityConfig {
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/buildings/*/flats/floor/*/details")
                                         .hasRole("SUPER_ADMIN")
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/buildings/*/flats/floor/*/parking-partner-apply")
+                                        .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/buildings/*/flats/floor/*/convert-use")
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/buildings/*/flats/floor/*/parking-config")
@@ -153,6 +157,9 @@ public class SecurityConfig {
                                         .requestMatchers(HttpMethod.POST, "/flats/*/price")
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
                                         .requestMatchers(HttpMethod.POST, "/flats/*/partner")
+                                        .hasRole("SUPER_ADMIN")
+                                        .requestMatchers(
+                                                HttpMethod.POST, "/flats/*/partner-apply-parking-floor")
                                         .hasRole("SUPER_ADMIN")
                                         .requestMatchers(HttpMethod.POST, "/flats/*/split-duplex")
                                         .hasRole("SUPER_ADMIN")

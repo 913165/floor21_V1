@@ -535,6 +535,10 @@
     var applyFloor = document.getElementById("admin-apply-floor-btn");
     var saveHint = document.getElementById("admin-save-hint");
     if (note) note.classList.toggle("d-none", !slot);
+    var parkingPartnerApply = document.getElementById("admin-parking-partner-apply-row");
+    if (parkingPartnerApply) {
+      parkingPartnerApply.classList.toggle("d-none", !slot || !isPlatformAdminEdit());
+    }
     if (shopNote) shopNote.classList.toggle("d-none", !shop);
     if (actions) actions.classList.toggle("d-none", parkingMode);
     if (parkingMode) {
@@ -1697,6 +1701,10 @@
     try {
       var data = await res.json();
       if (data && data.error) return String(data.error);
+      if (data && data.message) return String(data.message);
+      if (data && data.path && res.status === 404) {
+        return "Not found — restart the app if this feature was just added (" + data.path + ")";
+      }
     } catch (e) {
       /* ignore */
     }
@@ -6931,17 +6939,77 @@
     document.addEventListener("click", window.__f21AdminSaveClickHandler, true);
   }
 
+  async function postPartnerAssignment(flatId, partnerUserId) {
+    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
+    return fetch(appRoot() + "/flats/" + flatId + "/partner", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({ partnerUserId: partnerUserId }),
+    });
+  }
+
+  async function handleParkingPartnerApplyFloorClick() {
+    if (!selectedParkingSlot || !selectedFlatId) return;
+    var partnerSel = document.getElementById("admin-partner");
+    var partnerUserId = partnerSel && partnerSel.value ? partnerSel.value : null;
+    if (!partnerUserId) {
+      showAdminError("Choose a partner first.");
+      return;
+    }
+    if (
+      !window.confirm(
+        "Save partner on this slot and assign the same partner to every other unassigned parking slot on this floor?"
+      )
+    ) {
+      return;
+    }
+    showAdminError("");
+    var keepFlatId = selectedFlatId;
+    var saveRes = await postPartnerAssignment(keepFlatId, partnerUserId);
+    if (!saveRes.ok) {
+      showAdminError(await parseErrorResponse(saveRes));
+      return;
+    }
+    var saveData = await saveRes.json();
+    var pid = saveData.partnerUserId ? String(saveData.partnerUserId) : partnerUserId;
+    var pname = saveData.partnerName ? String(saveData.partnerName) : "";
+
+    var applyRes = await fetch(appRoot() + "/flats/" + keepFlatId + "/partner-apply-parking-floor", {
+      method: "POST",
+      headers: Object.assign({ "Content-Type": "application/json" }, csrfHeaders()),
+      body: JSON.stringify({ partnerUserId: partnerUserId }),
+    });
+    if (!applyRes.ok) {
+      showAdminError(await parseErrorResponse(applyRes));
+      return;
+    }
+    var applyData = await applyRes.json();
+    var extraCount = applyData.assignedCount != null ? Number(applyData.assignedCount) : 0;
+    if (!pname && applyData.partnerName) pname = String(applyData.partnerName);
+
+    if (selectedParkingFloorNumber != null) {
+      invalidateParkingPlanCache(selectedParkingFloorNumber);
+    }
+    await refreshGrid();
+    var slotEl = findParkingSlotElement(keepFlatId);
+    if (slotEl) {
+      syncParkingSlotPartnerTag(slotEl, pid || null, pname || null);
+      window.floor21SelectParkingSlot(slotEl, true);
+    }
+    var toastMsg = "Partner saved on this slot";
+    if (extraCount > 0) {
+      toastMsg +=
+        " and applied to " + extraCount + " more unassigned slot" + (extraCount === 1 ? "" : "s");
+    }
+    showGridToast(toastMsg);
+  }
+
   async function handleAdminPartnerSaveClick() {
     if (!selectedFlatId) return;
     var partnerSel = document.getElementById("admin-partner");
     var partnerUserId = partnerSel && partnerSel.value ? partnerSel.value : null;
     showAdminError("");
-    var headers = Object.assign({ "Content-Type": "application/json" }, csrfHeaders());
-    var res = await fetch(appRoot() + "/flats/" + selectedFlatId + "/partner", {
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify({ partnerUserId: partnerUserId }),
-    });
+    var res = await postPartnerAssignment(selectedFlatId, partnerUserId);
     if (!res.ok) {
       showAdminError(await parseErrorResponse(res));
       return;
@@ -6975,6 +7043,12 @@
       document.removeEventListener("click", window.__f21AdminPartnerSaveHandler, true);
     }
     window.__f21AdminPartnerSaveHandler = function (e) {
+      var applyBtn = e.target.closest("#admin-parking-partner-apply-floor-btn");
+      if (applyBtn && !applyBtn.disabled) {
+        e.preventDefault();
+        void handleParkingPartnerApplyFloorClick();
+        return;
+      }
       var btn = e.target.closest("#admin-partner-save");
       if (!btn || btn.disabled) return;
       e.preventDefault();
