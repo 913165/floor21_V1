@@ -52,6 +52,8 @@ Other commands:
 | `npm run test:ui` | Interactive UI — only `floor21-full-flow.spec.ts` |
 | `npm run test:headed` | Headed run, one worker |
 | `npm run test:debug` | Step-through debugger |
+| `npm run create-clients` | Prompt for login, then create clients (headed browser) |
+| `npm run create-clients:ui` | Same in Playwright UI |
 | `npm run report` | Open last HTML report |
 
 For full manual control (pause, step, rerun), use **`npm run test:ui`**.
@@ -71,6 +73,45 @@ This runs `mvnw spring-boot:run` from the repo root (slow first boot; Flyway + s
 |----------|---------|---------|
 | `FLOOR21_BASE_URL` | `http://localhost/floor21` | App base URL |
 | `FLOOR21_START_SERVER` | unset | Set to `1` to start Spring Boot via `webServer` in config |
+| `FLOOR21_LOGIN_EMAIL` | unset | Skip prompt — sign in as this email |
+| `FLOOR21_LOGIN_PASSWORD` | unset | Password for `FLOOR21_LOGIN_EMAIL` |
+| `FLOOR21_LOGIN_CHOICE` | unset | Pick login by menu number (1-based) without prompts |
+| `FLOOR21_CLIENT_COUNT` | `5` | How many clients to create (1–50) |
+
+## Create clients for a chosen login (interactive)
+
+Sign in as a partner, owner, or any tenant user and create sample clients through the real UI.
+
+**Prerequisites:** App running at `http://localhost/floor21`. The signed-in user must be **BUILDER_ADMIN** or **EXECUTIVE** (partners from the E2E flow qualify).
+
+```powershell
+cd C:\work_floor21\floor21\e2e
+npm run create-clients
+```
+
+You will be asked:
+
+1. **Which user** — picks from `e2e/.flow-state.json` (after a full E2E run), builder admin, or manual email/password
+2. **How many clients** — default 5
+
+The browser opens (headed), logs in, fills the client form for each row, and verifies names appear on the Clients list.
+
+**Non-interactive** (fixed user, no prompts):
+
+```powershell
+$env:FLOOR21_LOGIN_EMAIL = "partner@example.test"
+$env:FLOOR21_LOGIN_PASSWORD = "user123"
+$env:FLOOR21_CLIENT_COUNT = "5"
+npm run create-clients
+```
+
+Playwright UI mode:
+
+```powershell
+npm run create-clients:ui
+```
+
+In UI mode, login and client count are chosen **in the browser** (picker screens) because the Playwright UI has no terminal stdin. Alternatively set `FLOOR21_LOGIN_EMAIL` / `FLOOR21_LOGIN_PASSWORD` or `FLOOR21_LOGIN_CHOICE=1` before running.
 
 ## Layout
 
@@ -79,7 +120,8 @@ e2e/
 ├── playwright.config.ts
 ├── helpers/             # shared by floor21-full-flow
 ├── tests/
-│   └── floor21-full-flow.spec.ts
+│   ├── floor21-full-flow.spec.ts
+│   └── create-five-clients.spec.ts
 └── package.json
 ```
 

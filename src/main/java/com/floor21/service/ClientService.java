@@ -2,6 +2,7 @@ package com.floor21.service;
 
 import com.floor21.dto.ClientBuildingNavDto;
 import com.floor21.entity.Booking;
+import com.floor21.dto.ClientQuickCreateRequest;
 import com.floor21.entity.Client;
 import com.floor21.entity.Flat;
 import com.floor21.exception.ResourceNotFoundException;
@@ -164,6 +165,27 @@ public class ClientService {
                     new ClientBuildingNavDto(bid, building.getBuildingName(), flat.getId(), b.getId()));
         }
         return new ArrayList<>(byBuilding.values());
+    }
+
+    @Transactional
+    public Client quickCreate(ClientQuickCreateRequest request) {
+        Client form = new Client();
+        form.setFirstName(request.firstName());
+        form.setLastName(request.lastName());
+        form.setCompanyName(request.companyName());
+        form.setOccupation(request.occupation());
+        form.setAddress1(request.address1());
+        form.setAddress2(request.address2());
+        form.setCity(request.city());
+        form.setMobile1(request.mobile1());
+        form.setMobile2(request.mobile2());
+        form.setEmail1(request.email1());
+        form.setPanNumber(request.panNumber());
+        form.setAadhaarNumber(request.aadhaarNumber());
+        form.setDob(request.dob());
+        form.setDateOfMarriage(request.dateOfMarriage());
+        form.setParticulars(request.particulars());
+        return save(form);
     }
 
     @Transactional

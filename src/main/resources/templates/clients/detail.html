@@ -121,8 +121,6 @@
         <span th:if="${client.address1 != null && !client.address1.isBlank()}" th:text="${client.address1}"></span>
         <br th:if="${client.address2 != null && !client.address2.isBlank()}"/>
         <span th:if="${client.address2 != null && !client.address2.isBlank()}" th:text="${client.address2}"></span>
-        <br th:if="${client.address3 != null && !client.address3.isBlank()}"/>
-        <span th:if="${client.address3 != null && !client.address3.isBlank()}" th:text="${client.address3}"></span>
         <br th:if="${client.city != null && !client.city.isBlank()}"/>
         <span th:if="${client.city != null && !client.city.isBlank()}" th:text="${client.city}"></span>
       </p>
@@ -141,39 +139,7 @@
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
             </svg>
             <div>
-              <p class="client-field-label">Phone (office)</p>
-              <p class="client-field-value"
-                 th:classappend="${client.phoneOffice == null || client.phoneOffice.isBlank()} ? 'client-field-value--empty'"
-                 th:text="${client.phoneOffice != null && !client.phoneOffice.isBlank()} ? ${client.phoneOffice} : 'Not provided'">
-                Not provided
-              </p>
-            </div>
-          </div>
-
-          <div class="client-field-row client-field-row--icon">
-            <svg class="client-field-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                 aria-hidden="true">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-            </svg>
-            <div>
-              <p class="client-field-label">Phone (residence)</p>
-              <p class="client-field-value"
-                 th:classappend="${client.phoneResidence == null || client.phoneResidence.isBlank()} ? 'client-field-value--empty'"
-                 th:text="${client.phoneResidence != null && !client.phoneResidence.isBlank()} ? ${client.phoneResidence} : 'Not provided'">
-                Not provided
-              </p>
-            </div>
-          </div>
-
-          <div class="client-field-row client-field-row--icon">
-            <svg class="client-field-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                 aria-hidden="true">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-            </svg>
-            <div>
-              <p class="client-field-label">Mobile 1</p>
+              <p class="client-field-label">Phone 1</p>
               <p class="client-field-value"
                  th:classappend="${client.mobile1 == null || client.mobile1.isBlank()} ? 'client-field-value--empty'"
                  th:text="${client.mobile1 != null && !client.mobile1.isBlank()} ? ${client.mobile1} : 'Not provided'">
@@ -189,7 +155,7 @@
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
             </svg>
             <div>
-              <p class="client-field-label">Mobile 2</p>
+              <p class="client-field-label">Phone 2</p>
               <p class="client-field-value"
                  th:classappend="${client.mobile2 == null || client.mobile2.isBlank()} ? 'client-field-value--empty'"
                  th:text="${client.mobile2 != null && !client.mobile2.isBlank()} ? ${client.mobile2} : 'Not provided'">
@@ -208,27 +174,10 @@
               <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
             </svg>
             <div>
-              <p class="client-field-label">Email 1</p>
+              <p class="client-field-label">Email</p>
               <p class="client-field-value"
                  th:classappend="${client.email1 == null || client.email1.isBlank()} ? 'client-field-value--empty'"
                  th:text="${client.email1 != null && !client.email1.isBlank()} ? ${client.email1} : 'Not provided'">
-                Not provided
-              </p>
-            </div>
-          </div>
-
-          <div class="client-field-row client-field-row--icon">
-            <svg class="client-field-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                 aria-hidden="true">
-              <rect width="20" height="16" x="2" y="4" rx="2"/>
-              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-            </svg>
-            <div>
-              <p class="client-field-label">Email 2</p>
-              <p class="client-field-value"
-                 th:classappend="${client.email2 == null || client.email2.isBlank()} ? 'client-field-value--empty'"
-                 th:text="${client.email2 != null && !client.email2.isBlank()} ? ${client.email2} : 'Not provided'">
                 Not provided
               </p>
             </div>

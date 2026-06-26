@@ -4,7 +4,7 @@
 <body>
 <div th:fragment="content">
   <h1 class="h3 mb-4" th:text="${pageTitle}">Booking</h1>
-  <form th:action="@{/bookings/save}" th:object="${booking}" method="post">
+  <form th:action="@{/bookings/save}" th:object="${booking}" method="post" data-booking-client-picker>
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
     <input type="hidden" th:field="*{id}"/>
     <input type="hidden" th:if="${booking.id != null}" th:field="*{bookingCode}"/>
@@ -15,10 +15,17 @@
         <div class="row g-3">
           <div class="col-md-4">
             <label class="form-label">Primary client</label>
-            <select class="form-select" th:field="*{client.id}" id="bookingPrimaryClient" required>
-              <option value="">— Select client —</option>
-              <option th:each="c : ${clients}" th:value="${c.id}" th:text="${c.displayName()}"></option>
-            </select>
+            <div class="d-flex gap-2">
+              <select class="form-select" th:field="*{client.id}" id="bookingPrimaryClient" required>
+                <option value="">— Select client —</option>
+                <option th:each="c : ${clients}"
+                        th:value="${c.id}"
+                        th:text="${c.displayName()}"
+                        th:attr="data-address1=${c.address1},data-address2=${c.address2},data-city=${c.city}"></option>
+              </select>
+              <button type="button" class="btn btn-outline-primary btn-sm text-nowrap flex-shrink-0"
+                      id="bookingPrimaryNewClient" title="Create new client">+ New</button>
+            </div>
           </div>
           <div class="col-md-4">
             <label class="form-label">Flat</label>
@@ -34,18 +41,43 @@
             <input class="form-control" type="date" th:field="*{bookingDate}" required/>
           </div>
           <div class="col-12">
-            <label class="form-label" for="coOwnerIds">Co-owners <span class="text-muted fw-normal">(optional)</span></label>
-            <select class="form-select" name="coOwnerIds" id="coOwnerIds" multiple
-                    data-client-multi-search-select
-                    data-exclude-select="#bookingPrimaryClient"
-                    data-search-placeholder="Search co-owners…"
-                    aria-describedby="coOwnerHelp">
-              <option th:each="c : ${clients}"
-                      th:value="${c.id}"
-                      th:text="${c.displayName()}"
-                      th:selected="${selectedCoOwnerIds != null and selectedCoOwnerIds.contains(c.id)}"></option>
-            </select>
-            <p class="form-text small mb-0" id="coOwnerHelp">Search and select additional owners. The primary client is excluded automatically.</p>
+            <label class="form-label">Co-owners <span class="text-muted fw-normal">(optional)</span></label>
+            <div id="coOwnerRows" class="d-flex flex-column gap-2">
+              <div th:each="coId : ${selectedCoOwnerIds}"
+                   class="co-owner-row d-flex gap-2 align-items-start">
+                <select class="form-select" name="coOwnerIds">
+                  <option value="">— Select client —</option>
+                  <option th:each="c : ${clients}"
+                          th:value="${c.id}"
+                          th:text="${c.displayName()}"
+                          th:selected="${c.id == coId}"
+                          th:attr="data-address1=${c.address1},data-address2=${c.address2},data-city=${c.city}"></option>
+                </select>
+                <button type="button" class="btn btn-outline-primary btn-sm text-nowrap flex-shrink-0 co-owner-new-client"
+                        title="Create new client">+ New</button>
+                <button type="button" class="btn btn-outline-danger btn-sm flex-shrink-0 co-owner-remove"
+                        title="Remove co-owner" aria-label="Remove co-owner">×</button>
+              </div>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addCoOwnerRow">
+              <span aria-hidden="true">+</span> Add co-owner
+            </button>
+            <p class="form-text small mb-0 mt-2">Add additional owners. The primary client is excluded automatically.</p>
+            <template id="coOwnerRowTemplate">
+              <div class="co-owner-row d-flex gap-2 align-items-start">
+                <select class="form-select" name="coOwnerIds">
+                  <option value="">— Select client —</option>
+                  <option th:each="c : ${clients}"
+                          th:value="${c.id}"
+                          th:text="${c.displayName()}"
+                          th:attr="data-address1=${c.address1},data-address2=${c.address2},data-city=${c.city}"></option>
+                </select>
+                <button type="button" class="btn btn-outline-primary btn-sm text-nowrap flex-shrink-0 co-owner-new-client"
+                        title="Create new client">+ New</button>
+                <button type="button" class="btn btn-outline-danger btn-sm flex-shrink-0 co-owner-remove"
+                        title="Remove co-owner" aria-label="Remove co-owner">×</button>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -169,7 +201,27 @@
       <a class="btn btn-link" th:href="${booking.id != null} ? @{/bookings/{id}(id=${booking.id})} : @{/bookings}">Cancel</a>
     </div>
   </form>
-  <script defer th:src="@{/js/client-multi-search-select.js(v=1)}"></script>
+
+  <div class="modal fade" id="bookingClientModal" tabindex="-1" aria-labelledby="bookingClientModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title h5" id="bookingClientModalLabel">New client</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="bookingClientModalError" class="alert alert-danger d-none" role="alert"></div>
+          <th:block th:replace="~{clients/form-fields :: fields('quickClient', false)}"/>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="bookingClientModalSave">Create client</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script defer th:src="@{/js/booking-client-picker.js(v=4)}"></script>
   <script>
     (function () {
       var flatSelect = document.getElementById('bookingFlatSelect');

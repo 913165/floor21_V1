@@ -19,7 +19,7 @@ class ClientExcelServiceTest {
         assertThat(rows.getFirst().firstName()).isEqualTo("Rahul");
         assertThat(rows.getFirst().lastName()).isEqualTo("Sharma");
         assertThat(rows.getFirst().city()).isEqualTo("Mumbai");
-        assertThat(rows.getFirst().mobile1()).isEqualTo("9876543210");
+        assertThat(rows.getFirst().phone1()).isEqualTo("9876543210");
         assertThat(rows.getFirst().panNumber()).isEqualTo("ABCDE1234F");
         assertThat(rows.getFirst().dob()).isEqualTo(LocalDate.of(1990, 6, 15));
     }
@@ -35,7 +35,7 @@ class ClientExcelServiceTest {
             var partial = sheet.createRow(2);
             partial.createCell(1).setCellValue("Vipul");
             partial.createCell(2).setCellValue("Patel");
-            partial.createCell(11).setCellValue("9876543210");
+            partial.createCell(8).setCellValue("9876543210");
             var out = new java.io.ByteArrayOutputStream();
             wb.write(out);
             rows = service.parse(new ByteArrayInputStream(out.toByteArray()));

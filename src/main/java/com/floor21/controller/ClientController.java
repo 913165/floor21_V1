@@ -1,5 +1,7 @@
 package com.floor21.controller;
 
+import com.floor21.dto.ClientQuickCreateRequest;
+import com.floor21.dto.ClientQuickCreateResponse;
 import com.floor21.entity.Client;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.security.Floor21UserPrincipal;
@@ -10,6 +12,7 @@ import com.floor21.service.BuildingService;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,8 +30,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -171,6 +176,18 @@ public class ClientController {
         model.addAttribute("pageTitle", "Edit Client");
         model.addAttribute("client", clientService.get(id));
         return "clients/form";
+    }
+
+    @PostMapping("/quick")
+    @PreAuthorize("hasAnyRole('BUILDER_ADMIN','EXECUTIVE')")
+    @ResponseBody
+    public ResponseEntity<?> quickCreate(@RequestBody ClientQuickCreateRequest request) {
+        try {
+            Client saved = clientService.quickCreate(request);
+            return ResponseEntity.ok(new ClientQuickCreateResponse(saved.getId(), saved.displayName()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
     }
 
     @PostMapping("/save")

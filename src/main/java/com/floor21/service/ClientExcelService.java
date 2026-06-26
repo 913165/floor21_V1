@@ -48,14 +48,10 @@ public class ClientExcelService {
         "Occupation",
         "Address Line 1",
         "Address Line 2",
-        "Address Line 3",
         "City",
-        "Phone Office",
-        "Phone Residence",
-        "Mobile 1",
-        "Mobile 2",
-        "Email 1",
-        "Email 2",
+        "Phone 1",
+        "Phone 2",
+        "Email",
         "PAN No",
         "Aadhaar",
         "Date of Birth",
@@ -108,14 +104,10 @@ public class ClientExcelService {
                 "Engineer",
                 "101 Sample Heights, Andheri West",
                 "",
-                "",
                 "Mumbai",
-                "",
-                "",
                 "9876543210",
                 "",
                 "rahul.sharma@example.com",
-                "",
                 "ABCDE1234F",
                 "123456789012",
                 "1990-06-15",
@@ -164,14 +156,10 @@ public class ClientExcelService {
             entity.setOccupation(emptyToNull(row.occupation()));
             entity.setAddress1(emptyToNull(row.address1()));
             entity.setAddress2(emptyToNull(row.address2()));
-            entity.setAddress3(emptyToNull(row.address3()));
             entity.setCity(emptyToNull(row.city()));
-            entity.setPhoneOffice(emptyToNull(row.phoneOffice()));
-            entity.setPhoneResidence(emptyToNull(row.phoneResidence()));
-            entity.setMobile1(emptyToNull(row.mobile1()));
-            entity.setMobile2(emptyToNull(row.mobile2()));
-            entity.setEmail1(emptyToNull(row.email1()));
-            entity.setEmail2(emptyToNull(row.email2()));
+            entity.setMobile1(emptyToNull(row.phone1()));
+            entity.setMobile2(emptyToNull(row.phone2()));
+            entity.setEmail1(emptyToNull(row.email()));
             entity.setPanNumber(
                     row.panNumber() != null && !row.panNumber().isBlank()
                             ? row.panNumber().trim().toUpperCase(Locale.ROOT)
@@ -203,19 +191,15 @@ public class ClientExcelService {
             int occupationCol = findColumn(header, formatter, evaluator, "occupation", 4);
             int address1Col = findColumn(header, formatter, evaluator, "address1", 5);
             int address2Col = findColumn(header, formatter, evaluator, "address2", 6);
-            int address3Col = findColumn(header, formatter, evaluator, "address3", 7);
-            int cityCol = findColumn(header, formatter, evaluator, "city", 8);
-            int phoneOfficeCol = findColumn(header, formatter, evaluator, "phone_office", 9);
-            int phoneResidenceCol = findColumn(header, formatter, evaluator, "phone_residence", 10);
-            int mobile1Col = findColumn(header, formatter, evaluator, "mobile1", 11);
-            int mobile2Col = findColumn(header, formatter, evaluator, "mobile2", 12);
-            int email1Col = findColumn(header, formatter, evaluator, "email1", 13);
-            int email2Col = findColumn(header, formatter, evaluator, "email2", 14);
-            int panCol = findColumn(header, formatter, evaluator, "pan", 15);
-            int aadhaarCol = findColumn(header, formatter, evaluator, "aadhaar", 16);
-            int dobCol = findColumn(header, formatter, evaluator, "dob", 17);
-            int domCol = findColumn(header, formatter, evaluator, "dom", 18);
-            int particularsCol = findColumn(header, formatter, evaluator, "particulars", 19);
+            int cityCol = findColumn(header, formatter, evaluator, "city", 7);
+            int phone1Col = findColumn(header, formatter, evaluator, "phone1", 8);
+            int phone2Col = findColumn(header, formatter, evaluator, "phone2", 9);
+            int emailCol = findColumn(header, formatter, evaluator, "email", 10);
+            int panCol = findColumn(header, formatter, evaluator, "pan", 11);
+            int aadhaarCol = findColumn(header, formatter, evaluator, "aadhaar", 12);
+            int dobCol = findColumn(header, formatter, evaluator, "dob", 13);
+            int domCol = findColumn(header, formatter, evaluator, "dom", 14);
+            int particularsCol = findColumn(header, formatter, evaluator, "particulars", 15);
 
             List<ClientImportRow> rows = new ArrayList<>();
             for (int r = headerRowIndex + 1; r <= sheet.getLastRowNum() && rows.size() < MAX_ROWS; r++) {
@@ -224,8 +208,8 @@ public class ClientExcelService {
                     continue;
                 }
                 if (!rowHasClientData(row, formatter, evaluator, firstNameCol, lastNameCol, companyCol, occupationCol,
-                        address1Col, address2Col, address3Col, cityCol, phoneOfficeCol, phoneResidenceCol, mobile1Col,
-                        mobile2Col, email1Col, email2Col, panCol, aadhaarCol, dobCol, domCol, particularsCol)) {
+                        address1Col, address2Col, cityCol, phone1Col, phone2Col, emailCol, panCol, aadhaarCol, dobCol,
+                        domCol, particularsCol)) {
                     continue;
                 }
                 int excelRow = r + 1;
@@ -241,14 +225,10 @@ public class ClientExcelService {
                                 cellText(row.getCell(occupationCol), formatter, evaluator),
                                 cellText(row.getCell(address1Col), formatter, evaluator),
                                 cellText(row.getCell(address2Col), formatter, evaluator),
-                                cellText(row.getCell(address3Col), formatter, evaluator),
                                 cellText(row.getCell(cityCol), formatter, evaluator),
-                                cellText(row.getCell(phoneOfficeCol), formatter, evaluator),
-                                cellText(row.getCell(phoneResidenceCol), formatter, evaluator),
-                                cellText(row.getCell(mobile1Col), formatter, evaluator),
-                                cellText(row.getCell(mobile2Col), formatter, evaluator),
-                                cellText(row.getCell(email1Col), formatter, evaluator),
-                                cellText(row.getCell(email2Col), formatter, evaluator),
+                                cellText(row.getCell(phone1Col), formatter, evaluator),
+                                cellText(row.getCell(phone2Col), formatter, evaluator),
+                                cellText(row.getCell(emailCol), formatter, evaluator),
                                 cellText(row.getCell(panCol), formatter, evaluator),
                                 cellText(row.getCell(aadhaarCol), formatter, evaluator),
                                 dob,
@@ -356,43 +336,31 @@ public class ClientExcelService {
                         return cell.getColumnIndex();
                     }
                 }
-                case "address3" -> {
-                    if (v.contains("address") && (v.contains("3") || v.endsWith("line 3"))) {
-                        return cell.getColumnIndex();
-                    }
-                }
                 case "city" -> {
                     if (v.equals("city")) {
                         return cell.getColumnIndex();
                     }
                 }
-                case "phone_office" -> {
-                    if (v.contains("phone") && v.contains("office")) {
+                case "phone1" -> {
+                    if (v.equals("phone 1")
+                            || v.equals("phone1")
+                            || (v.contains("mobile") && (v.contains("1") || v.equals("mobile")))
+                            || (v.contains("phone") && v.contains("1") && !v.contains("2"))) {
                         return cell.getColumnIndex();
                     }
                 }
-                case "phone_residence" -> {
-                    if (v.contains("phone") && v.contains("residence")) {
+                case "phone2" -> {
+                    if (v.equals("phone 2")
+                            || v.equals("phone2")
+                            || (v.contains("mobile") && v.contains("2"))
+                            || (v.contains("phone") && v.contains("2"))) {
                         return cell.getColumnIndex();
                     }
                 }
-                case "mobile1" -> {
-                    if (v.contains("mobile") && (v.contains("1") || v.equals("mobile"))) {
-                        return cell.getColumnIndex();
-                    }
-                }
-                case "mobile2" -> {
-                    if (v.contains("mobile") && v.contains("2")) {
-                        return cell.getColumnIndex();
-                    }
-                }
-                case "email1" -> {
-                    if (v.contains("email") && (v.contains("1") || v.equals("email"))) {
-                        return cell.getColumnIndex();
-                    }
-                }
-                case "email2" -> {
-                    if (v.contains("email") && v.contains("2")) {
+                case "email" -> {
+                    if ((v.equals("email") || v.contains("email 1") || v.equals("email1"))
+                            && !v.contains("email 2")
+                            && !v.equals("email2")) {
                         return cell.getColumnIndex();
                     }
                 }
@@ -494,14 +462,10 @@ public class ClientExcelService {
         setCell(row, col++, client.getOccupation());
         setCell(row, col++, client.getAddress1());
         setCell(row, col++, client.getAddress2());
-        setCell(row, col++, client.getAddress3());
         setCell(row, col++, client.getCity());
-        setCell(row, col++, client.getPhoneOffice());
-        setCell(row, col++, client.getPhoneResidence());
         setCell(row, col++, client.getMobile1());
         setCell(row, col++, client.getMobile2());
         setCell(row, col++, client.getEmail1());
-        setCell(row, col++, client.getEmail2());
         setCell(row, col++, client.getPanNumber());
         setCell(row, col++, client.getAadhaarNumber());
         setDateCell(row, col++, client.getDob());

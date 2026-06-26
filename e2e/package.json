@@ -7,6 +7,8 @@
     "test:ui": "playwright test --ui tests/floor21-full-flow.spec.ts --workers=1",
     "test:headed": "playwright test tests/floor21-full-flow.spec.ts --headed --workers=1",
     "test:debug": "playwright test --debug",
+    "create-clients": "playwright test tests/create-five-clients.spec.ts --headed --workers=1",
+    "create-clients:ui": "playwright test --ui tests/create-five-clients.spec.ts --workers=1",
     "codegen": "playwright codegen",
     "report": "playwright show-report",
     "install:browsers": "playwright install chromium"

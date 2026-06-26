@@ -9,7 +9,7 @@ const baseURL =
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: 'floor21-full-flow.spec.ts',
+  testMatch: ['floor21-full-flow.spec.ts', 'create-five-clients.spec.ts'],
   fullyParallel: false,
   /** Serial flow shares .flow-state.json — always single worker (CLI + UI). */
   workers: 1,

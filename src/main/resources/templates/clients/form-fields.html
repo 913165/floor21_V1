@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="fields(idPrefix, bound)">
+  <p class="text-muted small mb-3">All fields are optional. Fill in what you have; you can complete details later.</p>
+
+  <h2 class="h6 text-muted text-uppercase mb-3">Personal</h2>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <label class="form-label" th:for="${bound ? 'firstName' : idPrefix + 'FirstName'}">First name</label>
+      <input class="form-control" th:if="${bound}" id="firstName" th:field="*{firstName}" maxlength="100"
+             th:classappend="${#fields.hasErrors('firstName')} ? 'is-invalid' : ''"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'FirstName'}" data-api-field="firstName"
+             maxlength="100" autocomplete="off"/>
+      <div class="invalid-feedback" th:if="${bound}" th:errors="*{firstName}"></div>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" th:for="${bound ? 'lastName' : idPrefix + 'LastName'}">Last name</label>
+      <input class="form-control" th:if="${bound}" id="lastName" th:field="*{lastName}" maxlength="100"
+             th:classappend="${#fields.hasErrors('lastName')} ? 'is-invalid' : ''"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'LastName'}" data-api-field="lastName"
+             maxlength="100" autocomplete="off"/>
+      <div class="invalid-feedback" th:if="${bound}" th:errors="*{lastName}"></div>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" th:for="${bound ? 'companyName' : idPrefix + 'CompanyName'}">Company</label>
+      <input class="form-control" th:if="${bound}" id="companyName" th:field="*{companyName}" maxlength="200"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'CompanyName'}" data-api-field="companyName"
+             maxlength="200" autocomplete="off"/>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" th:for="${bound ? 'occupation' : idPrefix + 'Occupation'}">Occupation</label>
+      <input class="form-control" th:if="${bound}" id="occupation" th:field="*{occupation}" maxlength="100"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'Occupation'}" data-api-field="occupation"
+             maxlength="100" autocomplete="off"/>
+    </div>
+  </div>
+
+  <div th:unless="${bound}" id="bookingClientSameAddressWrap" class="form-check mb-2 mt-4 d-none">
+    <input class="form-check-input" type="checkbox" id="bookingClientSameAddress" checked/>
+    <label class="form-check-label" for="bookingClientSameAddress">
+      Same address and city as primary client
+    </label>
+  </div>
+
+  <h2 class="h6 text-muted text-uppercase mb-3" th:classappend="${bound ? ' mt-4' : ''}">Address</h2>
+  <div class="row g-3">
+    <div class="col-12">
+      <label class="form-label" th:for="${bound ? 'address1' : idPrefix + 'Address1'}">Address line 1</label>
+      <input class="form-control" th:if="${bound}" id="address1" th:field="*{address1}"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'Address1'}" data-api-field="address1"
+             autocomplete="off"/>
+    </div>
+    <div class="col-12">
+      <label class="form-label" th:for="${bound ? 'address2' : idPrefix + 'Address2'}">Address line 2</label>
+      <input class="form-control" th:if="${bound}" id="address2" th:field="*{address2}"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'Address2'}" data-api-field="address2"
+             autocomplete="off"/>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" th:for="${bound ? 'city' : idPrefix + 'City'}">City</label>
+      <input class="form-control" th:if="${bound}" id="city" th:field="*{city}" maxlength="100"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'City'}" data-api-field="city"
+             maxlength="100" autocomplete="off"/>
+    </div>
+  </div>
+
+  <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Contact</h2>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <label class="form-label" th:for="${bound ? 'mobile1' : idPrefix + 'Mobile1'}">Phone 1</label>
+      <input class="form-control" th:if="${bound}" id="mobile1" th:field="*{mobile1}" maxlength="20"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'Mobile1'}" data-api-field="mobile1"
+             maxlength="20" autocomplete="off"/>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" th:for="${bound ? 'mobile2' : idPrefix + 'Mobile2'}">Phone 2</label>
+      <input class="form-control" th:if="${bound}" id="mobile2" th:field="*{mobile2}" maxlength="20"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'Mobile2'}" data-api-field="mobile2"
+             maxlength="20" autocomplete="off"/>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" th:for="${bound ? 'email1' : idPrefix + 'Email1'}">Email</label>
+      <input class="form-control" th:if="${bound}" id="email1" type="email" th:field="*{email1}" maxlength="150"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'Email1'}" type="email"
+             data-api-field="email1" maxlength="150" autocomplete="off"/>
+    </div>
+  </div>
+
+  <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Identity &amp; dates</h2>
+  <div class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label" th:for="${bound ? 'panNumber' : idPrefix + 'PanNumber'}">PAN no</label>
+      <input class="form-control text-uppercase" th:if="${bound}" id="panNumber" th:field="*{panNumber}" maxlength="20"/>
+      <input class="form-control text-uppercase" th:unless="${bound}" th:id="${idPrefix + 'PanNumber'}"
+             data-api-field="panNumber" maxlength="20" autocomplete="off"/>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" th:for="${bound ? 'aadhaarNumber' : idPrefix + 'AadhaarNumber'}">Aadhaar</label>
+      <input class="form-control" th:if="${bound}" id="aadhaarNumber" th:field="*{aadhaarNumber}" maxlength="20"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'AadhaarNumber'}"
+             data-api-field="aadhaarNumber" maxlength="20" autocomplete="off"/>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" th:for="${bound ? 'dob' : idPrefix + 'Dob'}">Date of birth</label>
+      <input class="form-control" th:if="${bound}" id="dob" type="date" th:field="*{dob}"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'Dob'}" type="date"
+             data-api-field="dob" autocomplete="off"/>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" th:for="${bound ? 'dateOfMarriage' : idPrefix + 'DateOfMarriage'}">Date of marriage</label>
+      <input class="form-control" th:if="${bound}" id="dateOfMarriage" type="date" th:field="*{dateOfMarriage}"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'DateOfMarriage'}" type="date"
+             data-api-field="dateOfMarriage" autocomplete="off"/>
+    </div>
+  </div>
+
+  <h2 class="h6 text-muted text-uppercase mb-3 mt-4">Notes</h2>
+  <div class="row g-3">
+    <div class="col-12">
+      <label class="form-label" th:for="${bound ? 'particulars' : idPrefix + 'Particulars'}">Particulars</label>
+      <textarea class="form-control" th:if="${bound}" id="particulars" rows="4" th:field="*{particulars}"></textarea>
+      <textarea class="form-control" th:unless="${bound}" th:id="${idPrefix + 'Particulars'}" rows="4"
+                data-api-field="particulars" autocomplete="off"></textarea>
+    </div>
+  </div>
+</th:block>
+</body>
+</html>
