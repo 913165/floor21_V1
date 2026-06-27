@@ -6,6 +6,7 @@ import com.floor21.entity.Client;
 import com.floor21.entity.Flat;
 import com.floor21.entity.User;
 import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.util.BookingTaxDefaults;
 import com.floor21.util.FlatUnitTypes;
 import com.floor21.repository.BookingPaymentSlabRepository;
 import com.floor21.repository.BookingRepository;
@@ -272,11 +273,22 @@ public class BookingService {
         entity.setFlat(flat);
         entity.setClient(client);
         entity.setBookingDate(form.getBookingDate() != null ? form.getBookingDate() : LocalDate.now());
-        entity.setConsiderationAmt(form.getConsiderationAmt());
+        BigDecimal consideration = form.getConsiderationAmt();
+        entity.setConsiderationAmt(consideration);
         entity.setQuotedAmount(form.getQuotedAmount());
         entity.setBrokerage(zeroIfNull(form.getBrokerage()));
-        entity.setTds(zeroIfNull(form.getTds()));
-        entity.setGst(zeroIfNull(form.getGst()));
+        BigDecimal tds = form.getTds();
+        BigDecimal gst = form.getGst();
+        if (isNew && consideration != null && consideration.compareTo(BigDecimal.ZERO) > 0) {
+            if (tds == null || tds.compareTo(BigDecimal.ZERO) == 0) {
+                tds = BookingTaxDefaults.percentOf(consideration, BookingTaxDefaults.TDS_PERCENT);
+            }
+            if (gst == null || gst.compareTo(BigDecimal.ZERO) == 0) {
+                gst = BookingTaxDefaults.percentOf(consideration, BookingTaxDefaults.GST_PERCENT);
+            }
+        }
+        entity.setTds(zeroIfNull(tds));
+        entity.setGst(zeroIfNull(gst));
         entity.setFinalAmount(zeroIfNull(form.getFinalAmount()));
         entity.setDueAmountDate(form.getDueAmountDate());
         entity.setBookingIntimationDate(form.getBookingIntimationDate());

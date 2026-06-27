@@ -5,12 +5,13 @@ import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.FlatRepository;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
-import com.floor21.service.UserProjectAssignmentService;
+import com.floor21.util.BookingTaxDefaults;
 import com.floor21.service.BookingService;
 import com.floor21.service.BrokerService;
 import com.floor21.service.ClientService;
 import com.floor21.service.BookingOwnerService;
 import com.floor21.service.ReceiptService;
+import com.floor21.service.UserProjectAssignmentService;
 import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -157,10 +158,15 @@ public class BookingController {
             return "redirect:/bookings";
         }
         Booking booking = new Booking();
+        booking.setBookingDate(LocalDate.now());
         if (flatId != null) {
             flatRepository
                     .findByIdAndBuilder_Id(flatId, TenantContext.requireBuilderId())
-                    .ifPresent(booking::setFlat);
+                    .ifPresent(
+                            flat -> {
+                                booking.setFlat(flat);
+                                BookingTaxDefaults.applyToNewBooking(booking, flat);
+                            });
         }
         model.addAttribute("pageTitle", "New booking");
         model.addAttribute("booking", booking);

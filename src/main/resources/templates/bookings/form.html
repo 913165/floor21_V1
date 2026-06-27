@@ -32,7 +32,7 @@
             <select class="form-select" id="bookingFlatSelect" th:field="*{flat.id}" required>
               <option th:each="f : ${flats}"
                       th:value="${f.id}"
-                      th:attr="data-flat-number=${f.flatNumber}"
+                      th:attr="data-flat-number=${f.flatNumber},data-base-price=${f.basePrice}"
                       th:text="${f.building.buildingName + ' — ' + f.flatNumber + ' (' + f.bhkType + ', ' + f.status + ')'}"></option>
             </select>
           </div>
@@ -93,7 +93,7 @@
               <option value="">— Select flat —</option>
               <option th:each="f : ${flats}"
                       th:value="${f.id}"
-                      th:attr="data-flat-number=${f.flatNumber}"
+                      th:attr="data-flat-number=${f.flatNumber},data-base-price=${f.basePrice}"
                       th:text="${f.flatNumber + ' — ' + f.building.buildingName + ' (' + f.bhkType + ')'}"
                       th:selected="${booking.flat != null and booking.flat.id == f.id}"></option>
             </select>
@@ -119,11 +119,11 @@
             <input class="form-control" type="number" step="0.01" th:field="*{brokerage}"/>
           </div>
           <div class="col-md-4">
-            <label class="form-label">TDS</label>
+            <label class="form-label">TDS <span class="text-muted fw-normal">(1%)</span></label>
             <input class="form-control" type="number" step="0.01" th:field="*{tds}"/>
           </div>
           <div class="col-md-4">
-            <label class="form-label">GST</label>
+            <label class="form-label">GST <span class="text-muted fw-normal">(5%)</span></label>
             <input class="form-control" type="number" step="0.01" th:field="*{gst}"/>
           </div>
           <div class="col-md-4">
@@ -243,6 +243,53 @@
       flatSelect.addEventListener('change', syncFromFlatSelect);
       flatNoSelect.addEventListener('change', syncFromFlatNoSelect);
       syncFromFlatSelect();
+    })();
+
+    (function () {
+      var bookingId = document.querySelector('[name="id"]');
+      if (bookingId && bookingId.value) {
+        return;
+      }
+      var consideration = document.querySelector('[name="considerationAmt"]');
+      var tds = document.querySelector('[name="tds"]');
+      var gst = document.querySelector('[name="gst"]');
+      var flatSelect = document.getElementById('bookingFlatSelect');
+      if (!consideration || !tds || !gst) {
+        return;
+      }
+
+      function roundMoney(value) {
+        return (Math.round(value * 100) / 100).toFixed(2);
+      }
+
+      function applyTaxFromConsideration() {
+        var amount = parseFloat(consideration.value);
+        if (!amount || amount <= 0) {
+          return;
+        }
+        tds.value = roundMoney(amount * 0.01);
+        gst.value = roundMoney(amount * 0.05);
+      }
+
+      function applyFromFlatSelect() {
+        if (!flatSelect) {
+          applyTaxFromConsideration();
+          return;
+        }
+        var opt = flatSelect.options[flatSelect.selectedIndex];
+        var base = opt && opt.getAttribute('data-base-price');
+        if (base && (!consideration.value || parseFloat(consideration.value) === 0)) {
+          consideration.value = base;
+        }
+        applyTaxFromConsideration();
+      }
+
+      consideration.addEventListener('change', applyTaxFromConsideration);
+      consideration.addEventListener('input', applyTaxFromConsideration);
+      if (flatSelect) {
+        flatSelect.addEventListener('change', applyFromFlatSelect);
+      }
+      applyFromFlatSelect();
     })();
   </script>
 </div>
