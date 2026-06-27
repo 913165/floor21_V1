@@ -1,5 +1,6 @@
 package com.floor21.controller;
 
+import com.floor21.dto.ReceiptLetterView;
 import com.floor21.entity.Booking;
 import com.floor21.entity.Building;
 import com.floor21.entity.Receipt;
@@ -283,6 +284,7 @@ public class ReceiptsHubController {
             @PathVariable UUID id,
             @RequestParam UUID bookingId,
             @RequestParam(required = false) UUID builderId,
+            @RequestParam(defaultValue = "false") boolean allOwners,
             Model model) {
         Receipt receipt = receiptService.getForPrint(id, bookingId, builderId);
         model.addAttribute("receipt", receipt);
@@ -290,8 +292,52 @@ public class ReceiptsHubController {
         model.addAttribute(
                 "pageTitle",
                 "Receipt " + (receipt.getReceiptNumber() != null ? receipt.getReceiptNumber() : id));
-        receiptPrintService.addPrintAttributes(model, receipt);
+        receiptPrintService.addPrintAttributes(model, receipt, allOwners);
         return "receipts/print";
+    }
+
+    @GetMapping("/print-combined")
+    public String printCombined(
+            @RequestParam UUID bookingId,
+            @RequestParam List<UUID> ids,
+            @RequestParam(required = false) UUID builderId,
+            @RequestParam(defaultValue = "false") boolean allOwners,
+            Model model) {
+        List<Receipt> receipts = receiptService.listForCombinedPrint(bookingId, ids, builderId);
+        Receipt anchor = receipts.get(receipts.size() - 1);
+        model.addAttribute("receipt", anchor);
+        model.addAttribute("booking", anchor.getBooking());
+        model.addAttribute(
+                "pageTitle",
+                receipts.size() > 1 ? "Combined receipt" : "Receipt");
+        model.addAttribute(
+                "anyDishonoured",
+                receipts.stream().anyMatch(r -> r.getDishonoured() != null && r.getDishonoured()));
+        ReceiptLetterView view = receiptPrintService.buildCombinedLetterView(receipts, allOwners);
+        receiptPrintService.addPrintAttributes(model, view);
+        model.addAttribute("combinedReceiptIds", ids);
+        model.addAttribute("combinedBuilderId", builderId);
+        return "receipts/print";
+    }
+
+    @GetMapping("/download-word-combined")
+    public ResponseEntity<byte[]> downloadWordCombined(
+            @RequestParam UUID bookingId,
+            @RequestParam List<UUID> ids,
+            @RequestParam(required = false) UUID builderId,
+            @RequestParam(defaultValue = "false") boolean allOwners) {
+        List<Receipt> receipts = receiptService.listForCombinedPrint(bookingId, ids, builderId);
+        byte[] body = receiptWordExportService.generateCombined(receipts, allOwners);
+        Receipt anchor = receipts.get(receipts.size() - 1);
+        String filename =
+                receiptWordExportService.suggestedFilename(anchor, receipts.size() > 1);
+        ContentDisposition disposition = ContentDisposition.attachment().filename(filename).build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(
+                        MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+                .body(body);
     }
 
     @GetMapping("/{id}/download-word")

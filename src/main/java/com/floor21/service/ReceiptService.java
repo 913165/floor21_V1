@@ -207,6 +207,22 @@ public class ReceiptService {
                 .orElseThrow(() -> new ResourceNotFoundException("Receipt not found"));
     }
 
+    @Transactional(readOnly = true)
+    public List<Receipt> listForCombinedPrint(UUID bookingId, List<UUID> receiptIds, UUID platformBuilderId) {
+        if (receiptIds == null || receiptIds.isEmpty()) {
+            throw new IllegalArgumentException("Select at least one receipt to print");
+        }
+        UUID builderId = effectiveBuilderId(platformBuilderId);
+        requireAccessibleBooking(bookingId, platformBuilderId);
+        List<UUID> distinctIds = receiptIds.stream().distinct().toList();
+        List<Receipt> receipts =
+                receiptRepository.findByIdsForPrintView(distinctIds, bookingId, builderId);
+        if (receipts.size() != distinctIds.size()) {
+            throw new ResourceNotFoundException("One or more receipts were not found for this booking");
+        }
+        return receipts;
+    }
+
     @Transactional
     public Receipt save(UUID bookingId, Receipt form) {
         return saveInternal(bookingId, form, null, null);

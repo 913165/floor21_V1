@@ -1,8 +1,11 @@
 package com.floor21.service;
 
 import com.floor21.dto.ReceiptLetterView;
+import com.floor21.dto.ReceiptPaymentTableRow;
+import com.floor21.dto.ReceiptSlabAllocationSlice;
 import com.floor21.entity.Bank;
 import com.floor21.entity.Booking;
+import com.floor21.entity.BookingPaymentSlab;
 import com.floor21.entity.Building;
 import com.floor21.entity.Builder;
 import com.floor21.entity.Client;
@@ -11,13 +14,20 @@ import com.floor21.entity.Receipt;
 import com.floor21.entity.User;
 import com.floor21.entity.UserProjectAssignment;
 import com.floor21.repository.UserProjectAssignmentRepository;
+import com.floor21.util.AreaUnits;
 import com.floor21.util.IndianRupeesFormatter;
+import com.floor21.util.SlabReceiptWaterfall;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
@@ -27,65 +37,143 @@ import org.springframework.ui.Model;
 public class ReceiptPrintService {
 
     private static final BigDecimal ZERO = BigDecimal.ZERO;
-    private static final DateTimeFormatter PRINT_DATE =
-            DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
+    private static final DateTimeFormatter TABLE_DATE =
+            DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.ENGLISH);
+    private static final DateTimeFormatter FULL_MONTH_YEAR =
+            DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH);
 
     private final UserProjectAssignmentRepository userProjectAssignmentRepository;
     private final BookingOwnerService bookingOwnerService;
+    private final ReceiptSlabAllocationService receiptSlabAllocationService;
+    private final BookingPaymentSlabService bookingPaymentSlabService;
 
     public ReceiptLetterView buildLetterView(Receipt receipt) {
         return buildLetterView(receipt, false);
     }
 
     public ReceiptLetterView buildLetterView(Receipt receipt, boolean allOwners) {
-        Flat flat = receipt.getBooking().getFlat();
+        return buildLetterView(List.of(receipt), allOwners);
+    }
+
+    public ReceiptLetterView buildCombinedLetterView(List<Receipt> receipts, boolean allOwners) {
+        if (receipts == null || receipts.isEmpty()) {
+            throw new IllegalArgumentException("At least one receipt is required for print");
+        }
+        return buildLetterView(receipts, allOwners);
+    }
+
+    private ReceiptLetterView buildLetterView(List<Receipt> receipts, boolean allOwners) {
+        List<Receipt> ordered = receipts.stream()
+                .sorted(Comparator.comparing(Receipt::getReceiptDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(Receipt::getReceiptSerial, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(Receipt::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        Receipt anchor = ordered.get(ordered.size() - 1);
+        Booking booking = anchor.getBooking();
+        Flat flat = booking.getFlat();
         Building building = flat.getBuilding();
+        Builder builder = resolveBuilder(anchor, building);
         Client payer =
-                receipt.getPaidByClient() != null ? receipt.getPaidByClient() : receipt.getBooking().getClient();
+                anchor.getPaidByClient() != null ? anchor.getPaidByClient() : booking.getClient();
         String payerNames =
-                allOwners ? resolveAllOwnerNames(receipt.getBooking()) : resolvePayerNames(payer);
-        String receiptNumber =
-                receipt.getReceiptNumber() != null && !receipt.getReceiptNumber().isBlank()
-                        ? receipt.getReceiptNumber().trim()
-                        : "—";
+                allOwners ? resolveAllOwnerNames(booking) : resolvePayerNames(payer);
+        BigDecimal totalAmount = ordered.stream()
+                .map(Receipt::getAmount)
+                .filter(a -> a != null)
+                .reduce(ZERO, BigDecimal::add);
+        BigDecimal totalConsideration = resolveTotalConsideration(booking);
+        LocalDate headlineDate = anchor.getReceiptDate();
+        boolean combinedPrint = ordered.size() > 1;
+        boolean chequeDisclaimer = ordered.stream()
+                .anyMatch(r -> r.getPaymentMode() != null && r.getPaymentMode().trim().equalsIgnoreCase("Cheque"));
         return new ReceiptLetterView(
-                receiptNumber,
-                formatDate(receipt.getReceiptDate()),
-                formatDate(receipt.getChequeDate() != null ? receipt.getChequeDate() : receipt.getReceiptDate()),
-                IndianRupeesFormatter.formatFigures(receipt.getAmount()),
-                IndianRupeesFormatter.formatWordsOnly(receipt.getAmount()),
+                formatOrdinalReceiptDate(headlineDate),
+                IndianRupeesFormatter.formatFigures(totalAmount),
+                IndianRupeesFormatter.formatWordsOnly(totalAmount),
                 payerNames,
-                buildPaymentInstrument(receipt),
-                resolveDrawnOn(receipt),
-                buildPurposeNarrative(receipt),
-                flat.getFlatNumber() != null ? flat.getFlatNumber().trim() : "—",
-                ordinalFloorPhrase(flat.getFloorNumber()),
+                resolveCombinedPaymentWay(ordered),
+                IndianRupeesFormatter.formatFigures(totalConsideration),
+                IndianRupeesFormatter.formatWordsOnly(totalConsideration),
+                buildUnitDescription(flat),
                 building.getBuildingName() != null ? building.getBuildingName().trim() : "—",
-                formatSiteAddress(building),
-                signatoryCompanyForBuilder(resolveBuilder(receipt, building)),
-                receipt.getPaymentMode() != null && receipt.getPaymentMode().trim().equalsIgnoreCase("Cheque"));
+                buildLandAddress(building, builder),
+                buildPaymentTableRows(ordered),
+                resolvePlace(building, builder),
+                signatoryCompanyForBuilder(builder),
+                chequeDisclaimer,
+                combinedPrint);
     }
 
     public void addPrintAttributes(Model model, Receipt receipt) {
-        ReceiptLetterView view = buildLetterView(receipt);
-        model.addAttribute("receiptDateFormatted", view.receiptDateFormatted());
-        model.addAttribute("instrumentDateFormatted", view.instrumentDateFormatted());
+        addPrintAttributes(model, receipt, false);
+    }
+
+    public void addPrintAttributes(Model model, Receipt receipt, boolean allOwners) {
+        addPrintAttributes(model, buildLetterView(receipt, allOwners));
+    }
+
+    public void addPrintAttributes(Model model, ReceiptLetterView view) {
+        model.addAttribute("receiptDateOrdinal", view.receiptDateOrdinal());
         model.addAttribute("amountFiguresPrint", view.amountFiguresPrint());
         model.addAttribute("amountWordsPrint", view.amountWordsPrint());
         model.addAttribute("payerNamesPrint", view.payerNamesPrint());
-        model.addAttribute("paymentInstrumentPrint", view.paymentInstrumentPrint());
-        model.addAttribute("drawnOnBankPrint", view.drawnOnBankPrint());
-        model.addAttribute("purposeNarrativePrint", view.purposeNarrativePrint());
-        model.addAttribute("flatNumberPrint", view.flatNumberPrint());
-        model.addAttribute("floorPhrasePrint", view.floorPhrasePrint());
+        model.addAttribute("paymentWayPrint", view.paymentWayPrint());
+        model.addAttribute("totalConsiderationFiguresPrint", view.totalConsiderationFiguresPrint());
+        model.addAttribute("totalConsiderationWordsPrint", view.totalConsiderationWordsPrint());
+        model.addAttribute("unitDescriptionPrint", view.unitDescriptionPrint());
         model.addAttribute("projectNamePrint", view.projectNamePrint());
-        model.addAttribute("siteAddressPrint", view.siteAddressPrint());
+        model.addAttribute("landAddressPrint", view.landAddressPrint());
+        model.addAttribute("paymentTableRows", view.paymentTableRows());
+        model.addAttribute("placePrint", view.placePrint());
         model.addAttribute("builderCompanyPrint", view.builderCompanyPrint());
         model.addAttribute("showChequeRealizationDisclaimer", view.showChequeRealizationDisclaimer());
+        model.addAttribute("combinedPrint", view.combinedPrint());
     }
 
-    private static String formatDate(LocalDate d) {
-        return d != null ? d.format(PRINT_DATE) : "—";
+    private List<ReceiptPaymentTableRow> buildPaymentTableRows(List<Receipt> receipts) {
+        List<ReceiptPaymentTableRow> rows = new ArrayList<>();
+        int serial = 1;
+        for (Receipt receipt : receipts) {
+            rows.add(
+                    new ReceiptPaymentTableRow(
+                            serial++,
+                            formatTableDate(receipt.getReceiptDate()),
+                            buildTableInstrumentDetail(receipt),
+                            formatTableAmount(receipt.getAmount())));
+        }
+        return rows;
+    }
+
+    private String resolveCombinedPaymentWay(List<Receipt> receipts) {
+        LinkedHashSet<String> labels = new LinkedHashSet<>();
+        for (Receipt receipt : receipts) {
+            String label = resolvePaymentWay(receipt);
+            if (label != null && !label.isBlank() && !"—".equals(label)) {
+                labels.add(label);
+            }
+        }
+        if (labels.isEmpty()) {
+            return "Amount received";
+        }
+        return String.join(", ", labels);
+    }
+
+    private static String formatTableDate(LocalDate d) {
+        return d != null ? d.format(TABLE_DATE) : "";
+    }
+
+    private static String formatTableAmount(BigDecimal amount) {
+        if (amount == null || amount.compareTo(ZERO) <= 0) {
+            return "—";
+        }
+        return IndianRupeesFormatter.formatComma(amount) + "/-";
+    }
+
+    private static String formatOrdinalReceiptDate(LocalDate d) {
+        if (d == null) {
+            return "—";
+        }
+        return ordinalEnglish(d.getDayOfMonth()) + " " + d.format(FULL_MONTH_YEAR);
     }
 
     private static String resolvePayerNames(Client client) {
@@ -115,35 +203,43 @@ public class ReceiptPrintService {
         return String.join(" & ", names);
     }
 
-    private static String buildPaymentInstrument(Receipt receipt) {
-        String mode = trimToEmpty(receipt.getPaymentMode());
-        String ref = trimToEmpty(receipt.getChequeNo());
-        if (mode.isEmpty() && ref.isEmpty()) {
-            return "—";
+    private String resolvePaymentWay(Receipt receipt) {
+        UUID bookingId = receipt.getBooking().getId();
+        UUID builderId = receipt.getBuilder().getId();
+        List<BookingPaymentSlab> slabs =
+                bookingPaymentSlabService.listSlabsForPaymentLedgerReadOnly(bookingId, builderId);
+        if (!slabs.isEmpty()) {
+            Map<UUID, List<ReceiptSlabAllocationSlice>> alloc =
+                    receiptSlabAllocationService.allocateBySlab(bookingId, builderId);
+            List<String> labels = new ArrayList<>();
+            for (BookingPaymentSlab slab : slabs) {
+                for (ReceiptSlabAllocationSlice slice : alloc.getOrDefault(slab.getId(), List.of())) {
+                    if (receipt.getId().equals(slice.receiptId())
+                            && slice.amount() != null
+                            && slice.amount().compareTo(ZERO) > 0) {
+                        labels.add(slab.getMilestoneLabel().trim());
+                        break;
+                    }
+                }
+            }
+            if (!labels.isEmpty()) {
+                return String.join(", ", labels);
+            }
         }
-        if (ref.isEmpty()) {
-            return mode;
-        }
-        if (mode.isEmpty()) {
-            return "Ref. No. " + ref;
-        }
-        return mode + " No. " + ref;
+        return buildPurposeNarrative(receipt);
     }
 
-    private static String resolveDrawnOn(Receipt receipt) {
-        String bankName = trimToNull(receipt.getBankName());
-        if (bankName != null) {
-            return bankName;
+    private static String buildTableInstrumentDetail(Receipt receipt) {
+        String mode = trimToEmpty(receipt.getPaymentMode());
+        String ref = trimToEmpty(receipt.getChequeNo());
+        if (!mode.isEmpty() && !ref.isEmpty()) {
+            return mode + " " + ref;
         }
-        Bank deposit = receipt.getDepositBank();
-        if (deposit == null) {
-            return "—";
+        String label = SlabReceiptWaterfall.buildChequeLabel(receipt);
+        if (label != null && !label.isBlank()) {
+            return label;
         }
-        StringBuilder sb = new StringBuilder(deposit.getBankName().trim());
-        if (deposit.getBranch() != null && !deposit.getBranch().isBlank()) {
-            sb.append(" - ").append(deposit.getBranch().trim());
-        }
-        return sb.toString();
+        return "—";
     }
 
     private static String buildPurposeNarrative(Receipt receipt) {
@@ -160,13 +256,111 @@ public class ReceiptPrintService {
         return sb.toString();
     }
 
-    private static void appendIfPositive(StringBuilder sb, String label, BigDecimal amt) {
-        if (amt != null && amt.compareTo(ZERO) > 0) {
-            if (sb.length() > 0) {
-                sb.append(", ");
-            }
-            sb.append(label);
+    private static BigDecimal resolveTotalConsideration(Booking booking) {
+        if (booking.getFinalAmount() != null && booking.getFinalAmount().compareTo(ZERO) > 0) {
+            return booking.getFinalAmount();
         }
+        if (booking.getConsiderationAmt() != null && booking.getConsiderationAmt().compareTo(ZERO) > 0) {
+            return booking.getConsiderationAmt();
+        }
+        return ZERO;
+    }
+
+    private static String buildUnitDescription(Flat flat) {
+        String flatNo = flat.getFlatNumber() != null ? flat.getFlatNumber().trim() : "—";
+        String floor = ordinalFloorPhrase(flat.getFloorNumber());
+        String carpet = AreaUnits.formatSqMetersFromSqft(flat.getCarpetAreaSqft());
+        String deck = AreaUnits.formatSqMetersFromSqft(flat.getBalconyAreaSqft());
+        StringBuilder sb = new StringBuilder();
+        sb.append("Flat no. ").append(flatNo).append(", ").append(floor);
+        if (carpet != null) {
+            sb.append(", admeasuring about ")
+                    .append(carpet)
+                    .append(" sq. meters RERA Carpet Area");
+        }
+        if (deck != null) {
+            if (carpet != null) {
+                sb.append(" plus deck area admeasuring about ").append(deck).append(" sq. meters");
+            } else {
+                sb.append(", deck area admeasuring about ").append(deck).append(" sq. meters");
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String buildLandAddress(Building building, Builder builder) {
+        String address =
+                coalesceText(
+                        building != null ? building.getAddress() : null,
+                        builder != null ? builder.getAddress() : null);
+        String city =
+                coalesceText(
+                        building != null ? building.getCity() : null,
+                        builder != null ? builder.getCity() : null);
+        String fullLocation = joinAddressParts(address, city);
+        if (fullLocation.isEmpty()) {
+            return "to be constructed on all that piece and parcel of land as per project records";
+        }
+
+        String lower = fullLocation.toLowerCase(Locale.ENGLISH);
+        if (lower.startsWith("to be constructed on")) {
+            return fullLocation;
+        }
+        if (lower.startsWith("all that piece and parcel of land")) {
+            return "to be constructed on " + fullLocation;
+        }
+        if (lower.contains("bearing ") || lower.contains("plot no") || lower.contains("plot no.")) {
+            if (lower.contains("bearing ")) {
+                return "to be constructed on all that piece and parcel of land " + fullLocation;
+            }
+            return "to be constructed on all that piece and parcel of land bearing " + fullLocation;
+        }
+        if (lower.contains("situated at")) {
+            return "to be constructed on all that piece and parcel of land " + fullLocation;
+        }
+        return "to be constructed on all that piece and parcel of land situated at " + fullLocation;
+    }
+
+    private static String resolvePlace(Building building, Builder builder) {
+        String city =
+                coalesceText(
+                        building != null ? building.getCity() : null,
+                        builder != null ? builder.getCity() : null);
+        if (city != null) {
+            return city;
+        }
+        return "—";
+    }
+
+    private static String coalesceText(String primary, String fallback) {
+        if (primary != null && !primary.isBlank()) {
+            return primary.trim();
+        }
+        if (fallback != null && !fallback.isBlank()) {
+            return fallback.trim();
+        }
+        return null;
+    }
+
+    private static String joinAddressParts(String address, String city) {
+        if (address == null && city == null) {
+            return "";
+        }
+        if (address == null) {
+            return city;
+        }
+        if (city == null) {
+            return address;
+        }
+        String addressLower = address.toLowerCase(Locale.ENGLISH);
+        String cityLower = city.toLowerCase(Locale.ENGLISH);
+        if (addressLower.contains(cityLower)) {
+            return address;
+        }
+        if (addressLower.contains("situated at")) {
+            return address.endsWith(",") ? address + " " + city : address + ", " + city;
+        }
+        return address + ", " + city;
     }
 
     private static String ordinalFloorPhrase(Integer floorNumber) {
@@ -191,20 +385,6 @@ public class ReceiptPrintService {
             case 3 -> n + "rd";
             default -> n + "th";
         };
-    }
-
-    private static String formatSiteAddress(Building b) {
-        StringBuilder sb = new StringBuilder();
-        if (b.getAddress() != null && !b.getAddress().isBlank()) {
-            sb.append(b.getAddress().trim());
-        }
-        if (b.getCity() != null && !b.getCity().isBlank()) {
-            if (sb.length() > 0) {
-                sb.append(", ");
-            }
-            sb.append(b.getCity().trim());
-        }
-        return sb.length() > 0 ? sb.toString() : "—";
     }
 
     public String signatoryCompanyForBuilder(Builder builder) {
@@ -266,6 +446,15 @@ public class ReceiptPrintService {
             return null;
         }
         return user.getCompanyName().trim();
+    }
+
+    private static void appendIfPositive(StringBuilder sb, String label, BigDecimal amt) {
+        if (amt != null && amt.compareTo(ZERO) > 0) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(label);
+        }
     }
 
     private static String trimToNull(String s) {

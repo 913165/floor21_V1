@@ -48,6 +48,17 @@ public interface ReceiptRepository extends JpaRepository<Receipt, UUID> {
             @Param("id") UUID id, @Param("bookingId") UUID bookingId, @Param("builderId") UUID builderId);
 
     @Query(
+            "select r from Receipt r left join fetch r.depositBank left join fetch r.paidByClient "
+                    + "join fetch r.builder join fetch r.booking b join fetch b.client join fetch b.flat f "
+                    + "join fetch f.building bl join fetch bl.builder "
+                    + "where r.id in :ids and b.id = :bookingId and r.builder.id = :builderId "
+                    + "order by r.receiptDate asc, r.receiptSerial asc, r.createdAt asc")
+    List<Receipt> findByIdsForPrintView(
+            @Param("ids") Collection<UUID> ids,
+            @Param("bookingId") UUID bookingId,
+            @Param("builderId") UUID builderId);
+
+    @Query(
             "select coalesce(sum(r.amount),0) from Receipt r where r.booking.id = :bookingId and "
                     + "r.builder.id = :builderId and (r.dishonoured = false or r.dishonoured is null)")
     java.math.BigDecimal sumAmountForBooking(

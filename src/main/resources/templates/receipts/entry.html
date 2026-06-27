@@ -286,6 +286,12 @@
           </div>
         </div>
         <div class="d-flex align-items-center flex-wrap gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="receipt-print-combined-btn"
+                  th:if="${!#lists.isEmpty(receiptHistory)}"
+                  data-turbo="false" disabled
+                  th:attr="data-booking-id=${selectedBooking.id},data-builder-id=${scheduleBuilderId}">
+            Print combined
+          </button>
           <button th:unless="${readonlyView or editingReceipt}" type="button" class="btn btn-success btn-sm"
                   data-bs-toggle="modal" data-bs-target="#receipt-import-modal">
             Import
@@ -305,6 +311,9 @@
           <table class="table table-sm mb-0 align-middle f21-list-table receipt-history-table">
             <thead class="table-light">
             <tr>
+              <th style="width:2.5rem;">
+                <input type="checkbox" class="form-check-input" id="receipt-select-all" title="Select all"/>
+              </th>
               <th style="width:3rem;">Sno</th>
               <th>Date</th>
               <th>Rec. no.</th>
@@ -317,6 +326,9 @@
             </thead>
             <tbody>
             <tr th:each="r, iter : ${receiptHistory}">
+              <td>
+                <input type="checkbox" class="form-check-input receipt-combine-select" th:value="${r.id}"/>
+              </td>
               <td th:text="${iter.count}">1</td>
               <td th:text="${r.receiptDate}">—</td>
               <td th:text="${r.receiptNumber != null && !#strings.isEmpty(r.receiptNumber) ? r.receiptNumber : '—'}">—</td>
@@ -356,7 +368,7 @@
               </td>
             </tr>
             <tr th:if="${#lists.isEmpty(receiptHistory)}">
-              <td colspan="8" class="text-muted text-center py-4">
+              <td colspan="9" class="text-muted text-center py-4">
                 No payment receipts yet.
                 <button th:unless="${readonlyView or editingReceipt}" type="button" class="btn btn-link btn-sm p-0 align-baseline"
                         data-bs-toggle="modal" data-bs-target="#receipt-form-modal">
@@ -371,7 +383,7 @@
             </tbody>
             <tfoot class="table-light" th:if="${!#lists.isEmpty(receiptHistory)}">
             <tr>
-              <th colspan="4" class="text-end">Total</th>
+              <th colspan="5" class="text-end">Total</th>
               <th class="text-end" th:text="${amt.formatAmountDisplay(historyTotal)}">0</th>
               <th colspan="3"></th>
             </tr>
@@ -640,6 +652,85 @@
             }
             link.href = allOwners ? base + (base.indexOf("?") >= 0 ? "&" : "?") + "allOwners=true" : base;
           });
+          updateCombinedPrintButton();
+        }
+
+        function selectedReceiptIds() {
+          return Array.from(document.querySelectorAll(".receipt-combine-select:checked")).map(function (el) {
+            return el.value;
+          });
+        }
+
+        function buildCombinedReceiptUrl(path) {
+          var btn = document.getElementById("receipt-print-combined-btn");
+          if (!btn) {
+            return null;
+          }
+          var ids = selectedReceiptIds();
+          if (ids.length < 2) {
+            return null;
+          }
+          var root = (document.body.getAttribute("data-app-root") || "").replace(/\/+$/, "");
+          var url = root + path + "?bookingId=" + encodeURIComponent(btn.getAttribute("data-booking-id") || "");
+          ids.forEach(function (id) {
+            url += "&ids=" + encodeURIComponent(id);
+          });
+          var builderId = btn.getAttribute("data-builder-id");
+          if (builderId) {
+            url += "&builderId=" + encodeURIComponent(builderId);
+          }
+          var toggle = document.getElementById("receipt-print-all-owners");
+          if (toggle && toggle.checked) {
+            url += "&allOwners=true";
+          }
+          return url;
+        }
+
+        function updateCombinedPrintButton() {
+          var btn = document.getElementById("receipt-print-combined-btn");
+          if (!btn) {
+            return;
+          }
+          var url = buildCombinedReceiptUrl("/receipts/print-combined");
+          var enabled = url != null;
+          btn.disabled = !enabled;
+          btn.setAttribute("aria-disabled", enabled ? "false" : "true");
+          if (enabled) {
+            btn.onclick = function () {
+              window.location.href = url;
+            };
+          } else {
+            btn.onclick = null;
+          }
+        }
+
+        function bindReceiptCombineSelection() {
+          var selectAll = document.getElementById("receipt-select-all");
+          if (selectAll && selectAll.dataset.bound !== "true") {
+            selectAll.dataset.bound = "true";
+            selectAll.addEventListener("change", function () {
+              document.querySelectorAll(".receipt-combine-select").forEach(function (box) {
+                box.checked = selectAll.checked;
+              });
+              updateCombinedPrintButton();
+            });
+          }
+          document.querySelectorAll(".receipt-combine-select").forEach(function (box) {
+            if (box.dataset.bound === "true") {
+              return;
+            }
+            box.dataset.bound = "true";
+            box.addEventListener("change", function () {
+              if (selectAll) {
+                var all = document.querySelectorAll(".receipt-combine-select");
+                var checked = document.querySelectorAll(".receipt-combine-select:checked");
+                selectAll.checked = all.length > 0 && checked.length === all.length;
+                selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+              }
+              updateCombinedPrintButton();
+            });
+          });
+          updateCombinedPrintButton();
         }
 
         function bindReceiptPrintToggle() {
@@ -664,14 +755,17 @@
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", function () {
             bindReceiptPrintToggle();
+            bindReceiptCombineSelection();
             openReceiptModalIfNeeded();
           });
         } else {
           bindReceiptPrintToggle();
+          bindReceiptCombineSelection();
           openReceiptModalIfNeeded();
         }
         document.addEventListener("turbo:load", function () {
           bindReceiptPrintToggle();
+          bindReceiptCombineSelection();
           openReceiptModalIfNeeded();
         });
       })();
