@@ -2723,6 +2723,81 @@
     return links + "||" + layout + "||" + (plan.gridCols || "") + "x" + (plan.gridRows || "") + "||" + (plan.carSizePercent || DEFAULT_PARKING_CAR_SIZE_PERCENT);
   }
 
+  function parkingPlanViewerSignature() {
+    return [
+      isPlatformAdminEdit() ? "1" : "0",
+      canLinkParking() ? "1" : "0",
+      isPartnerAllocationActive() ? "1" : "0",
+    ].join(":");
+  }
+
+  function parkingPlanAccessSignature(plan) {
+    if (!plan || !plan.slots) return "";
+    return plan.slots
+      .map(function (s) {
+        return (
+          s.slotNumber +
+          ":" +
+          (s.linkableByCurrentUser ? "1" : "0") +
+          ":" +
+          (s.assignedPartnerId || "")
+        );
+      })
+      .join("|");
+  }
+
+  function countParkingSlotsInRoot(root) {
+    if (!root) return 0;
+    return root.querySelectorAll(".parking-plan__slot").length;
+  }
+
+  function applyParkingSlotViewerStyles(root, plan) {
+    if (!root || !plan || !plan.slots) return;
+    var slotByFlatId = {};
+    plan.slots.forEach(function (s) {
+      if (s.flatId) slotByFlatId[String(s.flatId)] = s;
+    });
+    root.querySelectorAll(".parking-plan__slot[data-parking-flat-id]").forEach(function (el) {
+      var slot = slotByFlatId[el.getAttribute("data-parking-flat-id")];
+      if (!slot) return;
+      var restricted = parkingSlotRestrictedForViewer(slot);
+      var canLink = parkingSlotCanLink(slot);
+      el.classList.toggle("parking-plan__slot--other-partner", restricted);
+      el.classList.toggle("parking-plan__slot--clickable", canLink || isPlatformAdminEdit());
+      if (restricted) {
+        el.setAttribute("data-parking-restricted", "true");
+      } else {
+        el.removeAttribute("data-parking-restricted");
+      }
+      if (canLink) {
+        el.setAttribute("data-parking-linkable", "true");
+      } else {
+        el.removeAttribute("data-parking-linkable");
+      }
+    });
+  }
+
+  function parkingPlanCacheMatches(root, plan) {
+    if (!root || !plan) return false;
+    var domSlots = countParkingSlotsInRoot(root);
+    return (
+      root.dataset.loadedSlots === String(plan.slotCount) &&
+      root.dataset.loadedLinks === parkingPlanLinkSignature(plan) &&
+      root.dataset.loadedViewer === parkingPlanViewerSignature() &&
+      root.dataset.loadedAccess === parkingPlanAccessSignature(plan) &&
+      domSlots >= plan.slotCount &&
+      !!root.querySelector(".parking-plan__sheet")
+    );
+  }
+
+  function clearParkingPlanRootCache(root) {
+    if (!root) return;
+    delete root.dataset.loadedSlots;
+    delete root.dataset.loadedLinks;
+    delete root.dataset.loadedViewer;
+    delete root.dataset.loadedAccess;
+  }
+
   function findPlanPlacement(plan, slotNumber) {
     if (!plan || !plan.placements) return null;
     for (var i = 0; i < plan.placements.length; i++) {
@@ -3502,17 +3577,11 @@
     var section = parkingSectionForFloor(plan.floorNumber);
     if (!section) return;
     var root = parkingPlanRootForSection(section);
-    var linkSig = parkingPlanLinkSignature(plan);
-    if (
-      !force &&
-      root &&
-      root.dataset.loadedSlots === String(plan.slotCount) &&
-      root.dataset.loadedLinks === linkSig &&
-      root.querySelector(".parking-plan__sheet")
-    ) {
+    if (!force && parkingPlanCacheMatches(root, plan)) {
+      applyParkingSlotViewerStyles(root, plan);
       section.classList.add("flat-parking-section--split");
-      var planPane = section.querySelector(".flat-parking-section__plan");
-      if (planPane) planPane.setAttribute("aria-hidden", "false");
+      var cachedPlanPane = section.querySelector(".flat-parking-section__plan");
+      if (cachedPlanPane) cachedPlanPane.setAttribute("aria-hidden", "false");
       ensureParkingSectionResizeHandle(section);
       syncParkingResizablePanel(section);
       return;
@@ -3520,7 +3589,9 @@
     renderParkingPlan(plan, root);
     if (root) {
       root.dataset.loadedSlots = String(plan.slotCount);
-      root.dataset.loadedLinks = linkSig;
+      root.dataset.loadedLinks = parkingPlanLinkSignature(plan);
+      root.dataset.loadedViewer = parkingPlanViewerSignature();
+      root.dataset.loadedAccess = parkingPlanAccessSignature(plan);
     }
     section.dataset.carSizePercent = String(plan.carSizePercent != null ? plan.carSizePercent : DEFAULT_PARKING_CAR_SIZE_PERCENT);
     section.dataset.gridRows = String(plan.gridRows != null ? plan.gridRows : parkingMinGridRowsForSlotCount(plan.slotCount || 0));
@@ -3534,23 +3605,35 @@
     syncParkingResizablePanel(section);
   }
 
-  async function loadAllConfiguredParkingPlans() {
+  async function loadAllConfiguredParkingPlans(forceReload) {
     var sections = document.querySelectorAll('.flat-parking-section[data-configured="true"]');
     var tasks = [];
     sections.forEach(function (section) {
       var fn = section.dataset.floorNumber;
       if (!fn) return;
       var root = parkingPlanRootForSection(section);
+      var expectedSlots = Number(section.dataset.slotCount || 0);
+      var domSlots = countParkingSlotsInRoot(root);
+      var viewerSig = parkingPlanViewerSignature();
       if (
+        !forceReload &&
         root &&
         root.dataset.loadedSlots === section.dataset.slotCount &&
-        root.querySelector(".parking-plan__sheet")
+        root.dataset.loadedViewer === viewerSig &&
+        root.querySelector(".parking-plan__sheet") &&
+        domSlots >= expectedSlots
       ) {
+        var cachedPlan = root._parkingLayoutState && root._parkingLayoutState.plan;
+        if (cachedPlan) {
+          applyParkingSlotViewerStyles(root, cachedPlan);
+        }
+        syncParkingResizablePanel(section);
         return;
       }
+      clearParkingPlanRootCache(root);
       tasks.push(
         fetchParkingPlan(fn).then(function (plan) {
-          if (plan) showParkingPlanInSection(plan);
+          if (plan) showParkingPlanInSection(plan, true);
         })
       );
     });
@@ -3978,10 +4061,7 @@
   function invalidateParkingPlanCache(floorNumber) {
     var section = parkingSectionForFloor(floorNumber);
     if (!section) return;
-    var root = parkingPlanRootForSection(section);
-    if (!root) return;
-    delete root.dataset.loadedSlots;
-    delete root.dataset.loadedLinks;
+    clearParkingPlanRootCache(parkingPlanRootForSection(section));
   }
 
   async function loadResidentialFlatOptions(force) {
@@ -4474,6 +4554,12 @@
     if (unchanged) {
       if (configured) {
         ensureParkingSectionResizeHandle(el);
+        var cachedRoot = parkingPlanRootForSection(el);
+        var cachedPlan =
+          cachedRoot && cachedRoot._parkingLayoutState && cachedRoot._parkingLayoutState.plan;
+        if (cachedRoot && cachedPlan) {
+          applyParkingSlotViewerStyles(cachedRoot, cachedPlan);
+        }
       }
       return;
     }
@@ -4482,6 +4568,10 @@
     if (planPane) planPane.setAttribute("aria-hidden", configured ? "false" : "true");
     if (configured) {
       ensureParkingSectionResizeHandle(el);
+      invalidateParkingPlanCache(floor.floorNumber);
+      fetchParkingPlan(floor.floorNumber).then(function (plan) {
+        if (plan) showParkingPlanInSection(plan, true);
+      });
     }
   }
 
@@ -7338,6 +7428,7 @@
       ensureParkingSectionResizeHandles();
     }
     if (grid.dataset.f21Init === "true") {
+      initAllFlatCards();
       void loadAllConfiguredParkingPlans();
       return;
     }
