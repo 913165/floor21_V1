@@ -41,7 +41,7 @@ public class SlabScheduleLedgerService {
                 receiptSlabAllocationService.allocateBySlab(bookingId);
         List<BookingPaymentSlab> slabs =
                 bookingPaymentSlabService.listSlabsForPaymentLedger(bookingId);
-        return buildLedgerRows(slabs, bySlab, interestRate);
+        return buildLedgerRows(slabs, bySlab, interestRate, booking.getBookingDate());
     }
 
     /** Read-only ledger for platform admin (no milestone sync on load). */
@@ -53,13 +53,14 @@ public class SlabScheduleLedgerService {
                 receiptSlabAllocationService.allocateBySlab(bookingId, builderId);
         List<BookingPaymentSlab> slabs =
                 bookingPaymentSlabService.listSlabsForPaymentLedgerReadOnly(bookingId, builderId);
-        return buildLedgerRows(slabs, bySlab, interestRate);
+        return buildLedgerRows(slabs, bySlab, interestRate, booking.getBookingDate());
     }
 
     List<SlabScheduleLedgerRow> buildLedgerRows(
             List<BookingPaymentSlab> slabs,
             Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab,
-            BigDecimal annualRatePercent) {
+            BigDecimal annualRatePercent,
+            LocalDate bookingDate) {
         LocalDate today = LocalDate.now();
         List<SlabScheduleLedgerRow> rows = new ArrayList<>();
         Map<UUID, BigDecimal> receiptTotals = receiptTotalsById(bySlab);
@@ -112,10 +113,9 @@ public class SlabScheduleLedgerService {
                 }
                 LocalDate paymentDate =
                         payment.paymentDate() != null ? payment.paymentDate() : today;
-                LocalDate interestFrom =
-                        slab.getDueDate() != null ? slab.getDueDate() : paymentDate;
+                LocalDate interestFrom = effectiveInterestFrom(slab.getDueDate(), bookingDate);
                 int days =
-                        slab.getDueDate() != null
+                        interestFrom != null
                                 ? (int) Math.max(0, ChronoUnit.DAYS.between(interestFrom, paymentDate))
                                 : 0;
                 BigDecimal interestPrincipal = payment.amount();
@@ -143,9 +143,11 @@ public class SlabScheduleLedgerService {
 
             BigDecimal outstanding = due.subtract(runningPaid).max(ZERO);
             if (dueDateReached && outstanding.compareTo(ZERO) > 0) {
-                LocalDate interestFrom =
-                        slab.getDueDate() != null ? slab.getDueDate() : today;
-                int days = (int) Math.max(0, ChronoUnit.DAYS.between(interestFrom, today));
+                LocalDate interestFrom = effectiveInterestFrom(slab.getDueDate(), bookingDate);
+                int days =
+                        interestFrom != null
+                                ? (int) Math.max(0, ChronoUnit.DAYS.between(interestFrom, today))
+                                : 0;
                 BigDecimal interest = simpleInterest(outstanding, annualRatePercent, days);
                 String info = buildTodayInfo(interest, days, outstanding);
                 rows.add(
@@ -244,6 +246,16 @@ public class SlabScheduleLedgerService {
             }
         }
         return new SlabScheduleLedgerSummary(totalDue, totalReceipt, totalBalance, totalInterest);
+    }
+
+    private static LocalDate effectiveInterestFrom(LocalDate slabDueDate, LocalDate bookingDate) {
+        if (slabDueDate == null) {
+            return null;
+        }
+        if (bookingDate == null || slabDueDate.isAfter(bookingDate)) {
+            return slabDueDate;
+        }
+        return bookingDate;
     }
 
     private static String buildReceiptInterestInfo(

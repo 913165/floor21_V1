@@ -38,7 +38,7 @@ class SlabScheduleLedgerServiceTest {
     bySlab.put(slab2Id, List.of(slice(slab2Id, receipt4Id, new BigDecimal("93000"), "Chq No:BKIDN24244146600")));
 
     List<SlabScheduleLedgerRow> rows =
-        service.buildLedgerRows(List.of(slab1, slab2), bySlab, new BigDecimal("15"));
+        service.buildLedgerRows(List.of(slab1, slab2), bySlab, new BigDecimal("15"), null);
 
     List<SlabScheduleLedgerRow> slab1Receipts =
         rows.stream()
@@ -70,7 +70,7 @@ class SlabScheduleLedgerServiceTest {
         List.of(slice(slabId, UUID.randomUUID(), new BigDecimal("400000"), "Chq No:097551")));
 
     List<SlabScheduleLedgerRow> rows =
-        service.buildLedgerRows(List.of(slab), bySlab, new BigDecimal("15"));
+        service.buildLedgerRows(List.of(slab), bySlab, new BigDecimal("15"), null);
 
     SlabScheduleLedgerRow receipt =
         rows.stream()
@@ -95,7 +95,7 @@ class SlabScheduleLedgerServiceTest {
         List.of(slice(slabId, UUID.randomUUID(), new BigDecimal("400000"), "Chq No:097551")));
 
     List<SlabScheduleLedgerRow> rows =
-        service.buildLedgerRows(List.of(slab), bySlab, new BigDecimal("15"));
+        service.buildLedgerRows(List.of(slab), bySlab, new BigDecimal("15"), null);
 
     var summary = service.summarizeLedger(rows);
 
@@ -123,7 +123,7 @@ class SlabScheduleLedgerServiceTest {
     bySlab.put(slabId, List.of());
 
     List<SlabScheduleLedgerRow> rows =
-        service.buildLedgerRows(List.of(slab), bySlab, new BigDecimal("15"));
+        service.buildLedgerRows(List.of(slab), bySlab, new BigDecimal("15"), null);
 
     assertThat(
             rows.stream()
@@ -149,10 +149,51 @@ class SlabScheduleLedgerServiceTest {
     assertThat(dated).containsExactly(slab1, slab2);
 
     List<SlabScheduleLedgerRow> rows =
-        service.buildLedgerRows(dated, Map.of(), new BigDecimal("15"));
+        service.buildLedgerRows(dated, Map.of(), new BigDecimal("15"), null);
     long milestoneRows =
         rows.stream().filter(r -> r.rowType() == SlabLedgerRowType.SLAB_TOTAL).count();
     assertThat(milestoneRows).isEqualTo(2);
+  }
+
+  @Test
+  void interestStartsFromBookingDateWhenSlabDueDateIsEarlier() {
+    UUID slabId = UUID.randomUUID();
+    BookingPaymentSlab slab = slab(slabId, "Initial booking amount", new BigDecimal("2200000"));
+    slab.setDueDate(LocalDate.of(2026, 2, 3));
+
+    Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab = new LinkedHashMap<>();
+    bySlab.put(
+        slabId,
+        List.of(
+            new ReceiptSlabAllocationSlice(
+                slabId,
+                UUID.randomUUID(),
+                LocalDate.of(2026, 3, 18),
+                new BigDecimal("50000"),
+                "NEFT",
+                null,
+                "NEFT"),
+            new ReceiptSlabAllocationSlice(
+                slabId,
+                UUID.randomUUID(),
+                LocalDate.of(2026, 6, 27),
+                new BigDecimal("715000"),
+                "NEFT",
+                null,
+                "NEFT")));
+
+    LocalDate bookingDate = LocalDate.of(2026, 6, 18);
+    List<SlabScheduleLedgerRow> rows =
+        service.buildLedgerRows(List.of(slab), bySlab, new BigDecimal("15"), bookingDate);
+
+    List<SlabScheduleLedgerRow> receiptRows =
+        rows.stream().filter(r -> r.rowType() == SlabLedgerRowType.RECEIPT).toList();
+
+    assertThat(receiptRows.get(0).days()).isNull();
+    assertThat(receiptRows.get(0).interest()).isNull();
+
+    assertThat(receiptRows.get(1).days()).isEqualTo(9);
+    assertThat(receiptRows.get(1).interest()).isEqualByComparingTo("2645");
   }
 
   private static BookingPaymentSlab slab(UUID id, String label, BigDecimal agreed) {
