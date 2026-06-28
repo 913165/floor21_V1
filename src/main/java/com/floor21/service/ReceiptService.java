@@ -171,7 +171,7 @@ public class ReceiptService {
         UUID builderId = TenantContext.requireBuilderId();
         requireAccessibleBooking(bookingId, null);
         return receiptRepository
-                .findFirstByBooking_IdAndBuilder_IdOrderByReceiptSerialDesc(bookingId, builderId)
+                .findFirstByBuilder_IdOrderByReceiptSerialDesc(builderId)
                 .map(Receipt::getReceiptNumber)
                 .filter(s -> s != null && !s.isBlank());
     }
@@ -180,7 +180,7 @@ public class ReceiptService {
     public String previewNextReceiptNumber(UUID bookingId) {
         UUID builderId = TenantContext.requireBuilderId();
         requireAccessibleBooking(bookingId, null);
-        int next = receiptRepository.findMaxReceiptSerialByBookingId(bookingId, builderId) + 1;
+        int next = receiptRepository.findMaxReceiptSerialByBuilderId(builderId) + 1;
         return formatIncrementalReceiptNumber(next);
     }
 
@@ -261,11 +261,12 @@ public class ReceiptService {
             entity.setBuilder(builder);
             entity.setBooking(booking);
             entity.setCreatedAt(now);
-            int nextSerial =
-                    receiptRepository.findMaxReceiptSerialByBookingId(bookingId, builderId) + 1;
+            int nextSerial = receiptRepository.findMaxReceiptSerialByBuilderId(builderId) + 1;
             entity.setReceiptSerial(nextSerial);
             if (receiptNumberOverride != null && !receiptNumberOverride.isBlank()) {
-                entity.setReceiptNumber(receiptNumberOverride.trim());
+                String receiptNumber = receiptNumberOverride.trim();
+                assertReceiptNumberAvailable(builderId, receiptNumber, null);
+                entity.setReceiptNumber(receiptNumber);
             } else {
                 entity.setReceiptNumber(formatIncrementalReceiptNumber(nextSerial));
             }
@@ -325,9 +326,28 @@ public class ReceiptService {
         return v != null ? v : ZERO;
     }
 
-    /** Plain incremental receipt no. for this booking (buyer): 1, 2, 3, … */
+    /** Plain incremental receipt no. for this project (builder): 1, 2, 3, … */
     private static String formatIncrementalReceiptNumber(int serial) {
         return String.valueOf(serial);
+    }
+
+    private void assertReceiptNumberAvailable(UUID builderId, String receiptNumber, UUID excludeId) {
+        if (receiptNumber == null || receiptNumber.isBlank()) {
+            return;
+        }
+        String normalized = receiptNumber.trim();
+        boolean taken =
+                excludeId == null
+                        ? receiptRepository.existsByBuilder_IdAndReceiptNumberIgnoreCase(
+                                builderId, normalized)
+                        : receiptRepository.existsByBuilder_IdAndReceiptNumberIgnoreCaseAndIdNot(
+                                builderId, normalized, excludeId);
+        if (taken) {
+            throw new IllegalArgumentException(
+                    "Receipt number \""
+                            + normalized
+                            + "\" is already used on this project. Choose a different number.");
+        }
     }
 
     private static String trimToNull(String s) {

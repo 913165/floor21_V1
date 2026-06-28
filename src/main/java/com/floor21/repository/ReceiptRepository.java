@@ -30,14 +30,16 @@ public interface ReceiptRepository extends JpaRepository<Receipt, UUID> {
     Optional<Receipt> findByIdAndBooking_IdAndBuilder_Id(
             @Param("rid") UUID id, @Param("bookingId") UUID bookingId, @Param("builderId") UUID builderId);
 
-    Optional<Receipt> findFirstByBooking_IdAndBuilder_IdOrderByReceiptSerialDesc(
-            UUID bookingId, UUID builderId);
+    Optional<Receipt> findFirstByBuilder_IdOrderByReceiptSerialDesc(UUID builderId);
 
     @Query(
-            "select coalesce(max(r.receiptSerial),0) from Receipt r where r.booking.id = :bookingId and "
-                    + "r.builder.id = :builderId")
-    int findMaxReceiptSerialByBookingId(
-            @Param("bookingId") UUID bookingId, @Param("builderId") UUID builderId);
+            "select coalesce(max(r.receiptSerial),0) from Receipt r where r.builder.id = :builderId")
+    int findMaxReceiptSerialByBuilderId(@Param("builderId") UUID builderId);
+
+    boolean existsByBuilder_IdAndReceiptNumberIgnoreCase(UUID builderId, String receiptNumber);
+
+    boolean existsByBuilder_IdAndReceiptNumberIgnoreCaseAndIdNot(
+            UUID builderId, String receiptNumber, UUID id);
 
     @Query(
             "select r from Receipt r left join fetch r.depositBank left join fetch r.paidByClient "
