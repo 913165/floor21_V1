@@ -12,76 +12,73 @@
       This receipt is marked dishonoured.
     </div>
 
-    <h1 class="receipt-title">RECEIPT</h1>
-
-    <p class="receipt-narrative">
-      Received from
-      <strong th:text="${payerNamesPrint}">Customer</strong>
-      as on
-      <strong th:text="${receiptDateOrdinal}">18th June 2026</strong>
-      a sum of
-      <strong th:text="${amountFiguresPrint}">Rs. 0/-</strong>
-      (<strong th:text="${amountWordsPrint}">Rupees Zero Only</strong>)
-      as and by way of
-      <strong th:text="${paymentWayPrint}">Initial Booking Amount</strong>
-      out of the Total agreed consideration of
-      <strong th:text="${totalConsiderationFiguresPrint}">Rs. 0/-</strong>
-      (<strong th:text="${totalConsiderationWordsPrint}">Rupees Zero Only</strong>)
-      in respect of the purchase of unit being
-      <strong th:text="${unitDescriptionPrint}">Flat no. 0000</strong>
-      in the said Project known as
-      &ldquo;<strong th:text="${projectNamePrint}">Project</strong>&rdquo;.
-    </p>
-    <p class="receipt-narrative receipt-land-clause mb-0">
-      <strong th:text="${landAddressPrint}">to be constructed on all that piece and parcel of land situated at Address</strong>.
-    </p>
-
-    <table class="receipt-payment-table">
-      <thead>
-      <tr>
-        <th>Sr.No</th>
-        <th>Date</th>
-        <th>Cheque No./ UTR detail</th>
-        <th class="text-end">Amount (Rs.)</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr th:each="row : ${paymentTableRows}">
-        <td th:text="${row.serialNo()}">1</td>
-        <td th:text="${row.dateFormatted()}">18.03.2026</td>
-        <td th:text="${row.instrumentDetail()}">NEFT 008445</td>
-        <td class="text-end" th:text="${row.amountDisplay()}">5,00,000/-</td>
-      </tr>
-      </tbody>
-      <tfoot>
-      <tr>
-        <td colspan="3" class="text-end fw-bold">Total</td>
-        <td class="text-end receipt-total-cell">
-          <div class="fw-bold" th:text="${amountFiguresPrint}">Rs. 5,00,000/-</div>
-          <div class="receipt-total-words">(<span th:text="${amountWordsPrint}">Rupees Five Lakh Only</span>)</div>
-        </td>
-      </tr>
-      </tfoot>
-    </table>
-
-    <div class="receipt-closing">
-      <p class="receipt-we-say mb-4"><strong>WE SAY RECEIVED</strong></p>
-
-      <p class="receipt-witness-title mb-2">In presence of:</p>
-      <ol class="receipt-witness-list">
-        <li></li>
-        <li></li>
-      </ol>
-
-      <div class="receipt-meta mt-4">
-        <p class="mb-2"><strong>Date:</strong> <span class="receipt-meta-line"></span></p>
-        <p class="mb-0"><strong>Place:</strong> <span th:text="${placePrint}">—</span></p>
+    <div class="receipt-header">
+      <div class="receipt-header-no">
+        <span class="receipt-header-label">Receipt No.:</span>
+        <strong th:text="${receiptNumberPrint}">33</strong>
+      </div>
+      <div class="receipt-header-date">
+        <span class="receipt-header-label">Date:-</span>
+        <strong th:text="${receiptDateShort}">24-Mar-2026</strong>
       </div>
     </div>
 
-    <p class="receipt-disclaimer mt-4 mb-0" th:if="${showChequeRealizationDisclaimer}">
-      This receipt is issued subject to realization of the Cheque; if bounced, it stands automatically cancelled.
+    <p class="receipt-narrative">
+      Received with thanks from
+      <strong th:text="${payerNamesPrint}">Customer</strong>
+      a sum of
+      <strong>
+        <span th:text="${amountFiguresPrint}">Rs. 0/-</span>
+        (<span th:text="${amountWordsPrint}">Rupees Zero Only</span>)
+      </strong>
+      vide
+      <strong th:text="${instrumentNarrativePrint}">Cheque No. 000000 dated 01-Jan-2026</strong>,
+      Payment towards
+      <strong th:text="${paymentPurposePrint}">Consideration</strong>
+      against
+      <strong th:text="${flatNumberPrint}">Flat No.0000</strong>
+      on
+      <strong th:text="${floorPhrasePrint}">1st Floor</strong>
+      in the Project Known as
+      <strong th:text="${projectNamePrint}">Project</strong>
+      situated at
+      <strong th:text="${siteAddressPrint}">Address</strong>
     </p>
+
+    <div class="receipt-amount-signatory">
+      <div class="receipt-amount-box">
+        <strong th:text="${amountFiguresPrint}">Rs. 0/-</strong>
+      </div>
+      <div class="receipt-signatory">
+        <p class="receipt-for-company mb-0">
+          For <strong th:text="${builderCompanyPrint}">Builder</strong>
+        </p>
+        <div class="receipt-signatory-space"></div>
+        <p class="receipt-signatory-label mb-0"><strong>Authorised Signatory</strong></p>
+      </div>
+    </div>
+
+    <p class="receipt-disclaimer mb-0" th:if="${showChequeRealizationDisclaimer}">
+      This receipt is issued subject to realization of the Cheque, if bounced, it stands automatically cancelled.
+    </p>
+
+    <div class="receipt-footer" th:if="${footerAddressPrint != null || footerPhonePrint != null || footerEmailPrint != null}">
+      <p class="receipt-footer-line mb-1" th:if="${footerAddressPrint != null && !#strings.isEmpty(footerAddressPrint) && footerAddressPrint != '—'}">
+        <span class="receipt-footer-icon" aria-hidden="true">&#128205;</span>
+        <span th:text="${footerAddressPrint}">Address</span>
+      </p>
+      <p class="receipt-footer-line mb-0">
+        <span th:if="${footerPhonePrint != null && !#strings.isEmpty(footerPhonePrint) && footerPhonePrint != '—'}">
+          <span class="receipt-footer-icon" aria-hidden="true">&#128222;</span>
+          <span th:text="${footerPhonePrint}">Phone</span>
+        </span>
+        <span th:if="${footerEmailPrint != null && !#strings.isEmpty(footerEmailPrint) && footerEmailPrint != '—'}"
+              th:classappend="${footerPhonePrint != null && !#strings.isEmpty(footerPhonePrint) && footerPhonePrint != '—'} ? ' ms-3' : ''">
+          <span class="receipt-footer-icon" aria-hidden="true">&#9993;</span>
+          <span th:text="${footerEmailPrint}">Email</span>
+        </span>
+      </p>
+    </div>
 
     <div class="d-print-none mt-4 d-flex flex-wrap gap-2 align-items-center">
       <div class="form-check mb-0 me-2">
@@ -137,19 +134,30 @@
       box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.1);
     }
 
-    .receipt-title {
-      text-align: center;
-      font-size: 16pt;
+    .receipt-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      font-style: italic;
+    }
+
+    .receipt-header-label {
       font-weight: 700;
-      letter-spacing: 0.08em;
-      margin: 0 0 1.25rem;
-      color: inherit;
+      font-style: italic;
+    }
+
+    .receipt-header-no strong,
+    .receipt-header-date strong {
+      font-weight: 700;
+      font-style: italic;
     }
 
     .receipt-narrative {
       text-align: justify;
       color: inherit;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
     }
 
     .receipt-narrative strong {
@@ -157,80 +165,63 @@
       color: inherit;
     }
 
-    .receipt-land-clause {
-      margin-top: 0.35rem;
+    .receipt-amount-signatory {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 2rem;
+      margin-bottom: 1.25rem;
     }
 
-    .receipt-payment-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 0 0 1.5rem;
-      font-size: 11pt;
-    }
-
-    .receipt-payment-table th,
-    .receipt-payment-table td {
+    .receipt-amount-box {
       border: 1px solid #333;
-      padding: 0.35rem 0.5rem;
-      vertical-align: top;
-      color: inherit;
-    }
-
-    .receipt-payment-table th {
-      font-weight: 700;
-      text-align: center;
-    }
-
-    .receipt-payment-table td:first-child {
-      width: 3.5rem;
-      text-align: center;
-    }
-
-    .receipt-payment-table td:nth-child(2) {
-      width: 7rem;
-      text-align: center;
-    }
-
-    .receipt-total-cell {
-      min-width: 9rem;
-    }
-
-    .receipt-total-words {
-      font-size: 10pt;
-      margin-top: 0.15rem;
-    }
-
-    .receipt-closing {
-      margin-top: 1.5rem;
-    }
-
-    .receipt-we-say {
-      font-size: 12pt;
-      letter-spacing: 0.02em;
-    }
-
-    .receipt-witness-list {
-      margin: 0;
-      padding-left: 1.5rem;
-      list-style-position: outside;
-    }
-
-    .receipt-witness-list li {
-      min-height: 2rem;
-      margin-bottom: 0.75rem;
-      border-bottom: 1px solid #333;
-      max-width: 18rem;
-    }
-
-    .receipt-meta-line {
-      display: inline-block;
+      border-radius: 0.75rem;
+      padding: 0.65rem 1.25rem;
       min-width: 10rem;
-      border-bottom: 1px solid #333;
+      text-align: center;
+      font-size: 13pt;
+    }
+
+    .receipt-signatory {
+      flex: 1;
+      max-width: 18rem;
+      margin-left: auto;
+      text-align: right;
+      font-style: italic;
+    }
+
+    .receipt-for-company {
+      font-style: italic;
+    }
+
+    .receipt-signatory-space {
+      min-height: 4.5rem;
+    }
+
+    .receipt-signatory-label {
+      font-style: italic;
     }
 
     .receipt-disclaimer {
       font-size: 9.5pt;
       color: #333;
+      margin-bottom: 1.5rem;
+    }
+
+    .receipt-footer {
+      text-align: center;
+      font-size: 10pt;
+      margin-top: 2rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #ddd;
+    }
+
+    .receipt-footer-line {
+      margin: 0;
+    }
+
+    .receipt-footer-icon {
+      margin-right: 0.35rem;
     }
 
     [data-bs-theme="dark"] .receipt-letter {

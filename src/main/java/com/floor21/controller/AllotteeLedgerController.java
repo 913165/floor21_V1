@@ -150,10 +150,11 @@ public class AllotteeLedgerController {
             return;
         }
         model.addAttribute("selectedBooking", booking);
-        if (bookingPaymentSlabService.materializeIfEmpty(bookingId)) {
+        boolean created = bookingPaymentSlabService.prepareSlabMilestones(bookingId);
+        if (created) {
             model.addAttribute(
                     "successMessage",
-                    "Payment schedule created from platform milestones for this building.");
+                    "Payment schedule created from milestone templates for this building.");
         }
         model.addAttribute("allotteeLedger", allotteeLedgerService.buildForBooking(bookingId));
         if (booking.getBuilder() != null) {

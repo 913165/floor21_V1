@@ -353,10 +353,11 @@ public class BookingPaymentScheduleController {
         model.addAttribute("selectedBooking", booking);
         var base = bookingPaymentSlabService.baseConsideration(booking);
         model.addAttribute("baseAmount", base);
-        if (bookingPaymentSlabService.materializeIfEmpty(bookingId)) {
+        boolean created = bookingPaymentSlabService.prepareSlabMilestones(bookingId);
+        if (created) {
             model.addAttribute(
                     "successMessage",
-                    "Payment schedule created from platform milestones for this building.");
+                    "Payment schedule created from milestone templates for this building.");
         }
         var ledgerRows = slabScheduleLedgerService.buildLedger(bookingId);
         model.addAttribute("ledgerRows", ledgerRows);

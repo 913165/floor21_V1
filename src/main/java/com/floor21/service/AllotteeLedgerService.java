@@ -39,7 +39,7 @@ public class AllotteeLedgerService {
     @Transactional
     public AllotteeLedgerView buildForBooking(UUID bookingId) {
         Booking booking = bookingPaymentSlabService.getBookingForSchedule(bookingId);
-        bookingPaymentSlabService.materializeIfEmpty(bookingId);
+        bookingPaymentSlabService.prepareSlabMilestones(bookingId);
         List<BookingPaymentSlab> slabs =
                 bookingPaymentSlabService.listSlabsForPaymentLedger(bookingId);
         Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab =

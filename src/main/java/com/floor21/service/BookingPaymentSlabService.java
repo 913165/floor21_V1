@@ -145,16 +145,21 @@ public class BookingPaymentSlabService {
         return bookingSlabPaymentRepository.findByBookingIdWithReceipt(bookingId);
     }
 
-    /** Milestone rows + agreed amounts for schedule; receipt slices are not persisted. */
+    /**
+     * Syncs milestone rows, amounts, and due dates from the building template (per-milestone dates
+     * and common template date). Returns true when rows were first created for this booking.
+     */
     @Transactional
-    public void prepareSlabMilestones(UUID bookingId) {
+    public boolean prepareSlabMilestones(UUID bookingId) {
         getBookingForSchedule(bookingId);
-        materializeIfEmpty(bookingId);
+        boolean created = materializeIfEmpty(bookingId);
         ensureAllActiveMilestoneRows(bookingId);
         syncAgreedAmountsFromPercent(bookingId);
         deduplicateSlabRows(bookingId);
         consolidateOneSlabPerMilestoneLabel(bookingId);
         removeSlabsNotMatchingActiveTemplates(bookingId);
+        backfillMissingDueDatesFromTemplate(bookingId);
+        return created;
     }
 
     /** Paid / balance per slab computed from buyer receipts (waterfall, in memory). */
@@ -258,7 +263,7 @@ public class BookingPaymentSlabService {
         return base.multiply(percent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
 
-    /** Ensures every active platform milestone for the booking's building has a slab row. */
+    /** Ensures every active building milestone for the booking has a slab row with template dates. */
     @Transactional
     public void ensureAllActiveMilestoneRows(UUID bookingId) {
         Booking booking = getBookingForSchedule(bookingId);
@@ -266,6 +271,12 @@ public class BookingPaymentSlabService {
             return;
         }
         UUID buildingId = booking.getFlat().getBuilding().getId();
+        Building building = booking.getFlat().getBuilding();
+        List<Slab> milestoneSlabs = listActiveBuildingMilestoneSlabs(buildingId);
+        if (!milestoneSlabs.isEmpty()) {
+            ensureMissingRowsFromMilestoneSlabs(booking, building, milestoneSlabs);
+            return;
+        }
         List<PaymentSlabTemplate> templates =
                 distinctActiveTemplates(
                         paymentSlabTemplateService.listActiveForBuilding(buildingId));
@@ -302,7 +313,9 @@ public class BookingPaymentSlabService {
             row.setMilestoneLabel(template.getMilestoneLabel());
             row.setPercent(template.getSuggestedPercent());
             row.setExtraAmount(ZERO);
-            row.setDueDate(null);
+            row.setDueDate(
+                    clampDueDateToBookingDate(
+                            building.getMilestoneTemplateDueDate(), booking.getBookingDate()));
             row.setAgreedAmount(computeAgreedPortion(base, row.getPercent()));
             row.setCreatedAt(now);
             row.setUpdatedAt(now);
@@ -314,6 +327,45 @@ public class BookingPaymentSlabService {
         }
         linkOrphanSlabsToTemplates(bookingId);
         deduplicateSlabRows(bookingId);
+    }
+
+    private void ensureMissingRowsFromMilestoneSlabs(
+            Booking booking, Building building, List<Slab> templates) {
+        UUID bookingId = booking.getId();
+        List<BookingPaymentSlab> existing = listLines(bookingId);
+        Set<String> existingLabels = new HashSet<>();
+        for (BookingPaymentSlab slab : existing) {
+            existingLabels.add(normalizeMilestoneLabel(slab.getMilestoneLabel()));
+        }
+        BigDecimal base = baseConsideration(booking);
+        Instant now = Instant.now();
+        int order =
+                existing.stream().mapToInt(BookingPaymentSlab::getSortOrder).max().orElse(-1) + 1;
+        boolean added = false;
+        for (Slab template : distinctActiveMilestoneSlabs(templates)) {
+            String label = normalizeMilestoneLabel(resolveMilestoneLabel(template));
+            if (existingLabels.contains(label)) {
+                continue;
+            }
+            BookingPaymentSlab row = new BookingPaymentSlab();
+            row.setBooking(booking);
+            row.setTemplate(null);
+            row.setSortOrder(order++);
+            row.setMilestoneLabel(resolveMilestoneLabel(template));
+            row.setPercent(template.getSuggestedPercent());
+            row.setExtraAmount(ZERO);
+            row.setDueDate(
+                    clampDueDateToBookingDate(
+                            resolveDueDateFromTemplate(template, building), booking.getBookingDate()));
+            row.setAgreedAmount(computeAgreedPortion(base, row.getPercent()));
+            row.setCreatedAt(now);
+            row.setUpdatedAt(now);
+            bookingPaymentSlabRepository.save(row);
+            added = true;
+        }
+        if (added) {
+            syncAgreedAmountsFromPercent(bookingId);
+        }
     }
 
     /**
@@ -871,6 +923,7 @@ public class BookingPaymentSlabService {
         syncAgreedAmountsFromPercent(bookingId);
         deduplicateSlabRows(bookingId);
         consolidateOneSlabPerMilestoneLabel(bookingId);
+        backfillMissingDueDatesFromTemplate(bookingId);
     }
 
     private void materializeFromPaymentTemplates(Booking booking, boolean replace) {
@@ -894,6 +947,7 @@ public class BookingPaymentSlabService {
             throw new IllegalArgumentException(
                     "No active Milestone Templates for this building. Add milestones under Milestone Templates for this building, then try again.");
         }
+        Building building = booking.getFlat().getBuilding();
         Instant now = Instant.now();
         BigDecimal base = baseConsideration(booking);
         int order = 0;
@@ -905,12 +959,15 @@ public class BookingPaymentSlabService {
             row.setMilestoneLabel(t.getMilestoneLabel());
             row.setPercent(t.getSuggestedPercent());
             row.setExtraAmount(BigDecimal.ZERO);
-            row.setDueDate(null);
+            row.setDueDate(
+                    clampDueDateToBookingDate(
+                            building.getMilestoneTemplateDueDate(), booking.getBookingDate()));
             row.setAgreedAmount(computeAgreedPortion(base, row.getPercent()));
             row.setCreatedAt(now);
             row.setUpdatedAt(now);
             bookingPaymentSlabRepository.save(row);
         }
+        backfillMissingDueDatesFromTemplate(bookingId);
     }
 
     private List<Slab> listActiveBuildingMilestoneSlabs(UUID buildingId) {

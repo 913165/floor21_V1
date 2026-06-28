@@ -1,21 +1,21 @@
 package com.floor21.dto;
 
-import java.util.List;
-
-/** Printable receipt letter fields (HTML print + Word export). */
+/** Printable receipt fields (HTML print + Word export). */
 public record ReceiptLetterView(
-        String receiptDateOrdinal,
+        String receiptNumberPrint,
+        String receiptDateShort,
+        String payerNamesPrint,
         String amountFiguresPrint,
         String amountWordsPrint,
-        String payerNamesPrint,
-        String paymentWayPrint,
-        String totalConsiderationFiguresPrint,
-        String totalConsiderationWordsPrint,
-        String unitDescriptionPrint,
+        String instrumentNarrativePrint,
+        String paymentPurposePrint,
+        String flatNumberPrint,
+        String floorPhrasePrint,
         String projectNamePrint,
-        String landAddressPrint,
-        List<ReceiptPaymentTableRow> paymentTableRows,
-        String placePrint,
+        String siteAddressPrint,
         String builderCompanyPrint,
+        String footerAddressPrint,
+        String footerPhonePrint,
+        String footerEmailPrint,
         boolean showChequeRealizationDisclaimer,
         boolean combinedPrint) {}

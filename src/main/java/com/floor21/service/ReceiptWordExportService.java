@@ -1,11 +1,9 @@
 package com.floor21.service;
 
 import com.floor21.dto.ReceiptLetterView;
-import com.floor21.dto.ReceiptPaymentTableRow;
 import com.floor21.entity.Receipt;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
@@ -61,146 +59,132 @@ public class ReceiptWordExportService {
     }
 
     private static void writeDocument(XWPFDocument doc, ReceiptLetterView view) {
-        XWPFParagraph title = doc.createParagraph();
-        title.setAlignment(ParagraphAlignment.CENTER);
-        XWPFRun titleRun = title.createRun();
-        titleRun.setText("RECEIPT");
-        titleRun.setBold(true);
-        titleRun.setFontSize(16);
-        titleRun.setFontFamily(FONT);
-        titleRun.setCharacterSpacing(40);
-
+        writeHeader(doc, view);
         addBlankLine(doc);
+        writeNarrative(doc, view);
+        addBlankLine(doc);
+        writeAmountAndSignatory(doc, view);
+        if (view.showChequeRealizationDisclaimer()) {
+            addBlankLine(doc);
+            XWPFParagraph disclaimer = doc.createParagraph();
+            disclaimer.setAlignment(ParagraphAlignment.LEFT);
+            appendText(
+                    disclaimer,
+                    "This receipt is issued subject to realization of the Cheque, if bounced, it stands automatically cancelled.",
+                    false,
+                    10);
+        }
+        writeFooter(doc, view);
+    }
 
+    private static void writeHeader(XWPFDocument doc, ReceiptLetterView view) {
+        XWPFTable table = doc.createTable(1, 2);
+        setTableFullWidth(table);
+        removeTableBorders(table);
+
+        XWPFTableRow row = table.getRow(0);
+        setCellText(
+                row.getCell(0),
+                "Receipt No.: " + nullToDash(view.receiptNumberPrint()),
+                true,
+                12,
+                ParagraphAlignment.LEFT,
+                true);
+        setCellText(
+                row.getCell(1),
+                "Date:- " + nullToDash(view.receiptDateShort()),
+                true,
+                12,
+                ParagraphAlignment.RIGHT,
+                true);
+    }
+
+    private static void writeNarrative(XWPFDocument doc, ReceiptLetterView view) {
         XWPFParagraph narrative = doc.createParagraph();
         narrative.setAlignment(ParagraphAlignment.BOTH);
-        appendText(narrative, "Received from ", false, 12);
+        appendText(narrative, "Received with thanks from ", false, 12);
         appendText(narrative, view.payerNamesPrint(), true, 12);
-        appendText(narrative, " as on ", false, 12);
-        appendText(narrative, view.receiptDateOrdinal(), true, 12);
         appendText(narrative, " a sum of ", false, 12);
         appendText(narrative, view.amountFiguresPrint(), true, 12);
         appendText(narrative, " (", false, 12);
         appendText(narrative, view.amountWordsPrint(), true, 12);
-        appendText(narrative, ") as and by way of ", false, 12);
-        appendText(narrative, view.paymentWayPrint(), true, 12);
-        appendText(narrative, " out of the Total agreed consideration of ", false, 12);
-        appendText(narrative, view.totalConsiderationFiguresPrint(), true, 12);
-        appendText(narrative, " (", false, 12);
-        appendText(narrative, view.totalConsiderationWordsPrint(), true, 12);
-        appendText(narrative, ") in respect of the purchase of unit being ", false, 12);
-        appendText(narrative, view.unitDescriptionPrint(), true, 12);
-        appendText(narrative, " in the said Project known as \"", false, 12);
+        appendText(narrative, ") vide ", false, 12);
+        appendText(narrative, view.instrumentNarrativePrint(), true, 12);
+        appendText(narrative, ", Payment towards ", false, 12);
+        appendText(narrative, view.paymentPurposePrint(), true, 12);
+        appendText(narrative, " against ", false, 12);
+        appendText(narrative, view.flatNumberPrint(), true, 12);
+        appendText(narrative, " on ", false, 12);
+        appendText(narrative, view.floorPhrasePrint(), true, 12);
+        appendText(narrative, " in the Project Known as ", false, 12);
         appendText(narrative, view.projectNamePrint(), true, 12);
-        appendText(narrative, "\".", false, 12);
-
-        addBlankLine(doc);
-
-        XWPFParagraph land = doc.createParagraph();
-        land.setAlignment(ParagraphAlignment.BOTH);
-        appendText(land, view.landAddressPrint(), true, 12);
-        appendText(land, ".", false, 12);
-
-        addBlankLine(doc);
-
-        writePaymentTable(doc, view);
-
-        addBlankLine(doc);
-
-        addParagraph(doc, "WE SAY RECEIVED", true, 12);
-        addBlankLine(doc);
-        addParagraph(doc, "In presence of:", false, 12);
-        addParagraph(doc, "1. ___________________________", false, 12);
-        addParagraph(doc, "2. ___________________________", false, 12);
-        addBlankLine(doc);
-        addParagraph(doc, "Date: _______________________", false, 12);
-        addParagraph(doc, "Place: " + nullToDash(view.placePrint()), false, 12);
-
-        if (view.showChequeRealizationDisclaimer()) {
-            addBlankLine(doc);
-            addParagraph(
-                    doc,
-                    "This receipt is issued subject to realization of the Cheque; if bounced, it stands automatically cancelled.",
-                    false,
-                    10);
-        }
+        appendText(narrative, " situated at ", false, 12);
+        appendText(narrative, view.siteAddressPrint(), true, 12);
     }
 
-    private static void writePaymentTable(XWPFDocument doc, ReceiptLetterView view) {
-        List<ReceiptPaymentTableRow> rows = view.paymentTableRows();
-        int dataRows = rows != null && !rows.isEmpty() ? rows.size() : 1;
-        XWPFTable table = doc.createTable(1 + dataRows + 1, 4);
+    private static void writeAmountAndSignatory(XWPFDocument doc, ReceiptLetterView view) {
+        XWPFTable table = doc.createTable(1, 2);
         setTableFullWidth(table);
-        applyTableBorders(table);
+        removeTableBorders(table);
 
-        String[] headers = {"Sr.No", "Date", "Cheque No./ UTR detail", "Amount (Rs.)"};
-        XWPFTableRow headerRow = table.getRow(0);
-        for (int i = 0; i < headers.length; i++) {
-            setCellText(headerRow.getCell(i), headers[i], true, 11, ParagraphAlignment.CENTER);
+        XWPFTableRow row = table.getRow(0);
+        XWPFTableCell amountCell = row.getCell(0);
+        amountCell.removeParagraph(0);
+        XWPFParagraph amountPara = amountCell.addParagraph();
+        amountPara.setAlignment(ParagraphAlignment.LEFT);
+        appendText(amountPara, nullToDash(view.amountFiguresPrint()), true, 13);
+        applyCellBorder(amountCell);
+
+        XWPFTableCell signatoryCell = row.getCell(1);
+        signatoryCell.removeParagraph(0);
+        XWPFParagraph forPara = signatoryCell.addParagraph();
+        forPara.setAlignment(ParagraphAlignment.RIGHT);
+        appendText(forPara, "For ", false, 12, true);
+        appendText(forPara, view.builderCompanyPrint(), true, 12, true);
+
+        XWPFParagraph spacePara = signatoryCell.addParagraph();
+        spacePara.setAlignment(ParagraphAlignment.RIGHT);
+        appendText(spacePara, " ", false, 12);
+        spacePara.setSpacingAfter(800);
+
+        XWPFParagraph labelPara = signatoryCell.addParagraph();
+        labelPara.setAlignment(ParagraphAlignment.RIGHT);
+        appendText(labelPara, "Authorised Signatory", true, 12, true);
+    }
+
+    private static void writeFooter(XWPFDocument doc, ReceiptLetterView view) {
+        addBlankLine(doc);
+        addBlankLine(doc);
+        if (hasText(view.footerAddressPrint())) {
+            XWPFParagraph address = doc.createParagraph();
+            address.setAlignment(ParagraphAlignment.CENTER);
+            appendText(address, nullToDash(view.footerAddressPrint()), false, 10);
         }
-
-        if (rows == null || rows.isEmpty()) {
-            XWPFTableRow dataRow = table.getRow(1);
-            setCellText(dataRow.getCell(0), "1", false, 11, ParagraphAlignment.CENTER);
-            setCellText(dataRow.getCell(1), "—", false, 11, ParagraphAlignment.CENTER);
-            setCellText(dataRow.getCell(2), "—", false, 11, ParagraphAlignment.LEFT);
-            setCellText(dataRow.getCell(3), "—", false, 11, ParagraphAlignment.RIGHT);
-        } else {
-            for (int i = 0; i < rows.size(); i++) {
-                ReceiptPaymentTableRow row = rows.get(i);
-                XWPFTableRow dataRow = table.getRow(i + 1);
-                setCellText(
-                        dataRow.getCell(0),
-                        String.valueOf(row.serialNo()),
-                        false,
-                        11,
-                        ParagraphAlignment.CENTER);
-                setCellText(
-                        dataRow.getCell(1),
-                        nullToEmpty(row.dateFormatted()),
-                        false,
-                        11,
-                        ParagraphAlignment.CENTER);
-                setCellText(
-                        dataRow.getCell(2),
-                        nullToDash(row.instrumentDetail()),
-                        false,
-                        11,
-                        ParagraphAlignment.LEFT);
-                setCellText(
-                        dataRow.getCell(3),
-                        nullToDash(row.amountDisplay()),
-                        false,
-                        11,
-                        ParagraphAlignment.RIGHT);
+        if (hasText(view.footerPhonePrint()) || hasText(view.footerEmailPrint())) {
+            XWPFParagraph contact = doc.createParagraph();
+            contact.setAlignment(ParagraphAlignment.CENTER);
+            if (hasText(view.footerPhonePrint())) {
+                appendText(contact, nullToDash(view.footerPhonePrint()), false, 10);
+            }
+            if (hasText(view.footerPhonePrint()) && hasText(view.footerEmailPrint())) {
+                appendText(contact, "   ", false, 10);
+            }
+            if (hasText(view.footerEmailPrint())) {
+                appendText(contact, nullToDash(view.footerEmailPrint()), false, 10);
             }
         }
-
-        XWPFTableRow totalRow = table.getRow(dataRows + 1);
-        setCellText(totalRow.getCell(0), "", false, 11, ParagraphAlignment.LEFT);
-        setCellText(totalRow.getCell(1), "", false, 11, ParagraphAlignment.LEFT);
-        setCellText(totalRow.getCell(2), "Total", true, 11, ParagraphAlignment.RIGHT);
-        setCellText(totalRow.getCell(3), nullToDash(view.amountFiguresPrint()), true, 11, ParagraphAlignment.RIGHT);
-
-        XWPFTableCell totalCell = totalRow.getCell(3);
-        XWPFParagraph wordsPara = totalCell.addParagraph();
-        wordsPara.setAlignment(ParagraphAlignment.RIGHT);
-        appendText(wordsPara, "(" + nullToDash(view.amountWordsPrint()) + ")", false, 10);
     }
 
     private static void appendText(XWPFParagraph paragraph, String text, boolean bold, int fontSize) {
+        appendText(paragraph, text, bold, fontSize, false);
+    }
+
+    private static void appendText(
+            XWPFParagraph paragraph, String text, boolean bold, int fontSize, boolean italic) {
         XWPFRun run = paragraph.createRun();
         run.setText(text != null ? text : "—");
         run.setBold(bold);
-        run.setFontSize(fontSize);
-        run.setFontFamily(FONT);
-    }
-
-    private static void addParagraph(XWPFDocument doc, String text, boolean bold, int fontSize) {
-        XWPFParagraph p = doc.createParagraph();
-        XWPFRun run = p.createRun();
-        run.setText(text != null ? text : "");
-        run.setBold(bold);
+        run.setItalic(italic);
         run.setFontSize(fontSize);
         run.setFontFamily(FONT);
     }
@@ -212,36 +196,41 @@ public class ReceiptWordExportService {
     private static void setTableFullWidth(XWPFTable table) {
         CTTblWidth width = table.getCTTbl().addNewTblPr().addNewTblW();
         width.setType(STTblWidth.PCT);
-        width.setW(BigInteger.valueOf(5000));
+        width.setW(java.math.BigInteger.valueOf(5000));
     }
 
-    private static void applyTableBorders(XWPFTable table) {
+    private static void removeTableBorders(XWPFTable table) {
         CTTblBorders borders = table.getCTTbl().getTblPr().addNewTblBorders();
-        borders.addNewTop().setVal(STBorder.SINGLE);
-        borders.addNewBottom().setVal(STBorder.SINGLE);
-        borders.addNewLeft().setVal(STBorder.SINGLE);
-        borders.addNewRight().setVal(STBorder.SINGLE);
-        borders.addNewInsideH().setVal(STBorder.SINGLE);
-        borders.addNewInsideV().setVal(STBorder.SINGLE);
+        borders.addNewTop().setVal(STBorder.NONE);
+        borders.addNewBottom().setVal(STBorder.NONE);
+        borders.addNewLeft().setVal(STBorder.NONE);
+        borders.addNewRight().setVal(STBorder.NONE);
+        borders.addNewInsideH().setVal(STBorder.NONE);
+        borders.addNewInsideV().setVal(STBorder.NONE);
+    }
+
+    private static void applyCellBorder(XWPFTableCell cell) {
+        cell.setVerticalAlignment(org.apache.poi.xwpf.usermodel.XWPFTableCell.XWPFVertAlign.CENTER);
     }
 
     private static void setCellText(
-            XWPFTableCell cell, String text, boolean bold, int fontSize, ParagraphAlignment alignment) {
+            XWPFTableCell cell,
+            String text,
+            boolean bold,
+            int fontSize,
+            ParagraphAlignment alignment,
+            boolean italic) {
         cell.removeParagraph(0);
         XWPFParagraph p = cell.addParagraph();
         p.setAlignment(alignment);
-        XWPFRun run = p.createRun();
-        run.setText(text != null ? text : "");
-        run.setBold(bold);
-        run.setFontSize(fontSize);
-        run.setFontFamily(FONT);
+        appendText(p, text, bold, fontSize, italic);
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank() && !"—".equals(value.trim());
     }
 
     private static String nullToDash(String s) {
         return s != null && !s.isBlank() ? s : "—";
-    }
-
-    private static String nullToEmpty(String s) {
-        return s != null ? s : "";
     }
 }
