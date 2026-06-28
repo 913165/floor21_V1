@@ -163,6 +163,9 @@ public class ClientMilestoneSetupController {
                         .findByIdWithBuilder(buildingId)
                         .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
         model.addAttribute("selectedBuilding", building);
+        model.addAttribute(
+                "milestoneTemplateDueDate",
+                building.getMilestoneTemplateDueDate());
 
         if (bookingId == null) {
             MilestoneNavSession.remember(session, projectId, buildingId, bookingId);
@@ -198,7 +201,7 @@ public class ClientMilestoneSetupController {
 
         List<BookingPaymentSlab> slabs = listSlabsForView(bookingId, builderId);
         model.addAttribute("slabs", slabs);
-        model.addAttribute("saveForm", buildSaveForm(bookingId, slabs, booking));
+        model.addAttribute("saveForm", buildSaveForm(bookingId, slabs, booking, building));
         SlabScheduleSummary summary = summarizeForView(bookingId, builderId, booking);
         model.addAttribute("scheduleSummary", summary);
 
@@ -271,6 +274,26 @@ public class ClientMilestoneSetupController {
         return redirectBack(bookingId, buildingId, projectId);
     }
 
+    @PostMapping("/save-template-date")
+    public String saveTemplateDate(
+            @RequestParam UUID buildingId,
+            @RequestParam(required = false) UUID bookingId,
+            @RequestParam(required = false) String milestoneTemplateDueDate,
+            @RequestParam(required = false) UUID projectId,
+            RedirectAttributes ra) {
+        try {
+            LocalDate dueDate = MilestoneScheduleSaveFormParser.parseDueDate(milestoneTemplateDueDate);
+            buildingService.saveMilestoneTemplateDueDate(buildingId, dueDate);
+            if (bookingId != null && dueDate != null) {
+                bookingPaymentSlabService.applyTemplateDueDateToBooking(bookingId, dueDate, false);
+            }
+            ra.addFlashAttribute("successMessage", "Template due date saved.");
+        } catch (IllegalArgumentException | ResourceNotFoundException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return redirectBack(bookingId, buildingId, projectId);
+    }
+
     @PostMapping("/reset-template")
     public String resetTemplate(
             @RequestParam UUID bookingId,
@@ -286,7 +309,8 @@ public class ClientMilestoneSetupController {
         return redirectBack(bookingId, buildingId, projectId);
     }
 
-    private BookingPaymentSlabBatchForm buildSaveForm(UUID bookingId, List<BookingPaymentSlab> slabs, Booking booking) {
+    private BookingPaymentSlabBatchForm buildSaveForm(
+            UUID bookingId, List<BookingPaymentSlab> slabs, Booking booking, Building building) {
         BookingPaymentSlabBatchForm form = new BookingPaymentSlabBatchForm();
         form.setBookingId(bookingId);
         form.setInterestRatePercent(BookingPaymentSlabService.effectiveInterestRatePercent(booking));
@@ -294,7 +318,7 @@ public class ClientMilestoneSetupController {
         for (BookingPaymentSlab slab : slabs) {
             BookingPaymentSlabBatchForm.Line line = new BookingPaymentSlabBatchForm.Line();
             line.setId(slab.getId());
-            line.setDueDate(slab.getDueDate());
+            line.setDueDate(bookingPaymentSlabService.resolveClientSlabDueDate(slab, building, booking));
             line.setMilestoneLabel(slab.getMilestoneLabel());
             line.setPercent(slab.getPercent());
             line.setAgreedAmount(slab.getAgreedAmount());

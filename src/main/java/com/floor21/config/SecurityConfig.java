@@ -39,6 +39,9 @@ public class SecurityConfig {
                                         .requestMatchers(HttpMethod.GET, "/admin/builder-pricing-slabs/import-template")
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
                                         .requestMatchers(
+                                                HttpMethod.POST, "/admin/builder-pricing-slabs/save-dates")
+                                        .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
+                                        .requestMatchers(
                                                 HttpMethod.GET,
                                                 "/admin/milestone-sample-templates",
                                                 "/admin/milestone-sample-templates/",

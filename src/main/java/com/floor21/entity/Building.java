@@ -10,8 +10,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
-import java.time.Instant;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -119,6 +120,10 @@ public class Building {
 
     @Column(name = "floor_plan_3bhk", length = 500)
     private String floorPlan3Bhk;
+
+    /** Default slab due date for milestone templates on this building (overridable per client row). */
+    @Column(name = "milestone_template_due_date")
+    private LocalDate milestoneTemplateDueDate;
 
     @Column(name = "created_at")
     private Instant createdAt;

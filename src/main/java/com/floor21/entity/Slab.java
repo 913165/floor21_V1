@@ -11,6 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -44,6 +45,10 @@ public class Slab {
 
     @Column(name = "suggested_percent", precision = 9, scale = 4)
     private BigDecimal suggestedPercent;
+
+    /** Optional default due date copied to client milestone rows from this template. */
+    @Column(name = "default_due_date")
+    private LocalDate defaultDueDate;
 
     @Column(name = "rate_per_sqft", precision = 10, scale = 2)
     private BigDecimal ratePerSqft;

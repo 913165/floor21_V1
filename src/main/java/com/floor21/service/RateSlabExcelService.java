@@ -7,6 +7,7 @@ import com.floor21.entity.Slab;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.SlabRepository;
+import com.floor21.util.MilestoneScheduleSaveFormParser;
 import com.floor21.util.PoiSheetSupport;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -14,12 +15,14 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
 import org.apache.poi.ss.usermodel.Row;
@@ -80,7 +83,7 @@ public class RateSlabExcelService {
         try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = wb.createSheet("Milestone Templates");
             Row header = sheet.createRow(0);
-            String[] headers = {"Sno", "Slab Name", "Percent (%)", "Active"};
+            String[] headers = {"Sno", "Slab Name", "Percent (%)", "Slab Date", "Active"};
             for (int c = 0; c < headers.length; c++) {
                 header.createCell(c).setCellValue(headers[c]);
             }
@@ -89,7 +92,10 @@ public class RateSlabExcelService {
                 row.createCell(0).setCellValue(((Number) sampleRows[r][0]).intValue());
                 row.createCell(1).setCellValue((String) sampleRows[r][1]);
                 row.createCell(2).setCellValue(((Number) sampleRows[r][2]).doubleValue());
-                row.createCell(3).setCellValue((String) sampleRows[r][3]);
+                if (sampleRows[r].length > 4 && sampleRows[r][4] != null) {
+                    row.createCell(3).setCellValue((String) sampleRows[r][4]);
+                }
+                row.createCell(4).setCellValue((String) sampleRows[r][3]);
             }
             PoiSheetSupport.autoSizeColumns(sheet, headers.length);
             wb.write(out);
@@ -157,6 +163,7 @@ public class RateSlabExcelService {
             entity.setSortOrder(row.sortOrder());
             entity.setSlabName(row.slabName());
             entity.setSuggestedPercent(row.suggestedPercent());
+            entity.setDefaultDueDate(row.defaultDueDate());
             entity.setActive(row.active());
             entity.setCreatedAt(now);
             slabRepository.save(entity);
@@ -177,7 +184,8 @@ public class RateSlabExcelService {
             int snoCol = findColumn(header, formatter, evaluator, "sno", 0);
             int nameCol = findColumn(header, formatter, evaluator, "name", 1);
             int percentCol = findColumn(header, formatter, evaluator, "percent", 2);
-            int activeCol = findColumn(header, formatter, evaluator, "active", 3);
+            int dateCol = findColumn(header, formatter, evaluator, "date", -1);
+            int activeCol = findColumn(header, formatter, evaluator, "active", 4);
             List<RateSlabImportRow> rows = new ArrayList<>();
             int fallbackOrder = 0;
             for (int r = headerRowIndex + 1; r <= sheet.getLastRowNum() && rows.size() < MAX_ROWS; r++) {
@@ -197,9 +205,13 @@ public class RateSlabExcelService {
                 }
                 String activeRaw = cellText(row.getCell(activeCol), formatter, evaluator);
                 boolean active = parseActive(activeRaw);
+                LocalDate slabDate = null;
+                if (dateCol >= 0) {
+                    slabDate = parseSlabDate(row.getCell(dateCol), formatter, evaluator, r + 1);
+                }
                 int sortOrder = parseSortOrder(cellText(row.getCell(snoCol), formatter, evaluator), fallbackOrder);
                 fallbackOrder++;
-                rows.add(new RateSlabImportRow(sortOrder, slabName.trim(), percent, active));
+                rows.add(new RateSlabImportRow(sortOrder, slabName.trim(), percent, active, slabDate));
             }
             return rows;
         }
@@ -265,6 +277,11 @@ public class RateSlabExcelService {
                         return cell.getColumnIndex();
                     }
                 }
+                case "date" -> {
+                    if (v.contains("slab") && v.contains("date") || v.equals("date") || v.equals("due date")) {
+                        return cell.getColumnIndex();
+                    }
+                }
                 default -> {}
             }
         }
@@ -287,6 +304,25 @@ public class RateSlabExcelService {
             return value > 0 ? value : fallbackZeroBased + 1;
         } catch (NumberFormatException ex) {
             return fallbackZeroBased + 1;
+        }
+    }
+
+    private static LocalDate parseSlabDate(
+            Cell cell, DataFormatter formatter, FormulaEvaluator evaluator, int excelRowNumber) {
+        if (cell == null) {
+            return null;
+        }
+        if (cell.getCellType() == CellType.NUMERIC && org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
+            return cell.getLocalDateTimeCellValue().toLocalDate();
+        }
+        String raw = cellText(cell, formatter, evaluator);
+        if (raw.isBlank()) {
+            return null;
+        }
+        try {
+            return MilestoneScheduleSaveFormParser.parseDueDate(raw);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Row " + excelRowNumber + ": " + ex.getMessage());
         }
     }
 

@@ -149,6 +149,29 @@
           </td>
         </tr>
         <tr>
+          <th class="text-muted">Template due date</th>
+          <td colspan="3">
+            <th:block th:if="${editable}">
+              <form class="d-inline-flex align-items-center gap-2 flex-wrap"
+                    method="post" data-turbo="false"
+                    th:action="@{/clients/milestone-setup/save-template-date}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <input type="hidden" name="buildingId" th:value="${selectedBuildingId}"/>
+                <input type="hidden" name="bookingId" th:value="${selectedBooking.id}"/>
+                <input type="hidden" name="projectId" th:if="${filterProjectId != null}" th:value="${filterProjectId}"/>
+                <input type="date" class="form-control form-control-sm"
+                       name="milestoneTemplateDueDate" style="width:auto"
+                       th:value="${milestoneTemplateDueDate != null ? #temporals.format(milestoneTemplateDueDate, 'yyyy-MM-dd') : ''}"/>
+                <button class="btn btn-sm btn-outline-primary" type="submit">Save template date</button>
+              </form>
+              <span class="text-muted small">Common default for all milestone rows on this building. Rows below can override per client.</span>
+            </th:block>
+            <th:block th:unless="${editable}">
+              <span th:text="${milestoneTemplateDueDate != null ? #temporals.format(milestoneTemplateDueDate, 'dd-MMM-yyyy') : '—'}">—</span>
+            </th:block>
+          </td>
+        </tr>
+        <tr>
           <th class="text-muted">Client</th>
           <td colspan="3" th:text="${@bookingOwnerService.ownersDisplayName(selectedBooking.id)}">—</td>
         </tr>
@@ -328,7 +351,7 @@
   </th:block>
 
   <script defer th:src="@{/js/amount-format.js(v=milestone-setup)}"></script>
-  <script defer th:src="@{/js/milestone-setup.js(v=7)}"></script>
+  <script defer th:src="@{/js/milestone-setup.js(v=8)}"></script>
 </div>
 </body>
 </html>

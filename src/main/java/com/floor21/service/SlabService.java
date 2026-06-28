@@ -6,7 +6,10 @@ import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.SlabRepository;
+import com.floor21.security.TenantContext;
+import com.floor21.util.MilestoneScheduleSaveFormParser;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -72,6 +75,7 @@ public class SlabService {
         entity.setSlabName(form.getSlabName());
         entity.setDescription(form.getDescription());
         entity.setSuggestedPercent(form.getSuggestedPercent());
+        entity.setDefaultDueDate(form.getDefaultDueDate());
         entity.setRatePerSqft(form.getRatePerSqft());
         entity.setActive(form.getActive() != null ? form.getActive() : true);
         return slabRepository.save(entity);
@@ -81,5 +85,38 @@ public class SlabService {
     public void deleteForPlatformAdmin(UUID id) {
         Slab slab = slabRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Slab not found"));
         slabRepository.delete(slab);
+    }
+
+    @Transactional
+    public void saveDefaultDueDatesForBuilding(
+            UUID buildingId, List<UUID> slabIds, List<String> dateStrings) {
+        if (buildingId == null) {
+            throw new IllegalArgumentException("Building is required.");
+        }
+        if (slabIds == null || slabIds.isEmpty()) {
+            return;
+        }
+        UUID tenantBuilderId = TenantContext.getBuilderIdOrNull();
+        if (tenantBuilderId != null) {
+            buildingRepository
+                    .findByIdAndBuilder_Id(buildingId, tenantBuilderId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Building not found"));
+        }
+        for (int i = 0; i < slabIds.size(); i++) {
+            UUID slabId = slabIds.get(i);
+            Slab slab =
+                    slabRepository
+                            .findById(slabId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Slab not found"));
+            if (tenantBuilderId != null && !tenantBuilderId.equals(slab.getBuilder().getId())) {
+                throw new ResourceNotFoundException("Slab not found");
+            }
+            if (slab.getBuilding() == null || !buildingId.equals(slab.getBuilding().getId())) {
+                throw new IllegalArgumentException("Slab does not belong to the selected building.");
+            }
+            String raw = dateStrings != null && i < dateStrings.size() ? dateStrings.get(i) : null;
+            slab.setDefaultDueDate(MilestoneScheduleSaveFormParser.parseDueDate(raw));
+            slabRepository.save(slab);
+        }
     }
 }

@@ -16,6 +16,7 @@ import com.floor21.security.TenantContext;
 import com.floor21.util.ResidentialBhkTypes;
 import com.floor21.util.SkippedFloorsUtil;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -465,5 +466,13 @@ public class BuildingService {
             entity.setFloorPlan2Bhk(preserveFp2);
             entity.setFloorPlan3Bhk(preserveFp3);
         }
+    }
+
+    @Transactional
+    public void saveMilestoneTemplateDueDate(UUID buildingId, LocalDate dueDate) {
+        Building building = resolveForAccess(buildingId);
+        building.setMilestoneTemplateDueDate(dueDate);
+        building.setUpdatedAt(Instant.now());
+        buildingRepository.save(building);
     }
 }

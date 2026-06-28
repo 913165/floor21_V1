@@ -11,6 +11,7 @@ import com.floor21.dto.SlabScheduleSummary;
 import com.floor21.entity.Booking;
 import com.floor21.entity.BookingPaymentSlab;
 import com.floor21.entity.BookingSlabPayment;
+import com.floor21.entity.Building;
 import com.floor21.entity.PaymentSlabTemplate;
 import com.floor21.entity.Slab;
 import com.floor21.exception.ResourceNotFoundException;
@@ -24,6 +25,7 @@ import com.floor21.util.SlabReceiptWaterfall;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -751,11 +753,55 @@ public class BookingPaymentSlabService {
             syncAgreedAmountsFromPercent(bookingId);
             deduplicateSlabRows(bookingId);
             consolidateOneSlabPerMilestoneLabel(bookingId);
+            backfillMissingDueDatesFromTemplate(bookingId);
             return true;
         }
         deduplicateSlabRows(bookingId);
         consolidateOneSlabPerMilestoneLabel(bookingId);
+        backfillMissingDueDatesFromTemplate(bookingId);
         return false;
+    }
+
+    /**
+     * Client milestone setup display: saved row date, else per-milestone template date, else building
+     * common template date — never earlier than the booking date.
+     */
+    @Transactional(readOnly = true)
+    public LocalDate resolveClientSlabDueDate(
+            BookingPaymentSlab slab, Building building, Booking booking) {
+        LocalDate raw;
+        if (slab.getDueDate() != null) {
+            raw = slab.getDueDate();
+        } else if (building != null && building.getId() != null) {
+            Slab template = findMilestoneTemplateForLabel(building.getId(), slab.getMilestoneLabel());
+            raw = resolveDueDateFromTemplate(template, building);
+        } else {
+            raw = null;
+        }
+        LocalDate bookingDate = booking != null ? booking.getBookingDate() : null;
+        return clampDueDateToBookingDate(raw, bookingDate);
+    }
+
+    /** Fills or corrects client slab dates from templates; clamps past dates to booking date. */
+    @Transactional
+    public int backfillMissingDueDatesFromTemplate(UUID bookingId) {
+        Booking booking = getBookingForSchedule(bookingId);
+        Building building = booking.getFlat() != null ? booking.getFlat().getBuilding() : null;
+        if (building == null || building.getId() == null) {
+            return 0;
+        }
+        Instant now = Instant.now();
+        int updated = 0;
+        for (BookingPaymentSlab slab : listLines(bookingId)) {
+            LocalDate resolved = resolveClientSlabDueDate(slab, building, booking);
+            if (resolved != null && !resolved.equals(slab.getDueDate())) {
+                slab.setDueDate(resolved);
+                slab.setUpdatedAt(now);
+                bookingPaymentSlabRepository.save(slab);
+                updated++;
+            }
+        }
+        return updated;
     }
 
     @Transactional(readOnly = true)
@@ -870,6 +916,18 @@ public class BookingPaymentSlabService {
         return distinctActiveMilestoneSlabs(slabRepository.findActiveMilestonesByBuilding_Id(buildingId));
     }
 
+    private Map<String, Slab> milestoneTemplatesByLabelMap(UUID buildingId) {
+        Map<String, Slab> byLabel = new LinkedHashMap<>();
+        for (Slab template : listActiveBuildingMilestoneSlabs(buildingId)) {
+            byLabel.put(normalizeMilestoneLabel(resolveMilestoneLabel(template)), template);
+        }
+        return byLabel;
+    }
+
+    private Slab findMilestoneTemplateForLabel(UUID buildingId, String milestoneLabel) {
+        return milestoneTemplatesByLabelMap(buildingId).get(normalizeMilestoneLabel(milestoneLabel));
+    }
+
     /** Multiple slab rows can share the same label after imports; keep one per label for schedules. */
     private static List<Slab> distinctActiveMilestoneSlabs(List<Slab> templates) {
         Map<String, Slab> byLabel = new LinkedHashMap<>();
@@ -890,6 +948,7 @@ public class BookingPaymentSlabService {
     private void createBookingSlabsFromMilestoneSlabs(Booking booking, List<Slab> templates) {
         Instant now = Instant.now();
         BigDecimal base = baseConsideration(booking);
+        Building building = booking.getFlat() != null ? booking.getFlat().getBuilding() : null;
         int order = 0;
         for (Slab template : distinctActiveMilestoneSlabs(templates)) {
             BookingPaymentSlab row = new BookingPaymentSlab();
@@ -899,11 +958,53 @@ public class BookingPaymentSlabService {
             row.setMilestoneLabel(resolveMilestoneLabel(template));
             row.setPercent(template.getSuggestedPercent());
             row.setExtraAmount(ZERO);
-            row.setDueDate(null);
+            row.setDueDate(
+                    clampDueDateToBookingDate(
+                            resolveDueDateFromTemplate(template, building), booking.getBookingDate()));
             row.setAgreedAmount(computeAgreedPortion(base, row.getPercent()));
             row.setCreatedAt(now);
             row.setUpdatedAt(now);
             bookingPaymentSlabRepository.save(row);
+        }
+    }
+
+    private static LocalDate resolveDueDateFromTemplate(Slab template, Building building) {
+        if (template != null && template.getDefaultDueDate() != null) {
+            return template.getDefaultDueDate();
+        }
+        if (building != null && building.getMilestoneTemplateDueDate() != null) {
+            return building.getMilestoneTemplateDueDate();
+        }
+        return null;
+    }
+
+    /** Client slab due dates cannot be before the flat booking date. */
+    static LocalDate clampDueDateToBookingDate(LocalDate dueDate, LocalDate bookingDate) {
+        if (dueDate == null) {
+            return null;
+        }
+        if (bookingDate == null || !dueDate.isBefore(bookingDate)) {
+            return dueDate;
+        }
+        return bookingDate;
+    }
+
+    @Transactional
+    public void applyTemplateDueDateToBooking(UUID bookingId, LocalDate dueDate, boolean overwriteExisting) {
+        if (dueDate == null) {
+            return;
+        }
+        Booking booking = getBookingForSchedule(bookingId);
+        LocalDate clamped = clampDueDateToBookingDate(dueDate, booking.getBookingDate());
+        Instant now = Instant.now();
+        for (BookingPaymentSlab slab :
+                bookingPaymentSlabRepository.findByBooking_IdOrderBySortOrderAscIdAsc(bookingId)) {
+            if (!overwriteExisting && slab.getDueDate() != null) {
+                continue;
+            }
+            slab.setDueDate(clamped);
+            slab.setUpdatedAt(now);
+            bookingPaymentSlabRepository.save(slab);
         }
     }
 
@@ -944,7 +1045,7 @@ public class BookingPaymentSlabService {
             if (!entity.getBooking().getId().equals(booking.getId())) {
                 throw new IllegalArgumentException("Invalid payment row for this booking");
             }
-            entity.setDueDate(line.getDueDate());
+            entity.setDueDate(clampDueDateToBookingDate(line.getDueDate(), booking.getBookingDate()));
             String label = line.getMilestoneLabel();
             if (label == null || label.isBlank()) {
                 throw new IllegalArgumentException("Slab description cannot be empty.");

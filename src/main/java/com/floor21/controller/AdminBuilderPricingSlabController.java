@@ -3,6 +3,7 @@ package com.floor21.controller;
 import com.floor21.entity.Building;
 import com.floor21.entity.Slab;
 import com.floor21.exception.ResourceNotFoundException;
+import com.floor21.util.MilestoneScheduleSaveFormParser;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.BuildingRepository;
 import com.floor21.security.Floor21UserPrincipal;
@@ -13,6 +14,7 @@ import com.floor21.service.SlabService;
 import jakarta.servlet.http.HttpSession;
 import java.beans.PropertyEditorSupport;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -77,6 +79,15 @@ public class AdminBuilderPricingSlabController {
                         }
                     }
                 });
+        binder.registerCustomEditor(
+                LocalDate.class,
+                "defaultDueDate",
+                new PropertyEditorSupport() {
+                    @Override
+                    public void setAsText(String text) {
+                        setValue(MilestoneScheduleSaveFormParser.parseDueDate(text));
+                    }
+                });
     }
 
     @GetMapping
@@ -119,6 +130,11 @@ public class AdminBuilderPricingSlabController {
                             ? slabService.listFilteredForPlatformAdmin(tenantBuilderId, buildingId, search)
                             : Collections.emptyList());
             model.addAttribute("importReady", false);
+            model.addAttribute("slabDatesEditable", buildingId != null);
+            if (selectedBuilding != null) {
+                model.addAttribute(
+                        "milestoneTemplateDueDate", selectedBuilding.getMilestoneTemplateDueDate());
+            }
             return "slabs/list";
         }
 
@@ -147,7 +163,37 @@ public class AdminBuilderPricingSlabController {
                         ? slabService.listFilteredForPlatformAdmin(filterBuilderId, buildingId, search)
                         : Collections.emptyList());
         model.addAttribute("importReady", buildingId != null && selectedBuilderId != null);
+        model.addAttribute("slabDatesEditable", buildingId != null);
+        if (buildingId != null) {
+            Building buildingForDates =
+                    buildingRepository.findByIdWithBuilder(buildingId).orElse(null);
+            if (buildingForDates != null) {
+                model.addAttribute(
+                        "milestoneTemplateDueDate", buildingForDates.getMilestoneTemplateDueDate());
+            }
+        }
         return "slabs/list";
+    }
+
+    @PostMapping("/save-dates")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BUILDER_ADMIN','EXECUTIVE')")
+    public String saveSlabDates(
+            @RequestParam UUID buildingId,
+            @RequestParam(required = false) List<UUID> slabIds,
+            @RequestParam(required = false) List<String> slabDates,
+            @RequestParam(required = false) String milestoneTemplateDueDate,
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) String q,
+            RedirectAttributes ra) {
+        try {
+            slabService.saveDefaultDueDatesForBuilding(buildingId, slabIds, slabDates);
+            buildingService.saveMilestoneTemplateDueDate(
+                    buildingId, MilestoneScheduleSaveFormParser.parseDueDate(milestoneTemplateDueDate));
+            ra.addFlashAttribute("successMessage", "Milestone slab dates saved.");
+        } catch (IllegalArgumentException | ResourceNotFoundException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return redirectList(projectId, q, buildingId);
     }
 
     @GetMapping("/new")
