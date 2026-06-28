@@ -31,13 +31,40 @@ class BookingTaxDefaultsTest {
     }
 
     @Test
-    void applyToNewBookingSkipsExistingBooking() {
+    void applyMissingTaxesFillsBlankFieldsFromConsideration() {
         Booking booking = new Booking();
-        booking.setId(java.util.UUID.randomUUID());
-        booking.setConsiderationAmt(new BigDecimal("100"));
-        BookingTaxDefaults.applyToNewBooking(booking, new Flat());
+        booking.setConsiderationAmt(new BigDecimal("22000000"));
 
-        assertThat(booking.getTds()).isEqualByComparingTo("0");
-        assertThat(booking.getGst()).isEqualByComparingTo("0");
+        BookingTaxDefaults.applyMissingTaxes(booking);
+
+        assertThat(booking.getTds()).isEqualByComparingTo("220000.00");
+        assertThat(booking.getGst()).isEqualByComparingTo("1100000.00");
+        assertThat(booking.getFinalAmount()).isEqualByComparingTo("23100000.00");
+    }
+
+    @Test
+    void needsTaxDefaultsWhenConsiderationSetButTaxesBlank() {
+        Booking booking = new Booking();
+        booking.setConsiderationAmt(new BigDecimal("1000000"));
+        assertThat(BookingTaxDefaults.needsTaxDefaults(booking)).isTrue();
+
+        booking.setGst(new BigDecimal("50000"));
+        booking.setTds(new BigDecimal("10000"));
+        booking.setFinalAmount(new BigDecimal("1050000"));
+        assertThat(BookingTaxDefaults.needsTaxDefaults(booking)).isFalse();
+    }
+
+    @Test
+    void recalculateTaxesOverwritesExistingValues() {
+        Booking booking = new Booking();
+        booking.setConsiderationAmt(new BigDecimal("1000000"));
+        booking.setTds(new BigDecimal("1"));
+        booking.setGst(new BigDecimal("1"));
+
+        BookingTaxDefaults.recalculateTaxes(booking);
+
+        assertThat(booking.getTds()).isEqualByComparingTo("10000.00");
+        assertThat(booking.getGst()).isEqualByComparingTo("50000.00");
+        assertThat(booking.getFinalAmount()).isEqualByComparingTo("1050000.00");
     }
 }

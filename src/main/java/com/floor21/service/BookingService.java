@@ -277,19 +277,10 @@ public class BookingService {
         entity.setConsiderationAmt(consideration);
         entity.setQuotedAmount(form.getQuotedAmount());
         entity.setBrokerage(zeroIfNull(form.getBrokerage()));
-        BigDecimal tds = form.getTds();
-        BigDecimal gst = form.getGst();
-        if (isNew && consideration != null && consideration.compareTo(BigDecimal.ZERO) > 0) {
-            if (tds == null || tds.compareTo(BigDecimal.ZERO) == 0) {
-                tds = BookingTaxDefaults.percentOf(consideration, BookingTaxDefaults.TDS_PERCENT);
-            }
-            if (gst == null || gst.compareTo(BigDecimal.ZERO) == 0) {
-                gst = BookingTaxDefaults.percentOf(consideration, BookingTaxDefaults.GST_PERCENT);
-            }
-        }
-        entity.setTds(zeroIfNull(tds));
-        entity.setGst(zeroIfNull(gst));
+        entity.setTds(zeroIfNull(form.getTds()));
+        entity.setGst(zeroIfNull(form.getGst()));
         entity.setFinalAmount(zeroIfNull(form.getFinalAmount()));
+        BookingTaxDefaults.applyMissingTaxes(entity);
         entity.setDueAmountDate(form.getDueAmountDate());
         entity.setBookingIntimationDate(form.getBookingIntimationDate());
         entity.setNocRequestDate(form.getNocRequestDate());
@@ -330,6 +321,21 @@ public class BookingService {
         Booking saved = bookingRepository.save(entity);
         bookingOwnerService.syncOwners(saved, coOwnerIds, builderId);
         return saved;
+    }
+
+    @Transactional
+    public Booking recalculateTaxes(UUID id) {
+        UUID builderId = TenantContext.requireBuilderId();
+        Booking entity =
+                bookingRepository
+                        .findByIdAndBuilder_Id(id, builderId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
+        if (!canViewAllBookings() && !isOwnedByCurrentStaff(entity)) {
+            throw new ResourceNotFoundException("Booking not found");
+        }
+        BookingTaxDefaults.recalculateTaxes(entity);
+        entity.setUpdatedAt(Instant.now());
+        return bookingRepository.save(entity);
     }
 
     @Transactional

@@ -21,6 +21,14 @@
   <div class="alert alert-info py-2 mb-3" th:if="${!readonlyView and booking.executive == null}">
     No executive is assigned (Booked by is empty) — you can delete this booking. Related receipts and payment records will be removed too.
   </div>
+  <div class="alert alert-warning py-2 mb-3 d-flex flex-wrap align-items-center gap-2"
+       th:if="${showTaxRecalculateHint and !readonlyView}">
+    <span>TDS, GST, and final amount are not set for this consideration.</span>
+    <form th:action="@{/bookings/{id}/recalculate-taxes(id=${booking.id})}" method="post" class="d-inline mb-0" data-turbo="false">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button type="submit" class="btn btn-sm btn-warning">Recalculate from consideration</button>
+    </form>
+  </div>
   <div class="client-card">
     <div class="client-header">
       <div class="client-header__identity">

@@ -36,14 +36,60 @@ public final class BookingTaxDefaults {
             consideration = flat.getBasePrice();
             booking.setConsiderationAmt(consideration);
         }
+        applyMissingTaxes(booking);
+    }
+
+    /** True when consideration is set but TDS, GST, or final amount are still zero. */
+    public static boolean needsTaxDefaults(Booking booking) {
+        if (booking == null) {
+            return false;
+        }
+        BigDecimal consideration = booking.getConsiderationAmt();
+        if (consideration == null || consideration.compareTo(ZERO) <= 0) {
+            return false;
+        }
+        return isZeroOrNull(booking.getTds())
+                || isZeroOrNull(booking.getGst())
+                || isZeroOrNull(booking.getFinalAmount());
+    }
+
+    /** Fills blank TDS, GST, and final amount from consideration (1%, 5%, consideration + GST). */
+    public static void applyMissingTaxes(Booking booking) {
+        if (booking == null) {
+            return;
+        }
+        BigDecimal consideration = booking.getConsiderationAmt();
         if (consideration == null || consideration.compareTo(ZERO) <= 0) {
             return;
         }
-        if (booking.getTds() == null || booking.getTds().compareTo(ZERO) == 0) {
+        if (isZeroOrNull(booking.getTds())) {
             booking.setTds(percentOf(consideration, TDS_PERCENT));
         }
-        if (booking.getGst() == null || booking.getGst().compareTo(ZERO) == 0) {
+        if (isZeroOrNull(booking.getGst())) {
             booking.setGst(percentOf(consideration, GST_PERCENT));
         }
+        if (isZeroOrNull(booking.getFinalAmount())) {
+            BigDecimal gst = booking.getGst() != null ? booking.getGst() : ZERO;
+            booking.setFinalAmount(consideration.add(gst));
+        }
+    }
+
+    /** Overwrites TDS, GST, and final amount from consideration. */
+    public static void recalculateTaxes(Booking booking) {
+        if (booking == null) {
+            return;
+        }
+        BigDecimal consideration = booking.getConsiderationAmt();
+        if (consideration == null || consideration.compareTo(ZERO) <= 0) {
+            throw new IllegalArgumentException("Consideration is required to calculate TDS and GST");
+        }
+        BigDecimal gst = percentOf(consideration, GST_PERCENT);
+        booking.setTds(percentOf(consideration, TDS_PERCENT));
+        booking.setGst(gst);
+        booking.setFinalAmount(consideration.add(gst));
+    }
+
+    private static boolean isZeroOrNull(BigDecimal value) {
+        return value == null || value.compareTo(ZERO) == 0;
     }
 }

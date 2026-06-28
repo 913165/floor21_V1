@@ -203,6 +203,7 @@ public class BookingController {
         model.addAttribute(
                 "platformAdminCanManageBooking",
                 platformAdminView && bookingService.canPlatformAdminManageBookingWithoutExecutive(booking));
+        model.addAttribute("showTaxRecalculateHint", BookingTaxDefaults.needsTaxDefaults(booking));
         return "bookings/detail";
     }
 
@@ -224,7 +225,23 @@ public class BookingController {
                         builderId, booking.getFlat() != null ? booking.getFlat().getId() : null));
         model.addAttribute("executives", userProjectAssignmentService.listActiveUsersForProject(builderId));
         model.addAttribute("selectedCoOwnerIds", bookingOwnerService.listCoOwnerIds(id));
+        model.addAttribute("showTaxRecalculateHint", BookingTaxDefaults.needsTaxDefaults(booking));
         return "bookings/form";
+    }
+
+    @PostMapping("/{id}/recalculate-taxes")
+    public String recalculateTaxes(@PathVariable UUID id, RedirectAttributes ra) {
+        if (isPlatformAdmin()) {
+            ra.addFlashAttribute("errorMessage", "Read-only for platform admin.");
+            return "redirect:/bookings/" + id;
+        }
+        try {
+            bookingService.recalculateTaxes(id);
+            ra.addFlashAttribute("successMessage", "TDS, GST, and final amount recalculated from consideration.");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/bookings/" + id;
     }
 
     @PostMapping("/save")
