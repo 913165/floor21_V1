@@ -196,6 +196,25 @@ class SlabScheduleLedgerServiceTest {
     assertThat(receiptRows.get(1).interest()).isEqualByComparingTo("2645");
   }
 
+  @Test
+  void slabTotalRowShowsBookingDateWhenSlabDueDateIsEarlier() {
+    UUID slabId = UUID.randomUUID();
+    BookingPaymentSlab slab = slab(slabId, "Initial booking amount", new BigDecimal("2200000"));
+    slab.setDueDate(LocalDate.of(2026, 2, 3));
+
+    LocalDate bookingDate = LocalDate.of(2026, 6, 18);
+    List<SlabScheduleLedgerRow> rows =
+        service.buildLedgerRows(List.of(slab), Map.of(), new BigDecimal("15"), bookingDate);
+
+    SlabScheduleLedgerRow slabRow =
+        rows.stream()
+            .filter(r -> r.rowType() == SlabLedgerRowType.SLAB_TOTAL)
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(slabRow.date()).isEqualTo(bookingDate);
+  }
+
   private static BookingPaymentSlab slab(UUID id, String label, BigDecimal agreed) {
     BookingPaymentSlab slab = new BookingPaymentSlab();
     slab.setId(id);

@@ -652,6 +652,7 @@ public class BookingPaymentSlabService {
             }
         }
         BigDecimal base = baseConsideration(booking);
+        LocalDate bookingDate = booking.getBookingDate();
         List<SlabScheduleDisplayLine> rows = new ArrayList<>();
         int serial = 1;
         Set<UUID> coveredSlabIds = new HashSet<>();
@@ -701,7 +702,7 @@ public class BookingPaymentSlabService {
                             serial++,
                             slab.getMilestoneLabel(),
                             slab.getPercent(),
-                            slab.getDueDate(),
+                            clampDueDateToBookingDate(slab.getDueDate(), bookingDate),
                             slab.getAgreedAmount(),
                             slab.getExtraAmount(),
                             view.paidAmount(),
