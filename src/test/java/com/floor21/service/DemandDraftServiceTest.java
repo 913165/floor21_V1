@@ -1,8 +1,11 @@
 package com.floor21.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.floor21.dto.SlabScheduleLineView;
+import com.floor21.entity.Booking;
 import com.floor21.entity.BookingPaymentSlab;
 import java.math.BigDecimal;
 import java.util.List;
@@ -10,8 +13,17 @@ import org.junit.jupiter.api.Test;
 
 class DemandDraftServiceTest {
 
+    private final BookingPaymentSlabService bookingPaymentSlabService =
+            mock(BookingPaymentSlabService.class);
     private final DemandDraftService service =
-            new DemandDraftService(null, null, null, null, null, null);
+            new DemandDraftService(
+                    bookingPaymentSlabService,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    new DemandLetterDocxFiller());
 
     @Test
     void buildModelUsesUptoAndCurrentMilestoneRows() {
@@ -21,58 +33,65 @@ class DemandDraftServiceTest {
                 List.of(
                         line(slab1, "1157000", "1157000", "0"),
                         line(slab2, "2314000", "400000", "1914000"));
+        Booking booking = booking(new BigDecimal("3471000"));
 
         DemandDraftService.DemandLetterModel model =
                 service.buildModel(
                         lines,
                         new DemandDraftService.ReceiptTotals(
-                                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+                                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO),
+                        booking);
 
         assertThat(model.rows()).hasSize(2);
         assertThat(model.rows().get(0).scheduleName())
                 .isEqualTo("Upto – Initial booking amount");
         assertThat(model.rows().get(0).instalment()).isEqualByComparingTo("1145430");
-        assertThat(model.rows().get(0).tds()).isEqualByComparingTo("11570");
-        assertThat(model.rows().get(0).gst()).isEqualByComparingTo("57850");
-        assertThat(model.rows().get(0).currentMilestone()).isFalse();
-        assertThat(model.rows().get(1).scheduleName()).isEqualTo("Current Milestone Completed");
+        assertThat(model.rows().get(1).scheduleName()).isEqualTo("Agreement");
         assertThat(model.rows().get(1).instalment()).isEqualByComparingTo("2290860");
-        assertThat(model.rows().get(1).tds()).isEqualByComparingTo("23140");
-        assertThat(model.rows().get(1).gst()).isEqualByComparingTo("115700");
-        assertThat(model.rows().get(1).currentMilestone()).isTrue();
         assertThat(model.totalInstalment()).isEqualByComparingTo("3436290");
-        assertThat(model.totalTds()).isEqualByComparingTo("34710");
-        assertThat(model.totalGst()).isEqualByComparingTo("173550");
+        assertThat(model.payableInstalment()).isEqualByComparingTo("3436290");
     }
 
     @Test
-    void buildModelShowsNetReceivedInstalmentInSummary() {
+    void buildModelUsesGrossReceivedInstalmentForSummary() {
         BookingPaymentSlab slab1 = slab("Initial booking amount", "1157000");
         List<SlabScheduleLineView> lines = List.of(line(slab1, "1157000", "0", "1157000"));
+        Booking booking = booking(new BigDecimal("1157000"));
 
         DemandDraftService.DemandLetterModel model =
                 service.buildModel(
                         lines,
                         new DemandDraftService.ReceiptTotals(
-                                new BigDecimal("1000000"), new BigDecimal("10000"), BigDecimal.ZERO));
+                                new BigDecimal("1000000"), new BigDecimal("10000"), BigDecimal.ZERO),
+                        booking);
 
-        assertThat(model.receivedInstalment()).isEqualByComparingTo("990000");
+        assertThat(model.receivedInstalment()).isEqualByComparingTo("1000000");
+        assertThat(model.payableInstalment()).isEqualByComparingTo("145430");
     }
 
     @Test
     void buildModelWithSingleMilestoneShowsOnlyCurrentRow() {
         BookingPaymentSlab slab1 = slab("Initial booking amount", "1157000");
         List<SlabScheduleLineView> lines = List.of(line(slab1, "1157000", "0", "1157000"));
+        Booking booking = booking(new BigDecimal("1157000"));
 
         DemandDraftService.DemandLetterModel model =
                 service.buildModel(
                         lines,
                         new DemandDraftService.ReceiptTotals(
-                                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+                                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO),
+                        booking);
 
         assertThat(model.rows()).hasSize(1);
-        assertThat(model.rows().get(0).scheduleName()).isEqualTo("Current Milestone Completed");
+        assertThat(model.rows().get(0).scheduleName()).isEqualTo("Initial booking amount");
         assertThat(model.rows().get(0).instalment()).isEqualByComparingTo("1145430");
+    }
+
+    private Booking booking(BigDecimal consideration) {
+        Booking booking = new Booking();
+        booking.setConsiderationAmt(consideration);
+        when(bookingPaymentSlabService.baseConsideration(booking)).thenReturn(consideration);
+        return booking;
     }
 
     private static BookingPaymentSlab slab(String label, String due) {
