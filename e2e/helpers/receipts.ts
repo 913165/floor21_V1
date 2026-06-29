@@ -26,7 +26,7 @@ export function slabAmountForPercent(percent: number): number {
 
 /**
  * Five receipt amounts that waterfall across milestone slabs 1–3 on a ₹50L booking.
- * Aligns with the standard 5-row milestone import template.
+ * Aligns with the standard 5-row milestone import template (centralized on Milestone Templates).
  */
 export function e2eReceiptAmountsForSlabWaterfall(): number[] {
   const slab1 = slabAmountForPercent(E2E_MILESTONE_SLAB_PERCENTS[0]);

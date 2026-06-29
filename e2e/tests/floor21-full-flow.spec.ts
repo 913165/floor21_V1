@@ -10,7 +10,7 @@ import {
   requireFlowState,
   writeFlowStateFile,
 } from '../helpers/flow-state-file';
-import { adminImportMilestoneTemplates, ensureClientMilestoneSchedule } from '../helpers/milestones';
+import { adminSetupMilestoneTemplates, ensurePaymentScheduleReady } from '../helpers/milestones';
 import {
   adminAddPartners,
   adminAssignFlats,
@@ -219,10 +219,10 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     emitFlowCredentials(flow, testInfo, 'credentials-admin-complete');
   });
 
-  test('Admin — 5b. Import milestone templates for E2E building', async ({ page }, testInfo) => {
+  test('Admin — 5b. Set up centralized milestone templates for E2E building', async ({ page }, testInfo) => {
     loadFlow();
     requireBuildingFlow(flow);
-    await adminImportMilestoneTemplates(page, flow);
+    await adminSetupMilestoneTemplates(page, flow);
     writeFlowStateFile(flow);
     emitFlowCredentials(flow, testInfo, 'credentials-milestones-imported');
   });
@@ -314,7 +314,7 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     flow.receipts = [];
 
     await login(page, flow.user1.email, flow.user1.password);
-    await ensureClientMilestoneSchedule(page, flow, primaryBuyerBooking!.clientDisplayName);
+    await ensurePaymentScheduleReady(page, flow, primaryBuyerBooking!.clientDisplayName);
 
     for (let i = 0; i < primaryAmounts.length; i++) {
       const amount = primaryAmounts[i];
@@ -341,7 +341,7 @@ test.describe.serial('Floor21 — full flow (admin + partner)', () => {
     });
 
     await login(page, flow.user2.email, flow.user2.password);
-    await ensureClientMilestoneSchedule(page, flow, user2Booking!.clientDisplayName);
+    await ensurePaymentScheduleReady(page, flow, user2Booking!.clientDisplayName);
     const partner2Amount = primaryAmounts[0];
     const partner2Cheque = await createPaymentReceipt(
       page,

@@ -70,7 +70,7 @@ export async function createBookingForFlat(
   await selectClientByDisplayName(form, clientDisplayName);
   await selectFlat(form, flatId, flatNumber);
   await form.locator('[name="bookingDate"]').fill(bookingDate);
-  await form.locator('#considerationAmt').fill('5000000');
+  await form.locator('[name="considerationAmt"]').fill('5000000');
 
   await Promise.all([
     page.waitForURL(/\/bookings\/[0-9a-f-]+(?:\?|$)/, { timeout: 20_000 }),

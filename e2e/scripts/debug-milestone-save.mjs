@@ -1,5 +1,6 @@
 /**
- * Login as E2E partner, load milestone setup, POST save with slab dates.
+ * Debug helper: login as E2E partner, load Milestone setup (Clients), POST save with slab dates.
+ * Full Playwright flow uses centralized Milestone Templates + Payment schedule auto-materialize instead.
  */
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';

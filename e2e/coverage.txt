@@ -115,11 +115,12 @@ Generated from app routes/controllers vs e2e helpers only.
 
 === Milestone templates — beyond import ===
 - Create / edit / delete individual rate slab rows (CRUD UI)
+- Save common template date + per-row slab dates (centralized due dates)
 - Manual milestone template CRUD (/admin/payment-milestones)
 
-=== Milestone setup — partial only ===
-- Save schedule button / bulk date apply (only materialize path exercised)
-- Edit individual slab rows after materialize
+=== Milestone setup (Clients) — not exercised in full flow ===
+- Per-client overrides (interest rate, custom dates, materialize button)
+- Save schedule / bulk date apply on client screen
 
 === Payment receipts (/receipts) — partial only ===
 - Receipt print view
@@ -166,7 +167,7 @@ Generated from app routes/controllers vs e2e helpers only.
 === What Playwright DOES cover (for reference) ===
 Admin: create project, create 2 users, create building + grid counts, 2BHK defaults,
   column defaults, per-flat areas, ground-floor shop count + parking configure (no size sliders),
-  add partners, assign ~90% flats, import milestone templates Excel, link parking slots.
+  add partners, assign ~90% flats, import milestone templates + centralized due dates, link parking slots.
 Partner: login, assigned-flat bookability, owner all-flats bookability, create clients,
-  create bookings (≥50% of assigned), own bookings in list, milestone setup + receipts
-  (5 waterfall + 1) + payment schedule screenshot.
+  create bookings (≥50% of assigned), own bookings in list, payment schedule from templates
+  + receipts (5 waterfall + 1) + payment schedule screenshot.

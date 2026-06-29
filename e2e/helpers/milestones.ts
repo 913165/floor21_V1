@@ -3,12 +3,15 @@ import os from 'os';
 import path from 'path';
 import { expect, type Page } from '@playwright/test';
 import { loginAsSuperAdmin } from './auth';
-import { loadMilestoneSetupForBooking, openMilestoneTemplates, waitForUrlBookingId } from './nav';
+import { loadPaymentScheduleForBooking, openMilestoneTemplates } from './nav';
 import type { PlatformFlowState } from './platform-flow';
 import { waitForMainPanel } from './projects';
 
-/** Super admin imports the standard milestone template Excel for the E2E building. */
-export async function adminImportMilestoneTemplates(page: Page, flow: PlatformFlowState) {
+/** Aligns with e2e booking date in helpers/bookings.ts (slab dates clamp to booking date). */
+export const E2E_MILESTONE_TEMPLATE_DUE_DATE = '2026-06-15';
+
+/** Super admin imports milestone templates and saves centralized due dates for the E2E building. */
+export async function adminSetupMilestoneTemplates(page: Page, flow: PlatformFlowState) {
   await loginAsSuperAdmin(page);
   const templateResponse = await page.request.get('admin/builder-pricing-slabs/import-template');
   expect(templateResponse.ok()).toBeTruthy();
@@ -30,9 +33,36 @@ export async function adminImportMilestoneTemplates(page: Page, flow: PlatformFl
     importForm.getByRole('button', { name: 'Import' }).click(),
   ]);
 
-  const after = await waitForMainPanel(page);
+  let after = await waitForMainPanel(page);
   await expect(
     after.locator('.alert-success').filter({ hasText: /Imported \d+ rate slab/ }).first(),
+  ).toBeVisible();
+
+  await adminSaveCentralizedMilestoneDates(page, E2E_MILESTONE_TEMPLATE_DUE_DATE);
+}
+
+/** @deprecated use adminSetupMilestoneTemplates */
+export const adminImportMilestoneTemplates = adminSetupMilestoneTemplates;
+
+async function adminSaveCentralizedMilestoneDates(page: Page, templateDueDate: string) {
+  const panel = await waitForMainPanel(page);
+  await expect(panel.locator('#slabDatesForm')).toBeVisible({ timeout: 15_000 });
+  await panel.locator('#milestoneTemplateDueDate').fill(templateDueDate);
+
+  const dateInputs = panel.locator('input[name="slabDates"][form="slabDatesForm"]');
+  const count = await dateInputs.count();
+  for (let i = 0; i < count; i++) {
+    await dateInputs.nth(i).fill(templateDueDate);
+  }
+
+  await Promise.all([
+    page.waitForURL(/buildingId=/, { timeout: 30_000 }),
+    panel.getByRole('button', { name: 'Save slab dates' }).click(),
+  ]);
+
+  const after = await waitForMainPanel(page);
+  await expect(
+    after.locator('.alert-success').filter({ hasText: /Milestone slab dates saved/ }).first(),
   ).toBeVisible();
 }
 
@@ -44,66 +74,24 @@ function bookingIdForClient(flow: PlatformFlowState, clientDisplayName: string):
   return booking.bookingId;
 }
 
-/** Set every slab due date in the milestone grid (bulk UI + direct DOM for reliability). */
-async function setSlabDueDates(page: Page, bulkDateValue: string) {
-  const bulkDate = page.locator('#msBulkDate');
-  if (await bulkDate.count()) {
-    await bulkDate.scrollIntoViewIfNeeded();
-    await bulkDate.fill(bulkDateValue);
-    await page.locator('#msBulkApply').click();
-  }
-
-  await page.evaluate((value) => {
-    const root = document.getElementById('floor21-main') ?? document;
-    root.querySelectorAll('#milestoneSlabTable tbody tr .js-ms-due-date').forEach((el) => {
-      const input = el as HTMLInputElement;
-      input.readOnly = false;
-      input.removeAttribute('readonly');
-      input.value = value;
-    });
-  }, bulkDateValue);
-}
-
-/** Materialize and save slab dates for one booked client. Caller must already be logged in as that partner. */
-export async function ensureClientMilestoneSchedule(
+/**
+ * Opens payment schedule for a booking. Slab rows auto-materialize from centralized
+ * Milestone Templates (building common date + per-row dates).
+ */
+export async function ensurePaymentScheduleReady(
   page: Page,
   flow: PlatformFlowState,
   clientDisplayName: string,
 ) {
   const bookingId = bookingIdForClient(flow, clientDisplayName);
-  let panel = await loadMilestoneSetupForBooking(page, flow.buildingId, bookingId);
-
-  const slabRows = panel.locator('#milestoneSlabTable tbody tr');
-  if ((await slabRows.count()) === 0) {
-    const materialize = panel
-      .getByRole('button', { name: 'Set Slab as per Regular Payment' })
-      .first();
-    if (await materialize.isVisible()) {
-      page.once('dialog', (dialog) => dialog.accept());
-      await Promise.all([
-        waitForUrlBookingId(page, bookingId),
-        materialize.click(),
-      ]);
-      panel = await waitForMainPanel(page);
-    }
-  }
-
-  await expect(panel.locator('#milestoneSlabTable tbody tr').first()).toBeVisible({ timeout: 15_000 });
-
-  const saveSchedule = panel.getByRole('button', { name: 'Save schedule' });
-  if (await saveSchedule.isVisible()) {
-    await setSlabDueDates(page, '2026-03-28');
-    await saveSchedule.scrollIntoViewIfNeeded();
-    await Promise.all([
-      page.waitForURL(/milestone-setup.*bookingId=/, { timeout: 30_000 }),
-      saveSchedule.click(),
-    ]);
-    panel = await waitForMainPanel(page);
-    await expect(
-      panel.locator('.alert-success').filter({ hasText: /Milestone schedule saved/ }).first(),
-    ).toBeVisible({ timeout: 15_000 });
-  }
-
-  const rowCount = await panel.locator('#milestoneSlabTable tbody tr').count();
+  const schedule = await loadPaymentScheduleForBooking(page, flow.buildingId, bookingId);
+  await expect(schedule.getByText('Slab payment schedule')).toBeVisible({ timeout: 30_000 });
+  await expect(schedule.locator('.slab-schedule-ledger-table tbody tr').first()).toBeVisible({
+    timeout: 15_000,
+  });
+  const rowCount = await schedule.locator('.slab-schedule-ledger-table tbody tr').count();
   expect(rowCount).toBeGreaterThan(0);
 }
+
+/** @deprecated use ensurePaymentScheduleReady */
+export const ensureClientMilestoneSchedule = ensurePaymentScheduleReady;

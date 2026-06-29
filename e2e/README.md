@@ -144,7 +144,9 @@ Expand **Floor21 — full flow (admin + partner)**, then click ▶ on each step 
 
 **Admin — 3e (floor configure):** Ground floor — **Add ground floor** + configure shops; parking floor 1 — open Configure and save. Size sliders were removed; panel edge-drag handles resize instead. Tests verify modals have no car/shop size bars and saved config keeps default size % (140 shops / 180 parking). See `helpers/floor-size-config.ts`.
 
-**Partner — 6 (receipts):** After bookings exist, records **5 waterfall receipts** for **Client1 Buyer** (`client1@example.com`) across milestone slabs 1–3 (₹50L consideration), plus one receipt for partner 2’s first client, then attaches **payment schedule** full-page screenshots to the Playwright report.
+**Admin — 5b (milestone templates):** Imports the standard Excel template on **Milestone Templates**, then saves the **common template date** and per-row slab dates for the E2E building. Partner payment schedules materialize from these centralized templates (no per-client Milestone setup step required for the default flow).
+
+**Partner — 6 (receipts):** After bookings exist, opens **Payment schedule** (auto-creates slab rows from centralized templates), records **5 waterfall receipts** for **Client1 Buyer** (`client1@example.com`) across milestone slabs 1–3 (₹50L consideration), plus one receipt for partner 2’s first client, then attaches **payment schedule** full-page screenshots to the Playwright report.
 
 **Passwords:** E2E-created partner users all use **`user123`**. Platform admin stays `super@floor21.com` / `super123`. Clients are CRM records only (no login).
 
