@@ -105,11 +105,13 @@ public class DemandDraftService {
 
         if (lastIndex > 0) {
             for (int i = 0; i < lastIndex; i++) {
-                BigDecimal instalment =
+                BigDecimal grossInstalment =
                         lines.get(i).dueAmount() != null ? lines.get(i).dueAmount() : ZERO;
-                uptoInstalment = uptoInstalment.add(instalment);
-                uptoTds = uptoTds.add(taxOnInstalment(instalment, 1));
-                uptoGst = uptoGst.add(taxOnInstalment(instalment, 5));
+                BigDecimal rowTds = taxOnInstalment(grossInstalment, 1);
+                BigDecimal rowGst = taxOnInstalment(grossInstalment, 5);
+                uptoInstalment = uptoInstalment.add(netInstalmentAfterTds(grossInstalment, rowTds));
+                uptoTds = uptoTds.add(rowTds);
+                uptoGst = uptoGst.add(rowGst);
             }
             String uptoLabel =
                     "Upto – "
@@ -118,10 +120,11 @@ public class DemandDraftService {
         }
 
         SlabScheduleLineView currentLine = lines.get(lastIndex);
-        BigDecimal currentInstalment =
+        BigDecimal currentGross =
                 currentLine.dueAmount() != null ? currentLine.dueAmount() : ZERO;
-        BigDecimal currentTds = taxOnInstalment(currentInstalment, 1);
-        BigDecimal currentGst = taxOnInstalment(currentInstalment, 5);
+        BigDecimal currentTds = taxOnInstalment(currentGross, 1);
+        BigDecimal currentGst = taxOnInstalment(currentGross, 5);
+        BigDecimal currentInstalment = netInstalmentAfterTds(currentGross, currentTds);
         rows.add(
                 new DemandPaymentRow(
                         rows.size() + 1,
@@ -131,18 +134,29 @@ public class DemandDraftService {
                         currentGst,
                         true));
 
-        BigDecimal totalInstalment = uptoInstalment.add(currentInstalment);
+        BigDecimal totalInstalment =
+                rows.stream().map(DemandPaymentRow::instalment).reduce(ZERO, BigDecimal::add);
         BigDecimal totalTds = uptoTds.add(currentTds);
         BigDecimal totalGst = uptoGst.add(currentGst);
+        BigDecimal receivedInstalment = netReceivedInstalment(received);
         return new DemandLetterModel(
                 rows,
                 lines.get(lastIndex).slab(),
                 totalInstalment,
                 totalTds,
                 totalGst,
-                received.instalment(),
+                receivedInstalment,
                 received.tds(),
                 received.gst());
+    }
+
+    private static BigDecimal netReceivedInstalment(ReceiptTotals received) {
+        if (received == null) {
+            return ZERO;
+        }
+        BigDecimal gross = received.instalment() != null ? received.instalment() : ZERO;
+        BigDecimal tds = received.tds() != null ? received.tds() : ZERO;
+        return netInstalmentAfterTds(gross, tds);
     }
 
     private ReceiptTotals receiptTotals(UUID bookingId) {
@@ -152,8 +166,13 @@ public class DemandDraftService {
         BigDecimal gst = ZERO;
         for (Receipt receipt :
                 receiptRepository.findActiveByBooking_IdOrderByReceiptDateAsc(bookingId, builderId)) {
-            if (receipt.getAmount() != null) {
-                instalment = instalment.add(receipt.getAmount());
+            BigDecimal consideration =
+                    receipt.getAmountConsideration() != null
+                                    && receipt.getAmountConsideration().compareTo(ZERO) > 0
+                            ? receipt.getAmountConsideration()
+                            : receipt.getAmount();
+            if (consideration != null) {
+                instalment = instalment.add(consideration);
             }
             if (receipt.getAmountTds() != null) {
                 tds = tds.add(receipt.getAmountTds());
@@ -172,6 +191,16 @@ public class DemandDraftService {
         return instalment
                 .multiply(BigDecimal.valueOf(percent))
                 .divide(HUNDRED, 0, RoundingMode.HALF_UP);
+    }
+
+    /** Instalment payable to builder after buyer deducts TDS. */
+    private static BigDecimal netInstalmentAfterTds(BigDecimal grossInstalment, BigDecimal tds) {
+        if (grossInstalment == null || grossInstalment.compareTo(ZERO) <= 0) {
+            return ZERO;
+        }
+        BigDecimal deducted = tds != null ? tds : ZERO;
+        BigDecimal net = grossInstalment.subtract(deducted);
+        return net.compareTo(ZERO) < 0 ? ZERO : net;
     }
 
     private void writeDocument(XWPFDocument doc, Booking booking, DemandLetterModel model) {

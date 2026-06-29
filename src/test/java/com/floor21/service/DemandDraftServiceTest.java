@@ -31,18 +31,32 @@ class DemandDraftServiceTest {
         assertThat(model.rows()).hasSize(2);
         assertThat(model.rows().get(0).scheduleName())
                 .isEqualTo("Upto – Initial booking amount");
-        assertThat(model.rows().get(0).instalment()).isEqualByComparingTo("1157000");
+        assertThat(model.rows().get(0).instalment()).isEqualByComparingTo("1145430");
         assertThat(model.rows().get(0).tds()).isEqualByComparingTo("11570");
         assertThat(model.rows().get(0).gst()).isEqualByComparingTo("57850");
         assertThat(model.rows().get(0).currentMilestone()).isFalse();
         assertThat(model.rows().get(1).scheduleName()).isEqualTo("Current Milestone Completed");
-        assertThat(model.rows().get(1).instalment()).isEqualByComparingTo("2314000");
+        assertThat(model.rows().get(1).instalment()).isEqualByComparingTo("2290860");
         assertThat(model.rows().get(1).tds()).isEqualByComparingTo("23140");
         assertThat(model.rows().get(1).gst()).isEqualByComparingTo("115700");
         assertThat(model.rows().get(1).currentMilestone()).isTrue();
-        assertThat(model.totalInstalment()).isEqualByComparingTo("3471000");
+        assertThat(model.totalInstalment()).isEqualByComparingTo("3436290");
         assertThat(model.totalTds()).isEqualByComparingTo("34710");
         assertThat(model.totalGst()).isEqualByComparingTo("173550");
+    }
+
+    @Test
+    void buildModelShowsNetReceivedInstalmentInSummary() {
+        BookingPaymentSlab slab1 = slab("Initial booking amount", "1157000");
+        List<SlabScheduleLineView> lines = List.of(line(slab1, "1157000", "0", "1157000"));
+
+        DemandDraftService.DemandLetterModel model =
+                service.buildModel(
+                        lines,
+                        new DemandDraftService.ReceiptTotals(
+                                new BigDecimal("1000000"), new BigDecimal("10000"), BigDecimal.ZERO));
+
+        assertThat(model.receivedInstalment()).isEqualByComparingTo("990000");
     }
 
     @Test
@@ -58,7 +72,7 @@ class DemandDraftServiceTest {
 
         assertThat(model.rows()).hasSize(1);
         assertThat(model.rows().get(0).scheduleName()).isEqualTo("Current Milestone Completed");
-        assertThat(model.rows().get(0).instalment()).isEqualByComparingTo("1157000");
+        assertThat(model.rows().get(0).instalment()).isEqualByComparingTo("1145430");
     }
 
     private static BookingPaymentSlab slab(String label, String due) {
