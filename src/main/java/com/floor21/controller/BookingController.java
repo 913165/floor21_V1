@@ -246,10 +246,7 @@ public class BookingController {
                 List<ParkingSlotOptionDto> availableParkingSlots =
                         flatService.listParkingSlotsForLink(parkingBuildingId, flatId).stream()
                                 .filter(opt -> !linkedIds.contains(opt.id()))
-                                .filter(
-                                        opt ->
-                                                opt.linkedResidentialFlatId() == null
-                                                        || opt.linkedResidentialFlatId().equals(flatId))
+                                .filter(opt -> opt.linkedResidentialFlatId() == null)
                                 .toList();
                 model.addAttribute("availableParkingSlots", availableParkingSlots);
             } else {

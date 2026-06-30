@@ -204,15 +204,36 @@ public class FlatController {
         }
     }
 
-    @PostMapping(value = "/flats/{id}/parking-link", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(
+            value = "/flats/{id}/parking-link",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','BUILDER_ADMIN','EXECUTIVE')")
     @ResponseBody
-    public ResponseEntity<?> linkParkingToResidential(
-            @PathVariable UUID id, @RequestBody ParkingLinkDto body) {
+    public ResponseEntity<?> linkParkingToResidentialJson(
+            @PathVariable UUID id, @RequestBody(required = false) ParkingLinkDto body) {
+        UUID residentialId = body != null ? body.residentialFlatId() : null;
+        return linkParkingToResidential(id, residentialId);
+    }
+
+    @PostMapping(
+            value = "/flats/{id}/parking-link",
+            consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BUILDER_ADMIN','EXECUTIVE')")
+    @ResponseBody
+    public ResponseEntity<?> linkParkingToResidentialForm(
+            @PathVariable UUID id,
+            @RequestParam(value = "residentialFlatId", required = false) UUID residentialFlatId) {
+        return linkParkingToResidential(id, residentialFlatId);
+    }
+
+    private ResponseEntity<?> linkParkingToResidential(UUID id, UUID residentialFlatId) {
         try {
-            return ResponseEntity.ok(flatService.linkParkingToResidential(id, body));
+            return ResponseEntity.ok(
+                    flatService.linkParkingToResidential(id, new ParkingLinkDto(residentialFlatId)));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (ResourceNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
         }
     }
 

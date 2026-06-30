@@ -1,9 +1,10 @@
 (function () {
   var FRAME_ID = "floor21-main";
+  var clickBound = false;
 
   function appRoot() {
-    var body = document.body;
-    return body && body.getAttribute("data-app-root") ? body.getAttribute("data-app-root") : "";
+    var r = (document.body && document.body.getAttribute("data-app-root")) || "";
+    return r.replace(/\/$/, "");
   }
 
   function csrfHeaders() {
@@ -15,21 +16,53 @@
     return h;
   }
 
-  function parseErrorResponse(res) {
+  function isUuid(value) {
+    return (
+      typeof value === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim())
+    );
+  }
+
+  function parseErrorResponse(res, fallbackPrefix) {
+    var prefix = fallbackPrefix || "Could not load parking data";
     return res
-      .json()
-      .then(function (body) {
-        if (body && body.error && body.error !== "Bad Request") {
-          return body.error;
+      .text()
+      .then(function (text) {
+        if (text) {
+          try {
+            var body = JSON.parse(text);
+            if (body && body.error && body.error !== "Bad Request") {
+              return body.error;
+            }
+            if (body && body.message) {
+              return body.message;
+            }
+          } catch (e) {
+            if (text.length < 200 && text.indexOf("<") === -1) {
+              return text;
+            }
+          }
         }
-        if (body && body.message) {
-          return body.message;
-        }
-        return "Could not load parking data (HTTP " + res.status + ").";
+        return prefix + " (HTTP " + res.status + ").";
       })
       .catch(function () {
-        return "Could not load parking data (HTTP " + res.status + ").";
+        return prefix + " (HTTP " + res.status + ").";
       });
+  }
+
+  function readContext() {
+    var root = document.getElementById("booking-parking-links");
+    if (!root) return null;
+    var bookingId = root.getAttribute("data-booking-id");
+    var flatId = root.getAttribute("data-flat-id");
+    if (!bookingId || !flatId) return null;
+    return {
+      root: root,
+      bookingId: bookingId,
+      flatId: flatId,
+      buildingId: root.getAttribute("data-building-id"),
+      editable: root.getAttribute("data-editable") === "true",
+    };
   }
 
   function sameId(a, b) {
@@ -120,162 +153,174 @@
       method: "POST",
       headers: headers,
       body: JSON.stringify({ residentialFlatId: residentialFlatId }),
+      credentials: "same-origin",
+    });
+  }
+
+  async function loadParkingOptions(ctx) {
+    var bookingUrl = appRoot() + "/bookings/" + ctx.bookingId + "/parking-slots-for-link";
+    var res = await fetch(bookingUrl, { headers: { Accept: "application/json" } });
+    if (res.ok) {
+      return { ok: true, options: await res.json(), error: null };
+    }
+    if (ctx.buildingId) {
+      var buildingUrl =
+        appRoot() +
+        "/buildings/" +
+        ctx.buildingId +
+        "/parking-slots-for-link?residentialFlatId=" +
+        encodeURIComponent(ctx.flatId);
+      var buildingRes = await fetch(buildingUrl, { headers: { Accept: "application/json" } });
+      if (buildingRes.ok) {
+        return { ok: true, options: await buildingRes.json(), error: null };
+      }
+      return {
+        ok: false,
+        options: [],
+        error: await parseErrorResponse(buildingRes, "Could not load parking slots"),
+      };
+    }
+    return { ok: false, options: [], error: await parseErrorResponse(res, "Could not load parking slots") };
+  }
+
+  async function populateAddSelect(ctx, linkedSlots) {
+    var select = document.getElementById("booking-parking-add");
+    if (!select) return;
+
+    var serverRenderedCount = countSelectOptions(select);
+    var linkedIds = {};
+    (linkedSlots || []).forEach(function (s) {
+      if (s.parkingFlatId) linkedIds[String(s.parkingFlatId).toLowerCase()] = true;
+      if (s.id) linkedIds[String(s.id).toLowerCase()] = true;
+    });
+
+    var loaded = await loadParkingOptions(ctx);
+    if (!loaded.ok) {
+      if (!hasDropdownOptions()) {
+        showError(loaded.error);
+      } else {
+        showError("");
+      }
+      syncNoSlotsHint(countSelectOptions(select));
+      select.disabled = false;
+      return;
+    }
+
+    var options = loaded.options || [];
+    var toAdd = [];
+      options.forEach(function (opt) {
+        var optId = opt.id ? String(opt.id).toLowerCase() : "";
+        if (optId && linkedIds[optId]) return;
+        if (opt.linkedResidentialFlatId) return;
+        toAdd.push(opt);
+      });
+
+    if (toAdd.length > 0 || serverRenderedCount === 0) {
+      select.innerHTML = '<option value="">\u2014 Select slot \u2014</option>';
+      toAdd.forEach(function (opt) {
+        var option = document.createElement("option");
+        option.value = opt.id;
+        option.textContent = formatSlot(opt);
+        select.appendChild(option);
+      });
+    }
+
+    var added = toAdd.length > 0 ? toAdd.length : serverRenderedCount;
+    select.disabled = false;
+    syncNoSlotsHint(added);
+    if (toAdd.length === 0 && options.length > 0 && serverRenderedCount === 0) {
+      showError("All available parking slots are already linked to this or other flats.");
+    } else {
+      showError("");
+    }
+  }
+
+  async function loadSlots(ctx) {
+    var res = await fetch(appRoot() + "/bookings/" + ctx.bookingId + "/linked-parking", {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      if (!hasServerLinkedParking() && !hasDropdownOptions()) {
+        showError(await parseErrorResponse(res, "Could not load linked parking"));
+      }
+      return [];
+    }
+    showError("");
+    var slots = await res.json();
+    renderList(slots, ctx.editable);
+    if (ctx.editable) {
+      await populateAddSelect(ctx, slots);
+    }
+    return slots;
+  }
+
+  async function linkSlot(ctx, parkingFlatId) {
+    if (!isUuid(parkingFlatId) || !isUuid(ctx.flatId)) {
+      showError("Invalid flat reference. Refresh the page and try again.");
+      return;
+    }
+    var btn = document.getElementById("booking-parking-add-btn");
+    if (btn) btn.disabled = true;
+    try {
+      var res = await postParkingLink(parkingFlatId, ctx.flatId);
+      if (!res.ok) {
+        showError(await parseErrorResponse(res, "Could not link parking slot"));
+        return;
+      }
+      showError("");
+      await loadSlots(ctx);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function unlinkSlot(ctx, parkingFlatId) {
+    var res = await postParkingLink(parkingFlatId, null);
+    if (!res.ok) {
+      showError(await parseErrorResponse(res, "Could not unlink parking slot"));
+      return;
+    }
+    showError("");
+    await loadSlots(ctx);
+  }
+
+  function bindDocumentClicks() {
+    if (clickBound) return;
+    clickBound = true;
+    document.addEventListener("click", function (e) {
+      var ctx = readContext();
+      if (!ctx || !ctx.editable) return;
+
+      var unlinkBtn = e.target.closest(".booking-parking-unlink");
+      if (unlinkBtn && ctx.root.contains(unlinkBtn)) {
+        e.preventDefault();
+        var item = unlinkBtn.closest("[data-parking-flat-id]");
+        if (!item) return;
+        void unlinkSlot(ctx, item.getAttribute("data-parking-flat-id"));
+        return;
+      }
+
+      if (e.target.closest("#booking-parking-add-btn")) {
+        e.preventDefault();
+        var select = document.getElementById("booking-parking-add");
+        if (!select || !select.value) {
+          showError("Select a parking slot to link.");
+          return;
+        }
+        void linkSlot(ctx, select.value);
+      }
     });
   }
 
   function initBookingParkingLinks() {
-    var root = document.getElementById("booking-parking-links");
-    if (!root) return;
-    if (root.getAttribute("data-initialized") === "true") return;
+    var ctx = readContext();
+    if (!ctx) return;
 
-    var bookingId = root.getAttribute("data-booking-id");
-    var flatId = root.getAttribute("data-flat-id");
-    var buildingId = root.getAttribute("data-building-id");
-    var editable = root.getAttribute("data-editable") === "true";
+    bindDocumentClicks();
 
-    if (!bookingId || !flatId) return;
-
-    root.setAttribute("data-initialized", "true");
-
-    async function loadParkingOptions() {
-      var bookingUrl = appRoot() + "/bookings/" + bookingId + "/parking-slots-for-link";
-      var res = await fetch(bookingUrl, { headers: { Accept: "application/json" } });
-      if (res.ok) {
-        return { ok: true, options: await res.json(), error: null };
-      }
-      if (buildingId) {
-        var buildingUrl =
-          appRoot() +
-          "/buildings/" +
-          buildingId +
-          "/parking-slots-for-link?residentialFlatId=" +
-          encodeURIComponent(flatId);
-        var buildingRes = await fetch(buildingUrl, { headers: { Accept: "application/json" } });
-        if (buildingRes.ok) {
-          return { ok: true, options: await buildingRes.json(), error: null };
-        }
-        return { ok: false, options: [], error: await parseErrorResponse(buildingRes) };
-      }
-      return { ok: false, options: [], error: await parseErrorResponse(res) };
-    }
-
-    async function populateAddSelect(linkedSlots) {
-      var select = document.getElementById("booking-parking-add");
-      if (!select) return;
-
-      var serverRenderedCount = countSelectOptions(select);
-      var linkedIds = {};
-      (linkedSlots || []).forEach(function (s) {
-        if (s.parkingFlatId) linkedIds[String(s.parkingFlatId).toLowerCase()] = true;
-        if (s.id) linkedIds[String(s.id).toLowerCase()] = true;
-      });
-
-      var loaded = await loadParkingOptions();
-      if (!loaded.ok) {
-        if (!hasDropdownOptions()) {
-          showError(loaded.error);
-        } else {
-          showError("");
-        }
-        syncNoSlotsHint(countSelectOptions(select));
-        select.disabled = false;
-        return;
-      }
-
-      var options = loaded.options || [];
-      var toAdd = [];
-      options.forEach(function (opt) {
-        var optId = opt.id ? String(opt.id).toLowerCase() : "";
-        if (optId && linkedIds[optId]) return;
-        if (opt.linkedResidentialFlatId && !sameId(opt.linkedResidentialFlatId, flatId)) return;
-        toAdd.push(opt);
-      });
-
-      if (toAdd.length > 0 || serverRenderedCount === 0) {
-        select.innerHTML = '<option value="">\u2014 Select slot \u2014</option>';
-        toAdd.forEach(function (opt) {
-          var option = document.createElement("option");
-          option.value = opt.id;
-          option.textContent = formatSlot(opt);
-          select.appendChild(option);
-        });
-      }
-
-      var added = toAdd.length > 0 ? toAdd.length : serverRenderedCount;
-      select.disabled = false;
-      syncNoSlotsHint(added);
-      if (toAdd.length === 0 && options.length > 0 && serverRenderedCount === 0) {
-        showError("All available parking slots are already linked to this or other flats.");
-      } else if (added === 0) {
-        showError("");
-      } else {
-        showError("");
-      }
-    }
-
-    async function loadSlots() {
-      var res = await fetch(appRoot() + "/bookings/" + bookingId + "/linked-parking", {
-        headers: { Accept: "application/json" },
-      });
-      if (!res.ok) {
-        if (!hasServerLinkedParking() && !hasDropdownOptions()) {
-          showError(await parseErrorResponse(res));
-        }
-        return [];
-      }
-      showError("");
-      var slots = await res.json();
-      renderList(slots, editable);
-      if (editable) {
-        await populateAddSelect(slots);
-      }
-      return slots;
-    }
-
-    async function linkSlot(parkingFlatId) {
-      var res = await postParkingLink(parkingFlatId, flatId);
-      if (!res.ok) {
-        showError(await parseErrorResponse(res));
-        return;
-      }
-      await loadSlots();
-    }
-
-    async function unlinkSlot(parkingFlatId) {
-      var res = await postParkingLink(parkingFlatId, null);
-      if (!res.ok) {
-        showError(await parseErrorResponse(res));
-        return;
-      }
-      await loadSlots();
-    }
-
-    if (!root.getAttribute("data-click-bound")) {
-      root.setAttribute("data-click-bound", "true");
-      root.addEventListener("click", function (e) {
-        var unlinkBtn = e.target.closest(".booking-parking-unlink");
-        if (unlinkBtn) {
-          e.preventDefault();
-          var item = unlinkBtn.closest("[data-parking-flat-id]");
-          if (!item) return;
-          void unlinkSlot(item.getAttribute("data-parking-flat-id"));
-          return;
-        }
-        if (e.target.closest("#booking-parking-add-btn")) {
-          e.preventDefault();
-          var addSelect = document.getElementById("booking-parking-add");
-          if (!addSelect || !addSelect.value) {
-            showError("Select a parking slot to link.");
-            return;
-          }
-          void linkSlot(addSelect.value);
-        }
-      });
-    }
-
-    if (editable) {
+    if (ctx.editable) {
       syncNoSlotsHint(countSelectOptions(document.getElementById("booking-parking-add")));
-      void loadSlots();
+      void loadSlots(ctx);
     }
   }
 
