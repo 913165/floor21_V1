@@ -10,6 +10,7 @@ public record ReceiptSlabAllocationSlice(
         UUID receiptId,
         LocalDate paymentDate,
         BigDecimal amount,
+        BigDecimal gstAmount,
         String reference,
         String remark,
         String chequeLabel) {}

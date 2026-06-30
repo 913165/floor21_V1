@@ -39,6 +39,10 @@ public final class SlabReceiptWaterfall {
             if (pool.compareTo(ZERO) <= 0) {
                 continue;
             }
+            BigDecimal receiptTotal = pool;
+            BigDecimal gstPool =
+                    receipt.getAmountGstComponent() != null ? receipt.getAmountGstComponent() : ZERO;
+            BigDecimal gstRemaining = gstPool;
             LocalDate payDate =
                     receipt.getReceiptDate() != null ? receipt.getReceiptDate() : LocalDate.now();
             String reference = buildReceiptReference(receipt);
@@ -53,13 +57,34 @@ public final class SlabReceiptWaterfall {
                 if (apply.compareTo(ZERO) <= 0) {
                     continue;
                 }
-                addSlice(bySlab, slabs.get(i).getId(), receipt.getId(), payDate, apply, reference, remark, chequeLabel);
+                boolean exhaustsPool = pool.subtract(apply).compareTo(ZERO) <= 0;
+                BigDecimal gstApply = gstForSlice(gstPool, gstRemaining, receiptTotal, apply, exhaustsPool);
+                gstRemaining = gstRemaining.subtract(gstApply);
+                addSlice(
+                        bySlab,
+                        slabs.get(i).getId(),
+                        receipt.getId(),
+                        payDate,
+                        apply,
+                        gstApply,
+                        reference,
+                        remark,
+                        chequeLabel);
                 remainingDue[i] = remainingDue[i].subtract(apply);
                 pool = pool.subtract(apply);
             }
             if (pool.compareTo(ZERO) > 0) {
                 BookingPaymentSlab last = slabs.get(slabs.size() - 1);
-                addSlice(bySlab, last.getId(), receipt.getId(), payDate, pool, reference, remark, chequeLabel);
+                addSlice(
+                        bySlab,
+                        last.getId(),
+                        receipt.getId(),
+                        payDate,
+                        pool,
+                        gstRemaining.max(ZERO),
+                        reference,
+                        remark,
+                        chequeLabel);
             }
         }
         return bySlab;
@@ -93,12 +118,34 @@ public final class SlabReceiptWaterfall {
         return receipt.getRemarks().trim();
     }
 
+    private static BigDecimal gstForSlice(
+            BigDecimal gstPool,
+            BigDecimal gstRemaining,
+            BigDecimal receiptTotal,
+            BigDecimal apply,
+            boolean exhaustsPool) {
+        if (gstPool.compareTo(ZERO) <= 0 || apply.compareTo(ZERO) <= 0) {
+            return ZERO;
+        }
+        if (exhaustsPool) {
+            return gstRemaining.max(ZERO);
+        }
+        if (receiptTotal.compareTo(ZERO) <= 0) {
+            return ZERO;
+        }
+        return gstPool
+                .multiply(apply)
+                .divide(receiptTotal, 2, RoundingMode.HALF_UP)
+                .max(ZERO);
+    }
+
     private static void addSlice(
             Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab,
             UUID slabId,
             UUID receiptId,
             LocalDate payDate,
             BigDecimal amount,
+            BigDecimal gstAmount,
             String reference,
             String remark,
             String chequeLabel) {
@@ -109,6 +156,9 @@ public final class SlabReceiptWaterfall {
                                 receiptId,
                                 payDate,
                                 amount.setScale(2, RoundingMode.HALF_UP),
+                                gstAmount != null
+                                        ? gstAmount.setScale(2, RoundingMode.HALF_UP)
+                                        : ZERO,
                                 reference,
                                 remark,
                                 chequeLabel));

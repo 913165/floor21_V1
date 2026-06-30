@@ -170,6 +170,7 @@ class SlabScheduleLedgerServiceTest {
                 UUID.randomUUID(),
                 LocalDate.of(2026, 3, 18),
                 new BigDecimal("50000"),
+                BigDecimal.ZERO,
                 "NEFT",
                 null,
                 "NEFT"),
@@ -178,6 +179,7 @@ class SlabScheduleLedgerServiceTest {
                 UUID.randomUUID(),
                 LocalDate.of(2026, 6, 27),
                 new BigDecimal("715000"),
+                BigDecimal.ZERO,
                 "NEFT",
                 null,
                 "NEFT")));
@@ -215,6 +217,48 @@ class SlabScheduleLedgerServiceTest {
     assertThat(slabRow.date()).isEqualTo(bookingDate);
   }
 
+  @Test
+  void receiptRowShowsGstOnFirstSlabAndSliceGstOnForwardedSlab() {
+    UUID slab1Id = UUID.randomUUID();
+    UUID slab2Id = UUID.randomUUID();
+    UUID receiptId = UUID.randomUUID();
+
+    BookingPaymentSlab slab1 = slab(slab1Id, "Initial booking amount", new BigDecimal("100000"));
+    BookingPaymentSlab slab2 = slab(slab2Id, "Agreement", new BigDecimal("200000"));
+
+    Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab = new LinkedHashMap<>();
+    bySlab.put(
+        slab1Id,
+        List.of(slice(slab1Id, receiptId, new BigDecimal("80000"), new BigDecimal("12000"), "Chq No:1")));
+    bySlab.put(
+        slab2Id,
+        List.of(slice(slab2Id, receiptId, new BigDecimal("20000"), new BigDecimal("3000"), "Chq No:1")));
+
+    List<SlabScheduleLedgerRow> rows =
+        service.buildLedgerRows(List.of(slab1, slab2), bySlab, new BigDecimal("15"), null);
+
+    SlabScheduleLedgerRow first =
+        rows.stream()
+            .filter(
+                r ->
+                    r.rowType() == SlabLedgerRowType.RECEIPT
+                            && slab1Id.equals(bySlab.get(slab1Id).get(0).slabId()))
+            .findFirst()
+            .orElseThrow();
+    SlabScheduleLedgerRow forwarded =
+        rows.stream()
+            .filter(r -> r.rowType() == SlabLedgerRowType.RECEIPT && receiptId.equals(r.receiptId()))
+            .skip(1)
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(first.gstAmount()).isEqualByComparingTo("15000");
+    assertThat(forwarded.gstAmount()).isEqualByComparingTo("3000");
+
+    var summary = service.summarizeLedger(rows);
+    assertThat(summary.totalGst()).isEqualByComparingTo("15000");
+  }
+
   private static BookingPaymentSlab slab(UUID id, String label, BigDecimal agreed) {
     BookingPaymentSlab slab = new BookingPaymentSlab();
     slab.setId(id);
@@ -227,7 +271,23 @@ class SlabScheduleLedgerServiceTest {
 
   private static ReceiptSlabAllocationSlice slice(
       UUID slabId, UUID receiptId, BigDecimal amount, String chequeLabel) {
+    return slice(slabId, receiptId, amount, BigDecimal.ZERO, chequeLabel);
+  }
+
+  private static ReceiptSlabAllocationSlice slice(
+      UUID slabId,
+      UUID receiptId,
+      BigDecimal amount,
+      BigDecimal gstAmount,
+      String chequeLabel) {
     return new ReceiptSlabAllocationSlice(
-        slabId, receiptId, LocalDate.of(2026, 4, 26), amount, chequeLabel, null, chequeLabel);
+        slabId,
+        receiptId,
+        LocalDate.of(2026, 4, 26),
+        amount,
+        gstAmount,
+        chequeLabel,
+        null,
+        chequeLabel);
   }
 }

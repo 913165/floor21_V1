@@ -22,6 +22,10 @@
   }
 
   function defaultWidthRatios(table, colCount) {
+    if (table.classList.contains("slab-schedule-ledger-table") && colCount === 11) {
+      // Date, Slab, Check No, Amount, Receipt, GST, Balance, Days, Interest, Info, Remark
+      return [0.07, 0.18, 0.07, 0.07, 0.07, 0.06, 0.07, 0.05, 0.07, 0.21, 0.08];
+    }
     if (table.classList.contains("slab-schedule-ledger-table") && colCount === 10) {
       // Date, Slab, Check No, Amount, Receipt, Balance, Days, Interest, Info, Remark
       return [0.07, 0.2, 0.07, 0.08, 0.08, 0.08, 0.05, 0.07, 0.22, 0.08];

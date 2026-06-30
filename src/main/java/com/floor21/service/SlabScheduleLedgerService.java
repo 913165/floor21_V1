@@ -64,6 +64,7 @@ public class SlabScheduleLedgerService {
         LocalDate today = LocalDate.now();
         List<SlabScheduleLedgerRow> rows = new ArrayList<>();
         Map<UUID, BigDecimal> receiptTotals = receiptTotalsById(bySlab);
+        Map<UUID, BigDecimal> gstTotals = gstTotalsById(bySlab);
         Map<UUID, Integer> firstSlabForReceipt = firstSlabIndexByReceipt(slabs, bySlab);
 
         for (int slabIndex = 0; slabIndex < slabs.size(); slabIndex++) {
@@ -90,6 +91,7 @@ public class SlabScheduleLedgerService {
                             null,
                             null,
                             null,
+                            null,
                             null));
 
             BigDecimal runningPaid = ZERO;
@@ -102,6 +104,11 @@ public class SlabScheduleLedgerService {
                         firstSlabForThisReceipt
                                 ? receiptTotals.getOrDefault(payment.receiptId(), payment.amount())
                                 : payment.amount();
+                BigDecimal sliceGst = payment.gstAmount() != null ? payment.gstAmount() : ZERO;
+                BigDecimal displayGst =
+                        firstSlabForThisReceipt
+                                ? gstTotals.getOrDefault(payment.receiptId(), sliceGst)
+                                : sliceGst;
                 runningPaid = runningPaid.add(displayAmount);
                 BigDecimal balance = due.subtract(runningPaid);
                 if (!firstSlabForThisReceipt) {
@@ -135,6 +142,7 @@ public class SlabScheduleLedgerService {
                                 payment.chequeLabel(),
                                 null,
                                 displayAmount,
+                                displayGst.compareTo(ZERO) > 0 ? displayGst : null,
                                 balance,
                                 days > 0 ? days : null,
                                 interest.compareTo(ZERO) > 0 ? interest : null,
@@ -159,6 +167,7 @@ public class SlabScheduleLedgerService {
                                 null,
                                 null,
                                 outstanding,
+                                null,
                                 ZERO,
                                 days > 0 ? days : null,
                                 interest.compareTo(ZERO) > 0 ? interest : null,
@@ -194,6 +203,21 @@ public class SlabScheduleLedgerService {
         return total;
     }
 
+    private static Map<UUID, BigDecimal> gstTotalsById(
+            Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab) {
+        Map<UUID, BigDecimal> totals = new HashMap<>();
+        for (List<ReceiptSlabAllocationSlice> slices : bySlab.values()) {
+            for (ReceiptSlabAllocationSlice slice : slices) {
+                if (slice.receiptId() == null) {
+                    continue;
+                }
+                BigDecimal gst = slice.gstAmount() != null ? slice.gstAmount() : ZERO;
+                totals.merge(slice.receiptId(), gst, BigDecimal::add);
+            }
+        }
+        return totals;
+    }
+
     private static Map<UUID, BigDecimal> receiptTotalsById(
             Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab) {
         Map<UUID, BigDecimal> totals = new HashMap<>();
@@ -224,6 +248,7 @@ public class SlabScheduleLedgerService {
     public SlabScheduleLedgerSummary summarizeLedger(List<SlabScheduleLedgerRow> rows) {
         BigDecimal totalDue = ZERO;
         BigDecimal totalReceipt = ZERO;
+        BigDecimal totalGst = ZERO;
         BigDecimal totalBalance = ZERO;
         BigDecimal totalInterest = ZERO;
         Set<UUID> receiptIdsCounted = new HashSet<>();
@@ -235,6 +260,9 @@ public class SlabScheduleLedgerService {
                 UUID receiptId = row.receiptId();
                 if (receiptId == null || receiptIdsCounted.add(receiptId)) {
                     totalReceipt = totalReceipt.add(row.receiptAmount());
+                    if (row.gstAmount() != null) {
+                        totalGst = totalGst.add(row.gstAmount());
+                    }
                 }
             }
             if (row.rowType() == SlabLedgerRowType.TODAY && row.receiptAmount() != null) {
@@ -246,7 +274,7 @@ public class SlabScheduleLedgerService {
                 totalInterest = totalInterest.add(row.interest());
             }
         }
-        return new SlabScheduleLedgerSummary(totalDue, totalReceipt, totalBalance, totalInterest);
+        return new SlabScheduleLedgerSummary(totalDue, totalReceipt, totalGst, totalBalance, totalInterest);
     }
 
     private static String buildReceiptInterestInfo(

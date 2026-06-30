@@ -12,6 +12,7 @@ public record SlabScheduleLedgerRow(
         String chequeLabel,
         BigDecimal amountDue,
         BigDecimal receiptAmount,
+        BigDecimal gstAmount,
         BigDecimal balance,
         Integer days,
         BigDecimal interest,

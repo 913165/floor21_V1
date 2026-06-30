@@ -301,6 +301,7 @@
               <th class="align-middle text-center text-nowrap">Check No</th>
               <th class="align-middle text-center text-nowrap">Amount</th>
               <th class="align-middle text-center text-nowrap">Receipt</th>
+              <th class="align-middle text-center text-nowrap">GST</th>
               <th class="align-middle text-center text-nowrap">Balance</th>
               <th class="align-middle text-center text-nowrap">Days</th>
               <th class="align-middle text-center text-nowrap">Interest</th>
@@ -322,6 +323,8 @@
               <td class="text-end"
                   th:classappend="${row.rowType().name() == 'RECEIPT'} ? ' slab-amt--paid' : (${row.rowType().name() == 'TODAY'} ? ' text-muted' : '')"
                   th:text="${row.receiptAmount() != null ? amt.formatAmountDisplay(row.receiptAmount()) : dash}">-</td>
+              <td class="text-end text-muted"
+                  th:text="${row.gstAmount() != null ? amt.formatAmountDisplay(row.gstAmount()) : dash}">-</td>
               <td class="text-end"
                   th:classappend="${row.balance() != null and row.balance().signum() != 0} ? ' slab-amt--balance text-danger' : ' text-muted'"
                   th:text="${row.balance() != null ? amt.formatAmountDisplay(row.balance()) : dash}">-</td>
@@ -340,6 +343,7 @@
               <td colspan="3" class="text-end">Total</td>
               <td class="text-end slab-amt--agreed" th:text="${amt.formatAmountDisplay(ledgerSummary.totalAmountDue())}">0</td>
               <td class="text-end slab-amt--paid" th:text="${amt.formatAmountDisplay(ledgerSummary.totalReceipts())}">0</td>
+              <td class="text-end" th:text="${amt.formatAmountDisplay(ledgerSummary.totalGst())}">0</td>
               <td class="text-end slab-amt--balance" th:text="${amt.formatAmountDisplay(ledgerSummary.totalBalance())}">0</td>
               <td class="text-center text-muted" th:text="${dash}">-</td>
               <td class="text-end" th:text="${amt.formatAmountDisplay(ledgerSummary.totalInterest())}">0</td>
