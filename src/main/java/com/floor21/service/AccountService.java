@@ -7,6 +7,8 @@ import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.UserRepository;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
+import com.floor21.util.IndianStates;
+import com.floor21.util.UserContactFields;
 import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class AccountService {
     private final VaultPinService vaultPinService;
     private final VaultAccessService vaultAccessService;
     private final UserProjectAssignmentService userProjectAssignmentService;
+    private final ReceiptPrintService receiptPrintService;
 
     @Transactional(readOnly = true)
     public String currentDisplayName() {
@@ -69,6 +72,20 @@ public class AccountService {
                     true,
                     false,
                     false,
+                    false,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
                     false);
         }
 
@@ -83,23 +100,25 @@ public class AccountService {
                                     .resolvePrimaryMembership(user.getId())
                                     .map(m -> m.getBuilder().getId())
                                     .orElse(null);
+            Builder project =
+                    builderId != null
+                            ? builderRepository.findById(builderId).orElse(null)
+                            : null;
             String role =
                     builderId != null
                             ? userProjectAssignmentService.getRole(user.getId(), builderId)
                             : user.getRole();
             String projectName =
-                    builderId != null
-                            ? userProjectAssignmentService
-                                    .listMemberships(user.getId())
-                                    .stream()
-                                    .filter(m -> m.getBuilder().getId().equals(builderId))
-                                    .map(m -> m.getBuilder().getCompanyName())
-                                    .findFirst()
-                                    .orElse("—")
+                    project != null
+                            ? project.getCompanyName()
                             : userProjectAssignmentService.formatProjectNames(user.getId());
             boolean vaultAccess = vaultAccessService.canCurrentUserAccessVault();
             boolean builderAdminRole =
                     StaffBuildingAccessService.ROLE_BUILDER_ADMIN.equals(role);
+            ReceiptPrintService.BuilderTaxProfile taxProfile =
+                    project != null
+                            ? receiptPrintService.taxProfileForBuilder(project)
+                            : new ReceiptPrintService.BuilderTaxProfile("—", "—");
             return new AccountProfileView(
                     user.getFullName(),
                     email,
@@ -109,7 +128,21 @@ public class AccountService {
                     false,
                     vaultAccess && vaultPinService.hasPinConfigured(),
                     false,
-                    vaultAccess);
+                    vaultAccess,
+                    user.getCompanyName(),
+                    user.getPanNumber(),
+                    user.getGstNumber(),
+                    user.getTanNumber(),
+                    user.getMobileNumber(),
+                    user.getAddress(),
+                    user.getAddressState(),
+                    user.getAddressPin(),
+                    project != null ? project.getPhone() : null,
+                    project != null ? project.getAddress() : null,
+                    project != null ? project.getCity() : null,
+                    taxProfile.gstin(),
+                    taxProfile.tan(),
+                    true);
         }
 
         Builder builder =
@@ -119,6 +152,8 @@ public class AccountService {
         boolean vaultAccess = vaultAccessService.canCurrentUserAccessVault();
         boolean vaultConfigured =
                 vaultAccess && principal.getBuilderId() != null && vaultPinService.hasPinConfigured();
+        ReceiptPrintService.BuilderTaxProfile taxProfile =
+                receiptPrintService.taxProfileForBuilder(builder);
         return new AccountProfileView(
                 builder.getCompanyName(),
                 email,
@@ -128,7 +163,59 @@ public class AccountService {
                 false,
                 vaultConfigured,
                 false,
-                vaultAccess);
+                vaultAccess,
+                builder.getCompanyName(),
+                null,
+                null,
+                null,
+                builder.getPhone(),
+                builder.getAddress(),
+                null,
+                null,
+                builder.getPhone(),
+                builder.getAddress(),
+                builder.getCity(),
+                taxProfile.gstin(),
+                taxProfile.tan(),
+                false);
+    }
+
+    @Transactional(readOnly = true)
+    public User companyProfileForm() {
+        return copyCompanyFields(requireStaffUser());
+    }
+
+    @Transactional
+    public void updateCompanyProfile(User form) {
+        User entity = requireStaffUser();
+        UserContactFields.applyFromForm(entity, form);
+        userRepository.save(entity);
+    }
+
+    private User requireStaffUser() {
+        Floor21UserPrincipal principal = requirePrincipal();
+        if (principal.isSuperAdmin()) {
+            throw new IllegalStateException("Platform admin account cannot edit company profile here.");
+        }
+        return userRepository
+                .findFirstByEmailIgnoreCaseAndActiveTrue(principal.getEmail())
+                .orElseThrow(
+                        () ->
+                                new IllegalStateException(
+                                        "Company profile is only editable for staff accounts. Contact Floor21 admin to update project tax details."));
+    }
+
+    private static User copyCompanyFields(User user) {
+        User form = new User();
+        form.setCompanyName(user.getCompanyName());
+        form.setPanNumber(user.getPanNumber());
+        form.setTanNumber(user.getTanNumber());
+        form.setGstNumber(user.getGstNumber());
+        form.setMobileNumber(user.getMobileNumber());
+        form.setAddress(user.getAddress());
+        form.setAddressState(user.getAddressState());
+        form.setAddressPin(user.getAddressPin());
+        return form;
     }
 
     @Transactional

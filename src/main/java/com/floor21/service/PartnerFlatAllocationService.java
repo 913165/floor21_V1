@@ -358,8 +358,63 @@ public class PartnerFlatAllocationService {
         }
     }
 
+    /** Whether the current user may link parking to this residential flat. */
+    @Transactional(readOnly = true)
+    public boolean canManageResidentialFlat(UUID buildingId, UUID residentialFlatId) {
+        return canManageResidentialForParking(buildingId, residentialFlatId);
+    }
+
+    /**
+     * Residential flats the current user may link parking to: partner-assigned units or flats with an
+     * active booking they own.
+     */
+    @Transactional(readOnly = true)
+    public boolean canManageResidentialForParking(UUID buildingId, UUID residentialFlatId) {
+        if (canBypassPartnerFlatRestriction() || !isAllocationActive(buildingId)) {
+            return true;
+        }
+        UUID staffUserId = currentStaffUserId();
+        if (staffUserId == null) {
+            return true;
+        }
+        UUID assignedPartnerId = getAssignedPartnerIdForFlat(residentialFlatId);
+        if (assignedPartnerId != null && assignedPartnerId.equals(staffUserId)) {
+            return true;
+        }
+        return bookingRepository.countActiveByFlatIdAndExecutive_Id(residentialFlatId, staffUserId) > 0;
+    }
+
+    @Transactional(readOnly = true)
+    public void assertCanManageResidentialForParking(UUID buildingId, UUID residentialFlatId) {
+        if (!canManageResidentialForParking(buildingId, residentialFlatId)) {
+            throw new IllegalArgumentException(
+                    "You cannot manage parking links for this flat. Assign it to your partner account or book it under your login.");
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void assertCanLinkParkingSlot(
+            UUID buildingId, UUID parkingFlatId, UUID residentialFlatId) {
+        if (!canManageFlatForParkingLink(buildingId, parkingFlatId, residentialFlatId)) {
+            throw new IllegalArgumentException(
+                    residentialFlatId == null
+                            ? "You cannot change the link on this parking slot."
+                            : "You cannot link this parking slot to the selected flat.");
+        }
+    }
+
     @Transactional(readOnly = true)
     public boolean canManageFlatForParkingLink(UUID buildingId, UUID parkingFlatId) {
+        return canManageFlatForParkingLink(buildingId, parkingFlatId, null);
+    }
+
+    /**
+     * Whether the current user may link or unlink {@code parkingFlatId}. When {@code linkingResidentialFlatId}
+     * is set (picker for a specific flat), unassigned guest slots are included if the user manages that flat.
+     */
+    @Transactional(readOnly = true)
+    public boolean canManageFlatForParkingLink(
+            UUID buildingId, UUID parkingFlatId, UUID linkingResidentialFlatId) {
         if (parkingFlatId == null) {
             return false;
         }
@@ -383,7 +438,9 @@ public class PartnerFlatAllocationService {
             UUID linkedPartner = getAssignedPartnerIdForFlat(linkedResidentialId);
             return linkedPartner != null && linkedPartner.equals(staffUserId);
         }
-        // Unlinked guest slot — not assigned to this partner.
+        if (linkingResidentialFlatId != null) {
+            return canManageResidentialForParking(buildingId, linkingResidentialFlatId);
+        }
         return false;
     }
 

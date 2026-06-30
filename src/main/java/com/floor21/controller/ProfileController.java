@@ -1,6 +1,8 @@
 package com.floor21.controller;
 
+import com.floor21.entity.User;
 import com.floor21.service.AccountService;
+import com.floor21.util.IndianStates;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,6 +24,28 @@ public class ProfileController {
         model.addAttribute("pageTitle", "My profile");
         model.addAttribute("profile", accountService.currentProfile());
         return "profile/index";
+    }
+
+    @GetMapping("/edit-company")
+    public String editCompanyForm(Model model) {
+        model.addAttribute("pageTitle", "Company & tax details");
+        model.addAttribute("userForm", accountService.companyProfileForm());
+        model.addAttribute("indianStates", IndianStates.all());
+        return "profile/edit-company";
+    }
+
+    @PostMapping("/edit-company")
+    public String saveCompany(
+            @org.springframework.web.bind.annotation.ModelAttribute("userForm") User userForm,
+            RedirectAttributes ra) {
+        try {
+            accountService.updateCompanyProfile(userForm);
+            ra.addFlashAttribute("successMessage", "Company and tax details saved.");
+            return "redirect:/profile";
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/profile/edit-company";
+        }
     }
 
     @GetMapping("/change-password")

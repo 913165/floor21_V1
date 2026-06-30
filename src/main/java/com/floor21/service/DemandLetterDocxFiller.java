@@ -35,20 +35,11 @@ class DemandLetterDocxFiller {
     private static final DateTimeFormatter LETTER_DATE =
             DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
 
-  // Sample literals from docs/ademnpw.docx used as replace keys.
-    private static final String SAMPLE_OWNER_NAMES = "Rizwana Nadeem TambeNadeem Murad Tambe";
-    private static final String SAMPLE_OWNER_ADDRESS =
-            "A-25-2, Sneh Co-op Housing SocietySector - 19A, NerulNavi Mumbai - 400706";
-    private static final String SAMPLE_LETTER_DATE = "30-Jun-2026";
-    private static final String SAMPLE_DUE_DATE = "15-Jul-2026";
+  // Sample literals from docs/ademnpw.docx used as replace keys (body paragraphs only).
     private static final String SAMPLE_PROJECT = "LA VESTA";
-    private static final String SAMPLE_UNIT = "1605";
     private static final String SAMPLE_FLAT = "1605";
     private static final String SAMPLE_FLOOR = "16th Floor";
     private static final String SAMPLE_SITE = "Plot No.17+31+32, Sector-13, Nerul, Navi Mumbai";
-    private static final String SAMPLE_GSTIN = "27AFGFS8624D1ZU";
-    private static final String SAMPLE_TAN = "MUMS33415L";
-    private static final String SAMPLE_PHONE = "9167079377";
     private static final String SAMPLE_REG_PLACE = "CBD-Belapur";
     private static final String SAMPLE_CONSIDERATION_FIGURES = "2,11,93,000";
     private static final String SAMPLE_CONSIDERATION_WORDS =
@@ -93,12 +84,11 @@ class DemandLetterDocxFiller {
                         : "";
 
         Map<String, String> tokens = new HashMap<>();
-        tokens.put(SAMPLE_OWNER_NAMES, ownerNames(owners, primaryClient));
-        tokens.put(SAMPLE_OWNER_ADDRESS, clientCorrespondenceAddress(primaryClient));
-        tokens.put(SAMPLE_LETTER_DATE, LETTER_DATE.format(letterDate));
-        tokens.put(SAMPLE_DUE_DATE, LETTER_DATE.format(dueDate));
-        tokens.put(SAMPLE_PROJECT, building != null ? nullToDash(building.getBuildingName()) : "—");
-        tokens.put(SAMPLE_UNIT, flat != null ? nullToDash(flat.getFlatNumber()) : "—");
+        tokens.put(SAMPLE_REG_PLACE, regPlace);
+        tokens.put(SAMPLE_CONSIDERATION_FIGURES, IndianRupeesFormatter.formatFigures(consideration));
+        tokens.put(SAMPLE_CONSIDERATION_WORDS, IndianRupeesFormatter.formatWordsOnly(consideration));
+        tokens.put(SAMPLE_MILESTONE, nullToDash(model.completedMilestone().getMilestoneLabel()));
+        tokens.put(SAMPLE_SIGNATORY, signatoryCompany);
         tokens.put(SAMPLE_FLAT, flat != null ? nullToDash(flat.getFlatNumber()) : "—");
         tokens.put(
                 SAMPLE_FLOOR,
@@ -106,14 +96,7 @@ class DemandLetterDocxFiller {
                         ? ordinalEnglish(flat.getFloorNumber()) + " Floor"
                         : "—");
         tokens.put(SAMPLE_SITE, siteLine(building));
-        tokens.put(SAMPLE_GSTIN, taxProfile.gstin());
-        tokens.put(SAMPLE_TAN, taxProfile.tan());
-        tokens.put(SAMPLE_PHONE, ownerPhones(owners, primaryClient));
-        tokens.put(SAMPLE_REG_PLACE, regPlace);
-        tokens.put(SAMPLE_CONSIDERATION_FIGURES, IndianRupeesFormatter.formatFigures(consideration));
-        tokens.put(SAMPLE_CONSIDERATION_WORDS, IndianRupeesFormatter.formatWordsOnly(consideration));
-        tokens.put(SAMPLE_MILESTONE, nullToDash(model.completedMilestone().getMilestoneLabel()));
-        tokens.put(SAMPLE_SIGNATORY, signatoryCompany);
+        tokens.put(SAMPLE_PROJECT, building != null ? nullToDash(building.getBuildingName()) : "—");
         if (!agreementDate.isBlank()) {
             tokens.put("vide agreement dated ,", "vide agreement dated " + agreementDate + ",");
         }
@@ -122,6 +105,19 @@ class DemandLetterDocxFiller {
         putBankTokens(tokens, instalmentBank, gstBank, branchCity);
 
         DocxTokenReplacer.replaceAll(doc, tokens);
+
+        XWPFTable headerTable = findTableContaining(doc, "To,");
+        if (headerTable != null) {
+            fillHeaderTable(
+                    headerTable,
+                    owners,
+                    primaryClient,
+                    building,
+                    flat,
+                    letterDate,
+                    dueDate,
+                    taxProfile);
+        }
         XWPFTable paymentTable = findTableContaining(doc, "Sr.no.");
         if (paymentTable != null) {
             adjustPaymentDataRows(paymentTable, model);
@@ -234,13 +230,90 @@ class DemandLetterDocxFiller {
         setCellText(row.getCell(4), formatTableAmount(gst));
     }
 
-    private static void setCellText(XWPFTableCell cell, String text) {
-        if (cell.getParagraphs().isEmpty()) {
-            cell.addParagraph().createRun().setText(text);
+    private static void fillHeaderTable(
+            XWPFTable table,
+            List<Client> owners,
+            Client primaryClient,
+            Building building,
+            Flat flat,
+            LocalDate letterDate,
+            LocalDate dueDate,
+            ReceiptPrintService.BuilderTaxProfile taxProfile) {
+        if (table.getNumberOfRows() < 7) {
             return;
         }
-        cell.removeParagraph(0);
-        cell.addParagraph().createRun().setText(text != null ? text : "");
+        setCellLines(table.getRow(0).getCell(0), toBlockLines(owners, primaryClient));
+        setCellText(table.getRow(0).getCell(1), "Date: " + LETTER_DATE.format(letterDate));
+        setCellText(table.getRow(1).getCell(1), "Due Date: " + LETTER_DATE.format(dueDate));
+        setCellLines(table.getRow(2).getCell(0), addressLines(primaryClient));
+        setCellText(
+                table.getRow(2).getCell(1),
+                "Project : " + (building != null ? nullToDash(building.getBuildingName()) : "—"));
+        setCellText(
+                table.getRow(3).getCell(1),
+                "Unit No: " + (flat != null ? nullToDash(flat.getFlatNumber()) : "—"));
+        setCellText(table.getRow(4).getCell(1), "GSTIN: " + taxProfile.gstin());
+        setCellText(table.getRow(5).getCell(1), "TAN:" + taxProfile.tan());
+        String phones = ownerPhones(owners, primaryClient);
+        setCellText(table.getRow(6).getCell(0), phones.isBlank() ? "" : "Ph- " + phones);
+    }
+
+    private static List<String> toBlockLines(List<Client> owners, Client primaryClient) {
+        List<Client> list = new ArrayList<>();
+        if (owners.isEmpty() && primaryClient != null) {
+            list.add(primaryClient);
+        } else {
+            list.addAll(owners);
+        }
+        List<String> lines = new ArrayList<>();
+        lines.add("To,");
+        for (Client owner : list) {
+            lines.add(owner.displayName());
+        }
+        return lines;
+    }
+
+    private static List<String> addressLines(Client client) {
+        if (client == null) {
+            return List.of("");
+        }
+        List<String> lines = new ArrayList<>();
+        addLineIfPresent(lines, client.getCommAddress1());
+        addLineIfPresent(lines, client.getCommAddress2());
+        addLineIfPresent(lines, client.getCommAddress3());
+        if (!lines.isEmpty()) {
+            addLineIfPresent(lines, client.getCommCity());
+            if (!lines.isEmpty()) {
+                return lines;
+            }
+        }
+        addLineIfPresent(lines, client.getAddress1());
+        addLineIfPresent(lines, client.getAddress2());
+        addLineIfPresent(lines, client.getAddress3());
+        addLineIfPresent(lines, client.getCity());
+        if (lines.isEmpty()) {
+            lines.add("");
+        }
+        return lines;
+    }
+
+    private static void addLineIfPresent(List<String> lines, String value) {
+        if (value != null && !value.isBlank()) {
+            lines.add(value.trim());
+        }
+    }
+
+    private static void setCellLines(XWPFTableCell cell, List<String> lines) {
+        while (cell.getParagraphs().size() > 0) {
+            cell.removeParagraph(0);
+        }
+        for (String line : lines) {
+            cell.addParagraph().createRun().setText(line != null ? line : "");
+        }
+    }
+
+    private static void setCellText(XWPFTableCell cell, String text) {
+        setCellLines(cell, List.of(text != null ? text : ""));
     }
 
     private static void putBankTokens(
@@ -282,32 +355,6 @@ class DemandLetterDocxFiller {
             }
         }
         return -1;
-    }
-
-    private static String ownerNames(List<Client> owners, Client primaryClient) {
-        List<Client> list = new ArrayList<>();
-        if (owners.isEmpty() && primaryClient != null) {
-            list.add(primaryClient);
-        } else {
-            list.addAll(owners);
-        }
-        return list.stream().map(Client::displayName).collect(Collectors.joining());
-    }
-
-    private static String clientCorrespondenceAddress(Client client) {
-        if (client == null) {
-            return "";
-        }
-        String comm =
-                joinNonBlank(
-                        client.getCommAddress1(),
-                        client.getCommAddress2(),
-                        client.getCommAddress3(),
-                        client.getCommCity());
-        if (!comm.isBlank()) {
-            return comm;
-        }
-        return joinNonBlank(client.getAddress1(), client.getAddress2(), client.getAddress3(), client.getCity());
     }
 
     private static String ownerPhones(List<Client> owners, Client fallback) {

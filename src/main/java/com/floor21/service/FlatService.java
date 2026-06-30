@@ -94,6 +94,7 @@ public class FlatService {
     private final BuildingFloorPlanService buildingFloorPlanService;
     private final BookingOwnerService bookingOwnerService;
     private final ReceiptService receiptService;
+    private final BookingParkingInfoService bookingParkingInfoService;
 
     @Transactional(readOnly = true)
     public long countFlatsForBuilding(UUID buildingId) {
@@ -1375,7 +1376,8 @@ public class FlatService {
     }
 
     @Transactional(readOnly = true)
-    public List<ParkingResidentialOptionDto> listResidentialFlatsForParkingLink(UUID buildingId) {
+    public List<ParkingResidentialOptionDto> listResidentialFlatsForParkingLink(
+            UUID buildingId, UUID parkingFlatId) {
         Building building = buildingService.resolveForAccess(buildingId);
         UUID builderId = building.getBuilder().getId();
         return flatRepository.findByBuilding_IdAndBuilder_IdOrderByFloorNumberDescUnitNumberAsc(
@@ -1384,8 +1386,14 @@ public class FlatService {
                 .filter(this::isLinkableResidentialFlat)
                 .filter(
                         f ->
-                                partnerFlatAllocationService.canManageFlatForParkingLink(
-                                        buildingId, f.getId()))
+                                partnerFlatAllocationService.canManageResidentialForParking(
+                                                buildingId, f.getId())
+                                        || (parkingFlatId != null
+                                                && partnerFlatAllocationService
+                                                        .canManageFlatForParkingLink(
+                                                                buildingId,
+                                                                parkingFlatId,
+                                                                f.getId())))
                 .sorted(
                         Comparator.comparing(Flat::getFloorNumber)
                                 .thenComparing(Flat::getUnitNumber))
@@ -1411,15 +1419,10 @@ public class FlatService {
             return List.of();
         }
         UUID buildingId = residential.getBuilding().getId();
-        partnerFlatAllocationService.assertCanManageFlat(buildingId, residentialFlatId);
         UUID builderId = residential.getBuilding().getBuilder().getId();
         return flatRepository
                 .findLinkedParkingByResidentialFlatId(buildingId, builderId, residentialFlatId)
                 .stream()
-                .filter(
-                        f ->
-                                partnerFlatAllocationService.canManageFlatForParkingLink(
-                                        buildingId, f.getId()))
                 .map(
                         f ->
                                 new LinkedParkingSlotDto(
@@ -1431,7 +1434,7 @@ public class FlatService {
     }
 
     @Transactional(readOnly = true)
-    public List<ParkingSlotOptionDto> listParkingSlotsForLink(UUID buildingId) {
+    public List<ParkingSlotOptionDto> listParkingSlotsForLink(UUID buildingId, UUID residentialFlatId) {
         Building building = buildingService.resolveForAccess(buildingId);
         UUID builderId = building.getBuilder().getId();
         int parkingFloors = building.getParkingFloors() != null ? building.getParkingFloors() : 0;
@@ -1453,7 +1456,7 @@ public class FlatService {
                     .filter(f -> FlatUnitTypes.isParkingCode(f.getBhkType()))
                     .forEach(parkingFlats::add);
         }
-        for (int floor = 1; floor <= parkingFloors; floor++) {
+        for (int floor : ParkingFloorConfigUtil.listTowerParkingFloors(building)) {
             if (!ParkingFloorConfigUtil.isConfigured(building, floor)) {
                 continue;
             }
@@ -1481,7 +1484,7 @@ public class FlatService {
                 .filter(
                         p ->
                                 partnerFlatAllocationService.canManageFlatForParkingLink(
-                                        buildingId, p.getId()))
+                                        buildingId, p.getId(), residentialFlatId))
                 .sorted(
                         Comparator.comparing(Flat::getFloorNumber)
                                 .thenComparing(Flat::getUnitNumber))
@@ -1515,8 +1518,9 @@ public class FlatService {
             throw new IllegalArgumentException("Only parking slots can be linked to a flat.");
         }
         UUID buildingId = parking.getBuilding().getId();
-        partnerFlatAllocationService.assertCanManageFlat(buildingId, parkingFlatId);
         UUID residentialId = dto != null ? dto.residentialFlatId() : null;
+        partnerFlatAllocationService.assertCanLinkParkingSlot(buildingId, parkingFlatId, residentialId);
+        UUID previousResidentialId = parking.getLinkedResidentialFlatId();
         String linkedNumber = null;
         if (residentialId == null) {
             parking.setLinkedResidentialFlatId(null);
@@ -1525,11 +1529,17 @@ public class FlatService {
             if (!residential.getBuilding().getId().equals(buildingId)) {
                 throw new IllegalArgumentException("Residential flat must be in the same building.");
             }
-            partnerFlatAllocationService.assertCanManageFlat(buildingId, residentialId);
+            partnerFlatAllocationService.assertCanManageResidentialForParking(buildingId, residentialId);
             parking.setLinkedResidentialFlatId(residentialId);
             linkedNumber = residential.getFlatNumber();
         }
         flatRepository.save(parking);
+        if (previousResidentialId != null && !previousResidentialId.equals(residentialId)) {
+            bookingParkingInfoService.syncForResidentialFlat(previousResidentialId);
+        }
+        if (residentialId != null) {
+            bookingParkingInfoService.syncForResidentialFlat(residentialId);
+        }
         int slotNumber =
                 parking.getUnitNumber() != null && parking.getUnitNumber() > 0
                         ? parking.getUnitNumber()

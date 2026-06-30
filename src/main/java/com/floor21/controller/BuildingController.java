@@ -913,10 +913,12 @@ public class BuildingController {
     }
 
     @GetMapping("/{id}/flats/residential-for-parking-link")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','BUILDER_ADMIN','EXECUTIVE')")
     @ResponseBody
-    public ResponseEntity<?> residentialFlatsForParkingLink(@PathVariable UUID id) {
+    public ResponseEntity<?> residentialFlatsForParkingLink(
+            @PathVariable UUID id, @RequestParam(required = false) UUID parkingFlatId) {
         try {
-            return ResponseEntity.ok(flatService.listResidentialFlatsForParkingLink(id));
+            return ResponseEntity.ok(flatService.listResidentialFlatsForParkingLink(id, parkingFlatId));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }
@@ -925,9 +927,10 @@ public class BuildingController {
     @GetMapping("/{id}/parking-slots-for-link")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','BUILDER_ADMIN','EXECUTIVE')")
     @ResponseBody
-    public ResponseEntity<?> parkingSlotsForLink(@PathVariable UUID id) {
+    public ResponseEntity<?> parkingSlotsForLink(
+            @PathVariable UUID id, @RequestParam(required = false) UUID residentialFlatId) {
         try {
-            return ResponseEntity.ok(flatService.listParkingSlotsForLink(id));
+            return ResponseEntity.ok(flatService.listParkingSlotsForLink(id, residentialFlatId));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }

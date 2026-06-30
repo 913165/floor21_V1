@@ -402,25 +402,52 @@ public class ReceiptPrintService {
         return "—";
     }
 
-    /** GSTIN and TAN from the builder-admin user (User Management tax fields). */
+    /** GSTIN and TAN from project users (builder admin first, then any assigned user). */
     public BuilderTaxProfile taxProfileForBuilder(Builder builder) {
         if (builder == null) {
             return new BuilderTaxProfile("—", "—");
         }
-        for (UserProjectAssignment assignment :
-                userProjectAssignmentRepository.findByBuilder_IdWithUser(builder.getId())) {
+        String gstin = null;
+        String tan = null;
+        List<UserProjectAssignment> assignments =
+                userProjectAssignmentRepository.findByBuilder_IdWithUser(builder.getId());
+        for (UserProjectAssignment assignment : assignments) {
             if (!StaffBuildingAccessService.ROLE_BUILDER_ADMIN.equals(assignment.getRole())) {
                 continue;
             }
             User user = assignment.getUser();
-            String gstin = trimToNull(user != null ? user.getGstNumber() : null);
-            String tan = trimToNull(user != null ? user.getTanNumber() : null);
-            if (gstin != null || tan != null) {
-                return new BuilderTaxProfile(
-                        gstin != null ? gstin : "—", tan != null ? tan : "—");
+            if (user == null) {
+                continue;
+            }
+            if (gstin == null) {
+                gstin = trimToNull(user.getGstNumber());
+            }
+            if (tan == null) {
+                tan = trimToNull(user.getTanNumber());
+            }
+            if (gstin != null && tan != null) {
+                break;
             }
         }
-        return new BuilderTaxProfile("—", "—");
+        if (gstin == null || tan == null) {
+            for (UserProjectAssignment assignment : assignments) {
+                User user = assignment.getUser();
+                if (user == null) {
+                    continue;
+                }
+                if (gstin == null) {
+                    gstin = trimToNull(user.getGstNumber());
+                }
+                if (tan == null) {
+                    tan = trimToNull(user.getTanNumber());
+                }
+                if (gstin != null && tan != null) {
+                    break;
+                }
+            }
+        }
+        return new BuilderTaxProfile(
+                gstin != null ? gstin : "—", tan != null ? tan : "—");
     }
 
     public String floorPhraseForFlat(Flat flat) {

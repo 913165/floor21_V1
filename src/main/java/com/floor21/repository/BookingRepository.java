@@ -173,8 +173,16 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     @Query("select count(b) from Booking b where b.flat.id = :flatId and b.status = 'ACTIVE'")
     long countActiveByFlatId(@Param("flatId") UUID flatId);
 
+    @Query(
+            "select count(b) from Booking b where b.flat.id = :flatId and b.executive.id = :executiveId "
+                    + "and b.status = 'ACTIVE'")
+    long countActiveByFlatIdAndExecutive_Id(
+            @Param("flatId") UUID flatId, @Param("executiveId") UUID executiveId);
+
     @Query("select count(b) from Booking b where b.flat.id = :flatId")
     long countByFlatId(@Param("flatId") UUID flatId);
+
+    List<Booking> findByFlat_Id(UUID flatId);
 
     @Query(
             "select coalesce(sum(b.considerationAmt),0) from Booking b where b.builder.id = :builderId and "

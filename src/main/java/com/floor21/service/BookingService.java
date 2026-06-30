@@ -62,6 +62,7 @@ public class BookingService {
     private final ExtraExpenseRepository extraExpenseRepository;
     private final VaultBookingProfileRepository vaultBookingProfileRepository;
     private final VaultEntryRepository vaultEntryRepository;
+    private final BookingParkingInfoService bookingParkingInfoService;
 
     /** Residential flats the current user may book (partner allocation + availability rules). */
     @Transactional(readOnly = true)
@@ -320,7 +321,8 @@ public class BookingService {
         entity.setUpdatedAt(Instant.now());
         Booking saved = bookingRepository.save(entity);
         bookingOwnerService.syncOwners(saved, coOwnerIds, builderId);
-        return saved;
+        bookingParkingInfoService.syncForResidentialFlat(flat.getId());
+        return bookingRepository.findByIdAndBuilder_Id(saved.getId(), builderId).orElse(saved);
     }
 
     @Transactional

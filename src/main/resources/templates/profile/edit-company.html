@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/base :: layout(~{::content})}">
+<body>
+<div th:fragment="content">
+  <h1 class="h3 mb-4">Company &amp; tax details</h1>
+  <p class="text-muted small">Used on demand letters, receipts, and official correspondence for your project.</p>
+
+  <form class="card card-body shadow-sm col-xl-10"
+        th:action="@{/profile/edit-company}" method="post" th:object="${userForm}" novalidate>
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="profile-company">Legal company name</label>
+        <input class="form-control" id="profile-company" th:field="*{companyName}" required maxlength="200"
+               placeholder="As on agreement / GST registration"/>
+      </div>
+      <th:block th:replace="~{admin/fragments/user-tax-contact-fields :: taxContactFields}"></th:block>
+    </div>
+    <div class="mt-4 d-flex flex-wrap gap-2">
+      <button class="btn btn-primary" type="submit">Save</button>
+      <a class="btn btn-link" th:href="@{/profile}">Cancel</a>
+    </div>
+  </form>
+</div>
+</body>
+</html>

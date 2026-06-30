@@ -16,8 +16,8 @@
           <dd class="col-sm-8" th:text="${profile.email()}">—</dd>
           <dt class="col-sm-4">Role</dt>
           <dd class="col-sm-8" th:text="${profile.roleLabel()}">—</dd>
-          <dt class="col-sm-4" th:if="${profile.companyName() != null}">Company</dt>
-          <dd class="col-sm-8" th:if="${profile.companyName() != null}" th:text="${profile.companyName()}">—</dd>
+          <dt class="col-sm-4" th:if="${profile.projectName() != null}">Project</dt>
+          <dd class="col-sm-8" th:if="${profile.projectName() != null}" th:text="${profile.projectName()}">—</dd>
         </dl>
       </div>
     </div>
@@ -26,10 +26,84 @@
       <div class="card card-body shadow-sm h-100">
         <h2 class="h6 text-muted text-uppercase mb-3">Security</h2>
         <ul class="list-unstyled mb-0">
-          <li class="mb-0">
+          <li class="mb-2">
             <a class="btn btn-outline-primary btn-sm" th:href="@{/profile/change-password}">Change login password</a>
           </li>
+          <li th:if="${profile.companyProfileEditable()}">
+            <a class="btn btn-outline-secondary btn-sm" th:href="@{/profile/edit-company}">Edit company &amp; tax details</a>
+          </li>
         </ul>
+      </div>
+    </div>
+
+    <div class="col-12" th:if="${profile.companyProfileEditable() or profile.legalCompanyName() != null or profile.gstNumber() != null or profile.demandLetterGstin() != null}">
+      <div class="card card-body shadow-sm">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+          <h2 class="h6 text-muted text-uppercase mb-0">Company &amp; tax</h2>
+          <a class="btn btn-sm btn-outline-primary"
+             th:if="${profile.companyProfileEditable()}"
+             th:href="@{/profile/edit-company}">Edit</a>
+        </div>
+        <div class="row g-3 small">
+          <div class="col-md-6">
+            <dl class="row mb-0">
+              <dt class="col-sm-5">Legal company name</dt>
+              <dd class="col-sm-7" th:text="${profile.legalCompanyName() != null ? profile.legalCompanyName() : '—'}">—</dd>
+              <dt class="col-sm-5">PAN</dt>
+              <dd class="col-sm-7" th:text="${profile.panNumber() != null ? profile.panNumber() : '—'}">—</dd>
+              <dt class="col-sm-5">GSTIN (your profile)</dt>
+              <dd class="col-sm-7" th:text="${profile.gstNumber() != null ? profile.gstNumber() : '—'}">—</dd>
+              <dt class="col-sm-5">TAN (your profile)</dt>
+              <dd class="col-sm-7" th:text="${profile.tanNumber() != null ? profile.tanNumber() : '—'}">—</dd>
+            </dl>
+          </div>
+          <div class="col-md-6">
+            <dl class="row mb-0">
+              <dt class="col-sm-5">Mobile</dt>
+              <dd class="col-sm-7" th:text="${profile.mobileNumber() != null ? profile.mobileNumber() : '—'}">—</dd>
+              <dt class="col-sm-5">Address</dt>
+              <dd class="col-sm-7">
+                <span th:if="${profile.address() != null}" th:text="${profile.address()}">—</span>
+                <span th:if="${profile.address() == null}">—</span>
+                <span th:if="${profile.addressState() != null}"
+                      th:text="|, ${profile.addressState()}${profile.addressPin() != null ? ' ' + profile.addressPin() : ''}|"></span>
+              </dd>
+              <dt class="col-sm-5">Demand letter GSTIN</dt>
+              <dd class="col-sm-7 fw-semibold"
+                  th:text="${profile.demandLetterGstin() != null ? profile.demandLetterGstin() : '—'}">—</dd>
+              <dt class="col-sm-5">Demand letter TAN</dt>
+              <dd class="col-sm-7 fw-semibold"
+                  th:text="${profile.demandLetterTan() != null ? profile.demandLetterTan() : '—'}">—</dd>
+            </dl>
+          </div>
+        </div>
+        <p class="form-text small mb-0 mt-2"
+           th:if="${profile.companyProfileEditable()}">
+          Demand letters use GSTIN/TAN from any project user who has them saved (builder administrator first).
+          Keep your company GSTIN and TAN updated here so they appear on demand letters and receipts.
+        </p>
+        <p class="form-text small mb-0 mt-2 text-warning"
+           th:if="${profile.demandLetterGstin() == '—' and profile.companyProfileEditable()}">
+          GSTIN is missing for this project. Open <strong>Edit company &amp; tax details</strong> and save your GST number.
+        </p>
+      </div>
+    </div>
+
+    <div class="col-12" th:if="${profile.projectPhone() != null or profile.projectAddress() != null or profile.projectCity() != null}">
+      <div class="card card-body shadow-sm">
+        <h2 class="h6 text-muted text-uppercase mb-3">Project contact</h2>
+        <dl class="row mb-0 small">
+          <dt class="col-sm-3 col-md-2">Phone</dt>
+          <dd class="col-sm-9 col-md-10" th:text="${profile.projectPhone() != null ? profile.projectPhone() : '—'}">—</dd>
+          <dt class="col-sm-3 col-md-2">Address</dt>
+          <dd class="col-sm-9 col-md-10" th:text="${profile.projectAddress() != null ? profile.projectAddress() : '—'}">—</dd>
+          <dt class="col-sm-3 col-md-2">City</dt>
+          <dd class="col-sm-9 col-md-10" th:text="${profile.projectCity() != null ? profile.projectCity() : '—'}">—</dd>
+        </dl>
+        <p class="form-text small mb-0 mt-2 text-muted"
+           th:if="${profile.companyProfileEditable()}">
+          Project phone and address are managed by your builder administrator or Floor21 admin.
+        </p>
       </div>
     </div>
   </div>

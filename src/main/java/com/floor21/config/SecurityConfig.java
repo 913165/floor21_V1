@@ -58,6 +58,11 @@ public class SecurityConfig {
                                         .requestMatchers(HttpMethod.GET, "/bookings/*")
                                         .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
                                         .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/bookings/*/linked-parking",
+                                                "/bookings/*/parking-slots-for-link")
+                                        .hasAnyRole("SUPER_ADMIN", "BUILDER_ADMIN", "EXECUTIVE")
+                                        .requestMatchers(
                                                 HttpMethod.POST,
                                                 "/bookings/*/remove",
                                                 "/bookings/*/cancel/confirm",

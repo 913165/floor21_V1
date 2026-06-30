@@ -162,9 +162,23 @@
               <option th:each="u : ${executives}" th:value="${u.id}" th:text="${u.fullName + ' (' + u.role + ')'}"></option>
             </select>
           </div>
-          <div class="col-12">
+          <div class="col-12" th:if="${booking.flat != null}">
+            <label class="form-label">Parking info</label>
+            <p class="form-control-plaintext small mb-1"
+               th:text="${booking.parkingInfo != null and !#strings.isEmpty(booking.parkingInfo) ? booking.parkingInfo : 'Linked from flat parking slots (manage on booking detail or flat grid).'}">
+              Linked from flat parking slots
+            </p>
+            <p class="form-text mb-0">
+              Link or change parking on the
+              <a th:if="${booking.id != null}" th:href="@{/bookings/{id}(id=${booking.id})}">booking detail</a>
+              <span th:unless="${booking.id != null}">booking detail page</span>
+              page or the flat grid.
+            </p>
+          </div>
+          <div class="col-12" th:unless="${booking.flat != null}">
             <label class="form-label">Parking info</label>
             <textarea class="form-control" rows="2" th:field="*{parkingInfo}"></textarea>
+            <p class="form-text mb-0">After you select a flat, parking links are managed from the flat grid.</p>
           </div>
           <div class="col-12">
             <label class="form-label">Reference</label>

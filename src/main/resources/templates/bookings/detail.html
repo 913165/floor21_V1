@@ -245,10 +245,50 @@
 
       <div class="client-field-row">
         <p class="client-field-label">Parking info</p>
+        <div id="booking-parking-links"
+             class="booking-parking-links"
+             th:if="${parkingFlatId != null}"
+             th:data-booking-id="${booking.id}"
+             th:data-flat-id="${parkingFlatId}"
+             th:data-editable="${parkingLinksEditable}">
+          <ul id="booking-parking-links-list" class="flat-parking-links-list list-unstyled mb-2">
+            <li th:each="slot : ${linkedParking}"
+                class="flat-parking-links-list__item"
+                th:attr="data-parking-flat-id=${slot.parkingFlatId()}, data-floor-number=${slot.floorNumber()}">
+              <span th:text="|Floor ${slot.floorNumber()} · Slot ${slot.slotNumber()} (${slot.flatNumber()})|">Floor 4 · Slot 12 (0412)</span>
+              <button type="button"
+                      class="btn btn-link btn-sm text-danger px-1 py-0 booking-parking-unlink"
+                      th:if="${parkingLinksEditable}">Remove</button>
+            </li>
+          </ul>
+          <p class="text-muted small mb-2"
+             th:classappend="${linkedParking != null and !#lists.isEmpty(linkedParking)} ? 'd-none' : ''"
+             id="booking-parking-links-empty">No parking slots linked to this flat.</p>
+          <div th:if="${parkingLinksEditable}" id="booking-parking-links-admin">
+            <div class="row g-2 align-items-end">
+              <div class="col-sm-8">
+                <label class="form-label small mb-0" for="booking-parking-add">Add parking slot</label>
+                <select class="form-select form-select-sm" id="booking-parking-add">
+                  <option value="">— Select slot —</option>
+                </select>
+              </div>
+              <div class="col-sm-4">
+                <button type="button" class="btn btn-sm btn-outline-primary w-100" id="booking-parking-add-btn">Link slot</button>
+              </div>
+            </div>
+          </div>
+          <p class="text-danger small mb-0 d-none" id="booking-parking-links-error"></p>
+        </div>
         <p class="client-field-value text-break"
+           th:unless="${parkingFlatId != null}"
            th:classappend="${booking.parkingInfo == null || #strings.isEmpty(booking.parkingInfo)} ? 'client-field-value--empty'"
            th:text="${booking.parkingInfo != null and !#strings.isEmpty(booking.parkingInfo) ? booking.parkingInfo : 'Not provided'}">
           Not provided
+        </p>
+        <p class="form-text small mb-0 mt-1"
+           th:if="${parkingLinksEditable and parkingBuildingId != null}">
+          You can also manage links from the
+          <a th:href="@{/buildings/{bid}/flats(bid=${parkingBuildingId},focusFlat=${parkingFlatId})}">flat grid</a>.
         </p>
       </div>
 
@@ -333,6 +373,10 @@
     </form>
     <a class="btn btn-link btn-sm" th:href="@{/bookings(projectId=${filterProjectId})}">Back to bookings</a>
   </div>
+
+  <script th:if="${parkingFlatId != null and parkingLinksEditable}"
+          th:src="@{/js/booking-parking-links.js(v=5)}"
+          data-turbo-track="reload"></script>
 </div>
 </body>
 </html>

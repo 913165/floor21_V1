@@ -6,10 +6,12 @@ import com.floor21.repository.FlatRepository;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
 import com.floor21.util.BookingTaxDefaults;
+import com.floor21.service.BookingParkingInfoService;
 import com.floor21.service.BookingService;
 import com.floor21.service.BrokerService;
 import com.floor21.service.ClientService;
 import com.floor21.service.BookingOwnerService;
+import com.floor21.service.FlatService;
 import com.floor21.service.ReceiptService;
 import com.floor21.service.UserProjectAssignmentService;
 import java.beans.PropertyEditorSupport;
@@ -31,6 +33,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.http.ResponseEntity;
+import java.util.Map;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -46,6 +51,8 @@ public class BookingController {
     private final FlatRepository flatRepository;
     private final ReceiptService receiptService;
     private final UserProjectAssignmentService userProjectAssignmentService;
+    private final BookingParkingInfoService bookingParkingInfoService;
+    private final FlatService flatService;
 
     @InitBinder("booking")
     public void initBinder(WebDataBinder binder) {
@@ -204,7 +211,87 @@ public class BookingController {
                 "platformAdminCanManageBooking",
                 platformAdminView && bookingService.canPlatformAdminManageBookingWithoutExecutive(booking));
         model.addAttribute("showTaxRecalculateHint", BookingTaxDefaults.needsTaxDefaults(booking));
+        if (booking.getFlat() != null) {
+            var flatId = booking.getFlat().getId();
+            var linkedParking = bookingParkingInfoService.linkedSlotsForResidentialFlat(flatId);
+            var parkingDisplay = com.floor21.util.LinkedParkingFormatter.formatSummary(linkedParking);
+            if (!platformAdminView
+                    && parkingDisplay != null
+                    && (booking.getParkingInfo() == null || booking.getParkingInfo().isBlank())) {
+                bookingParkingInfoService.syncForResidentialFlat(flatId);
+                booking.setParkingInfo(parkingDisplay);
+            }
+            UUID parkingBuildingId =
+                    flatRepository
+                            .findByIdWithBuilding(flatId)
+                            .map(f -> f.getBuilding() != null ? f.getBuilding().getId() : null)
+                            .orElse(
+                                    booking.getFlat().getBuilding() != null
+                                            ? booking.getFlat().getBuilding().getId()
+                                            : null);
+            model.addAttribute("linkedParking", linkedParking);
+            model.addAttribute("parkingDisplay", parkingDisplay);
+            model.addAttribute("parkingFlatId", flatId);
+            model.addAttribute("parkingBuildingId", parkingBuildingId);
+            model.addAttribute("parkingLinksEditable", !platformAdminView && isParkingLinkEnabled());
+        }
         return "bookings/detail";
+    }
+
+    @GetMapping("/{id}/linked-parking")
+    @ResponseBody
+    public ResponseEntity<?> linkedParkingForBooking(@PathVariable UUID id) {
+        try {
+            Booking booking =
+                    isPlatformAdmin()
+                            ? bookingService.getForPlatformAdmin(id)
+                            : bookingService.get(id);
+            if (booking.getFlat() == null) {
+                return ResponseEntity.ok(List.of());
+            }
+            return ResponseEntity.ok(
+                    bookingParkingInfoService.linkedSlotsForResidentialFlat(booking.getFlat().getId()));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/parking-slots-for-link")
+    @ResponseBody
+    public ResponseEntity<?> parkingSlotsForBooking(@PathVariable UUID id) {
+        try {
+            Booking booking =
+                    isPlatformAdmin()
+                            ? bookingService.getForPlatformAdmin(id)
+                            : bookingService.get(id);
+            if (booking.getFlat() == null) {
+                return ResponseEntity.ok(List.of());
+            }
+            UUID flatId = booking.getFlat().getId();
+            UUID buildingId =
+                    flatRepository
+                            .findByIdWithBuilding(flatId)
+                            .map(f -> f.getBuilding().getId())
+                            .orElseThrow(() -> new IllegalArgumentException("Building not found for this flat."));
+            return ResponseEntity.ok(flatService.listParkingSlotsForLink(buildingId, flatId));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    private static boolean isParkingLinkEnabled() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof Floor21UserPrincipal)) {
+            return false;
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(
+                        a -> {
+                            String role = a.getAuthority();
+                            return "ROLE_SUPER_ADMIN".equals(role)
+                                    || "ROLE_BUILDER_ADMIN".equals(role)
+                                    || "ROLE_EXECUTIVE".equals(role);
+                        });
     }
 
     @GetMapping("/{id}/edit")

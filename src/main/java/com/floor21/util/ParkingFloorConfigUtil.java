@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 /** Per-floor parking slot configuration stored as JSON on {@link Building}. */
 public final class ParkingFloorConfigUtil {
@@ -649,6 +650,23 @@ public final class ParkingFloorConfigUtil {
                 .filter(ParkingFloorConfigUtil::isBasementFloor)
                 .sorted(Comparator.reverseOrder())
                 .toList();
+    }
+
+    /** Configured tower parking floors (1, 2, …), merged with {@link Building#getParkingFloors()}. */
+    public static List<Integer> listTowerParkingFloors(Building building) {
+        Set<Integer> floors = new TreeSet<>();
+        read(building)
+                .forEach(
+                        (floor, cfg) -> {
+                            if (floor > 0 && cfg.configured()) {
+                                floors.add(floor);
+                            }
+                        });
+        int parkingFloors = building.getParkingFloors() != null ? building.getParkingFloors() : 0;
+        for (int floor = 1; floor <= parkingFloors; floor++) {
+            floors.add(floor);
+        }
+        return new ArrayList<>(floors);
     }
 
     /** Next deeper basement floor (-1, then -2, …). */
