@@ -261,12 +261,12 @@ public class ReceiptPrintService {
     private static String buildSiteAddress(Building building, Builder builder) {
         String address =
                 coalesceText(
-                        building != null ? building.getAddress() : null,
-                        builder != null ? builder.getAddress() : null);
+                        builder != null ? builder.getAddress() : null,
+                        building != null ? building.getAddress() : null);
         String city =
                 coalesceText(
-                        building != null ? building.getCity() : null,
-                        builder != null ? builder.getCity() : null);
+                        builder != null ? builder.getCity() : null,
+                        building != null ? building.getCity() : null);
         String joined = joinAddressParts(address, city);
         return joined.isEmpty() ? "—" : joined;
     }

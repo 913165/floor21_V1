@@ -62,24 +62,6 @@
       This receipt is issued subject to realization of the Cheque, if bounced, it stands automatically cancelled.
     </p>
 
-    <div class="receipt-footer" th:if="${footerAddressPrint != null || footerPhonePrint != null || footerEmailPrint != null}">
-      <p class="receipt-footer-line mb-1" th:if="${footerAddressPrint != null && !#strings.isEmpty(footerAddressPrint) && footerAddressPrint != '—'}">
-        <span class="receipt-footer-icon" aria-hidden="true">&#128205;</span>
-        <span th:text="${footerAddressPrint}">Address</span>
-      </p>
-      <p class="receipt-footer-line mb-0">
-        <span th:if="${footerPhonePrint != null && !#strings.isEmpty(footerPhonePrint) && footerPhonePrint != '—'}">
-          <span class="receipt-footer-icon" aria-hidden="true">&#128222;</span>
-          <span th:text="${footerPhonePrint}">Phone</span>
-        </span>
-        <span th:if="${footerEmailPrint != null && !#strings.isEmpty(footerEmailPrint) && footerEmailPrint != '—'}"
-              th:classappend="${footerPhonePrint != null && !#strings.isEmpty(footerPhonePrint) && footerPhonePrint != '—'} ? ' ms-3' : ''">
-          <span class="receipt-footer-icon" aria-hidden="true">&#9993;</span>
-          <span th:text="${footerEmailPrint}">Email</span>
-        </span>
-      </p>
-    </div>
-
     <div class="d-print-none mt-4 d-flex flex-wrap gap-2 align-items-center">
       <div class="form-check mb-0 me-2">
         <input class="form-check-input" type="checkbox" id="receipt-print-all-owners"/>
@@ -174,12 +156,19 @@
     }
 
     .receipt-amount-box {
+      display: inline-block;
       border: 1px solid #333;
-      border-radius: 0.75rem;
-      padding: 0.65rem 1.25rem;
-      min-width: 10rem;
+      border-radius: 0.2rem;
+      padding: 0.2rem 0.55rem;
       text-align: center;
-      font-size: 13pt;
+      font-size: 12pt;
+      flex: 0 0 auto;
+      width: fit-content;
+      max-width: 11rem;
+    }
+
+    .receipt-amount-box strong {
+      font-weight: 700;
     }
 
     .receipt-signatory {
@@ -205,23 +194,8 @@
     .receipt-disclaimer {
       font-size: 9.5pt;
       color: #333;
-      margin-bottom: 1.5rem;
-    }
-
-    .receipt-footer {
-      text-align: center;
-      font-size: 10pt;
-      margin-top: 2rem;
-      padding-top: 0.75rem;
-      border-top: 1px solid #ddd;
-    }
-
-    .receipt-footer-line {
-      margin: 0;
-    }
-
-    .receipt-footer-icon {
-      margin-right: 0.35rem;
+      margin-top: 1.25rem;
+      margin-bottom: 0;
     }
 
     [data-bs-theme="dark"] .receipt-letter {
@@ -262,6 +236,12 @@
 
       .receipt-disclaimer {
         color: #333 !important;
+      }
+
+      .receipt-amount-box {
+        border: 1px solid #000 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
 
       @page {

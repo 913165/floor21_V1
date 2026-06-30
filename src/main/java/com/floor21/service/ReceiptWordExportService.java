@@ -4,6 +4,7 @@ import com.floor21.dto.ReceiptLetterView;
 import com.floor21.entity.Receipt;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
@@ -13,8 +14,12 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBorder;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblBorders;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcBorders;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcMar;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STBorder;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth;
 import org.springframework.stereotype.Service;
@@ -74,7 +79,6 @@ public class ReceiptWordExportService {
                     false,
                     10);
         }
-        writeFooter(doc, view);
     }
 
     private static void writeHeader(XWPFDocument doc, ReceiptLetterView view) {
@@ -126,14 +130,16 @@ public class ReceiptWordExportService {
         XWPFTable table = doc.createTable(1, 2);
         setTableFullWidth(table);
         removeTableBorders(table);
+        setColumnWidth(table, 0, 1700);
+        setColumnWidth(table, 1, 7300);
 
         XWPFTableRow row = table.getRow(0);
         XWPFTableCell amountCell = row.getCell(0);
         amountCell.removeParagraph(0);
         XWPFParagraph amountPara = amountCell.addParagraph();
-        amountPara.setAlignment(ParagraphAlignment.LEFT);
-        appendText(amountPara, nullToDash(view.amountFiguresPrint()), true, 13);
-        applyCellBorder(amountCell);
+        amountPara.setAlignment(ParagraphAlignment.CENTER);
+        appendText(amountPara, nullToDash(view.amountFiguresPrint()), true, 12);
+        applyAmountBoxBorder(amountCell);
 
         XWPFTableCell signatoryCell = row.getCell(1);
         signatoryCell.removeParagraph(0);
@@ -150,29 +156,6 @@ public class ReceiptWordExportService {
         XWPFParagraph labelPara = signatoryCell.addParagraph();
         labelPara.setAlignment(ParagraphAlignment.RIGHT);
         appendText(labelPara, "Authorised Signatory", true, 12, true);
-    }
-
-    private static void writeFooter(XWPFDocument doc, ReceiptLetterView view) {
-        addBlankLine(doc);
-        addBlankLine(doc);
-        if (hasText(view.footerAddressPrint())) {
-            XWPFParagraph address = doc.createParagraph();
-            address.setAlignment(ParagraphAlignment.CENTER);
-            appendText(address, nullToDash(view.footerAddressPrint()), false, 10);
-        }
-        if (hasText(view.footerPhonePrint()) || hasText(view.footerEmailPrint())) {
-            XWPFParagraph contact = doc.createParagraph();
-            contact.setAlignment(ParagraphAlignment.CENTER);
-            if (hasText(view.footerPhonePrint())) {
-                appendText(contact, nullToDash(view.footerPhonePrint()), false, 10);
-            }
-            if (hasText(view.footerPhonePrint()) && hasText(view.footerEmailPrint())) {
-                appendText(contact, "   ", false, 10);
-            }
-            if (hasText(view.footerEmailPrint())) {
-                appendText(contact, nullToDash(view.footerEmailPrint()), false, 10);
-            }
-        }
     }
 
     private static void appendText(XWPFParagraph paragraph, String text, boolean bold, int fontSize) {
@@ -209,8 +192,43 @@ public class ReceiptWordExportService {
         borders.addNewInsideV().setVal(STBorder.NONE);
     }
 
-    private static void applyCellBorder(XWPFTableCell cell) {
+    private static void applyAmountBoxBorder(XWPFTableCell cell) {
         cell.setVerticalAlignment(org.apache.poi.xwpf.usermodel.XWPFTableCell.XWPFVertAlign.CENTER);
+        CTTcPr tcPr = cell.getCTTc().isSetTcPr() ? cell.getCTTc().getTcPr() : cell.getCTTc().addNewTcPr();
+        CTTcBorders borders = tcPr.isSetTcBorders() ? tcPr.getTcBorders() : tcPr.addNewTcBorders();
+        setCellBorder(borders.addNewTop());
+        setCellBorder(borders.addNewBottom());
+        setCellBorder(borders.addNewLeft());
+        setCellBorder(borders.addNewRight());
+        CTTcMar mar = tcPr.isSetTcMar() ? tcPr.getTcMar() : tcPr.addNewTcMar();
+        setCellMargin(mar.addNewTop(), 40);
+        setCellMargin(mar.addNewBottom(), 40);
+        setCellMargin(mar.addNewLeft(), 80);
+        setCellMargin(mar.addNewRight(), 80);
+    }
+
+    private static void setCellBorder(CTBorder border) {
+        border.setVal(STBorder.SINGLE);
+        border.setSz(BigInteger.valueOf(6));
+        border.setColor("000000");
+    }
+
+    private static void setCellMargin(org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth mar, int twips) {
+        mar.setType(STTblWidth.DXA);
+        mar.setW(BigInteger.valueOf(twips));
+    }
+
+    private static void setColumnWidth(XWPFTable table, int columnIndex, int widthTwips) {
+        for (XWPFTableRow row : table.getRows()) {
+            if (columnIndex >= row.getTableCells().size()) {
+                continue;
+            }
+            XWPFTableCell cell = row.getCell(columnIndex);
+            CTTcPr tcPr = cell.getCTTc().isSetTcPr() ? cell.getCTTc().getTcPr() : cell.getCTTc().addNewTcPr();
+            CTTblWidth width = tcPr.isSetTcW() ? tcPr.getTcW() : tcPr.addNewTcW();
+            width.setType(STTblWidth.DXA);
+            width.setW(BigInteger.valueOf(widthTwips));
+        }
     }
 
     private static void setCellText(
@@ -224,10 +242,6 @@ public class ReceiptWordExportService {
         XWPFParagraph p = cell.addParagraph();
         p.setAlignment(alignment);
         appendText(p, text, bold, fontSize, italic);
-    }
-
-    private static boolean hasText(String value) {
-        return value != null && !value.isBlank() && !"—".equals(value.trim());
     }
 
     private static String nullToDash(String s) {
