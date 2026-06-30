@@ -1,5 +1,7 @@
 package com.floor21.controller;
 
+import com.floor21.dto.LinkedParkingSlotDto;
+import com.floor21.dto.ParkingSlotOptionDto;
 import com.floor21.entity.Booking;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.FlatRepository;
@@ -18,7 +20,9 @@ import java.beans.PropertyEditorSupport;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
@@ -234,6 +238,23 @@ public class BookingController {
             model.addAttribute("parkingFlatId", flatId);
             model.addAttribute("parkingBuildingId", parkingBuildingId);
             model.addAttribute("parkingLinksEditable", !platformAdminView && isParkingLinkEnabled());
+            if (parkingBuildingId != null && !platformAdminView && isParkingLinkEnabled()) {
+                Set<UUID> linkedIds =
+                        linkedParking.stream()
+                                .map(LinkedParkingSlotDto::parkingFlatId)
+                                .collect(Collectors.toSet());
+                List<ParkingSlotOptionDto> availableParkingSlots =
+                        flatService.listParkingSlotsForLink(parkingBuildingId, flatId).stream()
+                                .filter(opt -> !linkedIds.contains(opt.id()))
+                                .filter(
+                                        opt ->
+                                                opt.linkedResidentialFlatId() == null
+                                                        || opt.linkedResidentialFlatId().equals(flatId))
+                                .toList();
+                model.addAttribute("availableParkingSlots", availableParkingSlots);
+            } else {
+                model.addAttribute("availableParkingSlots", List.<ParkingSlotOptionDto>of());
+            }
         }
         return "bookings/detail";
     }

@@ -250,6 +250,7 @@
              th:if="${parkingFlatId != null}"
              th:data-booking-id="${booking.id}"
              th:data-flat-id="${parkingFlatId}"
+             th:data-building-id="${parkingBuildingId}"
              th:data-editable="${parkingLinksEditable}">
           <ul id="booking-parking-links-list" class="flat-parking-links-list list-unstyled mb-2">
             <li th:each="slot : ${linkedParking}"
@@ -270,12 +271,22 @@
                 <label class="form-label small mb-0" for="booking-parking-add">Add parking slot</label>
                 <select class="form-select form-select-sm" id="booking-parking-add">
                   <option value="">— Select slot —</option>
+                  <option th:each="opt : ${availableParkingSlots}"
+                          th:value="${opt.id()}"
+                          th:text="|Floor ${opt.floorNumber()} · Slot ${opt.slotNumber()} (${opt.flatNumber()})|">
+                    Floor 4 · Slot 5 (0405)
+                  </option>
                 </select>
               </div>
               <div class="col-sm-4">
                 <button type="button" class="btn btn-sm btn-outline-primary w-100" id="booking-parking-add-btn">Link slot</button>
               </div>
             </div>
+            <p class="text-muted small mb-0 mt-1"
+               th:if="${#lists.isEmpty(availableParkingSlots)}"
+               id="booking-parking-no-slots-hint">
+              No more parking slots are available to link. Unlinked slots on your parking floors can be linked here or from the flat grid.
+            </p>
           </div>
           <p class="text-danger small mb-0 d-none" id="booking-parking-links-error"></p>
         </div>
@@ -374,9 +385,6 @@
     <a class="btn btn-link btn-sm" th:href="@{/bookings(projectId=${filterProjectId})}">Back to bookings</a>
   </div>
 
-  <script th:if="${parkingFlatId != null and parkingLinksEditable}"
-          th:src="@{/js/booking-parking-links.js(v=5)}"
-          data-turbo-track="reload"></script>
 </div>
 </body>
 </html>

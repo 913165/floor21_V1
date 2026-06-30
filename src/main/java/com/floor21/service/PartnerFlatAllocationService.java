@@ -410,7 +410,8 @@ public class PartnerFlatAllocationService {
 
     /**
      * Whether the current user may link or unlink {@code parkingFlatId}. When {@code linkingResidentialFlatId}
-     * is set (picker for a specific flat), unassigned guest slots are included if the user manages that flat.
+     * is set (picker for a specific flat), unlinked slots the user may use are those with no partner or their
+     * own partner assignment, as long as they manage the target residential flat.
      */
     @Transactional(readOnly = true)
     public boolean canManageFlatForParkingLink(
@@ -429,17 +430,22 @@ public class PartnerFlatAllocationService {
         if (parking == null) {
             return false;
         }
+        UUID linkedResidentialId = parking.getLinkedResidentialFlatId();
         UUID directPartner = getAssignedPartnerIdForFlat(parkingFlatId);
+
+        if (linkingResidentialFlatId != null) {
+            if (linkedResidentialId != null && !linkedResidentialId.equals(linkingResidentialFlatId)) {
+                return false;
+            }
+            return canManageResidentialForParking(buildingId, linkingResidentialFlatId);
+        }
+
         if (directPartner != null) {
             return directPartner.equals(staffUserId);
         }
-        UUID linkedResidentialId = parking.getLinkedResidentialFlatId();
         if (linkedResidentialId != null) {
             UUID linkedPartner = getAssignedPartnerIdForFlat(linkedResidentialId);
             return linkedPartner != null && linkedPartner.equals(staffUserId);
-        }
-        if (linkingResidentialFlatId != null) {
-            return canManageResidentialForParking(buildingId, linkingResidentialFlatId);
         }
         return false;
     }

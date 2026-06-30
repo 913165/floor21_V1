@@ -4391,20 +4391,25 @@
 
   async function loadParkingSlotOptions(force, residentialFlatId) {
     var cacheKey = parkingSlotsCacheKey(residentialFlatId);
-    if (!force && parkingSlotsCache[cacheKey]) return parkingSlotsCache[cacheKey];
+    if (!force && parkingSlotsCache[cacheKey]) {
+      return { ok: true, options: parkingSlotsCache[cacheKey], error: null };
+    }
     var grid = document.getElementById("flat-grid");
     var buildingId = grid ? grid.getAttribute("data-building-id") : null;
-    if (!buildingId) return [];
+    if (!buildingId) {
+      return { ok: false, options: [], error: "Building not found." };
+    }
     var url = appRoot() + "/buildings/" + buildingId + "/parking-slots-for-link";
     if (residentialFlatId) {
       url += "?residentialFlatId=" + encodeURIComponent(residentialFlatId);
     }
-    var res = await fetch(url, {
-      headers: { Accept: "application/json" },
-    });
-    if (!res.ok) return [];
+    var res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) {
+      parkingSlotsCache[cacheKey] = [];
+      return { ok: false, options: [], error: await parseErrorResponse(res) };
+    }
     parkingSlotsCache[cacheKey] = await res.json();
-    return parkingSlotsCache[cacheKey];
+    return { ok: true, options: parkingSlotsCache[cacheKey], error: null };
   }
 
   async function populateParkingSlotAddSelect(residentialFlatId, linkedSlots) {
@@ -4412,16 +4417,22 @@
     if (!select) return;
     var linkedIds = {};
     (linkedSlots || []).forEach(function (s) {
-      linkedIds[s.parkingFlatId] = true;
+      if (s.parkingFlatId) linkedIds[String(s.parkingFlatId).toLowerCase()] = true;
     });
     select.innerHTML = '<option value="">— Select slot —</option>';
     select.disabled = true;
-    var options = await loadParkingSlotOptions(false, residentialFlatId);
+    var loaded = await loadParkingSlotOptions(true, residentialFlatId);
+    if (!loaded.ok) {
+      showFlatParkingLinksError(loaded.error || "Could not load parking slots.");
+      select.disabled = false;
+      return;
+    }
+    var options = loaded.options || [];
+    var added = 0;
     options.forEach(function (opt) {
+      var optId = opt.id ? String(opt.id).toLowerCase() : "";
+      if (optId && linkedIds[optId]) return;
       if (opt.linkedResidentialFlatId && opt.linkedResidentialFlatId !== residentialFlatId) {
-        return;
-      }
-      if (linkedIds[opt.id]) {
         return;
       }
       var o = document.createElement("option");
@@ -4435,8 +4446,18 @@
         opt.flatNumber +
         ")";
       select.appendChild(o);
+      added += 1;
     });
     select.disabled = false;
+    if (added === 0 && options.length > 0) {
+      showFlatParkingLinksError(
+        "All available parking slots are already linked to this or other flats."
+      );
+    } else if (added === 0) {
+      showFlatParkingLinksError("No parking slots available to link for this flat.");
+    } else {
+      showFlatParkingLinksError("");
+    }
   }
 
   function syncFlatParkingLinksPanel(cardEl) {
@@ -4467,8 +4488,8 @@
     showFlatParkingLinksError("");
     var parkingFlatId = select.value;
     var floorNumber = null;
-    var options = await loadParkingSlotOptions(false, residentialFlatId);
-    options.forEach(function (opt) {
+    var loaded = await loadParkingSlotOptions(false, selectedFlatId);
+    (loaded.options || []).forEach(function (opt) {
       if (opt.id === parkingFlatId) floorNumber = opt.floorNumber;
     });
     var res = await postParkingLink(parkingFlatId, selectedFlatId);
