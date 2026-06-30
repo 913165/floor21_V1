@@ -28,18 +28,26 @@
         <label class="form-label">Branch</label>
         <input class="form-control" th:field="*{branch}" maxlength="200"/>
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Account purpose</label>
+      <div class="col-md-6">
+        <label class="form-label">Used for</label>
         <select class="form-select" th:field="*{accountPurpose}">
-          <option value="INSTALMENT">Flat cost instalment</option>
-          <option value="GST">GST payment</option>
-          <option value="RERA">RERA account</option>
-          <option value="PERSONAL">Personal</option>
-          <option value="JOINT">Joint</option>
-          <option value="CURRENT">Current account</option>
-          <option value="PERSONAL_SAVINGS">Personal savings account</option>
-          <option value="OTHERS">Others</option>
+          <optgroup label="Demand letter (required — use two separate accounts)">
+            <option value="INSTALMENT">Flat cost instalment</option>
+            <option value="GST">GST</option>
+          </optgroup>
+          <optgroup label="Other (receipt reference only)">
+            <option value="RERA">RERA</option>
+            <option value="PERSONAL">Personal</option>
+            <option value="JOINT">Joint</option>
+            <option value="CURRENT">Current account</option>
+            <option value="PERSONAL_SAVINGS">Savings account</option>
+            <option value="OTHERS">Others</option>
+          </optgroup>
         </select>
+        <div class="form-text">
+          Demand letters show two bank columns: one account for <em>flat cost instalment</em> and a
+          <strong>different</strong> account for <em>GST</em>. Account type on the letter (e.g. Current) is filled automatically.
+        </div>
       </div>
       <div class="col-12">
         <label class="form-label">Notes</label>

@@ -53,6 +53,38 @@ public class Bank {
         return isKnownPurpose(normalized) ? normalized : PURPOSE_INSTALMENT;
     }
 
+    public static String purposeDisplayLabel(String purpose) {
+        return usedForDisplayLabel(purpose);
+    }
+
+    /** Label for bank list / form: which demand-letter column this account fills. */
+    public static String usedForDisplayLabel(String purpose) {
+        if (purpose == null || purpose.isBlank()) {
+            return "Flat cost instalment";
+        }
+        return switch (purpose.trim().toUpperCase()) {
+            case PURPOSE_INSTALMENT -> "Flat cost instalment";
+            case PURPOSE_GST -> "GST";
+            default -> "Other";
+        };
+    }
+
+    public static boolean isDemandLetterPurpose(String purpose) {
+        if (purpose == null || purpose.isBlank()) {
+            return true;
+        }
+        String normalized = purpose.trim().toUpperCase();
+        return PURPOSE_INSTALMENT.equals(normalized) || PURPOSE_GST.equals(normalized);
+    }
+
+    public boolean isDemandLetterInstalmentAccount() {
+        return PURPOSE_INSTALMENT.equalsIgnoreCase(accountPurpose);
+    }
+
+    public boolean isDemandLetterGstAccount() {
+        return PURPOSE_GST.equalsIgnoreCase(accountPurpose);
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;

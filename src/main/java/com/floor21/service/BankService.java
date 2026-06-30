@@ -33,7 +33,7 @@ public class BankService {
     @Transactional(readOnly = true)
     public Bank findActiveInstalmentAccount(UUID builderId) {
         return listActiveForBuilder(builderId).stream()
-                .filter(b -> !Bank.PURPOSE_GST.equalsIgnoreCase(b.getAccountPurpose()))
+                .filter(Bank::isDemandLetterInstalmentAccount)
                 .findFirst()
                 .orElse(null);
     }
@@ -41,7 +41,7 @@ public class BankService {
     @Transactional(readOnly = true)
     public Bank findActiveGstAccount(UUID builderId) {
         return listActiveForBuilder(builderId).stream()
-                .filter(b -> Bank.PURPOSE_GST.equalsIgnoreCase(b.getAccountPurpose()))
+                .filter(Bank::isDemandLetterGstAccount)
                 .findFirst()
                 .orElse(null);
     }

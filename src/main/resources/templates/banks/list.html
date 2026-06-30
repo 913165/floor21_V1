@@ -7,7 +7,10 @@
     <h1 class="h3 mb-0" th:text="${pageTitle}">Bank accounts</h1>
     <a class="btn btn-primary" th:href="@{/bank-accounts/new}">New bank account</a>
   </div>
-  <p class="text-muted small">Your organisation’s bank accounts (branch, IFSC, account details). Use as reference when recording receipts (e.g. deposit account).</p>
+  <p class="text-muted small">
+    Add separate accounts for demand letters: one <strong>used for flat cost instalment</strong> and one
+    <strong>used for GST</strong> (different bank, account number, and IFSC). Other accounts are for receipt reference only.
+  </p>
   <div class="table-responsive card shadow-sm">
     <table class="table table-hover table-sm mb-0 align-middle">
       <thead class="table-light">
@@ -17,6 +20,7 @@
         <th>IFSC</th>
         <th>Account</th>
         <th>Holder</th>
+        <th>Used for</th>
         <th>Active</th>
         <th></th>
       </tr>
@@ -28,6 +32,14 @@
         <td class="text-nowrap" th:text="${b.ifscCode != null && !#strings.isEmpty(b.ifscCode)} ? ${b.ifscCode} : '—'">—</td>
         <td class="text-nowrap small" th:text="${b.accountNumber != null && !#strings.isEmpty(b.accountNumber)} ? ${b.accountNumber} : '—'">—</td>
         <td th:text="${b.accountHolderName != null && !#strings.isEmpty(b.accountHolderName)} ? ${b.accountHolderName} : '—'">—</td>
+        <td class="text-nowrap">
+          <span th:if="${T(com.floor21.entity.Bank).isDemandLetterPurpose(b.accountPurpose)}"
+                class="badge text-bg-primary rounded-pill fw-normal"
+                th:text="${T(com.floor21.entity.Bank).usedForDisplayLabel(b.accountPurpose)}">Flat cost instalment</span>
+          <span th:unless="${T(com.floor21.entity.Bank).isDemandLetterPurpose(b.accountPurpose)}"
+                class="text-muted"
+                th:text="${T(com.floor21.entity.Bank).usedForDisplayLabel(b.accountPurpose)}">Other</span>
+        </td>
         <td>
           <span th:if="${b.active != null && b.active}" class="badge text-bg-success rounded-pill">Yes</span>
           <span th:unless="${b.active != null && b.active}" class="badge text-bg-secondary rounded-pill">No</span>
@@ -37,7 +49,7 @@
         </td>
       </tr>
       <tr th:if="${#lists.isEmpty(banks)}">
-        <td colspan="7" class="text-muted text-center py-4">No bank accounts yet. Add your first one.</td>
+        <td colspan="8" class="text-muted text-center py-4">No bank accounts yet. Add your first one.</td>
       </tr>
       </tbody>
     </table>

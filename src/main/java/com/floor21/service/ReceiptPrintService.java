@@ -11,6 +11,7 @@ import com.floor21.entity.Receipt;
 import com.floor21.entity.User;
 import com.floor21.entity.UserProjectAssignment;
 import com.floor21.repository.UserProjectAssignmentRepository;
+import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.util.IndianRupeesFormatter;
 import com.floor21.util.SlabReceiptWaterfall;
 import java.math.BigDecimal;
@@ -23,6 +24,8 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
 
@@ -386,20 +389,49 @@ public class ReceiptPrintService {
         if (builder == null) {
             return "—";
         }
-        for (UserProjectAssignment assignment :
-                userProjectAssignmentRepository.findByBuilder_IdWithUser(builder.getId())) {
+        List<UserProjectAssignment> assignments =
+                userProjectAssignmentRepository.findByBuilder_IdWithUser(builder.getId());
+        String currentEmail = currentPrincipalEmail();
+        if (currentEmail != null) {
+            for (UserProjectAssignment assignment : assignments) {
+                User user = assignment.getUser();
+                if (user != null && currentEmail.equalsIgnoreCase(user.getEmail())) {
+                    String company = userLegalCompanyName(user);
+                    if (company != null) {
+                        return company;
+                    }
+                }
+            }
+        }
+        for (UserProjectAssignment assignment : assignments) {
             if (!StaffBuildingAccessService.ROLE_BUILDER_ADMIN.equals(assignment.getRole())) {
                 continue;
             }
-            String company = userCompanyName(assignment.getUser());
+            String company = userLegalCompanyName(assignment.getUser());
             if (company != null) {
                 return company;
             }
         }
-        if (builder.getCompanyName() != null && !builder.getCompanyName().isBlank()) {
+        for (UserProjectAssignment assignment : assignments) {
+            String company = userLegalCompanyName(assignment.getUser());
+            if (company != null) {
+                return company;
+            }
+        }
+        if (assignments.isEmpty()
+                && builder.getCompanyName() != null
+                && !builder.getCompanyName().isBlank()) {
             return builder.getCompanyName().trim();
         }
         return "—";
+    }
+
+    private static String currentPrincipalEmail() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof Floor21UserPrincipal principal)) {
+            return null;
+        }
+        return principal.getEmail();
     }
 
     /** GSTIN and TAN from project users (builder admin first, then any assigned user). */
@@ -463,7 +495,7 @@ public class ReceiptPrintService {
         return receipt.getBuilder();
     }
 
-    private static String userCompanyName(User user) {
+    private static String userLegalCompanyName(User user) {
         if (user == null || user.getCompanyName() == null || user.getCompanyName().isBlank()) {
             return null;
         }

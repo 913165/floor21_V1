@@ -15,7 +15,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -45,7 +45,11 @@ class DemandLetterDocxFiller {
     private static final String SAMPLE_CONSIDERATION_WORDS =
             "Rupees Two Crore Eleven Lakh Ninety Three Thousand Only";
     private static final String SAMPLE_MILESTONE = "On or before completion 4th Slab";
+    /** Sample signatory line in the bundled Word template (not from user profile). */
     private static final String SAMPLE_SIGNATORY = "SEAVISTA INFRASTRUCTURE LLP";
+    private static final String SAMPLE_SIGNATORY_LINE = "For " + SAMPLE_SIGNATORY;
+    /** Typo in sample template GST holder row. */
+    private static final String SAMPLE_GST_HOLDER = "SEAVISTA INFRSTRUCTURE LLP";
 
     XWPFDocument openTemplate() throws IOException {
         InputStream in = DemandLetterDocxFiller.class.getResourceAsStream(TEMPLATE_PATH);
@@ -83,12 +87,12 @@ class DemandLetterDocxFiller {
                         ? LETTER_DATE.format(booking.getBookingDate())
                         : "";
 
-        Map<String, String> tokens = new HashMap<>();
+        Map<String, String> tokens = new LinkedHashMap<>();
         tokens.put(SAMPLE_REG_PLACE, regPlace);
         tokens.put(SAMPLE_CONSIDERATION_FIGURES, IndianRupeesFormatter.formatFigures(consideration));
         tokens.put(SAMPLE_CONSIDERATION_WORDS, IndianRupeesFormatter.formatWordsOnly(consideration));
         tokens.put(SAMPLE_MILESTONE, nullToDash(model.completedMilestone().getMilestoneLabel()));
-        tokens.put(SAMPLE_SIGNATORY, signatoryCompany);
+        tokens.put(SAMPLE_SIGNATORY_LINE, "For " + nullToDash(signatoryCompany));
         tokens.put(SAMPLE_FLAT, flat != null ? nullToDash(flat.getFlatNumber()) : "—");
         tokens.put(
                 SAMPLE_FLOOR,
@@ -323,7 +327,8 @@ class DemandLetterDocxFiller {
             String branchCity) {
         tokens.put("10210819652", bankField(instalmentBank, Bank::getAccountNumber));
         tokens.put("409002306453", bankField(gstBank, Bank::getAccountNumber));
-        tokens.put("SEAVISTA INFRSTRUCTURE LLP", bankField(gstBank, Bank::getAccountHolderName));
+        tokens.put(SAMPLE_SIGNATORY, bankField(instalmentBank, Bank::getAccountHolderName));
+        tokens.put(SAMPLE_GST_HOLDER, bankField(gstBank, Bank::getAccountHolderName));
         tokens.put("IDFC FIRST Bank", bankField(instalmentBank, Bank::getBankName));
         tokens.put("RBL Bank Ltd", bankField(gstBank, Bank::getBankName));
         tokens.put("Kharghar", bankField(instalmentBank, Bank::getBranch));
