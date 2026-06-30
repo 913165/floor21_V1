@@ -67,6 +67,15 @@
     hint.classList.toggle("d-none", count > 0);
   }
 
+  function hasServerLinkedParking() {
+    var list = document.getElementById("booking-parking-links-list");
+    return list && list.querySelector("[data-parking-flat-id]") != null;
+  }
+
+  function hasDropdownOptions() {
+    return countSelectOptions(document.getElementById("booking-parking-add")) > 0;
+  }
+
   function countSelectOptions(select) {
     if (!select) return 0;
     var count = 0;
@@ -163,12 +172,12 @@
 
       var loaded = await loadParkingOptions();
       if (!loaded.ok) {
-        if (serverRenderedCount === 0) {
+        if (!hasDropdownOptions()) {
           showError(loaded.error);
         } else {
           showError("");
         }
-        syncNoSlotsHint(serverRenderedCount);
+        syncNoSlotsHint(countSelectOptions(select));
         select.disabled = false;
         return;
       }
@@ -209,7 +218,9 @@
         headers: { Accept: "application/json" },
       });
       if (!res.ok) {
-        showError(await parseErrorResponse(res));
+        if (!hasServerLinkedParking() && !hasDropdownOptions()) {
+          showError(await parseErrorResponse(res));
+        }
         return [];
       }
       showError("");

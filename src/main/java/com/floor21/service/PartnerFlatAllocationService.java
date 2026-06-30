@@ -410,8 +410,9 @@ public class PartnerFlatAllocationService {
 
     /**
      * Whether the current user may link or unlink {@code parkingFlatId}. When {@code linkingResidentialFlatId}
-     * is set (picker for a specific flat), unlinked slots the user may use are those with no partner or their
-     * own partner assignment, as long as they manage the target residential flat.
+     * is set (picker for a specific flat), only parking slots assigned to the current partner may be chosen
+     * (same rule as booking on the flat grid). Slots already linked to that residential flat remain manageable
+     * for unlink.
      */
     @Transactional(readOnly = true)
     public boolean canManageFlatForParkingLink(
@@ -437,7 +438,13 @@ public class PartnerFlatAllocationService {
             if (linkedResidentialId != null && !linkedResidentialId.equals(linkingResidentialFlatId)) {
                 return false;
             }
-            return canManageResidentialForParking(buildingId, linkingResidentialFlatId);
+            if (!canManageResidentialForParking(buildingId, linkingResidentialFlatId)) {
+                return false;
+            }
+            if (linkedResidentialId != null && linkedResidentialId.equals(linkingResidentialFlatId)) {
+                return true;
+            }
+            return isBookableByCurrentUser(buildingId, directPartner);
         }
 
         if (directPartner != null) {
