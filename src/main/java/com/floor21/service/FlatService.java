@@ -95,6 +95,7 @@ public class FlatService {
     private final BookingOwnerService bookingOwnerService;
     private final ReceiptService receiptService;
     private final BookingParkingInfoService bookingParkingInfoService;
+    private final BookingConsiderationSyncService bookingConsiderationSyncService;
 
     @Transactional(readOnly = true)
     public long countFlatsForBuilding(UUID buildingId) {
@@ -2442,7 +2443,18 @@ public class FlatService {
             throw new IllegalArgumentException("Price must be zero or greater.");
         }
         flat.setBasePrice(basePrice.setScale(2, RoundingMode.HALF_UP));
-        return flatRepository.save(flat);
+        Flat saved = flatRepository.save(flat);
+        syncBookingConsiderationAfterPriceChange(saved);
+        return saved;
+    }
+
+    private void syncBookingConsiderationAfterPriceChange(Flat flat) {
+        if (flat == null || flat.getId() == null || flat.getBasePrice() == null) {
+            return;
+        }
+        if (bookingRepository.countActiveByFlatId(flat.getId()) > 0) {
+            bookingConsiderationSyncService.syncActiveBookingsForFlat(flat.getId(), flat.getBasePrice());
+        }
     }
 
     @Transactional
@@ -2518,6 +2530,7 @@ public class FlatService {
             flat.setLayoutColumnType(LayoutColumnTypes.normalizeTypeLabel(dto.layoutColumnType()));
         }
         flat = flatRepository.saveAndFlush(flat);
+        syncBookingConsiderationAfterPriceChange(flat);
         return flat;
     }
 
@@ -2535,7 +2548,9 @@ public class FlatService {
         } else {
             FlatUnitTypes.applyToFlat(flat, "SHOP", dto.areaSqft(), null, null, dto.basePrice());
         }
-        return flatRepository.saveAndFlush(flat);
+        Flat saved = flatRepository.saveAndFlush(flat);
+        syncBookingConsiderationAfterPriceChange(saved);
+        return saved;
     }
 
     private static void applyGroundShopAreaAndPrice(
@@ -3231,6 +3246,7 @@ public class FlatService {
                 BuildingFlatTypeDefaults.applyConfiguredEntry(flat, areas);
             }
             flatRepository.save(flat);
+            syncBookingConsiderationAfterPriceChange(flat);
             updated.add(FlatAdminResponseMaps.fromFlat(flat));
         }
         return updated;
