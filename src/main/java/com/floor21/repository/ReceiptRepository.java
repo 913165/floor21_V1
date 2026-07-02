@@ -83,6 +83,13 @@ public interface ReceiptRepository extends JpaRepository<Receipt, UUID> {
             @Param("bookingIds") Collection<UUID> bookingIds, @Param("builderId") UUID builderId);
 
     @Query(
+            "select r.booking.id, coalesce(sum(r.amount),0) from Receipt r "
+                    + "where r.booking.id in :bookingIds and r.builder.id = :builderId "
+                    + "and (r.dishonoured = false or r.dishonoured is null) group by r.booking.id")
+    List<Object[]> sumReceiptAmountGrouped(
+            @Param("bookingIds") Collection<UUID> bookingIds, @Param("builderId") UUID builderId);
+
+    @Query(
             "select coalesce(sum(coalesce(r.amountGstComponent,0) + coalesce(r.amountInterestGst,0)),0) "
                     + "from Receipt r where r.booking.id = :bookingId and r.builder.id = :builderId "
                     + "and (r.dishonoured = false or r.dishonoured is null)")

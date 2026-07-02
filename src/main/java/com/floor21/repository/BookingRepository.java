@@ -254,6 +254,12 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             @Param("builderId") UUID builderId, @Param("buildingId") UUID buildingId);
 
     @Query(
+            "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building bl "
+                    + "where b.builder.id = :builderId and b.status = 'ACTIVE' "
+                    + "order by bl.buildingName, f.flatNumber")
+    List<Booking> findActiveWithBuildingByBuilder(@Param("builderId") UUID builderId);
+
+    @Query(
             "select b from Booking b join fetch b.client join fetch b.flat f join fetch f.building where b.id = :id "
                     + "and b.builder.id = :builderId")
     Optional<Booking> findByIdAndBuilder_IdForSchedule(@Param("id") UUID id, @Param("builderId") UUID builderId);

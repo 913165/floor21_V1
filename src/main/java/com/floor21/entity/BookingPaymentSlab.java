@@ -53,6 +53,9 @@ public class BookingPaymentSlab {
     @Column(name = "agreed_amount", precision = 15, scale = 2)
     private BigDecimal agreedAmount;
 
+    @Column(name = "demand_letter_sent_to_client", nullable = false)
+    private boolean demandLetterSentToClient = false;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

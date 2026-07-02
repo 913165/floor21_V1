@@ -3,8 +3,8 @@
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content"
-     th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}, recent=${dashboard.recentBookings()}">
-  <link rel="stylesheet" th:href="@{/css/dashboard.css(v=dashboard4-v3)}" data-turbo-track="reload"/>
+     th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}, summary=${selectedBuildingSummary}">
+  <link rel="stylesheet" th:href="@{/css/dashboard.css(v=dashboard4-v8)}" data-turbo-track="reload"/>
 
   <div class="f21-dashboard">
     <h1 class="f21-dashboard__title" th:text="${pageTitle}">Dashboard</h1>
@@ -68,57 +68,152 @@
       </article>
     </div>
 
-    <section class="f21-dashboard-panel" aria-labelledby="dashboard-recent-bookings">
+    <section class="f21-dashboard-panel" aria-labelledby="dashboard-building-payments">
       <div class="f21-dashboard-panel__header">
         <div class="f21-dashboard-panel__title-wrap">
           <svg class="f21-dashboard-panel__title-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                aria-hidden="true">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 6v6l4 2"/>
+            <path d="M12 2v20"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
           </svg>
-          <h2 class="f21-dashboard-panel__title" id="dashboard-recent-bookings">Recent bookings</h2>
-          <span class="f21-dashboard-panel__count" th:text="${#lists.size(recent)}">0</span>
+          <h2 class="f21-dashboard-panel__title" id="dashboard-building-payments">Payment summary</h2>
         </div>
-        <a class="f21-dashboard-panel__link" th:href="@{/bookings}" data-turbo-frame="floor21-main">
-          View all <span aria-hidden="true">→</span>
+        <div class="f21-dashboard-panel__header-actions">
+          <form id="dashboard-building-form" class="f21-dashboard-panel__toolbar mb-0" method="get"
+                th:action="@{/dashboard}" data-turbo-frame="floor21-main" data-turbo-action="advance">
+            <label class="f21-dashboard-panel__toolbar-label" for="dashboardBuilding">Building</label>
+            <select class="form-select form-select-sm f21-dashboard-panel__building-select"
+                    id="dashboardBuilding" name="buildingId" data-submit-on-select="true"
+                    th:disabled="${#lists.isEmpty(buildingSummaries)}">
+              <option value="" disabled th:selected="${selectedBuildingId == null}">Choose building…</option>
+              <option th:each="row : ${buildingSummaries}"
+                      th:value="${row.buildingId()}"
+                      th:selected="${selectedBuildingId != null && selectedBuildingId == row.buildingId()}"
+                      th:text="${row.buildingName()}">Building</option>
+            </select>
+          </form>
+          <a class="f21-dashboard-panel__link" th:href="@{/bookings/payment-schedule}" data-turbo-frame="floor21-main">
+            Payment schedules <span aria-hidden="true">→</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="f21-dashboard-panel__body" th:if="${summary != null}">
+        <p class="f21-payment-summary__building" th:text="${summary.buildingName()}">Building</p>
+        <div class="f21-payment-summary-grid" role="group" aria-label="Payment summary metrics">
+          <div class="f21-payment-summary-grid__cell">
+            <span class="f21-payment-summary-grid__label">Due till latest slab</span>
+            <span class="f21-payment-summary-grid__value f21-payment-summary-grid__value--due-slab"
+                  th:text="${amt.formatAmountDisplay(summary.dueTillLatestSlab())}">0</span>
+          </div>
+          <div class="f21-payment-summary-grid__cell">
+            <span class="f21-payment-summary-grid__label">Total received</span>
+            <span class="f21-payment-summary-grid__value f21-payment-summary-grid__value--received"
+                  th:text="${amt.formatAmountDisplay(summary.totalReceived())}">0</span>
+          </div>
+          <div class="f21-payment-summary-grid__cell">
+            <span class="f21-payment-summary-grid__label">Total due pending</span>
+            <span class="f21-payment-summary-grid__value f21-payment-summary-grid__value--pending"
+                  th:if="${summary.duePending() != null and summary.duePending().signum() > 0}"
+                  th:text="${amt.formatAmountDisplay(summary.duePending())}">0</span>
+            <span class="f21-payment-summary-grid__value"
+                  th:unless="${summary.duePending() != null and summary.duePending().signum() > 0}"
+                  th:text="${amt.formatAmountDisplay(summary.duePending())}">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="f21-dashboard-panel__body" th:if="${summary == null}">
+        <p class="f21-payment-summary__empty mb-0">No buildings found. Add a building to see payment summary.</p>
+      </div>
+
+      <p class="f21-payment-summary__note text-muted small mb-0">
+        Due till latest slab is the cumulative milestone amount whose due date has passed.
+        Total received is receipt amount for active bookings. Total due pending is due till latest slab minus received.
+      </p>
+    </section>
+
+    <section class="f21-dashboard-panel" aria-labelledby="dashboard-dl-summary"
+             th:if="${summary != null}">
+      <div class="f21-dashboard-panel__header">
+        <div class="f21-dashboard-panel__title-wrap">
+          <svg class="f21-dashboard-panel__title-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               aria-hidden="true">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+          </svg>
+          <h2 class="f21-dashboard-panel__title" id="dashboard-dl-summary">Demand letter summary</h2>
+        </div>
+        <a class="f21-dashboard-panel__link"
+           th:href="@{/bookings/payment-schedule(buildingId=${selectedBuildingId})}"
+           data-turbo-frame="floor21-main">
+          Payment schedules <span aria-hidden="true">→</span>
         </a>
       </div>
 
-      <div class="table-responsive">
-        <table class="f21-dashboard-table">
-          <thead>
-          <tr>
-            <th scope="col">Code</th>
-            <th scope="col">Client</th>
-            <th scope="col">Flat</th>
-            <th scope="col">Building</th>
-            <th scope="col">Status</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr th:each="r : ${recent}">
-            <td class="f21-dashboard-table__code" th:text="${r.bookingCode()}"></td>
-            <td>
-              <div class="f21-dashboard-table__client">
-                <span class="f21-dashboard-table__avatar" th:text="${r.clientInitials()}">LS</span>
-                <span class="f21-dashboard-table__client-name" th:text="${r.clientName()}"></span>
-              </div>
-            </td>
-            <td th:text="${r.flatNumber()}"></td>
-            <td th:text="${r.buildingName()}"></td>
-            <td>
-              <span class="f21-dashboard-status"
-                    th:classappend="${#strings.equalsIgnoreCase(r.status(), 'ACTIVE')} ? ' f21-dashboard-status--active' : ' f21-dashboard-status--muted'"
-                    th:text="${#strings.equalsIgnoreCase(r.status(), 'ACTIVE') ? 'Active' : r.status()}">Active</span>
-            </td>
-          </tr>
-          <tr th:if="${#lists.isEmpty(recent)}">
-            <td class="f21-dashboard-table__empty" colspan="5">No bookings yet.</td>
-          </tr>
-          </tbody>
-        </table>
+      <div class="f21-dashboard-panel__body">
+        <p class="f21-payment-summary__building" th:text="${summary.buildingName()}">Building</p>
+        <div class="f21-payment-summary-grid f21-dl-summary-grid" role="group" aria-label="Demand letter summary">
+          <div class="f21-payment-summary-grid__cell">
+            <span class="f21-payment-summary-grid__label">Total demand letters</span>
+            <span class="f21-payment-summary-grid__value"
+                  th:text="${summary.totalDemandLetters()}">0</span>
+          </div>
+          <div class="f21-payment-summary-grid__cell">
+            <span class="f21-payment-summary-grid__label">Issued</span>
+            <span class="f21-payment-summary-grid__value f21-payment-summary-grid__value--received"
+                  th:text="${summary.demandLettersIssued()}">0</span>
+          </div>
+          <div class="f21-payment-summary-grid__cell">
+            <span class="f21-payment-summary-grid__label">Remaining</span>
+            <span class="f21-payment-summary-grid__value f21-payment-summary-grid__value--pending"
+                  th:if="${summary.demandLettersRemaining() > 0}"
+                  th:text="${summary.demandLettersRemaining()}">0</span>
+            <span class="f21-payment-summary-grid__value"
+                  th:unless="${summary.demandLettersRemaining() > 0}"
+                  th:text="${summary.demandLettersRemaining()}">0</span>
+          </div>
+        </div>
       </div>
+
+      <div class="f21-dashboard-panel__body pt-0">
+        <h3 class="f21-dashboard-panel__subtitle">Flats — DL pending</h3>
+        <div class="table-responsive">
+          <table class="f21-dashboard-table f21-dashboard-table--dl-flats">
+            <thead>
+            <tr>
+              <th scope="col">Flat</th>
+              <th scope="col">Client</th>
+              <th scope="col" class="text-end">DL pending</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="flatRow : ${summary.flatDlPendingRows()}">
+              <td class="f21-dashboard-table__code">
+                <a class="f21-dashboard-panel__link"
+                   th:href="@{/bookings/payment-schedule(bookingId=${flatRow.bookingId()}, buildingId=${selectedBuildingId})}"
+                   data-turbo-frame="floor21-main"
+                   th:text="${flatRow.flatNumber()}">101</a>
+              </td>
+              <td th:text="${flatRow.clientName()}">Client</td>
+              <td class="text-end fw-semibold"
+                  th:classappend="${flatRow.dlPending() > 0} ? ' text-warning' : ' text-muted'"
+                  th:text="${flatRow.dlPending()}">0</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(summary.flatDlPendingRows())}">
+              <td class="f21-dashboard-table__empty" colspan="3">No active bookings in this building.</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p class="f21-payment-summary__note text-muted small mb-0">
+        Total demand letters counts milestones whose due date has passed for active bookings.
+        Issued uses the DL sent toggle on payment schedule. Remaining are milestones not yet marked sent.
+      </p>
     </section>
   </div>
 </div>

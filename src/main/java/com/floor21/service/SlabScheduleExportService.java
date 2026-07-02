@@ -45,7 +45,18 @@ public class SlabScheduleExportService {
             DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
 
     private static final String[] LEDGER_HEADERS = {
-        "Date", "Slab", "Check No", "Amount", "Receipt", "GST", "Balance", "Days", "Interest", "Info", "Remark"
+        "Date",
+        "Slab",
+        "Check No",
+        "Amount",
+        "Receipt",
+        "GST",
+        "Balance",
+        "Days",
+        "Interest",
+        "Info",
+        "DL sent",
+        "Remark"
     };
 
     private final BookingPaymentSlabService bookingPaymentSlabService;
@@ -120,7 +131,7 @@ public class SlabScheduleExportService {
 
             PdfPTable table = new PdfPTable(LEDGER_HEADERS.length);
             table.setWidthPercentage(100f);
-            table.setWidths(new float[] {9f, 17f, 11f, 9f, 9f, 8f, 9f, 6f, 8f, 10f, 8f});
+            table.setWidths(new float[] {9f, 16f, 11f, 9f, 9f, 8f, 9f, 6f, 8f, 9f, 6f, 8f});
             for (String h : LEDGER_HEADERS) {
                 table.addCell(headerCell(h, headerFont));
             }
@@ -138,6 +149,7 @@ public class SlabScheduleExportService {
                         dataCell(ledgerRow.days() != null ? ledgerRow.days().toString() : "—", rowFont, Element.ALIGN_CENTER));
                 table.addCell(dataCell(formatMoney(ledgerRow.interest()), rowFont, Element.ALIGN_RIGHT));
                 table.addCell(dataCell(nullToDash(ledgerRow.info()), rowFont));
+                table.addCell(dataCell(formatDlSent(ledgerRow), rowFont, Element.ALIGN_CENTER));
                 table.addCell(dataCell(nullToDash(ledgerRow.remark()), rowFont));
             }
             if (ctx.summary() != null) {
@@ -151,6 +163,7 @@ public class SlabScheduleExportService {
                 table.addCell(dataCell(formatMoney(s.totalBalance()), headerFont, Element.ALIGN_RIGHT));
                 table.addCell(dataCell("—", headerFont, Element.ALIGN_CENTER));
                 table.addCell(dataCell(formatMoney(s.totalInterest()), headerFont, Element.ALIGN_RIGHT));
+                table.addCell(dataCell("—", headerFont));
                 table.addCell(dataCell("—", headerFont));
                 table.addCell(dataCell("—", headerFont));
             }
@@ -310,6 +323,7 @@ public class SlabScheduleExportService {
             ledgerRow.days() != null ? ledgerRow.days().toString() : "—",
             formatMoney(ledgerRow.interest()),
             nullToDash(ledgerRow.info()),
+            formatDlSent(ledgerRow),
             nullToDash(ledgerRow.remark()),
         };
         for (int c = 0; c < values.length; c++) {
@@ -335,6 +349,7 @@ public class SlabScheduleExportService {
         row.createCell(8).setCellValue(formatMoney(summary.totalInterest()));
         row.createCell(9).setCellValue("—");
         row.createCell(10).setCellValue("—");
+        row.createCell(11).setCellValue("—");
         for (int c = 3; c <= 8; c++) {
             row.getCell(c).setCellStyle(boldStyle);
         }
@@ -356,6 +371,13 @@ public class SlabScheduleExportService {
         cell.setHorizontalAlignment(align);
         cell.setPadding(3f);
         return cell;
+    }
+
+    private static String formatDlSent(SlabScheduleLedgerRow ledgerRow) {
+        if (ledgerRow.rowType() != SlabLedgerRowType.SLAB_TOTAL) {
+            return "—";
+        }
+        return Boolean.TRUE.equals(ledgerRow.demandLetterSentToClient()) ? "Yes" : "No";
     }
 
     private static String formatDate(LocalDate date) {

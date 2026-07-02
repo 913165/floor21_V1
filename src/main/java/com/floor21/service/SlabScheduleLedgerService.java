@@ -92,7 +92,9 @@ public class SlabScheduleLedgerService {
                             null,
                             null,
                             null,
-                            null));
+                            null,
+                            slab.getId(),
+                            slab.isDemandLetterSentToClient()));
 
             BigDecimal runningPaid = ZERO;
             for (ReceiptSlabAllocationSlice payment : payments) {
@@ -148,7 +150,9 @@ public class SlabScheduleLedgerService {
                                 interest.compareTo(ZERO) > 0 ? interest : null,
                                 info,
                                 payment.remark(),
-                                payment.receiptId()));
+                                payment.receiptId(),
+                                null,
+                                null));
             }
 
             BigDecimal outstanding = due.subtract(runningPaid).max(ZERO);
@@ -172,6 +176,8 @@ public class SlabScheduleLedgerService {
                                 days > 0 ? days : null,
                                 interest.compareTo(ZERO) > 0 ? interest : null,
                                 info,
+                                null,
+                                null,
                                 null,
                                 null));
             }

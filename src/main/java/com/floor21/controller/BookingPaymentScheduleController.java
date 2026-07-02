@@ -1,6 +1,8 @@
 package com.floor21.controller;
 
 import com.floor21.dto.BookingPaymentSlabBatchForm;
+import com.floor21.dto.DemandLetterSentToggleRequest;
+import com.floor21.dto.DemandLetterSentToggleResponse;
 import com.floor21.dto.SlabPaymentSaveRequest;
 import com.floor21.dto.SlabPaymentSaveResponse;
 import com.floor21.entity.Booking;
@@ -312,6 +314,16 @@ public class BookingPaymentScheduleController {
             throw new IllegalArgumentException("Read-only for platform admin.");
         }
         return bookingPaymentSlabService.deleteSinglePayment(bookingId, slabId, paymentId);
+    }
+
+    @PostMapping(value = "/demand-letter-sent", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public DemandLetterSentToggleResponse setDemandLetterSent(
+            @RequestBody DemandLetterSentToggleRequest request) {
+        if (isPlatformAdmin()) {
+            throw new IllegalArgumentException("Read-only for platform admin.");
+        }
+        return bookingPaymentSlabService.setDemandLetterSentToClient(request);
     }
 
     @PostMapping("/save")

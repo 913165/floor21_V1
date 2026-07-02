@@ -26,8 +26,7 @@
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/clients}"
        data-nav-prefix="/clients"
-       data-nav-exclude="/clients/milestone-setup"
-       th:classappend="${#strings.startsWith(path, '/clients') and !#strings.startsWith(path, '/clients/milestone-setup')} ? ' is-active' : ''">Clients</a>
+       th:classappend="${#strings.startsWith(path, '/clients')} ? ' is-active' : ''">Clients</a>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/bookings}"
        data-nav-prefix="/bookings"
@@ -47,10 +46,6 @@
        th:href="@{/admin/builder-pricing-slabs}"
        data-nav-prefix="/admin/builder-pricing-slabs"
        th:classappend="${#strings.startsWith(path, '/admin/builder-pricing-slabs')} ? ' is-active' : ''">Milestone Templates</a>
-    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
-       th:href="@{/clients/milestone-setup}"
-       data-nav-prefix="/clients/milestone-setup"
-       th:classappend="${#strings.startsWith(path, '/clients/milestone-setup')} ? ' is-active' : ''">Milestone setup (Clients)</a>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
        th:href="@{/receipts}"
        data-nav-prefix="/receipts"
@@ -109,8 +104,7 @@
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/clients}"
        data-nav-prefix="/clients"
-       data-nav-exclude="/clients/milestone-setup"
-       th:classappend="${#strings.startsWith(path, '/clients') and !#strings.startsWith(path, '/clients/milestone-setup')} ? ' is-active' : ''">Clients</a>
+       th:classappend="${#strings.startsWith(path, '/clients')} ? ' is-active' : ''">Clients</a>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/bookings}"
        data-nav-prefix="/bookings"
@@ -122,10 +116,6 @@
        th:href="@{/admin/builder-pricing-slabs}"
        data-nav-prefix="/admin/builder-pricing-slabs"
        th:classappend="${#strings.startsWith(path, '/admin/builder-pricing-slabs')} ? ' is-active' : ''">Milestone Templates</a>
-    <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
-       th:href="@{/clients/milestone-setup}"
-       data-nav-prefix="/clients/milestone-setup"
-       th:classappend="${#strings.startsWith(path, '/clients/milestone-setup')} ? ' is-active' : ''">Milestone setup (Clients)</a>
     <a class="floor21-nav__link" data-turbo-frame="floor21-main" sec:authorize="hasRole('SUPER_ADMIN')"
        th:href="@{/receipts}"
        data-nav-prefix="/receipts"

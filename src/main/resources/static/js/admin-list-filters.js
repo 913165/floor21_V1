@@ -66,6 +66,7 @@
     wireLiveSearchForm(document.getElementById("clients-filter-form"), "#client-search-q");
     wireLiveSearchForm(document.getElementById("clients-page-size-form"), null);
     wireLiveSearchForm(document.getElementById("slabs-filter-form"), "#slabs-search-q");
+    wireSubmitOnSelect(document.getElementById("dashboard-building-form"));
   }
 
   function onPageReady(fn) {

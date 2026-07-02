@@ -306,6 +306,7 @@
               <th class="align-middle text-center text-nowrap">Days</th>
               <th class="align-middle text-center text-nowrap">Interest</th>
               <th class="align-middle text-center slab-schedule-col--info">Info</th>
+              <th class="align-middle text-center text-nowrap">DL sent</th>
               <th class="align-middle text-center">Remark</th>
             </tr>
             </thead>
@@ -334,6 +335,17 @@
                   th:text="${row.interest() != null ? amt.formatAmountDisplay(row.interest()) : dash}">-</td>
               <td class="small text-muted slab-schedule-col--info"
                   th:text="${row.info() != null and !#strings.isEmpty(row.info()) ? row.info() : dash}">-</td>
+              <td class="text-center text-nowrap">
+                <div class="form-check form-switch d-flex justify-content-center mb-0"
+                     th:if="${row.rowType().name() == 'SLAB_TOTAL' and row.paymentSlabId() != null}">
+                  <input type="checkbox" class="form-check-input js-dl-sent-toggle" role="switch"
+                         th:checked="${row.demandLetterSentToClient()}"
+                         th:disabled="${readonlyView}"
+                         th:attr="data-booking-id=${selectedBooking.id},data-slab-id=${row.paymentSlabId()}"
+                         th:aria-label="|Demand letter sent for ${row.slabLabel()}|"/>
+                </div>
+                <span class="text-muted" th:if="${row.rowType().name() != 'SLAB_TOTAL'}">—</span>
+              </td>
               <td class="small text-muted"
                   th:text="${row.remark() != null and !#strings.isEmpty(row.remark()) ? row.remark() : dash}">-</td>
             </tr>
@@ -349,12 +361,14 @@
               <td class="text-end" th:text="${amt.formatAmountDisplay(ledgerSummary.totalInterest())}">0</td>
               <td class="text-muted" th:text="${dash}">-</td>
               <td class="text-muted" th:text="${dash}">-</td>
+              <td class="text-muted" th:text="${dash}">-</td>
             </tr>
             </tfoot>
           </table>
         </div>
       </div>
     </div>
+    <script defer th:src="@{/js/slab-schedule-dl-sent.js(v=1)}"></script>
   </th:block>
 </div>
 </body>

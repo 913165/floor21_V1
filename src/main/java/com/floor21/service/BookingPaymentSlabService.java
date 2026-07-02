@@ -1,6 +1,8 @@
 package com.floor21.service;
 
 import com.floor21.dto.BookingPaymentSlabBatchForm;
+import com.floor21.dto.DemandLetterSentToggleRequest;
+import com.floor21.dto.DemandLetterSentToggleResponse;
 import com.floor21.dto.ReceiptSlabAllocationSlice;
 import com.floor21.dto.SlabPaymentSaveRequest;
 import com.floor21.dto.SlabPaymentSaveResponse;
@@ -1225,6 +1227,19 @@ public class BookingPaymentSlabService {
                         .findById(slabId)
                         .orElseThrow(() -> new ResourceNotFoundException("Payment row not found"));
         return buildPaymentSaveResponse(bookingId, slab, null);
+    }
+
+    @Transactional
+    public DemandLetterSentToggleResponse setDemandLetterSentToClient(
+            DemandLetterSentToggleRequest request) {
+        if (request.bookingId() == null || request.slabId() == null) {
+            throw new IllegalArgumentException("Booking and slab are required.");
+        }
+        getBookingForSchedule(request.bookingId());
+        BookingPaymentSlab slab = requireSlabForBooking(request.slabId(), request.bookingId());
+        slab.setDemandLetterSentToClient(request.sent());
+        slab.setUpdatedAt(Instant.now());
+        return new DemandLetterSentToggleResponse(slab.isDemandLetterSentToClient());
     }
 
     private BookingPaymentSlab requireSlabForBooking(UUID slabId, UUID bookingId) {

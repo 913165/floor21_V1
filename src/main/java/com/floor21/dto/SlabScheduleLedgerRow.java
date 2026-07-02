@@ -18,4 +18,6 @@ public record SlabScheduleLedgerRow(
         BigDecimal interest,
         String info,
         String remark,
-        UUID receiptId) {}
+        UUID receiptId,
+        UUID paymentSlabId,
+        Boolean demandLetterSentToClient) {}
