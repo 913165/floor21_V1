@@ -27,7 +27,11 @@ Kill whatever is occupying port 80:
 sudo kill -9 $(sudo lsof -t -i:80)
 ```
 
+# chmod command
 
+```
+chmod -R 777 *
+```
 
 
 # Start Floor21
