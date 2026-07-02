@@ -60,6 +60,7 @@ public class DashboardController {
             selectedBuildingId = selectedSummary.buildingId();
         }
         model.addAttribute("pageTitle", "Dashboard");
+        model.addAttribute("turboCacheControl", "no-cache");
         model.addAttribute("dashboard", dashboard);
         model.addAttribute("buildingSummaries", buildingSummaries);
         model.addAttribute("selectedBuildingId", selectedBuildingId);

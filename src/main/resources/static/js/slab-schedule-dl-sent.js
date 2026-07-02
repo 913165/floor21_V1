@@ -20,6 +20,16 @@
     return h;
   }
 
+  function clearTurboPageCache() {
+    if (
+      typeof Turbo !== "undefined" &&
+      Turbo.cache &&
+      typeof Turbo.cache.clear === "function"
+    ) {
+      Turbo.cache.clear();
+    }
+  }
+
   function wireToggle(input) {
     if (!input || input.dataset.dlSentWired === "true") {
       return;
@@ -55,6 +65,7 @@
         })
         .then(function (data) {
           input.checked = !!(data && data.sent);
+          clearTurboPageCache();
         })
         .catch(function (err) {
           input.checked = !sent;
@@ -73,15 +84,21 @@
     scope.querySelectorAll(".js-dl-sent-toggle").forEach(wireToggle);
   }
 
+  function scheduleInit(root) {
+    requestAnimationFrame(function () {
+      init(root || document);
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
-    init(document);
+    scheduleInit(document);
   });
   document.addEventListener("turbo:load", function () {
-    init(document);
+    scheduleInit(document);
   });
   document.addEventListener("turbo:frame-render", function (event) {
     if (!event.target || event.target.id === "floor21-main") {
-      init(document);
+      scheduleInit(document);
     }
   });
 })();

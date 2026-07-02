@@ -425,6 +425,17 @@ public class BookingPaymentSlabService {
     }
 
     /**
+     * Read-only slab scope aligned with payment schedule ledger rows (dedupe by milestone label,
+     * stop at first row without a due date). Used by dashboard DL counts.
+     */
+    static List<BookingPaymentSlab> displaySlabsForStats(List<BookingPaymentSlab> rawInOrder) {
+        if (rawInOrder == null || rawInOrder.isEmpty()) {
+            return List.of();
+        }
+        return slabsThroughLastDueDate(dedupeSlabsByLabel(rawInOrder));
+    }
+
+    /**
      * Milestone setup (Clients) uses building {@code slabs} (Milestone Templates). Payment schedule
      * falls back to legacy {@code payment_slab_templates} when no building milestones exist.
      */
@@ -668,6 +679,9 @@ public class BookingPaymentSlabService {
             }
             if (keeper.getPercent() == null && other.getPercent() != null) {
                 keeper.setPercent(other.getPercent());
+            }
+            if (!keeper.isDemandLetterSentToClient() && other.isDemandLetterSentToClient()) {
+                keeper.setDemandLetterSentToClient(true);
             }
         }
     }

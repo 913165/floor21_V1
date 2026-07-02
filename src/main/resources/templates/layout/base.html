@@ -13,7 +13,7 @@
   <meta name="floor21-nav-path" th:content="${navServletPath}"/>
   <meta name="floor21-nav-area" th:content="${navArea != null ? navArea : 'overview'}"/>
   <meta name="floor21-session-timeout-seconds" th:content="${sessionTimeoutSeconds}"/>
-  <meta name="turbo-cache-control" content="no-preview"/>
+  <meta name="turbo-cache-control" th:content="${turboCacheControl != null ? turboCacheControl : 'no-preview'}"/>
   <title th:text="${pageTitle} + ' | Floor21'">Floor21</title>
   <link rel="stylesheet" th:href="@{/vendor/bootstrap.min.css}"/>
   <link rel="stylesheet" th:href="@{/css/floor21.css(v=date-picker-header-width)}"/>
@@ -44,7 +44,7 @@
   </turbo-frame>
 </div>
 <script th:src="@{/vendor/bootstrap.bundle.min.js}"></script>
-  <script defer th:src="@{/js/turbo-drive.js(v=frame-links-main)}"></script>
+  <script defer th:src="@{/js/turbo-drive.js(v=frame-missing-reload)}"></script>
 <script defer th:src="@{/js/nav-active.js(v=section-active-v1)}"></script>
 <script defer th:src="@{/js/project-search-select.js(v=project-search-v10)}"></script>
 <script defer th:src="@{/js/milestone-picker-sync.js(v=1)}"></script>
@@ -56,5 +56,6 @@
 <script defer th:src="@{/js/theme.js(v=turbo-frame)}"></script>
   <script defer th:src="@{/js/slab-schedule-columns.js(v=slab-ledger-cols-v3)}"></script>
   <script defer th:src="@{/js/booking-parking-links.js(v=15)}"></script>
+  <script defer th:src="@{/js/slab-schedule-dl-sent.js(v=2)}"></script>
 </body>
 </html>

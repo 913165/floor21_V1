@@ -49,6 +49,9 @@
       if (isFileDownloadLink(link)) {
         return;
       }
+      if (link.getAttribute("data-turbo-frame")) {
+        return;
+      }
       var href = link.getAttribute("href");
       if (!href || href.charAt(0) !== "/" || href.indexOf("/logout") !== -1) {
         return;
@@ -105,9 +108,11 @@
       return;
     }
     event.preventDefault();
-    if (detail.visit) {
-      detail.visit(detail.response);
-    }
+    var response = detail.response;
+    var url = response.url || window.location.href;
+    // Hard navigation is more reliable than Turbo.visit(response) when the frame
+    // response is empty, an auth failure, or missing the expected turbo-frame.
+    window.location.assign(url);
   });
 
   document.addEventListener("turbo:fetch-request-error", function () {

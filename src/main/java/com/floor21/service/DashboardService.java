@@ -140,8 +140,10 @@ public class DashboardService {
             }
             List<BookingPaymentSlab> bookingSlabs =
                     slabsByBooking.getOrDefault(booking.getId(), List.of());
+            List<BookingPaymentSlab> displaySlabs =
+                    BookingPaymentSlabService.displaySlabsForStats(bookingSlabs);
             DashboardEligibleSlabStats slabStats =
-                    DashboardEligibleSlabStats.fromSlabs(bookingSlabs, booking.getBookingDate());
+                    DashboardEligibleSlabStats.fromSlabs(displaySlabs, booking.getBookingDate());
             BigDecimal received = receivedByBooking.getOrDefault(booking.getId(), ZERO);
             BigDecimal duePending =
                     slabStats.dueAmount().subtract(received).max(ZERO);

@@ -194,7 +194,7 @@
               <td class="f21-dashboard-table__code">
                 <a class="f21-dashboard-panel__link"
                    th:href="@{/bookings/payment-schedule(bookingId=${flatRow.bookingId()}, buildingId=${selectedBuildingId})}"
-                   data-turbo-frame="floor21-main"
+                   data-turbo-frame="_top"
                    th:text="${flatRow.flatNumber()}">101</a>
               </td>
               <td th:text="${flatRow.clientName()}">Client</td>

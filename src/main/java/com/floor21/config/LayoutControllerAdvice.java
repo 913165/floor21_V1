@@ -55,6 +55,11 @@ public class LayoutControllerAdvice {
         return FlatUnitTypes.allForAdminSelect();
     }
 
+    @ModelAttribute("turboCacheControl")
+    public String turboCacheControl() {
+        return null;
+    }
+
     @ModelAttribute("navServletPath")
     public String navServletPath(HttpServletRequest request) {
         if (request == null) {
