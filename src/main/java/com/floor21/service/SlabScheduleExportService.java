@@ -47,7 +47,7 @@ public class SlabScheduleExportService {
     private static final String[] LEDGER_HEADERS = {
         "Date",
         "Slab",
-        "Check No",
+        "Payment mode",
         "Amount",
         "Receipt",
         "GST",

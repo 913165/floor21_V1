@@ -259,6 +259,31 @@ class SlabScheduleLedgerServiceTest {
     assertThat(summary.totalGst()).isEqualByComparingTo("15000");
   }
 
+  @Test
+  void gstOnlyReceiptShowsInGstColumnNotReceiptColumnOrBalance() {
+    UUID slabId = UUID.randomUUID();
+    UUID receiptId = UUID.randomUUID();
+    BookingPaymentSlab slab = slab(slabId, "Initial booking amount", new BigDecimal("1000000"));
+
+    Map<UUID, List<ReceiptSlabAllocationSlice>> bySlab = new LinkedHashMap<>();
+    bySlab.put(
+        slabId,
+        List.of(slice(slabId, receiptId, BigDecimal.ZERO, new BigDecimal("30000"), "NEFT")));
+
+    List<SlabScheduleLedgerRow> rows =
+        service.buildLedgerRows(List.of(slab), bySlab, new BigDecimal("15"), null);
+
+    SlabScheduleLedgerRow receiptRow =
+        rows.stream()
+            .filter(r -> r.rowType() == SlabLedgerRowType.RECEIPT)
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(receiptRow.receiptAmount()).isEqualByComparingTo("0");
+    assertThat(receiptRow.gstAmount()).isEqualByComparingTo("30000");
+    assertThat(receiptRow.balance()).isEqualByComparingTo("1000000");
+  }
+
   private static BookingPaymentSlab slab(UUID id, String label, BigDecimal agreed) {
     BookingPaymentSlab slab = new BookingPaymentSlab();
     slab.setId(id);

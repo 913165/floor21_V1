@@ -35,13 +35,12 @@ public final class SlabReceiptWaterfall {
         }
 
         for (Receipt receipt : receipts) {
-            BigDecimal pool = receipt.getAmount() != null ? receipt.getAmount() : ZERO;
-            if (pool.compareTo(ZERO) <= 0) {
+            BigDecimal gstPool = gstComponentTotal(receipt);
+            BigDecimal pool = slabAllocationPool(receipt);
+            if (pool.compareTo(ZERO) <= 0 && gstPool.compareTo(ZERO) <= 0) {
                 continue;
             }
-            BigDecimal receiptTotal = pool;
-            BigDecimal gstPool =
-                    receipt.getAmountGstComponent() != null ? receipt.getAmountGstComponent() : ZERO;
+            BigDecimal slabPoolTotal = pool;
             BigDecimal gstRemaining = gstPool;
             LocalDate payDate =
                     receipt.getReceiptDate() != null ? receipt.getReceiptDate() : LocalDate.now();
@@ -58,7 +57,8 @@ public final class SlabReceiptWaterfall {
                     continue;
                 }
                 boolean exhaustsPool = pool.subtract(apply).compareTo(ZERO) <= 0;
-                BigDecimal gstApply = gstForSlice(gstPool, gstRemaining, receiptTotal, apply, exhaustsPool);
+                BigDecimal gstApply =
+                        gstForSlice(gstPool, gstRemaining, slabPoolTotal, apply, exhaustsPool);
                 gstRemaining = gstRemaining.subtract(gstApply);
                 addSlice(
                         bySlab,
@@ -85,6 +85,18 @@ public final class SlabReceiptWaterfall {
                         reference,
                         remark,
                         chequeLabel);
+            } else if (gstRemaining.compareTo(ZERO) > 0) {
+                BookingPaymentSlab target = firstSlabForGstOnly(slabs, remainingDue);
+                addSlice(
+                        bySlab,
+                        target.getId(),
+                        receipt.getId(),
+                        payDate,
+                        ZERO,
+                        gstRemaining,
+                        reference,
+                        remark,
+                        chequeLabel);
             }
         }
         return bySlab;
@@ -96,19 +108,64 @@ public final class SlabReceiptWaterfall {
         return agreed.add(extra);
     }
 
+    /** Receipt amount applied to milestone balance (excludes GST components). */
+    static BigDecimal slabAllocationPool(Receipt receipt) {
+        BigDecimal total = receipt.getAmount() != null ? receipt.getAmount() : ZERO;
+        return total.subtract(gstComponentTotal(receipt)).max(ZERO);
+    }
+
+    static BigDecimal gstComponentTotal(Receipt receipt) {
+        BigDecimal gst = receipt.getAmountGstComponent() != null ? receipt.getAmountGstComponent() : ZERO;
+        BigDecimal interestGst =
+                receipt.getAmountInterestGst() != null ? receipt.getAmountInterestGst() : ZERO;
+        return gst.add(interestGst);
+    }
+
+    private static BookingPaymentSlab firstSlabForGstOnly(
+            List<BookingPaymentSlab> slabs, BigDecimal[] remainingDue) {
+        for (int i = 0; i < slabs.size(); i++) {
+            if (remainingDue[i].compareTo(ZERO) > 0) {
+                return slabs.get(i);
+            }
+        }
+        return slabs.get(slabs.size() - 1);
+    }
+
     public static String buildReceiptReference(Receipt receipt) {
         return buildChequeLabel(receipt);
     }
 
-    /** Cheque / ref. label for the payment schedule (legacy: {@code Chq No:097552}). */
+    /** Payment mode label for the slab schedule (e.g. NEFT, Cheque with number). */
     public static String buildChequeLabel(Receipt receipt) {
-        if (receipt.getChequeNo() != null && !receipt.getChequeNo().isBlank()) {
-            return "Chq No:" + receipt.getChequeNo().trim();
+        if (receipt == null) {
+            return null;
         }
-        if (receipt.getPaymentMode() != null && !receipt.getPaymentMode().isBlank()) {
-            return receipt.getPaymentMode().trim();
+        String mode = normalizeToken(receipt.getPaymentMode());
+        String ref = normalizeToken(receipt.getChequeNo());
+        if (mode != null) {
+            if (isChequeMode(mode)) {
+                if (ref != null) {
+                    return "Chq No:" + ref;
+                }
+                return "Cheque";
+            }
+            return mode;
+        }
+        if (ref != null) {
+            return "Chq No:" + ref;
         }
         return null;
+    }
+
+    private static String normalizeToken(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private static boolean isChequeMode(String mode) {
+        return "Cheque".equalsIgnoreCase(mode) || "CHQ".equalsIgnoreCase(mode);
     }
 
     private static String receiptRemarks(Receipt receipt) {
@@ -121,7 +178,7 @@ public final class SlabReceiptWaterfall {
     private static BigDecimal gstForSlice(
             BigDecimal gstPool,
             BigDecimal gstRemaining,
-            BigDecimal receiptTotal,
+            BigDecimal slabPoolTotal,
             BigDecimal apply,
             boolean exhaustsPool) {
         if (gstPool.compareTo(ZERO) <= 0 || apply.compareTo(ZERO) <= 0) {
@@ -130,12 +187,12 @@ public final class SlabReceiptWaterfall {
         if (exhaustsPool) {
             return gstRemaining.max(ZERO);
         }
-        if (receiptTotal.compareTo(ZERO) <= 0) {
+        if (slabPoolTotal.compareTo(ZERO) <= 0) {
             return ZERO;
         }
         return gstPool
                 .multiply(apply)
-                .divide(receiptTotal, 2, RoundingMode.HALF_UP)
+                .divide(slabPoolTotal, 2, RoundingMode.HALF_UP)
                 .max(ZERO);
     }
 
