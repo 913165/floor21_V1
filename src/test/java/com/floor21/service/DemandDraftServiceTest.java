@@ -87,6 +87,52 @@ class DemandDraftServiceTest {
         assertThat(model.rows().get(0).instalment()).isEqualByComparingTo("1145430");
     }
 
+    @Test
+    void instalmentReceivedAmountExcludesGstOnlyReceipts() {
+        com.floor21.entity.Receipt gstOnly = new com.floor21.entity.Receipt();
+        gstOnly.setAmountConsideration(BigDecimal.ZERO);
+        gstOnly.setAmountGstComponent(new BigDecimal("503334"));
+        gstOnly.setAmount(new BigDecimal("503334"));
+
+        assertThat(DemandDraftService.instalmentReceivedAmount(gstOnly))
+                .isEqualByComparingTo("0");
+    }
+
+    @Test
+    void instalmentReceivedAmountUsesConsiderationNotFullTotal() {
+        com.floor21.entity.Receipt mixed = new com.floor21.entity.Receipt();
+        mixed.setAmountConsideration(new BigDecimal("500000"));
+        mixed.setAmountGstComponent(new BigDecimal("30000"));
+        mixed.setAmount(new BigDecimal("530000"));
+
+        assertThat(DemandDraftService.instalmentReceivedAmount(mixed))
+                .isEqualByComparingTo("500000");
+    }
+
+    @Test
+    void buildModelPayableInstalmentPositiveWhenInstalmentBelowReceivedTotal() {
+        BookingPaymentSlab slab1 = slab("Initial booking amount", "1157000");
+        BookingPaymentSlab slab2 = slab("4th Slab", "529825");
+        List<SlabScheduleLineView> lines =
+                List.of(
+                        line(slab1, "1157000", "1157000", "0"),
+                        line(slab2, "529825", "0", "529825"));
+        Booking booking = booking(new BigDecimal("1686825"));
+
+        DemandDraftService.DemandLetterModel model =
+                service.buildModel(
+                        lines,
+                        new DemandDraftService.ReceiptTotals(
+                                new BigDecimal("1500000"),
+                                BigDecimal.ZERO,
+                                new BigDecimal("503334")),
+                        booking);
+
+        assertThat(model.receivedInstalment()).isEqualByComparingTo("1500000");
+        assertThat(model.receivedGst()).isEqualByComparingTo("503334");
+        assertThat(model.payableInstalment()).isGreaterThan(BigDecimal.ZERO);
+    }
+
     private Booking booking(BigDecimal consideration) {
         Booking booking = new Booking();
         booking.setConsiderationAmt(consideration);

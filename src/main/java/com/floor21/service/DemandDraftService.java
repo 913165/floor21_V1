@@ -188,22 +188,41 @@ public class DemandDraftService {
         BigDecimal gst = ZERO;
         for (Receipt receipt :
                 receiptRepository.findActiveByBooking_IdOrderByReceiptDateAsc(bookingId, builderId)) {
-            BigDecimal consideration =
-                    receipt.getAmountConsideration() != null
-                                    && receipt.getAmountConsideration().compareTo(ZERO) > 0
-                            ? receipt.getAmountConsideration()
-                            : receipt.getAmount();
-            if (consideration != null) {
-                instalment = instalment.add(consideration);
-            }
+            instalment = instalment.add(instalmentReceivedAmount(receipt));
             if (receipt.getAmountTds() != null) {
                 tds = tds.add(receipt.getAmountTds());
             }
             if (receipt.getAmountGstComponent() != null) {
                 gst = gst.add(receipt.getAmountGstComponent());
             }
+            if (receipt.getAmountInterestGst() != null) {
+                gst = gst.add(receipt.getAmountInterestGst());
+            }
         }
         return new ReceiptTotals(instalment, tds, gst);
+    }
+
+    /**
+     * Amount received toward milestone instalments (excludes GST). Matches payment schedule receipt
+     * column — GST is tracked separately in the demand letter GST row.
+     */
+    static BigDecimal instalmentReceivedAmount(Receipt receipt) {
+        BigDecimal fromBreakdown =
+                zeroIfNull(receipt.getAmountConsideration())
+                        .add(zeroIfNull(receipt.getAmountExtraCharges()))
+                        .add(zeroIfNull(receipt.getAmountInterestAgreement()));
+        if (fromBreakdown.compareTo(ZERO) > 0) {
+            return fromBreakdown;
+        }
+        BigDecimal total = receipt.getAmount() != null ? receipt.getAmount() : ZERO;
+        BigDecimal gst =
+                zeroIfNull(receipt.getAmountGstComponent())
+                        .add(zeroIfNull(receipt.getAmountInterestGst()));
+        return total.subtract(gst).max(ZERO);
+    }
+
+    private static BigDecimal zeroIfNull(BigDecimal value) {
+        return value != null ? value : ZERO;
     }
 
     private static BigDecimal taxOnInstalment(BigDecimal instalment, int percent) {
