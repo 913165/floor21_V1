@@ -1,0 +1,201 @@
+================================================================================
+FLOOR21 — CANVA AI BROCHURE PROMPT
+================================================================================
+Copy everything below the line into Canva AI (Magic Design, Doc to Design,
+or text-to-brochure). Adjust page count (4–8 pages) and format (tri-fold,
+A4 booklet, or digital PDF) as needed.
+
+--------------------------------------------------------------------------------
+PRIMARY PROMPT (paste this first)
+--------------------------------------------------------------------------------
+
+Create a professional product brochure for **Floor21**, a multi-tenant real
+estate sales and collections platform built for residential builders and
+property developers in India.
+
+**Brand**
+- Product name: Floor21
+- Tagline: Smart Flat Booking for Modern Builders
+- Tone: Professional, trustworthy, modern, operations-focused (not flashy)
+- Audience: Builder owners, sales heads, accounts/finance teams, channel partners
+- Geography: India (use ₹ rupee context where relevant)
+
+**Visual direction**
+- Style: Clean corporate SaaS + real estate
+- Colors: Deep navy / charcoal background accents, teal or blue highlights,
+  white space, subtle building/skyline motifs
+- Icons: Buildings, flats grid, calendar, receipt, chart, lock/vault, users
+- Avoid: Stock photos of random foreign cities; keep it India-relevant and B2B
+- Layout: Clear sections, short headlines, bullet features, one strong CTA page
+
+**Brochure structure (suggested 6 pages)**
+
+PAGE 1 — COVER
+- Headline: Floor21
+- Subhead: One platform for flat booking, milestones, receipts, and collections
+- Supporting line: Built for builders managing multiple projects and buildings
+- Optional badge: Multi-tenant • Secure • Web-based
+
+PAGE 2 — THE PROBLEM
+Headline: Spreadsheets don’t scale when inventory grows
+Short bullets:
+- Flat status scattered across Excel and WhatsApp
+- Payment schedules and demand letters tracked manually
+- No single view of due vs received across buildings
+- Partner teams need role-based access per building
+- Sensitive deal documents need controlled access
+
+PAGE 3 — THE SOLUTION
+Headline: Everything from inventory to instalments in one place
+Body (2–3 sentences):
+Floor21 is a web application that helps real estate developers manage projects,
+buildings, flat inventory, client bookings, milestone-based payment schedules,
+receipts, demand letters, and financial visibility—without switching tools.
+
+Include a simple diagram concept: Projects → Buildings → Flats → Bookings →
+Payments → Reports
+
+PAGE 4 — KEY FEATURES (use icons + short descriptions)
+
+**Property & inventory**
+- Multi-project, multi-building setup
+- Interactive flat grid (available, booked, hold)
+- Floor-wise layout, BHK types, parking and basement plans
+- Ground-floor shops and parking slot linking
+
+**Sales & CRM**
+- Client master with KYC-style details
+- Booking management with joint owners
+- Broker tracking
+- Booking cancellations with audit trail
+
+**Milestones & collections**
+- Central milestone templates per building
+- Per-booking payment schedule with slab-wise ledger
+- Payment receipts with GST/TDS handling
+- Demand letter generation (Word export)
+- Track demand letters issued vs pending on dashboard
+- Allottee ledger for client-facing payment history
+
+**Finance & control**
+- Bank accounts (instalment vs GST accounts for demand letters)
+- PIN-protected Vault for booking-wise income/expense (role-based access)
+- Expense tracking for builder admins
+- Printable receipts with legal company name from profile
+
+**Dashboard & visibility**
+- Building-wise payment summary: due till latest slab, received, pending
+- Demand letter summary: total, issued, remaining
+- Flat-wise list of pending demand letters
+- Booking pipeline value at a glance
+
+**Team & security**
+- Multi-tenant: each builder’s data fully isolated
+- Roles: Builder admin, sales partner (building-scoped access)
+- Platform admin for onboarding multiple developers
+- Secure login, session-based access
+
+PAGE 5 — WHO IT’S FOR
+Three columns or cards:
+
+1. **Builder / developer**
+   Control inventory, pricing, milestones, and collections across projects.
+
+2. **Sales & channel partners**
+   Book flats, manage clients, view schedules—only for assigned buildings.
+
+3. **Accounts & admin**
+   Receipts, demand letters, bank details, ledgers, and payment tracking.
+
+PAGE 6 — WHY FLOOR21 + CTA
+Headline: Built for how Indian builders actually work
+
+Benefit bullets:
+- Milestone instalments aligned to construction stages
+- Indian rupee formatting and receipt-ready outputs
+- Less manual follow-up on “how much is due vs paid”
+- One source of truth from flat booking to final collection
+- Scales from one tower to many buildings under one company
+
+Call to action:
+- **Request a demo** or **Contact us for onboarding**
+- Placeholder contact: [Your company name] | [Email] | [Phone] | [Website]
+- Footer line: Floor21 — Smart Flat Booking for Modern Builders
+
+--------------------------------------------------------------------------------
+SHORT PROMPT (if Canva has a character limit)
+--------------------------------------------------------------------------------
+
+Design a 6-page B2B software brochure for **Floor21** — a real estate flat
+booking and collections platform for Indian builders. Tagline: "Smart Flat
+Booking for Modern Builders." Features: flat grid inventory, bookings, clients,
+brokers, milestone payment schedules, receipts, demand letters, allottee ledger,
+bank accounts, dashboard with due/received/pending, demand letter tracking,
+PIN-protected vault, multi-tenant security. Style: professional navy/teal SaaS,
+clean icons, minimal text, strong CTA "Request a demo."
+
+--------------------------------------------------------------------------------
+HEADLINE OPTIONS (pick one for cover or ads)
+--------------------------------------------------------------------------------
+
+1. Smart Flat Booking for Modern Builders
+2. From Flat Booking to Final Collection — One Platform
+3. Inventory, Instalments, and Insights — Simplified
+4. Run Your Sales Floor on Floor21
+5. Know What’s Booked, What’s Due, and What’s Received
+
+--------------------------------------------------------------------------------
+FEATURE ONE-LINERS (for icons / callout boxes)
+--------------------------------------------------------------------------------
+
+- Live flat grid — see availability floor by floor
+- Bookings with joint owners and full deal history
+- Milestone templates — set once per building, apply to every buyer
+- Payment schedule — slab-wise due, receipt, balance, and interest
+- Demand letters — generate and track what’s sent to clients
+- Payment receipts — print-ready with GST and company legal name
+- Dashboard — building-wise dues, receipts, and DL pending by flat
+- Vault — secure PIN access for sensitive booking finances
+- Multi-building teams — partners see only what they’re allowed to
+- Allottee ledger — transparent payment trail for every client
+
+--------------------------------------------------------------------------------
+SOCIAL PROOF / TRUST (customize before printing)
+--------------------------------------------------------------------------------
+
+Replace placeholders with your real details:
+
+- "Trusted by developers managing residential towers and multi-phase projects"
+- "Designed for RERA-era milestone-based payment workflows"
+- "Secure, role-based access for admin and sales partners"
+- Customer quote placeholder: "[Builder name] reduced manual payment tracking
+  and improved visibility across [X] buildings."
+
+--------------------------------------------------------------------------------
+CANVA AI TIPS
+--------------------------------------------------------------------------------
+
+1. Start with PRIMARY PROMPT → choose "Brochure" or "Company profile"
+2. If layout is too busy, ask: "Simplify text, more white space, larger icons"
+3. For a tri-fold: ask Canva to merge pages 2–3 and 4–5
+4. Export as PDF for print (300 DPI) or PNG for WhatsApp/email
+5. Add your logo on cover and back page after generation
+6. Replace [placeholders] with PANKAJA DEVELOPERS / your brand contact info
+
+--------------------------------------------------------------------------------
+OPTIONAL BACK COVER TEXT
+--------------------------------------------------------------------------------
+
+Floor21 helps real estate builders digitize flat sales, milestone collections,
+and team workflows—so you spend less time on spreadsheets and more time
+closing and collecting.
+
+Web-based • Multi-project • Secure team access
+
+Contact: [email] | [phone] | [website]
+
+© 2026 Floor21. All rights reserved.
+
+================================================================================
+END OF PROMPT
+================================================================================

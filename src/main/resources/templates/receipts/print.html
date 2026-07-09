@@ -106,7 +106,7 @@
   <style>
     .receipt-letter {
       max-width: 780px;
-      font-family: "Times New Roman", Times, serif;
+      font-family: "Bookman Old Style", "Bookman Oldstyle", Bookman, serif;
       font-size: 12pt;
       line-height: 1.65;
       color: #111;
@@ -156,18 +156,25 @@
     }
 
     .receipt-amount-box {
-      display: inline-block;
-      border: 1px solid #333;
-      border-radius: 0.2rem;
-      padding: 0.2rem 0.55rem;
-      text-align: center;
-      font-size: 12pt;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      border: 1px solid #000;
+      border-radius: 1.75rem;
+      padding: 0.08rem 1.5rem 0.08rem 0.9rem;
+      text-align: left;
+      font-family: inherit;
+      font-size: 14pt;
+      line-height: 1;
       flex: 0 0 auto;
-      width: fit-content;
-      max-width: 11rem;
+      min-width: 13.5rem;
+      width: auto;
+      max-width: none;
+      white-space: nowrap;
     }
 
     .receipt-amount-box strong {
+      font-family: inherit;
       font-weight: 700;
     }
 

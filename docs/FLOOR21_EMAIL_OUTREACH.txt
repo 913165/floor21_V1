@@ -1,0 +1,216 @@
+================================================================================
+FLOOR21 — EMAIL OUTREACH TEMPLATES
+================================================================================
+Use these to introduce Floor21 to builders, developers, and sales heads.
+Replace [brackets] with your details before sending.
+
+--------------------------------------------------------------------------------
+SUBJECT LINE OPTIONS (pick one)
+--------------------------------------------------------------------------------
+
+1. Simplify flat booking and milestone collections — Floor21
+2. One platform for inventory, bookings, and instalment tracking
+3. Still tracking flat sales and payments in Excel?
+4. Introducing Floor21 — built for Indian real estate developers
+5. How [Builder Name] can get visibility on dues, receipts & demand letters
+6. Floor21: from flat grid to payment schedule in one place
+
+--------------------------------------------------------------------------------
+EMAIL 1 — INITIAL INTRODUCTION (formal, full)
+--------------------------------------------------------------------------------
+
+Subject: Simplify flat booking and milestone collections — Floor21
+
+Dear [Name / Team],
+
+I hope this message finds you well.
+
+I am writing to introduce **Floor21** — a web-based platform designed specifically
+for residential real estate developers and builders who manage multiple projects,
+buildings, and milestone-based buyer payments.
+
+Many teams we speak to still rely on spreadsheets, WhatsApp updates, and manual
+follow-up to track which flats are available, which are booked, how much is due
+per milestone, and whether demand letters and receipts have been issued. Floor21
+brings these workflows into one secure system.
+
+**What Floor21 helps you manage:**
+
+• **Inventory** — Interactive flat grid by building and floor (available, booked,
+  hold), with support for parking and ground-floor units
+
+• **Sales** — Client records, bookings (including joint owners), brokers, and
+  cancellations
+
+• **Milestones & collections** — Payment schedules slab-wise, payment receipts,
+  demand letter generation (Word export), and tracking of issued vs pending demand
+  letters
+
+• **Finance visibility** — Building-wise dashboard showing due till latest slab,
+  amount received, and balance pending; flat-wise list of pending demand letters
+
+• **Team access** — Builder admin and sales partner roles with building-level
+  permissions; each developer’s data stays fully isolated
+
+• **Optional secure Vault** — PIN-protected booking-wise income and expense
+  tracking for authorized staff
+
+Floor21 is built for how Indian developers work: instalment milestones tied to
+construction stages, rupee-based ledgers, printable receipts, and clear payment
+trails for allottees.
+
+We would be glad to walk you through a short demo tailored to your project
+structure — whether you manage one tower or multiple buildings under one company.
+
+**Would you be available for a 20–30 minute call this week or next?**
+Please reply with a convenient time, or reach me at [phone] / [email].
+
+Thank you for your time.
+
+Warm regards,
+
+[Your full name]
+[Your designation]
+[Company name]
+[Phone]
+[Email]
+[Website — optional]
+
+--------------------------------------------------------------------------------
+EMAIL 2 — SHORT VERSION (busy executives)
+--------------------------------------------------------------------------------
+
+Subject: Floor21 — flat booking & payment tracking for builders
+
+Hi [Name],
+
+Quick introduction: **Floor21** is a platform for residential developers to
+manage flat inventory, bookings, milestone payment schedules, receipts, and
+demand letters — in one place instead of spreadsheets.
+
+Highlights:
+- Live flat grid across buildings
+- Slab-wise payment schedule and allottee ledger
+- Demand letter tracking (issued vs pending) on dashboard
+- Role-based access for admin and sales partners
+
+Happy to show a 20-minute demo if useful for [Project / Company name].
+
+Best,
+[Your name]
+[Phone] | [Email]
+
+--------------------------------------------------------------------------------
+EMAIL 3 — FOLLOW-UP (if no reply after 5–7 days)
+--------------------------------------------------------------------------------
+
+Subject: Re: Floor21 — quick follow-up
+
+Hi [Name],
+
+I wanted to follow up on my earlier note about **Floor21**, our flat booking and
+collections platform for builders.
+
+If tracking dues, receipts, and demand letters across flats is a priority for
+your team this quarter, I’d be happy to share a brief demo — no obligation.
+
+Would [day/date] or [day/date] work for a short call?
+
+Thanks,
+[Your name]
+[Phone] | [Email]
+
+--------------------------------------------------------------------------------
+EMAIL 4 — AFTER DEMO / MEETING (thank you + next steps)
+--------------------------------------------------------------------------------
+
+Subject: Thank you — Floor21 demo & next steps
+
+Dear [Name],
+
+Thank you for your time today and for walking through Floor21 with us.
+
+As discussed, Floor21 can help [Company / Project name] with:
+- [Point 1 they cared about — e.g. flat inventory visibility]
+- [Point 2 — e.g. milestone payment schedules and receipts]
+- [Point 3 — e.g. demand letter tracking on dashboard]
+
+**Suggested next steps:**
+1. [e.g. Share sample milestone template structure for your building]
+2. [e.g. Pilot on one building / one phase]
+3. [e.g. Onboarding call with admin and accounts team]
+
+Please let me know if you’d like us to proceed with [pilot / proposal / pricing
+discussion], or if you have any further questions.
+
+Regards,
+
+[Your name]
+[Designation]
+[Phone] | [Email]
+
+--------------------------------------------------------------------------------
+EMAIL 5 — COLD OUTREACH (LinkedIn / referral intro)
+--------------------------------------------------------------------------------
+
+Subject: [Referrer name] suggested I reach out — Floor21 for [Company]
+
+Hi [Name],
+
+[Referrer name] mentioned you oversee sales and collections at [Company], and
+suggested Floor21 might be relevant for your team.
+
+We work with residential developers who need a single system for flat booking,
+milestone instalments, receipts, and demand letters — without juggling Excel and
+multiple tools.
+
+If you’re open to it, I can send a one-page overview or schedule a short demo.
+
+Best regards,
+[Your name]
+[Phone] | [Email]
+
+--------------------------------------------------------------------------------
+ONE-PARAGRAPH BLURB (for email signature or P.S.)
+--------------------------------------------------------------------------------
+
+Floor21 — Smart Flat Booking for Modern Builders. Web platform for flat
+inventory, bookings, milestone payment schedules, receipts, demand letters,
+and building-wise collection dashboards. Built for Indian real estate developers.
+
+--------------------------------------------------------------------------------
+BULLET LIST FOR PASTING INTO ANY EMAIL
+--------------------------------------------------------------------------------
+
+Why teams choose Floor21:
+✓ One view of flats: available, booked, and on hold
+✓ Milestone-based payment schedules per booking
+✓ Receipts and demand letters with tracking of what’s sent to clients
+✓ Dashboard: due till latest slab, received, pending — by building
+✓ Sales partners see only their assigned buildings
+✓ Secure, multi-tenant — your data stays yours
+
+--------------------------------------------------------------------------------
+CUSTOMIZATION CHECKLIST (before send)
+--------------------------------------------------------------------------------
+
+[ ] Replace [Name] with contact person or "Team"
+[ ] Mention their project/building name if known
+[ ] Add your real phone, email, company name
+[ ] Attach brochure PDF (from Canva) if ready
+[ ] Adjust tone: more formal for corporate, shorter for founders
+[ ] Send Tue–Thu morning for better open rates (India)
+[ ] BCC yourself on first sends to test formatting
+
+--------------------------------------------------------------------------------
+WHAT TO AVOID
+--------------------------------------------------------------------------------
+
+- Don’t claim features the deployment doesn’t include yet
+- Don’t use overly technical jargon (Spring Boot, PostgreSQL, etc.) in sales mail
+- Don’t send bulk spam — personalize at least the first line
+- Don’t promise legal/RERA compliance unless your counsel confirms wording
+
+================================================================================
+END OF EMAIL TEMPLATES
+================================================================================

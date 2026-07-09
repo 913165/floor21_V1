@@ -11,11 +11,15 @@ import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFStyles;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBorder;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFonts;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTRPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblBorders;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblPr;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcBorders;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcMar;
@@ -29,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ReceiptWordExportService {
 
-    private static final String FONT = "Times New Roman";
+    private static final String FONT = "Bookman Old Style";
 
     private final ReceiptPrintService receiptPrintService;
 
@@ -64,6 +68,7 @@ public class ReceiptWordExportService {
     }
 
     private static void writeDocument(XWPFDocument doc, ReceiptLetterView view) {
+        applyDocumentDefaults(doc);
         writeHeader(doc, view);
         addBlankLine(doc);
         writeNarrative(doc, view);
@@ -127,35 +132,52 @@ public class ReceiptWordExportService {
     }
 
     private static void writeAmountAndSignatory(XWPFDocument doc, ReceiptLetterView view) {
-        XWPFTable table = doc.createTable(1, 2);
+        XWPFTable table = doc.createTable(2, 2);
         setTableFullWidth(table);
         removeTableBorders(table);
-        setColumnWidth(table, 0, 1700);
-        setColumnWidth(table, 1, 7300);
+        setColumnWidth(table, 0, 3600);
+        setColumnWidth(table, 1, 5400);
 
-        XWPFTableRow row = table.getRow(0);
-        XWPFTableCell amountCell = row.getCell(0);
-        amountCell.removeParagraph(0);
-        XWPFParagraph amountPara = amountCell.addParagraph();
-        amountPara.setAlignment(ParagraphAlignment.CENTER);
-        appendText(amountPara, nullToDash(view.amountFiguresPrint()), true, 12);
-        applyAmountBoxBorder(amountCell);
+        XWPFTableRow topRow = table.getRow(0);
+        writeCompactAmountBox(topRow.getCell(0), view.amountFiguresPrint());
 
-        XWPFTableCell signatoryCell = row.getCell(1);
-        signatoryCell.removeParagraph(0);
-        XWPFParagraph forPara = signatoryCell.addParagraph();
+        XWPFTableCell forCell = topRow.getCell(1);
+        forCell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.TOP);
+        forCell.removeParagraph(0);
+        XWPFParagraph forPara = forCell.addParagraph();
         forPara.setAlignment(ParagraphAlignment.RIGHT);
+        forPara.setSpacingAfter(0);
         appendText(forPara, "For ", false, 12, true);
         appendText(forPara, view.builderCompanyPrint(), true, 12, true);
 
+        XWPFTableRow bottomRow = table.getRow(1);
+        bottomRow.getCell(0).removeParagraph(0);
+
+        XWPFTableCell signatoryCell = bottomRow.getCell(1);
+        signatoryCell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.BOTTOM);
+        signatoryCell.removeParagraph(0);
         XWPFParagraph spacePara = signatoryCell.addParagraph();
         spacePara.setAlignment(ParagraphAlignment.RIGHT);
-        appendText(spacePara, " ", false, 12);
-        spacePara.setSpacingAfter(800);
+        spacePara.setSpacingBefore(500);
+        spacePara.setSpacingAfter(0);
 
         XWPFParagraph labelPara = signatoryCell.addParagraph();
         labelPara.setAlignment(ParagraphAlignment.RIGHT);
+        labelPara.setSpacingBefore(0);
         appendText(labelPara, "Authorised Signatory", true, 12, true);
+    }
+
+    private static void writeCompactAmountBox(XWPFTableCell slotCell, String amountFigures) {
+        slotCell.removeParagraph(0);
+        slotCell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.TOP);
+        setCellWidth(slotCell, 3200);
+
+        XWPFParagraph para = slotCell.addParagraph();
+        para.setAlignment(ParagraphAlignment.LEFT);
+        para.setSpacingBefore(0);
+        para.setSpacingAfter(0);
+        appendAmountText(para, nullToDash(amountFigures));
+        applyAmountBoxBorder(slotCell);
     }
 
     private static void appendText(XWPFParagraph paragraph, String text, boolean bold, int fontSize) {
@@ -169,7 +191,43 @@ public class ReceiptWordExportService {
         run.setBold(bold);
         run.setItalic(italic);
         run.setFontSize(fontSize);
-        run.setFontFamily(FONT);
+        applyRunFont(run, FONT);
+    }
+
+    private static void appendAmountText(XWPFParagraph paragraph, String text) {
+        XWPFRun run = paragraph.createRun();
+        run.setText(text != null ? text : "—");
+        run.setBold(true);
+        run.setFontSize(14);
+        applyRunFont(run, FONT);
+    }
+
+    private static void applyDocumentDefaults(XWPFDocument doc) {
+        XWPFStyles styles = doc.createStyles();
+        CTFonts fonts = CTFonts.Factory.newInstance();
+        fonts.setAscii(FONT);
+        fonts.setHAnsi(FONT);
+        fonts.setCs(FONT);
+        fonts.setEastAsia(FONT);
+        styles.setDefaultFonts(fonts);
+    }
+
+    private static void applyRunFont(XWPFRun run, String fontFamily) {
+        run.setFontFamily(fontFamily);
+        CTRPr rPr = run.getCTR().getRPr();
+        if (rPr == null) {
+            rPr = run.getCTR().addNewRPr();
+        }
+        applyRPrFont(rPr, fontFamily);
+    }
+
+    private static void applyRPrFont(CTRPr rPr, String fontFamily) {
+        CTFonts fonts =
+                rPr.sizeOfRFontsArray() > 0 ? rPr.getRFontsArray(0) : rPr.addNewRFonts();
+        fonts.setAscii(fontFamily);
+        fonts.setHAnsi(fontFamily);
+        fonts.setCs(fontFamily);
+        fonts.setEastAsia(fontFamily);
     }
 
     private static void addBlankLine(XWPFDocument doc) {
@@ -177,13 +235,20 @@ public class ReceiptWordExportService {
     }
 
     private static void setTableFullWidth(XWPFTable table) {
-        CTTblWidth width = table.getCTTbl().addNewTblPr().addNewTblW();
+        CTTblPr tblPr = ensureTblPr(table);
+        CTTblWidth width = tblPr.isSetTblW() ? tblPr.getTblW() : tblPr.addNewTblW();
         width.setType(STTblWidth.PCT);
-        width.setW(java.math.BigInteger.valueOf(5000));
+        width.setW(BigInteger.valueOf(5000));
+    }
+
+    private static CTTblPr ensureTblPr(XWPFTable table) {
+        CTTblPr tblPr = table.getCTTbl().getTblPr();
+        return tblPr != null ? tblPr : table.getCTTbl().addNewTblPr();
     }
 
     private static void removeTableBorders(XWPFTable table) {
-        CTTblBorders borders = table.getCTTbl().getTblPr().addNewTblBorders();
+        CTTblPr tblPr = ensureTblPr(table);
+        CTTblBorders borders = tblPr.isSetTblBorders() ? tblPr.getTblBorders() : tblPr.addNewTblBorders();
         borders.addNewTop().setVal(STBorder.NONE);
         borders.addNewBottom().setVal(STBorder.NONE);
         borders.addNewLeft().setVal(STBorder.NONE);
@@ -193,7 +258,7 @@ public class ReceiptWordExportService {
     }
 
     private static void applyAmountBoxBorder(XWPFTableCell cell) {
-        cell.setVerticalAlignment(org.apache.poi.xwpf.usermodel.XWPFTableCell.XWPFVertAlign.CENTER);
+        cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.TOP);
         CTTcPr tcPr = cell.getCTTc().isSetTcPr() ? cell.getCTTc().getTcPr() : cell.getCTTc().addNewTcPr();
         CTTcBorders borders = tcPr.isSetTcBorders() ? tcPr.getTcBorders() : tcPr.addNewTcBorders();
         setCellBorder(borders.addNewTop());
@@ -201,10 +266,10 @@ public class ReceiptWordExportService {
         setCellBorder(borders.addNewLeft());
         setCellBorder(borders.addNewRight());
         CTTcMar mar = tcPr.isSetTcMar() ? tcPr.getTcMar() : tcPr.addNewTcMar();
-        setCellMargin(mar.addNewTop(), 40);
-        setCellMargin(mar.addNewBottom(), 40);
-        setCellMargin(mar.addNewLeft(), 80);
-        setCellMargin(mar.addNewRight(), 80);
+        setCellMargin(mar.addNewTop(), 8);
+        setCellMargin(mar.addNewBottom(), 8);
+        setCellMargin(mar.addNewLeft(), 140);
+        setCellMargin(mar.addNewRight(), 220);
     }
 
     private static void setCellBorder(CTBorder border) {
@@ -213,9 +278,16 @@ public class ReceiptWordExportService {
         border.setColor("000000");
     }
 
-    private static void setCellMargin(org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth mar, int twips) {
+    private static void setCellMargin(CTTblWidth mar, int twips) {
         mar.setType(STTblWidth.DXA);
         mar.setW(BigInteger.valueOf(twips));
+    }
+
+    private static void setCellWidth(XWPFTableCell cell, int widthTwips) {
+        CTTcPr tcPr = cell.getCTTc().isSetTcPr() ? cell.getCTTc().getTcPr() : cell.getCTTc().addNewTcPr();
+        CTTblWidth width = tcPr.isSetTcW() ? tcPr.getTcW() : tcPr.addNewTcW();
+        width.setType(STTblWidth.DXA);
+        width.setW(BigInteger.valueOf(widthTwips));
     }
 
     private static void setColumnWidth(XWPFTable table, int columnIndex, int widthTwips) {
@@ -224,10 +296,7 @@ public class ReceiptWordExportService {
                 continue;
             }
             XWPFTableCell cell = row.getCell(columnIndex);
-            CTTcPr tcPr = cell.getCTTc().isSetTcPr() ? cell.getCTTc().getTcPr() : cell.getCTTc().addNewTcPr();
-            CTTblWidth width = tcPr.isSetTcW() ? tcPr.getTcW() : tcPr.addNewTcW();
-            width.setType(STTblWidth.DXA);
-            width.setW(BigInteger.valueOf(widthTwips));
+            setCellWidth(cell, widthTwips);
         }
     }
 
