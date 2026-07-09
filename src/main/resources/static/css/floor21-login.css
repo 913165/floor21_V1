@@ -247,22 +247,51 @@ html[data-bs-theme="light"] .floor21-login__skyline-lights {
   box-shadow: 0 4px 16px rgba(8, 20, 40, 0.22);
 }
 
-html[data-bs-theme="dark"] .floor21-login__tagline {
+html[data-bs-theme="dark"] .floor21-login__lede {
   color: rgba(232, 238, 245, 0.78);
 }
 
 .floor21-login__title {
-  font-size: clamp(1.15rem, 2.5vw, 1.5rem);
-  font-weight: 700;
-  line-height: 1.2;
-  margin: 0;
-  white-space: nowrap;
+  font-size: clamp(2rem, 5vw, 2.85rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 0 0 0.4rem;
+  letter-spacing: -0.02em;
+}
+
+html[data-bs-theme="dark"] .floor21-login__title {
+  color: #fff;
 }
 
 .floor21-login__tagline {
-  font-size: 1.05rem;
+  font-size: clamp(0.9rem, 1.8vw, 1.05rem);
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0 0 1.25rem;
+}
+
+html[data-bs-theme="dark"] .floor21-login__tagline {
+  color: #5eead4;
+}
+
+.floor21-login__lede {
+  font-size: 1rem;
   line-height: 1.55;
   margin: 0 0 2rem;
+}
+
+.floor21-login__mobile-brand {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 1.35rem;
+  text-align: center;
+}
+
+@media (min-width: 992px) {
+  .floor21-login__mobile-brand {
+    display: none;
+  }
 }
 
 .floor21-login__features {
@@ -503,7 +532,11 @@ html[data-bs-theme="light"] .floor21-login {
   color: #152a52;
 }
 
-[data-bs-theme="light"] .floor21-login__tagline,
+[data-bs-theme="light"] .floor21-login__tagline {
+  color: #0d6e62;
+}
+
+[data-bs-theme="light"] .floor21-login__lede,
 [data-bs-theme="light"] .floor21-login__features li {
   color: rgba(26, 42, 58, 0.75);
 }

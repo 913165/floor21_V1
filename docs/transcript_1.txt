@@ -1,0 +1,108 @@
+================================================================================
+FLOOR21 — YOUTUBE PROMO VIDEO TRANSCRIPT (transcript_1)
+================================================================================
+Estimated length: ~2 minutes 15 seconds (spoken at a natural pace)
+Tone: Professional, confident, builder-focused
+Tagline: Smart Flat Booking for Modern Builders
+
+--------------------------------------------------------------------------------
+[OPEN — 0:00 to 0:12]
+--------------------------------------------------------------------------------
+
+[VISUAL: Split screen — messy Excel sheets, WhatsApp chats, printed receipts on a desk]
+
+Still running your sales floor on spreadsheets and WhatsApp?
+
+Flat availability in one file… payment follow-ups in another… demand letters somewhere else?
+
+There’s a better way.
+
+--------------------------------------------------------------------------------
+[INTRO — 0:12 to 0:28]
+--------------------------------------------------------------------------------
+
+[VISUAL: Clean Floor21 dashboard, building flat grid loading]
+
+Introducing Floor21 — the real estate sales and collections platform built for Indian residential developers.
+
+One secure web application. Multiple projects. Multiple buildings. Complete visibility — from the first booking to the final instalment.
+
+--------------------------------------------------------------------------------
+[PROBLEM — 0:28 to 0:45]
+--------------------------------------------------------------------------------
+
+[VISUAL: Sales team on phone, accounts team searching files]
+
+If you’re a builder, you know the daily struggle.
+
+Which flats are available? Who booked what? How much is due on the latest milestone? Has the demand letter gone out? Has the payment been received?
+
+When answers live in five different places, collections slow down — and revenue leaks.
+
+--------------------------------------------------------------------------------
+[SOLUTION — 0:45 to 1:05]
+--------------------------------------------------------------------------------
+
+[VISUAL: Floor21 flat grid — green available, red booked; click into a booking]
+
+Floor21 puts everything in one place.
+
+See your entire inventory on an interactive flat grid — floor by floor, building by building. Available, booked, or on hold — at a glance.
+
+Book flats with joint owners. Track brokers. Manage cancellations with a full audit trail.
+
+Set milestone templates once per building — and every buyer gets a clear, slab-wise payment schedule.
+
+--------------------------------------------------------------------------------
+[COLLECTIONS — 1:05 to 1:35]
+--------------------------------------------------------------------------------
+
+[VISUAL: Payment schedule screen → receipt print → demand letter Word export]
+
+Collections become simple.
+
+Record payments. Generate print-ready receipts with your legal company name. Export demand letters in Word — and track which flats still need one.
+
+Your dashboard shows it all: due till the latest slab, total received, balance pending — building by building.
+
+No more manual tallying. No more chasing your team for numbers.
+
+--------------------------------------------------------------------------------
+[TEAM & SECURITY — 1:35 to 1:52]
+--------------------------------------------------------------------------------
+
+[VISUAL: Role-based login — builder admin vs sales partner; vault PIN screen]
+
+Give your sales partners access — but only to the buildings they need.
+
+Builder admins see the full picture. Each developer’s data stays fully isolated in a secure, multi-tenant system.
+
+And for sensitive financial records, Floor21’s optional Vault keeps booking-wise income and expenses PIN-protected.
+
+--------------------------------------------------------------------------------
+[CLOSE & CTA — 1:52 to 2:15]
+--------------------------------------------------------------------------------
+
+[VISUAL: Logo + tagline + contact/demo CTA on screen]
+
+Floor21 is built for how Indian builders actually work.
+
+Milestone instalments tied to construction stages. Rupee-based ledgers. Receipt-ready outputs. One source of truth — from flat booking to final collection.
+
+Whether you manage one tower or ten buildings under one company — Floor21 scales with you.
+
+Smart Flat Booking for Modern Builders.
+
+Visit [your website] or contact us at [your email / phone] to request a free demo.
+
+Floor21. Know what’s booked. Know what’s due. Know what’s received.
+
+================================================================================
+END OF TRANSCRIPT
+================================================================================
+
+NOTES FOR VIDEO PRODUCTION:
+- Replace [your website], [your email / phone] with actual contact details before recording.
+- B-roll suggestions: flat grid UI, payment schedule, receipt print preview, dashboard summary cards.
+- Optional Hindi voice-over version can be adapted from this script section by section.
+- For a 60-second cut: use OPEN + INTRO + SOLUTION (first half) + CLOSE & CTA only.
