@@ -1,10 +1,12 @@
 package com.floor21.service;
 
+import com.floor21.dto.BrokerQuickCreateRequest;
 import com.floor21.entity.Broker;
 import com.floor21.exception.ResourceNotFoundException;
 import com.floor21.repository.BrokerRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.security.TenantContext;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -52,5 +54,19 @@ public class BrokerService {
         entity.setCommissionPct(form.getCommissionPct());
         entity.setActive(form.getActive() != null ? form.getActive() : true);
         return brokerRepository.save(entity);
+    }
+
+    @Transactional
+    public Broker quickCreate(BrokerQuickCreateRequest request) {
+        if (request.fullName() == null || request.fullName().isBlank()) {
+            throw new IllegalArgumentException("Full name is required.");
+        }
+        Broker form = new Broker();
+        form.setFullName(request.fullName().trim());
+        form.setPhone(request.phone() != null ? request.phone().trim() : null);
+        form.setEmail(request.email() != null ? request.email().trim() : null);
+        form.setCommissionPct(request.commissionPct() != null ? request.commissionPct() : BigDecimal.ZERO);
+        form.setActive(true);
+        return save(form);
     }
 }

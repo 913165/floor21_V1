@@ -4,7 +4,8 @@
 <body>
 <div th:fragment="content">
   <h1 class="h3 mb-4" th:text="${pageTitle}">Booking</h1>
-    <form id="bookingParticularsForm" th:action="@{/bookings/save}" th:object="${booking}" method="post" data-booking-client-picker data-turbo="false">
+    <form id="bookingParticularsForm" th:action="@{/bookings/save}" th:object="${booking}" method="post"
+          data-booking-client-picker data-booking-broker-picker data-turbo="false">
     <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
     <input type="hidden" th:field="*{id}"/>
     <input type="hidden" th:if="${booking.id != null}" th:field="*{bookingCode}"/>
@@ -118,10 +119,14 @@
           </div>
           <div class="col-md-4">
             <label class="form-label">Broker</label>
-            <select class="form-select" th:field="*{broker.id}">
-              <option value="">None</option>
-              <option th:each="br : ${brokers}" th:value="${br.id}" th:text="${br.fullName}"></option>
-            </select>
+            <div class="d-flex gap-2">
+              <select class="form-select" th:field="*{broker.id}" id="bookingBrokerSelect">
+                <option value="">None</option>
+                <option th:each="br : ${brokers}" th:value="${br.id}" th:text="${br.fullName}"></option>
+              </select>
+              <button type="button" class="btn btn-outline-primary btn-sm text-nowrap flex-shrink-0"
+                      id="bookingBrokerNew" title="Create new broker">+ New</button>
+            </div>
           </div>
           <div class="col-md-4">
             <label class="form-label">Brokerage</label>
@@ -248,7 +253,27 @@
     </div>
   </div>
 
+  <div class="modal fade" id="bookingBrokerModal" tabindex="-1" aria-labelledby="bookingBrokerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title h5" id="bookingBrokerModalLabel">New broker</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="bookingBrokerModalError" class="alert alert-danger d-none" role="alert"></div>
+          <th:block th:replace="~{brokers/form-fields :: fields('quickBroker', false)}"/>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="bookingBrokerModalSave">Create broker</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script defer th:src="@{/js/booking-client-picker.js(v=4)}"></script>
+  <script defer th:src="@{/js/booking-broker-picker.js(v=1)}"></script>
   <script>
     (function () {
       var flatSelect = document.getElementById('bookingFlatSelect');

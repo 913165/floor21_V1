@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="fields(idPrefix, bound)">
+  <div class="row g-3">
+    <div class="col-12">
+      <label class="form-label" th:for="${bound ? 'fullName' : idPrefix + 'FullName'}">Full name</label>
+      <input class="form-control" th:if="${bound}" id="fullName" th:field="*{fullName}" maxlength="200" required
+             th:classappend="${#fields.hasErrors('fullName')} ? 'is-invalid' : ''"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'FullName'}" data-api-field="fullName"
+             maxlength="200" required autocomplete="off"/>
+      <div class="invalid-feedback" th:if="${bound}" th:errors="*{fullName}"></div>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" th:for="${bound ? 'phone' : idPrefix + 'Phone'}">Phone</label>
+      <input class="form-control" th:if="${bound}" id="phone" th:field="*{phone}" maxlength="20"/>
+      <input class="form-control" th:unless="${bound}" th:id="${idPrefix + 'Phone'}" data-api-field="phone"
+             maxlength="20" autocomplete="off"/>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" th:for="${bound ? 'email' : idPrefix + 'Email'}">Email</label>
+      <input class="form-control" type="email" th:if="${bound}" id="email" th:field="*{email}" maxlength="150"/>
+      <input class="form-control" type="email" th:unless="${bound}" th:id="${idPrefix + 'Email'}" data-api-field="email"
+             maxlength="150" autocomplete="off"/>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" th:for="${bound ? 'commissionPct' : idPrefix + 'CommissionPct'}">Commission %</label>
+      <input class="form-control" type="number" step="0.01" min="0" th:if="${bound}" id="commissionPct"
+             th:field="*{commissionPct}"/>
+      <input class="form-control" type="number" step="0.01" min="0" th:unless="${bound}"
+             th:id="${idPrefix + 'CommissionPct'}" data-api-field="commissionPct" autocomplete="off"/>
+    </div>
+  </div>
+</th:block>
+</body>
+</html>
