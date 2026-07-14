@@ -36,7 +36,7 @@
       </div>
     </div>
 
-    <div class="col-12" th:if="${profile.companyProfileEditable() or profile.legalCompanyName() != null or profile.gstNumber() != null or profile.demandLetterGstin() != null}">
+    <div class="col-12" th:if="${profile.companyProfileEditable() or profile.legalCompanyName() != null or profile.gstNumber() != null or profile.tanNumber() != null}">
       <div class="card card-body shadow-sm">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
           <h2 class="h6 text-muted text-uppercase mb-0">Company &amp; tax</h2>
@@ -51,9 +51,9 @@
               <dd class="col-sm-7" th:text="${profile.legalCompanyName() != null ? profile.legalCompanyName() : '—'}">—</dd>
               <dt class="col-sm-5">PAN</dt>
               <dd class="col-sm-7" th:text="${profile.panNumber() != null ? profile.panNumber() : '—'}">—</dd>
-              <dt class="col-sm-5">GSTIN (your profile)</dt>
+              <dt class="col-sm-5">GSTIN</dt>
               <dd class="col-sm-7" th:text="${profile.gstNumber() != null ? profile.gstNumber() : '—'}">—</dd>
-              <dt class="col-sm-5">TAN (your profile)</dt>
+              <dt class="col-sm-5">TAN</dt>
               <dd class="col-sm-7" th:text="${profile.tanNumber() != null ? profile.tanNumber() : '—'}">—</dd>
             </dl>
           </div>
@@ -68,23 +68,17 @@
                 <span th:if="${profile.addressState() != null}"
                       th:text="|, ${profile.addressState()}${profile.addressPin() != null ? ' ' + profile.addressPin() : ''}|"></span>
               </dd>
-              <dt class="col-sm-5">Demand letter GSTIN</dt>
-              <dd class="col-sm-7 fw-semibold"
-                  th:text="${profile.demandLetterGstin() != null ? profile.demandLetterGstin() : '—'}">—</dd>
-              <dt class="col-sm-5">Demand letter TAN</dt>
-              <dd class="col-sm-7 fw-semibold"
-                  th:text="${profile.demandLetterTan() != null ? profile.demandLetterTan() : '—'}">—</dd>
             </dl>
           </div>
         </div>
         <p class="form-text small mb-0 mt-2"
            th:if="${profile.companyProfileEditable()}">
-          Demand letters use GSTIN/TAN from any project user who has them saved (builder administrator first).
-          Keep your company GSTIN and TAN updated here so they appear on demand letters and receipts.
+          Demand letters and receipts always use the GSTIN and TAN from your login profile
+          (the values shown above).
         </p>
         <p class="form-text small mb-0 mt-2 text-warning"
-           th:if="${profile.demandLetterGstin() == '—' and profile.companyProfileEditable()}">
-          GSTIN is missing for this project. Open <strong>Edit company &amp; tax details</strong> and save your GST number.
+           th:if="${profile.companyProfileEditable() and (profile.gstNumber() == null or profile.gstNumber().isBlank())}">
+          GSTIN is missing. Open <strong>Edit</strong> and save your GST number so it appears on demand letters.
         </p>
       </div>
     </div>

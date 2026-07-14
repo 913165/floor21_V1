@@ -22,6 +22,4 @@ public record AccountProfileView(
         String projectPhone,
         String projectAddress,
         String projectCity,
-        String demandLetterGstin,
-        String demandLetterTan,
         boolean companyProfileEditable) {}

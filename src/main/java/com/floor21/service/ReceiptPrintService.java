@@ -11,6 +11,7 @@ import com.floor21.entity.Receipt;
 import com.floor21.entity.User;
 import com.floor21.entity.UserProjectAssignment;
 import com.floor21.repository.UserProjectAssignmentRepository;
+import com.floor21.repository.UserRepository;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.util.IndianRupeesFormatter;
 import com.floor21.util.SlabReceiptWaterfall;
@@ -38,6 +39,7 @@ public class ReceiptPrintService {
             DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
 
     private final UserProjectAssignmentRepository userProjectAssignmentRepository;
+    private final UserRepository userRepository;
     private final BookingOwnerService bookingOwnerService;
 
     public ReceiptLetterView buildLetterView(Receipt receipt) {
@@ -434,52 +436,27 @@ public class ReceiptPrintService {
         return principal.getEmail();
     }
 
-    /** GSTIN and TAN from project users (builder admin first, then any assigned user). */
+    /**
+     * GSTIN and TAN for demand letters / receipts: always from the signed-in user's
+     * company profile (same values shown on Profile).
+     */
     public BuilderTaxProfile taxProfileForBuilder(Builder builder) {
-        if (builder == null) {
+        String email = currentPrincipalEmail();
+        if (email == null) {
             return new BuilderTaxProfile("—", "—");
         }
-        String gstin = null;
-        String tan = null;
-        List<UserProjectAssignment> assignments =
-                userProjectAssignmentRepository.findByBuilder_IdWithUser(builder.getId());
-        for (UserProjectAssignment assignment : assignments) {
-            if (!StaffBuildingAccessService.ROLE_BUILDER_ADMIN.equals(assignment.getRole())) {
-                continue;
-            }
-            User user = assignment.getUser();
-            if (user == null) {
-                continue;
-            }
-            if (gstin == null) {
-                gstin = trimToNull(user.getGstNumber());
-            }
-            if (tan == null) {
-                tan = trimToNull(user.getTanNumber());
-            }
-            if (gstin != null && tan != null) {
-                break;
-            }
-        }
-        if (gstin == null || tan == null) {
-            for (UserProjectAssignment assignment : assignments) {
-                User user = assignment.getUser();
-                if (user == null) {
-                    continue;
-                }
-                if (gstin == null) {
-                    gstin = trimToNull(user.getGstNumber());
-                }
-                if (tan == null) {
-                    tan = trimToNull(user.getTanNumber());
-                }
-                if (gstin != null && tan != null) {
-                    break;
-                }
-            }
-        }
-        return new BuilderTaxProfile(
-                gstin != null ? gstin : "—", tan != null ? tan : "—");
+        return userRepository
+                .findFirstByEmailIgnoreCaseAndActiveTrue(email)
+                .map(
+                        user ->
+                                new BuilderTaxProfile(
+                                        nullToDash(trimToNull(user.getGstNumber())),
+                                        nullToDash(trimToNull(user.getTanNumber()))))
+                .orElseGet(() -> new BuilderTaxProfile("—", "—"));
+    }
+
+    private static String nullToDash(String value) {
+        return value != null ? value : "—";
     }
 
     public String floorPhraseForFlat(Flat flat) {

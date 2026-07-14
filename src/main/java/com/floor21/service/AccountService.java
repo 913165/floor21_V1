@@ -34,7 +34,6 @@ public class AccountService {
     private final VaultPinService vaultPinService;
     private final VaultAccessService vaultAccessService;
     private final UserProjectAssignmentService userProjectAssignmentService;
-    private final ReceiptPrintService receiptPrintService;
 
     @Transactional(readOnly = true)
     public String currentDisplayName() {
@@ -84,8 +83,6 @@ public class AccountService {
                     null,
                     null,
                     null,
-                    null,
-                    null,
                     false);
         }
 
@@ -115,10 +112,6 @@ public class AccountService {
             boolean vaultAccess = vaultAccessService.canCurrentUserAccessVault();
             boolean builderAdminRole =
                     StaffBuildingAccessService.ROLE_BUILDER_ADMIN.equals(role);
-            ReceiptPrintService.BuilderTaxProfile taxProfile =
-                    project != null
-                            ? receiptPrintService.taxProfileForBuilder(project)
-                            : new ReceiptPrintService.BuilderTaxProfile("—", "—");
             return new AccountProfileView(
                     user.getFullName(),
                     email,
@@ -140,8 +133,6 @@ public class AccountService {
                     project != null ? project.getPhone() : null,
                     project != null ? project.getAddress() : null,
                     project != null ? project.getCity() : null,
-                    taxProfile.gstin(),
-                    taxProfile.tan(),
                     true);
         }
 
@@ -152,8 +143,6 @@ public class AccountService {
         boolean vaultAccess = vaultAccessService.canCurrentUserAccessVault();
         boolean vaultConfigured =
                 vaultAccess && principal.getBuilderId() != null && vaultPinService.hasPinConfigured();
-        ReceiptPrintService.BuilderTaxProfile taxProfile =
-                receiptPrintService.taxProfileForBuilder(builder);
         return new AccountProfileView(
                 builder.getCompanyName(),
                 email,
@@ -175,8 +164,6 @@ public class AccountService {
                 builder.getPhone(),
                 builder.getAddress(),
                 builder.getCity(),
-                taxProfile.gstin(),
-                taxProfile.tan(),
                 false);
     }
 
