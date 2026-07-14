@@ -7,6 +7,7 @@ import com.floor21.entity.Builder;
 import com.floor21.entity.User;
 import com.floor21.entity.UserProjectAssignment;
 import com.floor21.repository.UserProjectAssignmentRepository;
+import com.floor21.repository.UserRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -20,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ReceiptPrintServiceSignatoryTest {
 
     @Mock private UserProjectAssignmentRepository userProjectAssignmentRepository;
+    @Mock private UserRepository userRepository;
     @Mock private BookingOwnerService bookingOwnerService;
 
     private ReceiptPrintService service;
@@ -32,7 +34,9 @@ class ReceiptPrintServiceSignatoryTest {
 
   @BeforeEach
     void setUp() {
-        service = new ReceiptPrintService(userProjectAssignmentRepository, bookingOwnerService);
+        service =
+                new ReceiptPrintService(
+                        userProjectAssignmentRepository, userRepository, bookingOwnerService);
         builder = new Builder();
         builder.setId(UUID.randomUUID());
         builder.setCompanyName("La Vesta");
