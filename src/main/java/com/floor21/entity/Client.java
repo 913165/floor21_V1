@@ -122,13 +122,16 @@ public class Client {
         if (!combined.isEmpty()) {
             return combined;
         }
+        if (companyName != null && !companyName.isBlank()) {
+            return companyName.trim();
+        }
         if (mobile1 != null && !mobile1.isBlank()) {
             return mobile1.trim();
         }
         if (email1 != null && !email1.isBlank()) {
             return email1.trim();
         }
-        return "Client";
+        return "Unnamed client";
     }
 
     public String avatarInitials() {

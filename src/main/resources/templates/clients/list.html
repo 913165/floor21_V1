@@ -36,6 +36,9 @@
     </div>
   </div>
 
+  <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+  <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
   <form class="card card-body shadow-sm mb-3 slab-schedule-picker" method="get" th:action="@{/clients}"
         id="clients-filter-form"
         data-turbo-frame="floor21-main" data-turbo-action="advance">
@@ -101,6 +104,12 @@
         <td class="text-end text-nowrap">
           <a class="btn btn-sm btn-outline-primary" th:href="@{/clients/{id}(id=${c.id})}">View</a>
           <a class="btn btn-sm btn-outline-secondary" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')" th:href="@{/clients/{id}/edit(id=${c.id})}">Edit</a>
+          <form class="d-inline" sec:authorize="hasAnyRole('BUILDER_ADMIN','EXECUTIVE')"
+                th:action="@{/clients/{id}/delete(id=${c.id})}" method="post"
+                onsubmit="return confirm('Delete this client? This cannot be undone.');">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+          </form>
         </td>
       </tr>
       <tr th:if="${#lists.isEmpty(clients)}">

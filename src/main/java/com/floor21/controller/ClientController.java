@@ -205,8 +205,28 @@ public class ClientController {
                     "errorMessage", "Please correct the highlighted fields before saving.");
             return "clients/form";
         }
-        clientService.save(client);
+        try {
+            clientService.save(client);
+        } catch (IllegalArgumentException ex) {
+            model.addAttribute(
+                    "pageTitle", client.getId() == null ? "New Client" : "Edit Client");
+            model.addAttribute("client", client);
+            model.addAttribute("errorMessage", ex.getMessage());
+            return "clients/form";
+        }
         ra.addFlashAttribute("successMessage", "Client saved");
+        return "redirect:/clients";
+    }
+
+    @PostMapping("/{id}/delete")
+    @PreAuthorize("hasAnyRole('BUILDER_ADMIN','EXECUTIVE')")
+    public String delete(@PathVariable UUID id, RedirectAttributes ra) {
+        try {
+            clientService.delete(id);
+            ra.addFlashAttribute("successMessage", "Client deleted.");
+        } catch (IllegalArgumentException ex) {
+            ra.addFlashAttribute("errorMessage", ex.getMessage());
+        }
         return "redirect:/clients";
     }
 

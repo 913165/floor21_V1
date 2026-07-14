@@ -359,6 +359,19 @@
       applySamePrimaryAddress(true);
     }
     var payload = collectClientPayload();
+    var hasName = !!(payload.firstName && String(payload.firstName).trim());
+    var hasCompany = !!(payload.companyName && String(payload.companyName).trim());
+    if (!hasName && !hasCompany) {
+      showModalError("Enter a first name or company name.");
+      if (saveBtn) {
+        saveBtn.disabled = false;
+      }
+      var first = document.getElementById("quickClientFirstName");
+      if (first) {
+        first.focus();
+      }
+      return;
+    }
     fetch(appRoot() + "/clients/quick", {
       method: "POST",
       headers: Object.assign({ "Content-Type": "application/json" }, csrfHeaders()),

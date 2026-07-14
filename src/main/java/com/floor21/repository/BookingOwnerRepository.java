@@ -39,4 +39,8 @@ public interface BookingOwnerRepository extends JpaRepository<BookingOwner, UUID
             """)
     List<com.floor21.entity.Booking> findActiveByClientOrCoOwner(
             @Param("builderId") UUID builderId, @Param("clientId") UUID clientId);
+
+    long countByClient_Id(UUID clientId);
+
+    void deleteByClient_Id(UUID clientId);
 }

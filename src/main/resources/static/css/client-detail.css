@@ -217,6 +217,17 @@
   background: color-mix(in srgb, var(--client-accent) 12%, var(--client-surface));
 }
 
+.client-actions__btn--danger {
+  color: #b42318;
+  border-color: #f97066;
+}
+
+.client-actions__btn--danger:hover {
+  color: #912018;
+  border-color: #f04438;
+  background: color-mix(in srgb, #f04438 10%, var(--client-surface));
+}
+
 .client-detail-footer {
   margin-top: 1rem;
 }

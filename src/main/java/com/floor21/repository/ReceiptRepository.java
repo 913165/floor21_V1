@@ -110,4 +110,8 @@ public interface ReceiptRepository extends JpaRepository<Receipt, UUID> {
     void deleteByBooking_IdAndBuilder_Id(UUID bookingId, UUID builderId);
 
     void deleteByBuilder_Id(UUID builderId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("update Receipt r set r.paidByClient = null where r.paidByClient.id = :clientId")
+    int clearPaidByClient(@Param("clientId") UUID clientId);
 }

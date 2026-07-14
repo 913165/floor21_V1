@@ -266,4 +266,6 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
 
     @Query("select count(b) from Booking b where b.executive.id = :userId")
     long countByExecutive_Id(@Param("userId") UUID userId);
+
+    long countByClient_Id(UUID clientId);
 }

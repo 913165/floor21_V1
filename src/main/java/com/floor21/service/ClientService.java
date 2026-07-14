@@ -10,6 +10,7 @@ import com.floor21.repository.BookingOwnerRepository;
 import com.floor21.repository.BookingRepository;
 import com.floor21.repository.BuilderRepository;
 import com.floor21.repository.ClientRepository;
+import com.floor21.repository.ReceiptRepository;
 import com.floor21.security.TenantContext;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ public class ClientService {
     private final BuilderRepository builderRepository;
     private final BookingRepository bookingRepository;
     private final BookingOwnerRepository bookingOwnerRepository;
+    private final ReceiptRepository receiptRepository;
 
     @Transactional(readOnly = true)
     public Page<Client> listPage(int page, int size, String q, UUID projectId, UUID buildingId) {
@@ -191,6 +193,13 @@ public class ClientService {
     @Transactional
     public Client save(Client form) {
         UUID builderId = TenantContext.requireBuilderId();
+        String firstName = form.getFirstName() != null ? form.getFirstName().trim() : "";
+        String lastName = form.getLastName() != null ? form.getLastName().trim() : null;
+        String companyName =
+                form.getCompanyName() != null ? form.getCompanyName().trim() : null;
+        if (firstName.isEmpty() && (companyName == null || companyName.isEmpty())) {
+            throw new IllegalArgumentException("Enter a first name or company name.");
+        }
         Client entity;
         if (form.getId() == null) {
             entity = new Client();
@@ -203,9 +212,9 @@ public class ClientService {
         }
         var builder = builderRepository.findById(builderId).orElseThrow();
         entity.setBuilder(builder);
-        entity.setFirstName(form.getFirstName() != null ? form.getFirstName().trim() : "");
-        entity.setLastName(form.getLastName());
-        entity.setCompanyName(form.getCompanyName());
+        entity.setFirstName(firstName);
+        entity.setLastName(lastName != null && !lastName.isEmpty() ? lastName : null);
+        entity.setCompanyName(companyName != null && !companyName.isEmpty() ? companyName : null);
         entity.setOccupation(form.getOccupation());
         entity.setAddress1(form.getAddress1());
         entity.setAddress2(form.getAddress2());
@@ -230,6 +239,24 @@ public class ClientService {
         entity.setParticulars(form.getParticulars());
         entity.setUpdatedAt(Instant.now());
         return clientRepository.save(entity);
+    }
+
+    @Transactional
+    public void delete(UUID id) {
+        UUID builderId = TenantContext.requireBuilderId();
+        Client client =
+                clientRepository
+                        .findByIdAndBuilder_Id(id, builderId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+        if (bookingRepository.countByClient_Id(id) > 0
+                || bookingOwnerRepository.countByClient_Id(id) > 0) {
+            throw new IllegalArgumentException(
+                    "Cannot delete "
+                            + client.displayName()
+                            + " — linked to a booking. Remove or reassign the booking first.");
+        }
+        receiptRepository.clearPaidByClient(id);
+        clientRepository.delete(client);
     }
 
     private void requireTenantProject(UUID projectId) {
