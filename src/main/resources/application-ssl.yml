@@ -1,18 +1,10 @@
 # Ubuntu HTTPS for floor21.in — activate with: -Dspring-boot.run.profiles=prod,ssl
-#
-# Certbot certs: /etc/letsencrypt/live/floor21.in/
-# Copy to ~/ssl/ (see docs/UBUNTU_SETUP.md) — Java cannot read /etc/letsencrypt/ directly.
-spring:
-  ssl:
-    bundle:
-      pem:
-        webserver:
-          reload-on-update: true
-          keystore:
-            certificate: ${SSL_CERTIFICATE:file:/home/tinumistry/ssl/fullchain.pem}
-            private-key: ${SSL_PRIVATE_KEY:file:/home/tinumistry/ssl/privkey.pem}
-
+# Uses PKCS12 keystore at /home/tinumistry/floor21.p12 (create once on the server).
 server:
   port: 443
   ssl:
-    bundle: webserver
+    enabled: true
+    key-store: ${SSL_KEY_STORE:/home/tinumistry/floor21.p12}
+    key-store-password: '${SSL_KEY_STORE_PASSWORD:Varsha1#}'
+    key-store-type: PKCS12
+    key-alias: ${SSL_KEY_ALIAS:floor21}

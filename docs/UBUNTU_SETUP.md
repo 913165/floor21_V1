@@ -168,16 +168,27 @@ Stop following the log with `Ctrl+C` (the app keeps running in the background).
 
 ---
 
-## 7a. HTTPS with Let's Encrypt (free SSL) — floor21.in
+## 7a. HTTPS with PKCS12 keystore (`floor21.p12`) — floor21.in
 
-Certbot installs certificates under `/etc/letsencrypt/live/floor21.in/`. Spring Boot cannot read those files directly (root-only). Copy them into your home directory:
+The app uses **`/home/tinumistry/floor21.p12`** (PKCS12). Do **not** mix this with PEM paths (`fullchain.pem` / `privkey.pem`) in the same profile.
+
+**Verify the keystore exists:**
 
 ```bash
-mkdir -p ~/ssl
-sudo cp /etc/letsencrypt/live/floor21.in/fullchain.pem ~/ssl/
-sudo cp /etc/letsencrypt/live/floor21.in/privkey.pem ~/ssl/
-sudo chown "$USER:$USER" ~/ssl/*.pem
-chmod 600 ~/ssl/privkey.pem
+ls -l /home/tinumistry/floor21.p12
+```
+
+If missing, create it from your Let's Encrypt cert (one-time):
+
+```bash
+sudo openssl pkcs12 -export \
+  -in /etc/letsencrypt/live/floor21.in/fullchain.pem \
+  -inkey /etc/letsencrypt/live/floor21.in/privkey.pem \
+  -out /home/tinumistry/floor21.p12 \
+  -name floor21 \
+  -passout pass:'Varsha1#'
+sudo chown tinumistry:tinumistry /home/tinumistry/floor21.p12
+chmod 600 /home/tinumistry/floor21.p12
 ```
 
 **Stop the old HTTP-only process** (if still running on port 80):
@@ -202,17 +213,15 @@ sudo lsof -iTCP:443 -sTCP:LISTEN
 curl -k https://floor21.in/floor21/actuator/health
 ```
 
-**Auto-copy on renewal** (optional deploy hook):
+**After Certbot renews** (re-export `.p12` or use Nginx in section 7b):
 
 ```bash
-sudo tee /etc/letsencrypt/renewal-hooks/deploy/floor21.sh <<'EOF'
-#!/bin/bash
-cp "$RENEWED_LINEAGE/fullchain.pem" /home/tinumistry/ssl/
-cp "$RENEWED_LINEAGE/privkey.pem" /home/tinumistry/ssl/
-chown tinumistry:tinumistry /home/tinumistry/ssl/*.pem
-chmod 600 /home/tinumistry/ssl/privkey.pem
-EOF
-sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/floor21.sh
+sudo openssl pkcs12 -export \
+  -in /etc/letsencrypt/live/floor21.in/fullchain.pem \
+  -inkey /etc/letsencrypt/live/floor21.in/privkey.pem \
+  -out /home/tinumistry/floor21.p12 \
+  -name floor21 \
+  -passout pass:'Varsha1#'
 ```
 
 ### Troubleshooting — still only HTTP on port 80?
@@ -220,17 +229,10 @@ sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/floor21.sh
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | App on port 80 | Started with `prod` only, not `prod,ssl` | Restart with `-Dspring-boot.run.profiles=prod,ssl` |
-| Startup error: keystore / PEM not found | Cert files missing in `~/ssl/` | Run the `cp` commands above |
+| `fullchain.pem` / `privkey.pem` not found | Wrong SSL mode — app expects `.p12` | Use `floor21.p12` (see above), not PEM paths |
+| `floor21.p12` not found | Keystore missing | Run `ls -l` or create with `openssl pkcs12` |
 | Port 443 permission denied | Java cannot bind to 443 | Run `setcap` (section 7) |
-| Certbot worked but app unchanged | Certs installed for Nginx, app still HTTP | Use Nginx proxy (section 7b) **or** Spring `prod,ssl` as above |
-
-### PKCS12 keystore instead of PEM
-
-If you use `floor21.p12` instead of Let's Encrypt PEM files:
-
-```bash
-nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod,ssl-p12 -q > /dev/null 2>&1 &
-```
+| Wrong password | `SSL_KEY_STORE_PASSWORD` mismatch | Export with same password as in config, or set env var |
 
 ---
 
