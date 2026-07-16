@@ -1,0 +1,9 @@
+# Activate with prod on the Ubuntu server: -Dspring-boot.run.profiles=prod,ssl
+server:
+  port: 443
+  ssl:
+    enabled: true
+    key-store: ${SSL_KEY_STORE:/home/tinumistry/floor21.p12}
+    key-store-password: '${SSL_KEY_STORE_PASSWORD:Varsha1#}'
+    key-store-type: PKCS12
+    key-alias: ${SSL_KEY_ALIAS:floor21}

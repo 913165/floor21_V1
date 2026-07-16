@@ -37,7 +37,7 @@ chmod -R 777 *
 # Start Floor21
 
 ```bash
-nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod -q > /dev/null 2>&1 &
+nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod,ssl -q > /dev/null 2>&1 &
 ```
 # Watch logs
 ```bash

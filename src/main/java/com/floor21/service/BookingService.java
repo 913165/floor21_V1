@@ -274,6 +274,7 @@ public class BookingService {
         entity.setFlat(flat);
         entity.setClient(client);
         entity.setBookingDate(form.getBookingDate() != null ? form.getBookingDate() : LocalDate.now());
+        entity.setAgreementDate(form.getAgreementDate());
         BigDecimal consideration = form.getConsiderationAmt();
         entity.setConsiderationAmt(consideration);
         entity.setQuotedAmount(form.getQuotedAmount());

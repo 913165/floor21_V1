@@ -229,6 +229,17 @@
             </p>
           </div>
           <div>
+            <p class="client-field-label">Agreement date</p>
+            <p class="client-field-value"
+               th:classappend="${booking.agreementDate == null} ? 'client-field-value--empty'"
+               th:text="${booking.agreementDate != null ? dfmt.formatDisplay(booking.agreementDate) : 'Not provided'}">
+              Not provided
+            </p>
+          </div>
+        </div>
+
+        <div class="client-field-row-split">
+          <div>
             <p class="client-field-label">NOC request</p>
             <p class="client-field-value"
                th:classappend="${booking.nocRequestDate == null} ? 'client-field-value--empty'"
@@ -359,6 +370,13 @@
        th:if="${flat != null and building != null}"
        th:href="@{/receipts(bookingId=${booking.id}, buildingId=${building.id}, projectId=${filterProjectId != null ? filterProjectId : (booking.builder != null ? booking.builder.id : null)})}">
       Receipts
+    </a>
+    <a class="btn btn-outline-primary btn-sm"
+       th:unless="${readonlyView}"
+       data-turbo="false"
+       download
+       th:href="@{/bookings/{id}/agreement(id=${booking.id})}">
+      Download agreement
     </a>
     <a class="btn btn-outline-primary btn-sm"
        th:unless="${readonlyView}"

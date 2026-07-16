@@ -55,6 +55,9 @@ public class Booking {
     @Column(name = "booking_date", nullable = false)
     private LocalDate bookingDate;
 
+    @Column(name = "agreement_date")
+    private LocalDate agreementDate;
+
     @Column(name = "consideration_amt", precision = 15, scale = 2)
     private BigDecimal considerationAmt = BigDecimal.ZERO;
 

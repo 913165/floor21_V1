@@ -83,8 +83,8 @@ class DemandLetterDocxFiller {
                         ? booking.getReference().trim()
                         : "CBD-Belapur";
         String agreementDate =
-                booking.getBookingDate() != null
-                        ? LETTER_DATE.format(booking.getBookingDate())
+                booking.getAgreementDate() != null
+                        ? LETTER_DATE.format(booking.getAgreementDate())
                         : "";
 
         Map<String, String> tokens = new LinkedHashMap<>();

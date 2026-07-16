@@ -121,7 +121,7 @@ Configure these for your environment (cloud provider console or `ufw` on the VM)
 **Suggested:**
 
 - Allow **22** (SSH) only from trusted IPs.
-- Allow **80** (HTTP) only if the app must be reached from outside (otherwise restrict to VPN / internal network).
+- Allow **443** (HTTPS) for the Floor21 app (or **80** only if you run without the `ssl` profile).
 - **5432** — do not expose PostgreSQL to the public internet; keep it on the Docker bridge or localhost only.
 - Optional monitoring (if you start Prometheus/Grafana): **9090**, **3000** — internal/VPN only in production.
 
@@ -129,7 +129,7 @@ Example (`ufw`):
 
 ```bash
 sudo ufw allow OpenSSH
-sudo ufw allow 80/tcp comment 'Floor21 app HTTP'
+sudo ufw allow 443/tcp comment 'Floor21 app HTTPS'
 sudo ufw enable
 sudo ufw status
 ```
@@ -140,7 +140,7 @@ Use cloud **security groups / network tags** the same way: least privilege, no o
 
 ## 7. Run Spring Boot in the background
 
-Port **80** is a privileged port on Linux. Allow the JDK to bind to it once (adjust the `java` path if yours differs):
+Port **443** (HTTPS) is a privileged port on Linux. Allow the JDK to bind to it once (adjust the `java` path if yours differs):
 
 ```bash
 sudo setcap 'cap_net_bind_service=+ep' "$(readlink -f "$(which java)")"
@@ -151,7 +151,7 @@ From the project root, with Postgres already up:
 ```bash
 chmod +x mvnw
 mkdir -p logs
-nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod -q > /dev/null 2>&1 &
+nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod,ssl -q > /dev/null 2>&1 &
 tail -f logs/floor21.log
 ```
 
@@ -214,6 +214,6 @@ sudo apt install -y docker.io docker-compose
 git clone https://github.com/913165/floor21_V1.git && cd floor21_V1
 docker compose up -d postgres
 mkdir -p logs
-nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod -q > /dev/null 2>&1 &
+nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod,ssl -q > /dev/null 2>&1 &
 tail -f logs/floor21.log
 ```
