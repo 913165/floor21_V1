@@ -163,12 +163,121 @@ Stop following the log with `Ctrl+C` (the app keeps running in the background).
 
 | What  | URL |
 |-------|-----|
-| Login | http://\<server-ip\>/floor21/login |
-| Health | http://localhost/floor21/actuator/health |
+| Login | https://floor21.in/floor21/login |
+| Health | https://localhost/floor21/actuator/health |
 
 ---
 
-## 8. Stop the app (free port 80)
+## 7a. HTTPS with Let's Encrypt (free SSL) — floor21.in
+
+Certbot installs certificates under `/etc/letsencrypt/live/floor21.in/`. Spring Boot cannot read those files directly (root-only). Copy them into your home directory:
+
+```bash
+mkdir -p ~/ssl
+sudo cp /etc/letsencrypt/live/floor21.in/fullchain.pem ~/ssl/
+sudo cp /etc/letsencrypt/live/floor21.in/privkey.pem ~/ssl/
+sudo chown "$USER:$USER" ~/ssl/*.pem
+chmod 600 ~/ssl/privkey.pem
+```
+
+**Stop the old HTTP-only process** (if still running on port 80):
+
+```bash
+sudo lsof -iTCP:80 -sTCP:LISTEN
+sudo kill -9 $(sudo lsof -t -i:80)   # only if Floor21 is on 80
+```
+
+**Start with HTTPS** (`prod` + `ssl` profiles):
+
+```bash
+cd ~/floor21_V1   # or your clone path
+nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod,ssl -q > /dev/null 2>&1 &
+tail -f logs/floor21.log
+```
+
+Confirm HTTPS is listening:
+
+```bash
+sudo lsof -iTCP:443 -sTCP:LISTEN
+curl -k https://floor21.in/floor21/actuator/health
+```
+
+**Auto-copy on renewal** (optional deploy hook):
+
+```bash
+sudo tee /etc/letsencrypt/renewal-hooks/deploy/floor21.sh <<'EOF'
+#!/bin/bash
+cp "$RENEWED_LINEAGE/fullchain.pem" /home/tinumistry/ssl/
+cp "$RENEWED_LINEAGE/privkey.pem" /home/tinumistry/ssl/
+chown tinumistry:tinumistry /home/tinumistry/ssl/*.pem
+chmod 600 /home/tinumistry/ssl/privkey.pem
+EOF
+sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/floor21.sh
+```
+
+### Troubleshooting — still only HTTP on port 80?
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| App on port 80 | Started with `prod` only, not `prod,ssl` | Restart with `-Dspring-boot.run.profiles=prod,ssl` |
+| Startup error: keystore / PEM not found | Cert files missing in `~/ssl/` | Run the `cp` commands above |
+| Port 443 permission denied | Java cannot bind to 443 | Run `setcap` (section 7) |
+| Certbot worked but app unchanged | Certs installed for Nginx, app still HTTP | Use Nginx proxy (section 7b) **or** Spring `prod,ssl` as above |
+
+### PKCS12 keystore instead of PEM
+
+If you use `floor21.p12` instead of Let's Encrypt PEM files:
+
+```bash
+nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod,ssl-p12 -q > /dev/null 2>&1 &
+```
+
+---
+
+## 7b. Alternative — Nginx terminates HTTPS (common with Certbot)
+
+If you ran `sudo certbot --nginx`, Nginx may already have HTTPS on 443 while Floor21 still runs on HTTP port 80. That is normal — Nginx should proxy to the app.
+
+1. Run Floor21 **without** the `ssl` profile (HTTP on 80):
+
+```bash
+nohup ./mvnw spring-boot:run -Dspring-boot.run.profiles=prod -q > /dev/null 2>&1 &
+```
+
+2. Ensure Nginx proxies `/floor21` to the app (example site config):
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name floor21.in www.floor21.in;
+
+    ssl_certificate     /etc/letsencrypt/live/floor21.in/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/floor21.in/privkey.pem;
+
+    location /floor21 {
+        proxy_pass http://127.0.0.1:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+server {
+    listen 80;
+    server_name floor21.in www.floor21.in;
+    return 301 https://$host$request_uri;
+}
+```
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Users then open **https://floor21.in/floor21/login** — Nginx handles SSL; Spring Boot stays on HTTP internally.
+
+---
+
+## 8. Stop the app (free ports 80 / 443)
 
 Install `lsof` if missing:
 
@@ -176,11 +285,13 @@ Install `lsof` if missing:
 sudo apt install -y lsof
 ```
 
-Kill whatever is listening on **80**:
+Kill whatever is listening on **80** or **443**:
 
 ```bash
 lsof -iTCP:80 -sTCP:LISTEN
-sudo kill -9 $(sudo lsof -t -i:80)
+lsof -iTCP:443 -sTCP:LISTEN
+sudo kill -9 $(sudo lsof -t -i:80)    # if needed
+sudo kill -9 $(sudo lsof -t -i:443)   # if needed
 ```
 
 Or find the `nohup` / Java PID:
