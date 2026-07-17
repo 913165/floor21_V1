@@ -24,7 +24,7 @@ lsof -iTCP:80 -sTCP:LISTEN
 Kill whatever is occupying port 80:
 
 ```bash
-sudo kill -9 $(sudo lsof -t -i:80)
+sudo kill -9 $(sudo lsof -t -i:80 -i:443)
 ```
 
 # chmod command
