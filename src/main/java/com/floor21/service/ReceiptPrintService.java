@@ -37,6 +37,8 @@ public class ReceiptPrintService {
     private static final BigDecimal ZERO = BigDecimal.ZERO;
     private static final DateTimeFormatter SHORT_DATE =
             DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH);
+    /** Prevents Word/HTML from wrapping mid-date (e.g. "26-" / "Jun-2026"). */
+    private static final char NON_BREAKING_HYPHEN = '\u2011';
 
     private final UserProjectAssignmentRepository userProjectAssignmentRepository;
     private final UserRepository userRepository;
@@ -147,7 +149,11 @@ public class ReceiptPrintService {
     }
 
     private static String formatShortDate(LocalDate d) {
-        return d != null ? d.format(SHORT_DATE) : "—";
+        if (d == null) {
+            return "—";
+        }
+        // Non-breaking hyphens keep "26-Jun-2026" on one line in Word/HTML.
+        return d.format(SHORT_DATE).replace('-', NON_BREAKING_HYPHEN);
     }
 
     private static String formatFlatNumber(Flat flat) {

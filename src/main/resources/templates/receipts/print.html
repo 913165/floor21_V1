@@ -32,7 +32,22 @@
         (<span th:text="${amountWordsPrint}">Rupees Zero Only</span>)
       </strong>
       vide
-      <strong th:text="${instrumentNarrativePrint}">Cheque No. 000000 dated 01-Jan-2026</strong>,
+      <th:block th:with="inst=${instrumentNarrativePrint}">
+        <th:block th:if="${inst == null or #strings.isEmpty(inst) or inst == '—'}">
+          <strong>—</strong>
+        </th:block>
+        <th:block th:unless="${inst == null or #strings.isEmpty(inst) or inst == '—'}"
+                  th:with="hasDrawn=${#strings.contains(inst, ', drawn on ')},
+                           drawnSplit=${hasDrawn ? #strings.substringBefore(inst, ', drawn on ') : inst},
+                           bankPart=${hasDrawn ? #strings.substringAfter(inst, ', drawn on ') : ''},
+                           hasDated=${#strings.contains(drawnSplit, ' dated ')},
+                           beforeDated=${hasDated ? #strings.substringBefore(drawnSplit, ' dated ') : drawnSplit},
+                           datePart=${hasDated ? #strings.substringAfter(drawnSplit, ' dated ') : ''}">
+          <strong th:if="${beforeDated != null and !#strings.isEmpty(beforeDated)}" th:text="${beforeDated}">RTGS No. XXX</strong>
+          <th:block th:if="${hasDated}"> dated <strong th:text="${datePart}">01-Jan-2026</strong></th:block>
+          <th:block th:if="${hasDrawn and bankPart != null and !#strings.isEmpty(bankPart)}">, drawn on <strong th:text="${bankPart}">Bank</strong></th:block>
+        </th:block>
+      </th:block>,
       Payment towards
       <strong th:text="${paymentPurposePrint}">Consideration</strong>
       against
@@ -122,24 +137,25 @@
       align-items: baseline;
       gap: 1rem;
       margin-bottom: 1.25rem;
-      font-style: italic;
+      padding-top: 0.15rem;
+      padding-bottom: 0.2rem;
+      line-height: 1.5;
     }
 
     .receipt-header-label {
       font-weight: 700;
-      font-style: italic;
     }
 
     .receipt-header-no strong,
     .receipt-header-date strong {
       font-weight: 700;
-      font-style: italic;
     }
 
     .receipt-narrative {
       text-align: justify;
       color: inherit;
       margin-bottom: 1.5rem;
+      line-height: 1.65;
     }
 
     .receipt-narrative strong {
