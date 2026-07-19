@@ -145,7 +145,9 @@ public class DemandDraftService {
                 received.instalment() != null ? received.instalment() : ZERO;
         BigDecimal receivedTds = received.tds() != null ? received.tds() : ZERO;
         BigDecimal receivedGst = received.gst() != null ? received.gst() : ZERO;
-        BigDecimal payableInstalment = totalInstalment.subtract(receivedInstalment);
+        // Row instalments are net of TDS; payment-schedule balance uses gross due − received.
+        BigDecimal grossInstalmentDue = totalInstalment.add(totalTds);
+        BigDecimal payableInstalment = grossInstalmentDue.subtract(receivedInstalment);
         if (payableInstalment.compareTo(ZERO) < 0) {
             payableInstalment = ZERO;
         }
