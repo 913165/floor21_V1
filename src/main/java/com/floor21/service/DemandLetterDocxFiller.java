@@ -5,12 +5,12 @@ import com.floor21.entity.Booking;
 import com.floor21.entity.Building;
 import com.floor21.entity.Client;
 import com.floor21.entity.Flat;
-import com.floor21.entity.Builder;
 import com.floor21.util.DocxTokenReplacer;
 import com.floor21.util.IndianRupeesFormatter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -22,9 +22,18 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHeight;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSpacing;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTblWidth;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcMar;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTrPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STHeightRule;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STLineSpacingRule;
 import org.springframework.stereotype.Component;
 
 /** Fills the bundled Word template to match the partner demand-letter layout. */
@@ -207,31 +216,39 @@ class DemandLetterDocxFiller {
                 "Total Amount",
                 model.totalInstalment(),
                 model.totalTds(),
-                model.totalGst());
+                model.totalGst(),
+                true);
         setSummaryRow(
                 table,
                 "Received Amount",
                 model.receivedInstalment(),
                 model.receivedTds(),
-                model.receivedGst());
+                model.receivedGst(),
+                false);
         setSummaryRow(
                 table,
                 "Total Payable",
                 model.payableInstalment(),
                 model.payableTds(),
-                model.payableGst());
+                model.payableGst(),
+                true);
     }
 
     private static void setSummaryRow(
-            XWPFTable table, String label, BigDecimal instalment, BigDecimal tds, BigDecimal gst) {
+            XWPFTable table,
+            String label,
+            BigDecimal instalment,
+            BigDecimal tds,
+            BigDecimal gst,
+            boolean boldAmounts) {
         int rowIndex = findRowIndex(table, label);
         if (rowIndex < 0) {
             return;
         }
         XWPFTableRow row = table.getRow(rowIndex);
-        setCellText(row.getCell(2), formatTableAmount(instalment));
-        setCellText(row.getCell(3), formatTableAmount(tds));
-        setCellText(row.getCell(4), formatTableAmount(gst));
+        setCellText(row.getCell(2), formatTableAmount(instalment), boldAmounts);
+        setCellText(row.getCell(3), formatTableAmount(tds), boldAmounts);
+        setCellText(row.getCell(4), formatTableAmount(gst), boldAmounts);
     }
 
     private static void fillHeaderTable(
@@ -260,6 +277,57 @@ class DemandLetterDocxFiller {
         setCellText(table.getRow(5).getCell(1), "TAN:" + taxProfile.tan());
         String phones = ownerPhones(owners, primaryClient);
         setCellText(table.getRow(6).getCell(0), phones.isBlank() ? "" : "Ph- " + phones);
+        compactHeaderTable(table);
+    }
+
+    /** Shrink oversized template row heights / paragraph gaps so the header matches a compact DL. */
+    private static void compactHeaderTable(XWPFTable table) {
+        for (XWPFTableRow row : table.getRows()) {
+            clearFixedRowHeight(row);
+            for (XWPFTableCell cell : row.getTableCells()) {
+                cell.setVerticalAlignment(XWPFTableCell.XWPFVertAlign.TOP);
+                setCompactCellMargins(cell);
+                for (XWPFParagraph paragraph : cell.getParagraphs()) {
+                    applyCompactParagraphSpacing(paragraph);
+                }
+            }
+        }
+    }
+
+    private static void clearFixedRowHeight(XWPFTableRow row) {
+        CTTrPr trPr = row.getCtRow().isSetTrPr() ? row.getCtRow().getTrPr() : row.getCtRow().addNewTrPr();
+        while (trPr.sizeOfTrHeightArray() > 0) {
+            trPr.removeTrHeight(0);
+        }
+        CTHeight height = trPr.addNewTrHeight();
+        height.setVal(BigInteger.valueOf(180));
+        height.setHRule(STHeightRule.AT_LEAST);
+    }
+
+    private static void setCompactCellMargins(XWPFTableCell cell) {
+        CTTcPr tcPr = cell.getCTTc().isSetTcPr() ? cell.getCTTc().getTcPr() : cell.getCTTc().addNewTcPr();
+        CTTcMar mar = tcPr.isSetTcMar() ? tcPr.getTcMar() : tcPr.addNewTcMar();
+        setMargin(mar.isSetTop() ? mar.getTop() : mar.addNewTop(), 20);
+        setMargin(mar.isSetBottom() ? mar.getBottom() : mar.addNewBottom(), 20);
+        setMargin(mar.isSetLeft() ? mar.getLeft() : mar.addNewLeft(), 40);
+        setMargin(mar.isSetRight() ? mar.getRight() : mar.addNewRight(), 40);
+    }
+
+    private static void setMargin(CTTblWidth mar, int twips) {
+        mar.setW(BigInteger.valueOf(twips));
+        mar.setType(org.openxmlformats.schemas.wordprocessingml.x2006.main.STTblWidth.DXA);
+    }
+
+    private static void applyCompactParagraphSpacing(XWPFParagraph paragraph) {
+        paragraph.setSpacingBefore(0);
+        paragraph.setSpacingAfter(0);
+        paragraph.setSpacingBetween(1.0);
+        var pPr = paragraph.getCTP().isSetPPr() ? paragraph.getCTP().getPPr() : paragraph.getCTP().addNewPPr();
+        CTSpacing spacing = pPr.isSetSpacing() ? pPr.getSpacing() : pPr.addNewSpacing();
+        spacing.setBefore(BigInteger.ZERO);
+        spacing.setAfter(BigInteger.ZERO);
+        spacing.setLine(BigInteger.valueOf(240));
+        spacing.setLineRule(STLineSpacingRule.AUTO);
     }
 
     private static List<String> toBlockLines(List<Client> owners, Client primaryClient) {
@@ -308,16 +376,36 @@ class DemandLetterDocxFiller {
     }
 
     private static void setCellLines(XWPFTableCell cell, List<String> lines) {
+        if (cell == null) {
+            return;
+        }
         while (cell.getParagraphs().size() > 0) {
             cell.removeParagraph(0);
         }
-        for (String line : lines) {
-            cell.addParagraph().createRun().setText(line != null ? line : "");
+        List<String> content = lines == null || lines.isEmpty() ? List.of("") : lines;
+        for (String line : content) {
+            XWPFParagraph paragraph = cell.addParagraph();
+            applyCompactParagraphSpacing(paragraph);
+            paragraph.createRun().setText(line != null ? line : "");
         }
     }
 
     private static void setCellText(XWPFTableCell cell, String text) {
-        setCellLines(cell, List.of(text != null ? text : ""));
+        setCellText(cell, text, false);
+    }
+
+    private static void setCellText(XWPFTableCell cell, String text, boolean bold) {
+        if (cell == null) {
+            return;
+        }
+        while (cell.getParagraphs().size() > 0) {
+            cell.removeParagraph(0);
+        }
+        XWPFParagraph paragraph = cell.addParagraph();
+        applyCompactParagraphSpacing(paragraph);
+        var run = paragraph.createRun();
+        run.setBold(bold);
+        run.setText(text != null ? text : "");
     }
 
     private static void putBankTokens(

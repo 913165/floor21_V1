@@ -145,9 +145,7 @@ public class DemandDraftService {
                 received.instalment() != null ? received.instalment() : ZERO;
         BigDecimal receivedTds = received.tds() != null ? received.tds() : ZERO;
         BigDecimal receivedGst = received.gst() != null ? received.gst() : ZERO;
-        // Row instalments are net of TDS; payment-schedule balance uses gross due − received.
-        BigDecimal grossInstalmentDue = totalInstalment.add(totalTds);
-        BigDecimal payableInstalment = grossInstalmentDue.subtract(receivedInstalment);
+        BigDecimal payableInstalment = totalInstalment.subtract(receivedInstalment);
         if (payableInstalment.compareTo(ZERO) < 0) {
             payableInstalment = ZERO;
         }
@@ -205,8 +203,9 @@ public class DemandDraftService {
     }
 
     /**
-     * Amount received toward milestone instalments (excludes GST). Matches payment schedule receipt
-     * column — GST is tracked separately in the demand letter GST row.
+     * Amount received toward milestone instalments (excludes GST and TDS). TDS is shown in its own
+     * demand-letter column; including it here would inflate Received Amount and understate Total
+     * Payable.
      */
     static BigDecimal instalmentReceivedAmount(Receipt receipt) {
         BigDecimal fromBreakdown =
@@ -217,10 +216,11 @@ public class DemandDraftService {
             return fromBreakdown;
         }
         BigDecimal total = receipt.getAmount() != null ? receipt.getAmount() : ZERO;
-        BigDecimal gst =
+        BigDecimal nonInstalment =
                 zeroIfNull(receipt.getAmountGstComponent())
-                        .add(zeroIfNull(receipt.getAmountInterestGst()));
-        return total.subtract(gst).max(ZERO);
+                        .add(zeroIfNull(receipt.getAmountInterestGst()))
+                        .add(zeroIfNull(receipt.getAmountTds()));
+        return total.subtract(nonInstalment).max(ZERO);
     }
 
     private static BigDecimal zeroIfNull(BigDecimal value) {

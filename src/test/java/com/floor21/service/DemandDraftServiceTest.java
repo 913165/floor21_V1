@@ -49,8 +49,7 @@ class DemandDraftServiceTest {
         assertThat(model.rows().get(1).scheduleName()).isEqualTo("Agreement");
         assertThat(model.rows().get(1).instalment()).isEqualByComparingTo("2290860");
         assertThat(model.totalInstalment()).isEqualByComparingTo("3436290");
-        // Gross due (net + TDS) when nothing received — matches payment schedule balance.
-        assertThat(model.payableInstalment()).isEqualByComparingTo("3471000");
+        assertThat(model.payableInstalment()).isEqualByComparingTo("3436290");
     }
 
     @Test
@@ -67,13 +66,13 @@ class DemandDraftServiceTest {
                         booking);
 
         assertThat(model.receivedInstalment()).isEqualByComparingTo("1000000");
-        // Payable = gross due 11,57,000 − received 10,00,000 (not net-of-TDS − received).
-        assertThat(model.payableInstalment()).isEqualByComparingTo("157000");
+        // Payable = net total 11,45,430 − received instalment 10,00,000.
+        assertThat(model.payableInstalment()).isEqualByComparingTo("145430");
     }
 
     @Test
-    void buildModelPayableInstalmentMatchesPaymentScheduleBalance() {
-        // Mirrors DL case: net rows 52,47,000 + TDS 53,000 = gross 53,00,000; received 42,06,000.
+    void buildModelPayableMatchesCorrectDemandLetterArithmetic() {
+        // Correct DL: Total 52,47,000 − Received 41,00,000 (excludes TDS 1,06,000) = Payable 11,47,000.
         BookingPaymentSlab slab1 = slab("On or before completion 2nd Slab", "5035000");
         BookingPaymentSlab slab2 = slab("On or before completion 4th Slab", "265000");
         List<SlabScheduleLineView> lines =
@@ -86,15 +85,17 @@ class DemandDraftServiceTest {
                 service.buildModel(
                         lines,
                         new DemandDraftService.ReceiptTotals(
-                                new BigDecimal("4206000"),
+                                new BigDecimal("4100000"),
                                 new BigDecimal("106000"),
                                 new BigDecimal("180000")),
                         booking);
 
         assertThat(model.totalInstalment()).isEqualByComparingTo("5247000");
         assertThat(model.totalTds()).isEqualByComparingTo("53000");
-        assertThat(model.receivedInstalment()).isEqualByComparingTo("4206000");
-        assertThat(model.payableInstalment()).isEqualByComparingTo("1094000");
+        assertThat(model.receivedInstalment()).isEqualByComparingTo("4100000");
+        assertThat(model.payableInstalment()).isEqualByComparingTo("1147000");
+        assertThat(model.payableTds()).isEqualByComparingTo("0");
+        assertThat(model.payableGst()).isEqualByComparingTo("85000");
     }
 
     @Test
@@ -123,6 +124,17 @@ class DemandDraftServiceTest {
         gstOnly.setAmount(new BigDecimal("503334"));
 
         assertThat(DemandDraftService.instalmentReceivedAmount(gstOnly))
+                .isEqualByComparingTo("0");
+    }
+
+    @Test
+    void instalmentReceivedAmountExcludesTdsOnlyReceipts() {
+        com.floor21.entity.Receipt tdsOnly = new com.floor21.entity.Receipt();
+        tdsOnly.setAmountConsideration(BigDecimal.ZERO);
+        tdsOnly.setAmountTds(new BigDecimal("53000"));
+        tdsOnly.setAmount(new BigDecimal("53000"));
+
+        assertThat(DemandDraftService.instalmentReceivedAmount(tdsOnly))
                 .isEqualByComparingTo("0");
     }
 
