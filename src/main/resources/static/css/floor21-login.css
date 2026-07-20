@@ -26,15 +26,53 @@ html[data-bs-theme="dark"] .floor21-login {
   color: #e8eef5;
 }
 
+/* Login uses shared .floor21-site-header / .floor21-site-nav from floor21-public.css */
+.floor21-site-header--on-login {
+  position: relative;
+  z-index: 20;
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: none;
+}
+
+html[data-bs-theme="light"] .floor21-site-header--on-login {
+  border-bottom-color: rgba(21, 42, 82, 0.1);
+}
+
+.floor21-site-header--on-login .floor21-site-nav {
+  gap: 0.65rem 3rem;
+}
+
+@media (min-width: 768px) {
+  .floor21-site-header--on-login .floor21-site-nav {
+    gap: 1rem 4.5rem;
+  }
+}
+
+@media (min-width: 1100px) {
+  .floor21-site-header--on-login .floor21-site-nav {
+    gap: 1.25rem 6rem;
+  }
+}
+
+html[data-bs-theme="dark"] .floor21-site-header--on-login .floor21-site-nav__link {
+  color: rgba(232, 238, 245, 0.92);
+}
+
+html[data-bs-theme="light"] .floor21-site-header--on-login .floor21-site-nav__link {
+  color: #152a52;
+}
+
 .floor21-login__brand-corner {
-  position: fixed;
-  top: 1rem;
-  left: 1rem;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  max-width: calc(100% - 5.5rem);
+  display: none;
+}
+
+.floor21-login__topbar {
+  display: none;
+}
+
+.floor21-login__nav {
+  display: none;
 }
 
 .floor21-login__brand-link {
@@ -55,22 +93,12 @@ html[data-bs-theme="dark"] .floor21-login {
 }
 
 .floor21-login__theme-corner {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  z-index: 10;
+  display: none;
 }
 
 @media (min-width: 576px) {
   .floor21-login__brand-corner {
-    top: 1.25rem;
-    left: 1.5rem;
     gap: 0.75rem;
-  }
-
-  .floor21-login__theme-corner {
-    top: 1.25rem;
-    right: 1.5rem;
   }
 }
 
@@ -187,8 +215,18 @@ html[data-bs-theme="light"] .floor21-login__skyline-lights {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: calc(100vh - 8.5rem);
+  min-height: calc(100dvh - 8.5rem);
+  padding-top: 0;
+  padding-bottom: 5.5rem;
+}
+
+@media (min-width: 768px) {
+  .floor21-login__shell {
+    min-height: calc(100vh - 9rem);
+    min-height: calc(100dvh - 9rem);
+    padding-top: 0;
+  }
 }
 
 @media (min-width: 992px) {
@@ -339,6 +377,59 @@ html[data-bs-theme="light"] .floor21-login__features li::before {
   border-radius: 50%;
   background: #2dd4bf;
   box-shadow: 0 0 10px rgba(45, 212, 191, 0.55);
+}
+
+.floor21-login__hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-top: 1.75rem;
+}
+
+.floor21-login__ghost-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.floor21-login__ghost-btn:hover,
+.floor21-login__ghost-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.4);
+  outline: none;
+}
+
+.floor21-login__ghost-btn--solid {
+  background: rgba(45, 212, 191, 0.18);
+  border-color: rgba(45, 212, 191, 0.45);
+}
+
+html[data-bs-theme="light"] .floor21-login__ghost-btn {
+  color: #152a52;
+  border-color: rgba(21, 42, 82, 0.2);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+html[data-bs-theme="light"] .floor21-login__ghost-btn:hover,
+html[data-bs-theme="light"] .floor21-login__ghost-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+html[data-bs-theme="light"] .floor21-login__ghost-btn--solid {
+  background: rgba(13, 110, 98, 0.1);
+  border-color: rgba(13, 110, 98, 0.35);
 }
 
 /* —— Form column —— */
@@ -583,4 +674,144 @@ html[data-bs-theme="light"] .floor21-login__pending {
   background: var(--bs-body-bg, #fff);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
   font-weight: 500;
+}
+
+.floor21-login__footer {
+  position: relative;
+  z-index: 2;
+  margin-top: -5.5rem;
+  padding: 1.1rem 1.25rem 1.35rem;
+}
+
+.floor21-login__footer-inner {
+  max-width: 52rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.floor21-login__footer-brand {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.floor21-login__footer-copy {
+  margin: 0.2rem 0 0.65rem;
+  font-size: 0.82rem;
+  opacity: 0.72;
+}
+
+.floor21-login__footer-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.55rem;
+  margin-bottom: 0.65rem;
+}
+
+.floor21-login__footer-link {
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.floor21-login__footer-link:hover,
+.floor21-login__footer-link:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.floor21-login__footer-sep {
+  opacity: 0.45;
+}
+
+.floor21-login__footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.85rem;
+}
+
+.floor21-login__footer-nav-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.78;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.floor21-login__footer-nav-link:hover,
+.floor21-login__footer-nav-link:focus-visible {
+  opacity: 1;
+  text-decoration: underline;
+  outline: none;
+}
+
+html[data-bs-theme="dark"] .floor21-login__footer {
+  color: rgba(232, 238, 245, 0.88);
+}
+
+html[data-bs-theme="light"] .floor21-login__footer {
+  color: #1a2a3a;
+}
+
+.floor21-login__modal {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+html[data-bs-theme="dark"] .floor21-login__modal {
+  background: #132033;
+  color: #e8eef5;
+}
+
+html[data-bs-theme="dark"] .floor21-login__modal .modal-header {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+html[data-bs-theme="dark"] .floor21-login__modal .btn-close {
+  filter: invert(1) grayscale(1);
+}
+
+.floor21-login__contact-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-bottom: 0.85rem;
+}
+
+.floor21-login__contact-list li:last-child {
+  margin-bottom: 0;
+}
+
+.floor21-login__contact-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.floor21-login__contact-list a {
+  font-weight: 600;
+  color: inherit;
+}
+
+@media (max-width: 767.98px) {
+  .floor21-login__shell {
+    padding-bottom: 7rem;
+  }
+
+  .floor21-login__footer {
+    margin-top: -7rem;
+  }
 }

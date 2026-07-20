@@ -1,0 +1,401 @@
+/* Public marketing site — spacious site nav (login + /about /features /privacy /contact) */
+
+.floor21-public {
+  min-height: 100vh;
+  margin: 0;
+  background: #f4f7fb;
+  color: #152a52;
+}
+
+html[data-bs-theme="dark"] .floor21-public {
+  background: #0f1a28;
+  color: #e8eef5;
+}
+
+.floor21-site-header {
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid rgba(21, 42, 82, 0.08);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+html[data-bs-theme="dark"] .floor21-site-header {
+  background: rgba(12, 20, 36, 0.92);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.floor21-site-header__brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem clamp(1.25rem, 4vw, 3.5rem) 0.35rem;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.floor21-site-header__brand {
+  display: inline-flex;
+  text-decoration: none;
+}
+
+.floor21-site-header__brand img {
+  display: block;
+  height: 2.5rem;
+  width: auto;
+  border-radius: 0.45rem;
+  background: #fff;
+  padding: 0.15rem 0.45rem;
+}
+
+.floor21-site-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.floor21-site-header__signin {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid rgba(21, 42, 82, 0.2);
+  border-radius: 999px;
+}
+
+html[data-bs-theme="dark"] .floor21-site-header__signin {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.floor21-site-header__signin:hover,
+.floor21-site-header__signin:focus-visible {
+  background: rgba(21, 42, 82, 0.06);
+  outline: none;
+}
+
+html[data-bs-theme="dark"] .floor21-site-header__signin:hover,
+html[data-bs-theme="dark"] .floor21-site-header__signin:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Spacious main menu — reference: wide gaps, uppercase tracking */
+.floor21-site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 2.75rem;
+  padding: 0.85rem clamp(1.25rem, 4vw, 3.5rem) 1.15rem;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.floor21-site-nav__link {
+  position: relative;
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.35rem 0.1rem 0.55rem;
+  opacity: 0.78;
+  white-space: nowrap;
+}
+
+.floor21-site-nav__link:hover,
+.floor21-site-nav__link:focus-visible {
+  opacity: 1;
+  outline: none;
+}
+
+.floor21-site-nav__link.is-active {
+  opacity: 1;
+}
+
+.floor21-site-nav__link.is-active::after,
+.floor21-site-nav__link:hover::after,
+.floor21-site-nav__link:focus-visible::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: #2dd4bf;
+}
+
+@media (min-width: 768px) {
+  .floor21-site-nav {
+    gap: 0.75rem 4rem;
+    padding-top: 1rem;
+    padding-bottom: 1.35rem;
+  }
+
+  .floor21-site-nav__link {
+    font-size: 0.82rem;
+    letter-spacing: 0.18em;
+  }
+}
+
+@media (min-width: 1100px) {
+  .floor21-site-nav {
+    gap: 1rem 5.5rem;
+  }
+}
+
+.floor21-public__main {
+  padding: 2.75rem clamp(1.25rem, 5vw, 4rem) 3.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.floor21-public__article {
+  max-width: min(72rem, 100%);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.floor21-public__eyebrow {
+  margin: 0 0 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #0d6e62;
+}
+
+html[data-bs-theme="dark"] .floor21-public__eyebrow {
+  color: #5eead4;
+}
+
+.floor21-public__title {
+  margin: 0 0 0.85rem;
+  font-size: clamp(1.85rem, 4vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.floor21-public__lede {
+  margin: 0 0 1.75rem;
+  font-size: 1.12rem;
+  line-height: 1.55;
+  opacity: 0.82;
+  max-width: 48rem;
+}
+
+.floor21-public__prose {
+  max-width: 52rem;
+}
+
+.floor21-public__prose p {
+  margin: 0 0 1.1rem;
+  line-height: 1.65;
+  opacity: 0.88;
+  font-size: 1.02rem;
+}
+
+.floor21-public__feature-grid {
+  list-style: none;
+  margin: 0 0 2rem;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 720px) {
+  .floor21-public__feature-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.15rem 1.35rem;
+  }
+}
+
+@media (min-width: 992px) {
+  .floor21-public__feature-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+.floor21-public__feature-grid li {
+  padding: 1.15rem 1.2rem;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(21, 42, 82, 0.08);
+}
+
+html[data-bs-theme="dark"] .floor21-public__feature-grid li {
+  background: rgba(18, 28, 44, 0.75);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.floor21-public__feature-grid h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.floor21-public__feature-grid p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  opacity: 0.78;
+}
+
+.floor21-public__contact-cards {
+  display: grid;
+  gap: 1rem;
+  margin: 0 0 2rem;
+}
+
+@media (min-width: 640px) {
+  .floor21-public__contact-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.floor21-public__contact-card {
+  padding: 1.35rem 1.4rem;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(21, 42, 82, 0.08);
+}
+
+html[data-bs-theme="dark"] .floor21-public__contact-card {
+  background: rgba(18, 28, 44, 0.75);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.floor21-public__contact-card h2 {
+  margin: 0 0 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.floor21-public__contact-card a {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: none;
+}
+
+.floor21-public__contact-card a:hover,
+.floor21-public__contact-card a:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.floor21-public__cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.75rem 0 0;
+}
+
+.floor21-public__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem 1.25rem;
+  border-radius: 999px;
+  background: linear-gradient(118deg, #1a4d6b 0%, #0d6e62 100%);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.floor21-public__cta:hover,
+.floor21-public__cta:focus-visible {
+  filter: brightness(1.06);
+  outline: none;
+}
+
+.floor21-public__cta--ghost {
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(21, 42, 82, 0.22);
+}
+
+html[data-bs-theme="dark"] .floor21-public__cta--ghost {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.floor21-site-footer {
+  border-top: 1px solid rgba(21, 42, 82, 0.08);
+  padding: 1.75rem clamp(1.25rem, 5vw, 4rem) 2.25rem;
+}
+
+html[data-bs-theme="dark"] .floor21-site-footer {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.floor21-site-footer__inner {
+  max-width: min(72rem, 100%);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.floor21-site-footer__brand {
+  margin: 0;
+  font-weight: 800;
+}
+
+.floor21-site-footer__copy {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.88rem;
+  opacity: 0.7;
+}
+
+.floor21-site-footer__contact {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.55rem;
+  margin-bottom: 0.85rem;
+  font-weight: 650;
+}
+
+.floor21-site-footer__contact a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.floor21-site-footer__contact a:hover {
+  text-decoration: underline;
+}
+
+.floor21-site-footer__nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem 1.35rem;
+}
+
+.floor21-site-footer__nav a {
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: inherit;
+  text-decoration: none;
+  opacity: 0.72;
+}
+
+.floor21-site-footer__nav a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}

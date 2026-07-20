@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <th:block th:replace="~{public/fragments :: siteHead(${pageTitle})}"/>
+</head>
+<body class="floor21-public" data-public-page="contact">
+<th:block th:replace="~{public/fragments :: siteHeader('contact')}"/>
+<main class="floor21-public__main">
+  <article class="floor21-public__article">
+    <p class="floor21-public__eyebrow">Contact</p>
+    <h1 class="floor21-public__title">Get in touch</h1>
+    <p class="floor21-public__lede">
+      Questions about Floor21, demos, or support — reach us here.
+    </p>
+    <div class="floor21-public__contact-cards">
+      <div class="floor21-public__contact-card">
+        <h2>Email</h2>
+        <a href="mailto:tinumistry@gmail.com">tinumistry@gmail.com</a>
+      </div>
+      <div class="floor21-public__contact-card">
+        <h2>Phone</h2>
+        <a href="tel:+919833682890">9833682890</a>
+      </div>
+    </div>
+    <p class="floor21-public__cta-row">
+      <a class="floor21-public__cta" th:href="@{/login}">Sign in to Floor21</a>
+      <a class="floor21-public__cta floor21-public__cta--ghost" th:href="@{/about}">About us</a>
+    </p>
+  </article>
+</main>
+<th:block th:replace="~{public/fragments :: siteFooter}"/>
+<th:block th:replace="~{public/fragments :: siteScripts}"/>
+</body>
+</html>

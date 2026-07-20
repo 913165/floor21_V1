@@ -12,7 +12,8 @@
   <link rel="preload" th:href="@{/css/floor21-chrome.css(v=turbo-frame)}" as="style"/>
   <link rel="stylesheet" th:href="@{/vendor/bootstrap.min.css}"/>
   <link rel="stylesheet" th:href="@{/css/floor21.css(v=password-toggle)}"/>
-  <link rel="stylesheet" th:href="@{/css/floor21-login.css(v=login-brand-v1)}"/>
+  <link rel="stylesheet" th:href="@{/css/floor21-public.css(v=site-wide-v2)}"/>
+  <link rel="stylesheet" th:href="@{/css/floor21-login.css(v=login-site-nav-v2)}"/>
 </head>
 <body class="floor21-login">
 <div class="floor21-login__backdrop" aria-hidden="true">
@@ -23,34 +24,44 @@
 <span class="floor21-login__accent floor21-login__accent--teal" aria-hidden="true"></span>
 <span class="floor21-login__accent floor21-login__accent--blue" aria-hidden="true"></span>
 
-<div class="floor21-login__brand-corner">
-  <a class="floor21-login__brand-link" th:href="@{/}" title="Home">
-    <img class="floor21-login__logo"
-         th:src="@{/images/floor21-logo.png(v=logo1)}"
-         src="/images/floor21-logo.png"
-         alt="Floor21"
-         width="160"
-         height="42"/>
-  </a>
-</div>
-
-<div class="floor21-login__theme-corner">
-  <th:block th:replace="~{layout/fragments/theme-toggle :: themeToggle(true)}"/>
-</div>
+<header class="floor21-site-header floor21-site-header--on-login">
+  <div class="floor21-site-header__brand-row">
+    <a class="floor21-site-header__brand" th:href="@{/login}" title="Floor21">
+      <img th:src="@{/images/floor21-logo.png(v=logo1)}"
+           src="/images/floor21-logo.png"
+           alt="Floor21"
+           width="160"
+           height="42"/>
+    </a>
+    <div class="floor21-site-header__actions">
+      <th:block th:replace="~{layout/fragments/theme-toggle :: themeToggle(true)}"/>
+    </div>
+  </div>
+  <nav class="floor21-site-nav" aria-label="Site">
+    <a class="floor21-site-nav__link" th:href="@{/about}">About us</a>
+    <a class="floor21-site-nav__link" th:href="@{/features}">Features</a>
+    <a class="floor21-site-nav__link" th:href="@{/privacy}">Privacy</a>
+    <a class="floor21-site-nav__link" th:href="@{/contact}">Contact</a>
+  </nav>
+</header>
 
 <div class="floor21-login__shell">
-  <section class="floor21-login__hero" aria-hidden="true">
+  <section class="floor21-login__hero" aria-label="Floor21 overview">
     <div class="floor21-login__hero-inner">
       <h1 class="floor21-login__title">Floor21</h1>
       <p class="floor21-login__tagline">Smart Flat Booking for Modern Builders</p>
       <p class="floor21-login__lede">
         Property sales, bookings, receipts, and finance — built for real-estate builders and their teams.
       </p>
-      <ul class="floor21-login__features">
+      <ul class="floor21-login__features" id="login-features">
         <li>Buildings, flats, and floor plans in one place</li>
         <li>Bookings, payment schedules, and receipts</li>
         <li>Banking, vault, and expense tracking</li>
       </ul>
+      <div class="floor21-login__hero-cta">
+        <a class="floor21-login__ghost-btn" th:href="@{/about}">Learn more</a>
+        <a class="floor21-login__ghost-btn floor21-login__ghost-btn--solid" th:href="@{/contact}">Talk to us</a>
+      </div>
     </div>
   </section>
 
@@ -94,6 +105,24 @@
     </div>
   </main>
 </div>
+
+<footer class="floor21-login__footer">
+  <div class="floor21-login__footer-inner">
+    <p class="floor21-login__footer-brand">Floor21</p>
+    <p class="floor21-login__footer-copy">Builder operations for flats, bookings, and finance.</p>
+    <div class="floor21-login__footer-contact" id="login-contact">
+      <a class="floor21-login__footer-link" href="mailto:tinumistry@gmail.com">tinumistry@gmail.com</a>
+      <span class="floor21-login__footer-sep" aria-hidden="true">·</span>
+      <a class="floor21-login__footer-link" href="tel:+919833682890">9833682890</a>
+    </div>
+    <nav class="floor21-login__footer-nav" aria-label="Footer">
+      <a class="floor21-login__footer-nav-link" th:href="@{/about}">About</a>
+      <a class="floor21-login__footer-nav-link" th:href="@{/features}">Features</a>
+      <a class="floor21-login__footer-nav-link" th:href="@{/privacy}">Privacy</a>
+      <a class="floor21-login__footer-nav-link" th:href="@{/contact}">Contact</a>
+    </nav>
+  </div>
+</footer>
 
 <div class="floor21-login__pending d-none" id="login-pending" aria-live="polite" aria-busy="true">
   <div class="floor21-login__pending-card">

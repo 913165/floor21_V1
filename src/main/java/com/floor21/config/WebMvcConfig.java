@@ -20,7 +20,15 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(tenantInterceptor)
                 .addPathPatterns("/**")
-                .excludePathPatterns("/login", "/css/**", "/js/**", "/error");
+                .excludePathPatterns(
+                        "/login",
+                        "/about",
+                        "/features",
+                        "/privacy",
+                        "/contact",
+                        "/css/**",
+                        "/js/**",
+                        "/error");
         registry.addInterceptor(vaultAccessInterceptor).addPathPatterns("/vault/**");
         registry.addInterceptor(docsLockerAccessInterceptor).addPathPatterns("/docs-locker/**");
     }

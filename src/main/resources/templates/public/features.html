@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <th:block th:replace="~{public/fragments :: siteHead(${pageTitle})}"/>
+</head>
+<body class="floor21-public" data-public-page="features">
+<th:block th:replace="~{public/fragments :: siteHeader('features')}"/>
+<main class="floor21-public__main">
+  <article class="floor21-public__article">
+    <p class="floor21-public__eyebrow">Features</p>
+    <h1 class="floor21-public__title">Everything your site office needs</h1>
+    <p class="floor21-public__lede">
+      From inventory to receipts — one workspace for builders and their teams.
+    </p>
+    <ul class="floor21-public__feature-grid">
+      <li>
+        <h2>Projects &amp; inventory</h2>
+        <p>Buildings, flats, and floor plans organised so availability stays clear.</p>
+      </li>
+      <li>
+        <h2>Bookings</h2>
+        <p>Capture buyers, brokers, and booking details without leaving the system.</p>
+      </li>
+      <li>
+        <h2>Payment schedules</h2>
+        <p>Milestone slabs, balances, and follow-ups aligned to each booking.</p>
+      </li>
+      <li>
+        <h2>Receipts &amp; letters</h2>
+        <p>Record payments and generate demand letters and related documents.</p>
+      </li>
+      <li>
+        <h2>Banking &amp; finance</h2>
+        <p>Track accounts, GST context, and day-to-day money movement.</p>
+      </li>
+      <li>
+        <h2>Vault &amp; expenses</h2>
+        <p>Keep sensitive docs and expenses under controlled access for your team.</p>
+      </li>
+    </ul>
+    <p class="floor21-public__cta-row">
+      <a class="floor21-public__cta" th:href="@{/login}">Sign in</a>
+      <a class="floor21-public__cta floor21-public__cta--ghost" th:href="@{/contact}">Talk to us</a>
+    </p>
+  </article>
+</main>
+<th:block th:replace="~{public/fragments :: siteFooter}"/>
+<th:block th:replace="~{public/fragments :: siteScripts}"/>
+</body>
+</html>

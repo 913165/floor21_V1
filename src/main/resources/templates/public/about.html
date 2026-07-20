@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <th:block th:replace="~{public/fragments :: siteHead(${pageTitle})}"/>
+</head>
+<body class="floor21-public" data-public-page="about">
+<th:block th:replace="~{public/fragments :: siteHeader('about')}"/>
+<main class="floor21-public__main">
+  <article class="floor21-public__article">
+    <p class="floor21-public__eyebrow">About us</p>
+    <h1 class="floor21-public__title">Built for modern builders</h1>
+    <p class="floor21-public__lede">
+      Floor21 helps real-estate builders run day-to-day sales and finance from one place —
+      projects, flats, bookings, payment schedules, receipts, and team access.
+    </p>
+    <div class="floor21-public__prose">
+      <p>
+        Builder offices often juggle spreadsheets, WhatsApp threads, and paper files.
+        Floor21 brings those workflows together so your team can track inventory, close bookings,
+        follow payment milestones, and keep receipts and demand letters organised.
+      </p>
+      <p>
+        Whether you manage one project or several, Floor21 is designed for clear records,
+        faster follow-ups, and less operational chaos.
+      </p>
+    </div>
+    <p class="floor21-public__cta-row">
+      <a class="floor21-public__cta" th:href="@{/features}">See features</a>
+      <a class="floor21-public__cta floor21-public__cta--ghost" th:href="@{/contact}">Contact us</a>
+    </p>
+  </article>
+</main>
+<th:block th:replace="~{public/fragments :: siteFooter}"/>
+<th:block th:replace="~{public/fragments :: siteScripts}"/>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="siteHeader(publicPage)">
+<header class="floor21-site-header">
+  <div class="floor21-site-header__brand-row">
+    <a class="floor21-site-header__brand" th:href="@{/login}" title="Floor21">
+      <img th:src="@{/images/floor21-logo.png(v=logo1)}"
+           src="/images/floor21-logo.png"
+           alt="Floor21"
+           width="160"
+           height="42"/>
+    </a>
+    <div class="floor21-site-header__actions">
+      <a class="floor21-site-header__signin" th:href="@{/login}">Sign in</a>
+      <th:block th:replace="~{layout/fragments/theme-toggle :: themeToggle(true)}"/>
+    </div>
+  </div>
+  <nav class="floor21-site-nav" aria-label="Site">
+    <a class="floor21-site-nav__link"
+       th:href="@{/about}"
+       th:classappend="${publicPage == 'about'} ? ' is-active'"
+       th:aria-current="${publicPage == 'about'} ? 'page' : null">About us</a>
+    <a class="floor21-site-nav__link"
+       th:href="@{/features}"
+       th:classappend="${publicPage == 'features'} ? ' is-active'"
+       th:aria-current="${publicPage == 'features'} ? 'page' : null">Features</a>
+    <a class="floor21-site-nav__link"
+       th:href="@{/privacy}"
+       th:classappend="${publicPage == 'privacy'} ? ' is-active'"
+       th:aria-current="${publicPage == 'privacy'} ? 'page' : null">Privacy</a>
+    <a class="floor21-site-nav__link"
+       th:href="@{/contact}"
+       th:classappend="${publicPage == 'contact'} ? ' is-active'"
+       th:aria-current="${publicPage == 'contact'} ? 'page' : null">Contact</a>
+  </nav>
+</header>
+</th:block>
+
+<th:block th:fragment="siteFooter">
+<footer class="floor21-site-footer">
+  <div class="floor21-site-footer__inner">
+    <p class="floor21-site-footer__brand">Floor21</p>
+    <p class="floor21-site-footer__copy">Builder operations for flats, bookings, and finance.</p>
+    <div class="floor21-site-footer__contact">
+      <a href="mailto:tinumistry@gmail.com">tinumistry@gmail.com</a>
+      <span aria-hidden="true">·</span>
+      <a href="tel:+919833682890">9833682890</a>
+    </div>
+    <nav class="floor21-site-footer__nav" aria-label="Footer">
+      <a th:href="@{/about}">About</a>
+      <a th:href="@{/features}">Features</a>
+      <a th:href="@{/privacy}">Privacy</a>
+      <a th:href="@{/contact}">Contact</a>
+      <a th:href="@{/login}">Sign in</a>
+    </nav>
+  </div>
+</footer>
+</th:block>
+
+<th:block th:fragment="siteHead(pageTitle)">
+  <meta charset="UTF-8"/>
+  <th:block th:replace="~{layout/fragments/theme-head :: branding}"/>
+  <th:block th:replace="~{layout/fragments/theme-head :: themeScript}"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title th:text="${pageTitle} + ' | Floor21'">Floor21</title>
+  <link rel="stylesheet" th:href="@{/vendor/bootstrap.min.css}"/>
+  <link rel="stylesheet" th:href="@{/css/floor21.css(v=password-toggle)}"/>
+  <link rel="stylesheet" th:href="@{/css/floor21-public.css(v=site-wide-v2)}"/>
+</th:block>
+
+<th:block th:fragment="siteScripts">
+  <script th:src="@{/vendor/bootstrap.bundle.min.js}"></script>
+  <script defer th:src="@{/js/theme.js(v=turbo-frame)}"></script>
+</th:block>
+</body>
+</html>

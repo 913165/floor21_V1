@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <th:block th:replace="~{public/fragments :: siteHead(${pageTitle})}"/>
+</head>
+<body class="floor21-public" data-public-page="privacy">
+<th:block th:replace="~{public/fragments :: siteHeader('privacy')}"/>
+<main class="floor21-public__main">
+  <article class="floor21-public__article">
+    <p class="floor21-public__eyebrow">Privacy</p>
+    <h1 class="floor21-public__title">How we handle your data</h1>
+    <p class="floor21-public__lede">
+      Floor21 is built for builder workspaces. Access stays with signed-in users for your organisation.
+    </p>
+    <div class="floor21-public__prose">
+      <p>
+        Account credentials and project data are used only to run Floor21 for your builder account —
+        bookings, receipts, schedules, and related records your team creates in the product.
+      </p>
+      <p>
+        We do not sell your project data. If you have privacy questions or need help with account access,
+        contact us using the details on the Contact page.
+      </p>
+    </div>
+    <p class="floor21-public__cta-row">
+      <a class="floor21-public__cta" th:href="@{/contact}">Contact</a>
+      <a class="floor21-public__cta floor21-public__cta--ghost" th:href="@{/login}">Sign in</a>
+    </p>
+  </article>
+</main>
+<th:block th:replace="~{public/fragments :: siteFooter}"/>
+<th:block th:replace="~{public/fragments :: siteScripts}"/>
+</body>
+</html>
