@@ -17,6 +17,7 @@ See what is listening on port 80:
 
 ```bash
 lsof -iTCP:80 -sTCP:LISTEN
+sudo lsof -nP -iTCP:443 -sTCP:LISTEN
 ```
 
 ## 3. Kill process on port 80
