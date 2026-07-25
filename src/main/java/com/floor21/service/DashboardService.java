@@ -14,6 +14,7 @@ import com.floor21.repository.FlatRepository;
 import com.floor21.repository.ReceiptRepository;
 import com.floor21.security.Floor21UserPrincipal;
 import com.floor21.security.TenantContext;
+import com.floor21.util.FlatUnitTypes;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -61,19 +62,81 @@ public class DashboardService {
         long booked;
         long available;
         if (allowed == null) {
-            total = flatRepository.countByBuilder_Id(builderId);
-            booked = flatRepository.countByBuilder_IdAndStatus(builderId, "BOOKED");
-            available = flatRepository.countByBuilder_IdAndStatus(builderId, "AVAILABLE");
+            total = countResidentialForBuilder(builderId);
+            booked = countResidentialForBuilderWithStatus(builderId, "BOOKED");
+            available = countResidentialForBuilderWithStatus(builderId, "AVAILABLE");
         } else {
-            total = flatRepository.countByBuilder_IdAndBuilding_IdIn(builderId, allowed);
-            booked = flatRepository.countByBuilder_IdAndStatusAndBuilding_IdIn(builderId, "BOOKED", allowed);
+            total = flatRepository.countResidentialByBuilder_IdAndBuilding_IdIn(
+                    builderId, allowed, nonResidentialTypes());
+            booked =
+                    flatRepository.countResidentialByBuilder_IdAndStatusAndBuilding_IdIn(
+                            builderId, "BOOKED", allowed, nonResidentialTypes());
             available =
-                    flatRepository.countByBuilder_IdAndStatusAndBuilding_IdIn(builderId, "AVAILABLE", allowed);
+                    flatRepository.countResidentialByBuilder_IdAndStatusAndBuilding_IdIn(
+                            builderId, "AVAILABLE", allowed, nonResidentialTypes());
         }
         BigDecimal revenue = bookingRepository.sumActiveConsideration(builderId);
         List<BuildingPaymentSummaryRow> buildingSummaries =
                 loadBuildingPaymentSummaries(builderId, allowed);
         return new DashboardDto(false, total, booked, available, revenue, List.of(), buildingSummaries);
+    }
+
+    @Transactional(readOnly = true)
+    public BuildingFlatStats flatStatsForBuilding(UUID buildingId) {
+        UUID builderId = TenantContext.requireBuilderId();
+        var types = nonResidentialTypes();
+        long totalParking = flatRepository.countParkingByBuilding_IdAndBuilder_Id(buildingId, builderId);
+        long linkedParking =
+                flatRepository.countLinkedParkingByBuilding_IdAndBuilder_Id(buildingId, builderId);
+        long totalShops = flatRepository.countShopsByBuilding_IdAndBuilder_Id(buildingId, builderId);
+        return new BuildingFlatStats(
+                flatRepository.countResidentialByBuilding_IdAndBuilder_Id(
+                        buildingId, builderId, types),
+                flatRepository.countResidentialByBuilding_IdAndBuilder_IdAndStatus(
+                        buildingId, builderId, "BOOKED", types),
+                flatRepository.countResidentialByBuilding_IdAndBuilder_IdAndStatus(
+                        buildingId, builderId, "AVAILABLE", types),
+                totalParking,
+                linkedParking,
+                Math.max(0, totalParking - linkedParking),
+                totalShops,
+                flatRepository.countShopsByBuilding_IdAndBuilder_IdAndStatus(
+                        buildingId, builderId, "BOOKED"),
+                flatRepository.countShopsByBuilding_IdAndBuilder_IdAndStatus(
+                        buildingId, builderId, "AVAILABLE"));
+    }
+
+    public record BuildingFlatStats(
+            long totalFlats,
+            long bookedFlats,
+            long availableFlats,
+            long totalParking,
+            long linkedParking,
+            long availableParking,
+            long totalShops,
+            long bookedShops,
+            long availableShops) {
+
+        public boolean hasParking() {
+            return totalParking > 0;
+        }
+
+        public boolean hasShops() {
+            return totalShops > 0;
+        }
+    }
+
+    private static List<String> nonResidentialTypes() {
+        return FlatUnitTypes.nonResidentialUnitTypeCodesUpper();
+    }
+
+    private long countResidentialForBuilder(UUID builderId) {
+        return flatRepository.countResidentialByBuilder_Id(builderId, nonResidentialTypes());
+    }
+
+    private long countResidentialForBuilderWithStatus(UUID builderId, String status) {
+        return flatRepository.countResidentialByBuilder_IdAndStatus(
+                builderId, status, nonResidentialTypes());
     }
 
     private List<BuildingPaymentSummaryRow> loadBuildingPaymentSummaries(

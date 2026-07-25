@@ -3,6 +3,7 @@ package com.floor21.controller;
 import com.floor21.dto.DashboardDto;
 import com.floor21.dto.DashboardDto.BuildingPaymentSummaryRow;
 import com.floor21.dto.DashboardDto.RecentBookingRow;
+import com.floor21.service.DashboardService.BuildingFlatStats;
 import com.floor21.service.DashboardService;
 import com.floor21.service.PlatformAdminService;
 import com.floor21.security.Floor21UserPrincipal;
@@ -59,12 +60,17 @@ public class DashboardController {
                             .orElse(buildingSummaries.getFirst());
             selectedBuildingId = selectedSummary.buildingId();
         }
+        BuildingFlatStats buildingFlatStats =
+                selectedBuildingId != null
+                        ? dashboardService.flatStatsForBuilding(selectedBuildingId)
+                        : null;
         model.addAttribute("pageTitle", "Dashboard");
         model.addAttribute("turboCacheControl", "no-cache");
         model.addAttribute("dashboard", dashboard);
         model.addAttribute("buildingSummaries", buildingSummaries);
         model.addAttribute("selectedBuildingId", selectedBuildingId);
         model.addAttribute("selectedBuildingSummary", selectedSummary);
+        model.addAttribute("selectedBuildingFlatStats", buildingFlatStats);
         return "dashboard/index";
     }
 }

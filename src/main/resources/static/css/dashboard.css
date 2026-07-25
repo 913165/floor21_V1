@@ -41,6 +41,28 @@
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
+.f21-stat-grid--inventory {
+  margin-top: -0.35rem;
+}
+
+.f21-stat-card--parking {
+  border-top-color: #8b5cf6;
+}
+
+.f21-stat-card--shops {
+  border-top-color: #f59e0b;
+}
+
+.f21-stat-card--parking .f21-stat-card__icon {
+  color: #7c3aed;
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.f21-stat-card--shops .f21-stat-card__icon {
+  color: #d97706;
+  background: rgba(245, 158, 11, 0.14);
+}
+
 .f21-stat-card--flats {
   border-top-color: #3b82f6;
 }
@@ -534,6 +556,16 @@
 [data-bs-theme="dark"] .f21-stat-card--value .f21-stat-card__icon {
   background: rgba(245, 158, 11, 0.16);
   color: #fbbf24;
+}
+
+[data-bs-theme="dark"] .f21-stat-card--parking .f21-stat-card__icon {
+  background: rgba(139, 92, 246, 0.18);
+  color: #c4b5fd;
+}
+
+[data-bs-theme="dark"] .f21-stat-card--shops .f21-stat-card__icon {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
 }
 
 [data-bs-theme="dark"] .f21-dashboard-panel {

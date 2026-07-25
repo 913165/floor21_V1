@@ -35,6 +35,14 @@ public final class FlatUnitTypes {
         return Set.copyOf(AMENITY);
     }
 
+    /** Unit types excluded from residential flat totals (amenities, retail, parking codes). */
+    public static java.util.List<String> nonResidentialUnitTypeCodesUpper() {
+        java.util.List<String> excluded = new java.util.ArrayList<>(AMENITY);
+        excluded.addAll(SHOP_CODES);
+        excluded.addAll(PARKING_CODES);
+        return excluded;
+    }
+
     /** Unit type codes excluded from residential booking dropdowns (amenities + retail shops). */
     public static java.util.List<String> nonBookableUnitTypeCodesUpper() {
         java.util.List<String> excluded = new java.util.ArrayList<>(AMENITY);

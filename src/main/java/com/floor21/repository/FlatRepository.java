@@ -17,6 +17,145 @@ public interface FlatRepository extends JpaRepository<Flat, UUID> {
 
     long countByBuilding_IdAndBuilder_Id(UUID buildingId, UUID builderId);
 
+    long countByBuilding_IdAndBuilder_IdAndStatus(
+            UUID buildingId, UUID builderId, String status);
+
+    @Query(
+            """
+            select count(f) from Flat f
+            where f.builder.id = :builderId
+              and f.building.id = :buildingId
+              and f.parking = false
+              and f.duplexPrimaryFlatId is null
+              and f.mergedIntoFlatId is null
+              and upper(f.bhkType) not in :nonResidentialTypes
+            """)
+    long countResidentialByBuilding_IdAndBuilder_Id(
+            @Param("buildingId") UUID buildingId,
+            @Param("builderId") UUID builderId,
+            @Param("nonResidentialTypes") java.util.Collection<String> nonResidentialTypes);
+
+    @Query(
+            """
+            select count(f) from Flat f
+            where f.builder.id = :builderId
+              and f.building.id = :buildingId
+              and f.status = :status
+              and f.parking = false
+              and f.duplexPrimaryFlatId is null
+              and f.mergedIntoFlatId is null
+              and upper(f.bhkType) not in :nonResidentialTypes
+            """)
+    long countResidentialByBuilding_IdAndBuilder_IdAndStatus(
+            @Param("buildingId") UUID buildingId,
+            @Param("builderId") UUID builderId,
+            @Param("status") String status,
+            @Param("nonResidentialTypes") java.util.Collection<String> nonResidentialTypes);
+
+    @Query(
+            """
+            select count(f) from Flat f
+            where f.builder.id = :builderId
+              and f.parking = false
+              and f.duplexPrimaryFlatId is null
+              and f.mergedIntoFlatId is null
+              and upper(f.bhkType) not in :nonResidentialTypes
+            """)
+    long countResidentialByBuilder_Id(
+            @Param("builderId") UUID builderId,
+            @Param("nonResidentialTypes") java.util.Collection<String> nonResidentialTypes);
+
+    @Query(
+            """
+            select count(f) from Flat f
+            where f.builder.id = :builderId
+              and f.status = :status
+              and f.parking = false
+              and f.duplexPrimaryFlatId is null
+              and f.mergedIntoFlatId is null
+              and upper(f.bhkType) not in :nonResidentialTypes
+            """)
+    long countResidentialByBuilder_IdAndStatus(
+            @Param("builderId") UUID builderId,
+            @Param("status") String status,
+            @Param("nonResidentialTypes") java.util.Collection<String> nonResidentialTypes);
+
+    @Query(
+            """
+            select count(f) from Flat f
+            where f.builder.id = :builderId
+              and f.building.id in :buildingIds
+              and f.parking = false
+              and f.duplexPrimaryFlatId is null
+              and f.mergedIntoFlatId is null
+              and upper(f.bhkType) not in :nonResidentialTypes
+            """)
+    long countResidentialByBuilder_IdAndBuilding_IdIn(
+            @Param("builderId") UUID builderId,
+            @Param("buildingIds") java.util.Collection<UUID> buildingIds,
+            @Param("nonResidentialTypes") java.util.Collection<String> nonResidentialTypes);
+
+    @Query(
+            """
+            select count(f) from Flat f
+            where f.builder.id = :builderId
+              and f.building.id in :buildingIds
+              and f.status = :status
+              and f.parking = false
+              and f.duplexPrimaryFlatId is null
+              and f.mergedIntoFlatId is null
+              and upper(f.bhkType) not in :nonResidentialTypes
+            """)
+    long countResidentialByBuilder_IdAndStatusAndBuilding_IdIn(
+            @Param("builderId") UUID builderId,
+            @Param("status") String status,
+            @Param("buildingIds") java.util.Collection<UUID> buildingIds,
+            @Param("nonResidentialTypes") java.util.Collection<String> nonResidentialTypes);
+
+    @Query(
+            """
+            select count(f) from Flat f
+            where f.builder.id = :builderId
+              and f.building.id = :buildingId
+              and (f.parking = true or upper(f.bhkType) in ('PKG', 'PARKING'))
+            """)
+    long countParkingByBuilding_IdAndBuilder_Id(
+            @Param("buildingId") UUID buildingId, @Param("builderId") UUID builderId);
+
+    @Query(
+            """
+            select count(f) from Flat f
+            where f.builder.id = :builderId
+              and f.building.id = :buildingId
+              and (f.parking = true or upper(f.bhkType) in ('PKG', 'PARKING'))
+              and f.linkedResidentialFlatId is not null
+            """)
+    long countLinkedParkingByBuilding_IdAndBuilder_Id(
+            @Param("buildingId") UUID buildingId, @Param("builderId") UUID builderId);
+
+    @Query(
+            """
+            select count(f) from Flat f
+            where f.builder.id = :builderId
+              and f.building.id = :buildingId
+              and upper(f.bhkType) = 'SHOP'
+            """)
+    long countShopsByBuilding_IdAndBuilder_Id(
+            @Param("buildingId") UUID buildingId, @Param("builderId") UUID builderId);
+
+    @Query(
+            """
+            select count(f) from Flat f
+            where f.builder.id = :builderId
+              and f.building.id = :buildingId
+              and upper(f.bhkType) = 'SHOP'
+              and f.status = :status
+            """)
+    long countShopsByBuilding_IdAndBuilder_IdAndStatus(
+            @Param("buildingId") UUID buildingId,
+            @Param("builderId") UUID builderId,
+            @Param("status") String status);
+
     Optional<Flat> findByIdAndBuilder_Id(UUID id, UUID builderId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

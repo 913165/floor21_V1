@@ -3,8 +3,11 @@
       th:replace="~{layout/base :: layout(~{::content})}">
 <body>
 <div th:fragment="content"
-     th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)}, summary=${selectedBuildingSummary}">
-  <link rel="stylesheet" th:href="@{/css/dashboard.css(v=dashboard4-v8)}" data-turbo-track="reload"/>
+     th:with="amt=${T(com.floor21.util.IndianRupeesFormatter)},
+              summary=${selectedBuildingSummary},
+              flatStats=${selectedBuildingFlatStats},
+              showBuildingFlats=${flatStats != null and summary != null}">
+  <link rel="stylesheet" th:href="@{/css/dashboard.css(v=dashboard4-v9)}" data-turbo-track="reload"/>
 
   <div class="f21-dashboard">
     <h1 class="f21-dashboard__title" th:text="${pageTitle}">Dashboard</h1>
@@ -22,8 +25,10 @@
           </span>
           <span class="f21-stat-card__label">Total flats</span>
         </div>
-        <div class="f21-stat-card__value" th:text="${dashboard.totalFlats()}">0</div>
-        <div class="f21-stat-card__hint">Across all buildings</div>
+        <div class="f21-stat-card__value"
+             th:text="${showBuildingFlats ? flatStats.totalFlats() : dashboard.totalFlats()}">0</div>
+        <div class="f21-stat-card__hint"
+             th:text="${showBuildingFlats ? 'Residential flats · ' + summary.buildingName() : 'Residential flats (all buildings)'}">Residential flats</div>
       </article>
 
       <article class="f21-stat-card f21-stat-card--booked">
@@ -37,8 +42,10 @@
           </span>
           <span class="f21-stat-card__label">Booked</span>
         </div>
-        <div class="f21-stat-card__value" th:text="${dashboard.bookedFlats()}">0</div>
-        <div class="f21-stat-card__hint">Active bookings</div>
+        <div class="f21-stat-card__value"
+             th:text="${showBuildingFlats ? flatStats.bookedFlats() : dashboard.bookedFlats()}">0</div>
+        <div class="f21-stat-card__hint"
+             th:text="${showBuildingFlats ? 'Residential · ' + summary.buildingName() : 'Residential bookings'}">Active bookings</div>
       </article>
 
       <article class="f21-stat-card f21-stat-card--available">
@@ -54,8 +61,10 @@
           </span>
           <span class="f21-stat-card__label">Available</span>
         </div>
-        <div class="f21-stat-card__value" th:text="${dashboard.availableFlats()}">0</div>
-        <div class="f21-stat-card__hint">Ready to book</div>
+        <div class="f21-stat-card__value"
+             th:text="${showBuildingFlats ? flatStats.availableFlats() : dashboard.availableFlats()}">0</div>
+        <div class="f21-stat-card__hint"
+             th:text="${showBuildingFlats ? 'Residential · ' + summary.buildingName() : 'Ready to book'}">Ready to book</div>
       </article>
 
       <article class="f21-stat-card f21-stat-card--value">
@@ -65,6 +74,49 @@
         </div>
         <div class="f21-stat-card__value" th:text="${amt.formatAmountDisplay(dashboard.revenue())}">0</div>
         <div class="f21-stat-card__hint">Active pipeline</div>
+      </article>
+    </div>
+
+    <div class="f21-stat-grid f21-stat-grid--inventory"
+         th:if="${showBuildingFlats and (flatStats.hasParking() or flatStats.hasShops())}">
+      <article class="f21-stat-card f21-stat-card--parking" th:if="${flatStats.hasParking()}">
+        <div class="f21-stat-card__head">
+          <span class="f21-stat-card__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M9 17V7h2l2 3h2v7"/>
+              <circle cx="9" cy="17" r="1"/>
+              <circle cx="15" cy="17" r="1"/>
+            </svg>
+          </span>
+          <span class="f21-stat-card__label">Parking slots</span>
+        </div>
+        <div class="f21-stat-card__value" th:text="${flatStats.totalParking()}">0</div>
+        <div class="f21-stat-card__hint"
+             th:text="|Linked ${flatStats.linkedParking()} · Open ${flatStats.availableParking()} · ${summary.buildingName()}|">
+          Parking summary
+        </div>
+      </article>
+
+      <article class="f21-stat-card f21-stat-card--shops" th:if="${flatStats.hasShops()}">
+        <div class="f21-stat-card__head">
+          <span class="f21-stat-card__icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9h18"/>
+              <path d="M5 9V5h14v4"/>
+              <path d="M6 9v10h12V9"/>
+              <path d="M10 13h4"/>
+            </svg>
+          </span>
+          <span class="f21-stat-card__label">Shops</span>
+        </div>
+        <div class="f21-stat-card__value" th:text="${flatStats.totalShops()}">0</div>
+        <div class="f21-stat-card__hint"
+             th:text="|Booked ${flatStats.bookedShops()} · Available ${flatStats.availableShops()} · ${summary.buildingName()}|">
+          Shop summary
+        </div>
       </article>
     </div>
 
