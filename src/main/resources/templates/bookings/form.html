@@ -11,7 +11,7 @@
     <input type="hidden" th:if="${booking.id != null}" th:field="*{bookingCode}"/>
 
     <div class="card shadow-sm mb-3">
-      <div class="card-header">Flat and client</div>
+      <div class="card-header">Unit and client</div>
       <div class="card-body">
         <div class="row g-3">
           <div class="col-md-4">
@@ -29,7 +29,7 @@
             </div>
           </div>
           <div class="col-md-4">
-            <label class="form-label">Flat</label>
+            <label class="form-label">Unit (flat or shop)</label>
             <select class="form-select" id="bookingFlatSelect" th:field="*{flat.id}" required>
               <option th:each="f : ${flats}"
                       th:value="${f.id}"

@@ -189,7 +189,11 @@ public class BookingController {
         model.addAttribute("clients", clientService.list());
         model.addAttribute("brokers", brokerService.list());
         var builderId = TenantContext.requireBuilderId();
-        model.addAttribute("flats", bookingService.listFlatsForBookingForm(builderId));
+        model.addAttribute(
+                "flats",
+                flatId != null
+                        ? bookingService.listFlatsForBookingFormEdit(builderId, flatId)
+                        : bookingService.listFlatsForBookingForm(builderId));
         model.addAttribute("executives", userProjectAssignmentService.listActiveUsersForProject(builderId));
         model.addAttribute("selectedCoOwnerIds", List.<UUID>of());
         return "bookings/form";
@@ -221,7 +225,11 @@ public class BookingController {
                 platformAdminView && bookingService.canPlatformAdminManageBookingWithoutExecutive(booking));
         model.addAttribute("showTaxRecalculateHint", BookingTaxDefaults.needsTaxDefaults(booking));
         if (booking.getFlat() != null) {
-            var flatId = booking.getFlat().getId();
+            var flat = booking.getFlat();
+            var flatId = flat.getId();
+            boolean unitIsShop = com.floor21.util.FlatUnitTypes.isShopCode(flat.getBhkType());
+            model.addAttribute("unitIsShop", unitIsShop);
+            if (!unitIsShop) {
             var linkedParking = bookingParkingInfoService.linkedSlotsForResidentialFlat(flatId);
             var parkingDisplay = com.floor21.util.LinkedParkingFormatter.formatSummary(linkedParking);
             if (!platformAdminView
@@ -256,6 +264,7 @@ public class BookingController {
                 model.addAttribute("availableParkingSlots", availableParkingSlots);
             } else {
                 model.addAttribute("availableParkingSlots", List.<ParkingSlotOptionDto>of());
+            }
             }
         }
         return "bookings/detail";

@@ -7,7 +7,7 @@
   <p class="text-muted" th:text="${broker.fullName}"></p>
   <div class="table-responsive card shadow-sm">
     <table class="table mb-0">
-      <thead><tr><th>Code</th><th>Date</th><th>Client</th><th>Flat</th></tr></thead>
+      <thead><tr><th>Code</th><th>Date</th><th>Client</th><th>Unit</th><th>Type</th></tr></thead>
       <tbody>
       <tr th:each="b : ${bookings}">
         <td><a th:href="@{/bookings/{id}(id=${b.id})}" th:text="${b.bookingCode}"></a></td>
@@ -21,8 +21,17 @@
           <span th:if="${b.flat == null or b.flat.building == null}"
                 th:text="${b.flat != null ? b.flat.flatNumber : '—'}">—</span>
         </td>
+        <td>
+          <span th:if="${b.flat != null and T(com.floor21.util.FlatUnitTypes).isShopCode(b.flat.bhkType)}"
+                class="badge rounded-pill text-bg-info">Shop</span>
+          <span th:if="${b.flat != null and !T(com.floor21.util.FlatUnitTypes).isShopCode(b.flat.bhkType) and b.flat.bhkType != null}"
+                class="badge rounded-pill text-bg-secondary"
+                th:text="${b.flat.bhkType}">2BHK</span>
+          <span th:if="${b.flat == null or (b.flat.bhkType == null and !T(com.floor21.util.FlatUnitTypes).isShopCode(b.flat.bhkType))}"
+                class="text-muted">—</span>
+        </td>
       </tr>
-      <tr th:if="${#lists.isEmpty(bookings)}"><td colspan="4" class="text-muted">No bookings</td></tr>
+      <tr th:if="${#lists.isEmpty(bookings)}"><td colspan="5" class="text-muted">No bookings</td></tr>
       </tbody>
     </table>
   </div>

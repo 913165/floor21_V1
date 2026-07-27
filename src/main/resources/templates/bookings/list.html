@@ -73,7 +73,8 @@
         <th>Client</th>
         <th th:if="${platformAdminView}">Booked by</th>
         <th>Building</th>
-        <th>Flat</th>
+        <th>Unit</th>
+        <th>Type</th>
         <th>Status</th>
         <th></th>
       </tr>
@@ -103,6 +104,15 @@
           <span th:if="${b.flat == null or b.flat.building == null}"
                 th:text="${b.flat != null ? b.flat.flatNumber : '—'}">—</span>
         </td>
+        <td>
+          <span th:if="${b.flat != null and T(com.floor21.util.FlatUnitTypes).isShopCode(b.flat.bhkType)}"
+                class="badge rounded-pill text-bg-info">Shop</span>
+          <span th:if="${b.flat != null and !T(com.floor21.util.FlatUnitTypes).isShopCode(b.flat.bhkType) and b.flat.bhkType != null}"
+                class="badge rounded-pill text-bg-secondary"
+                th:text="${b.flat.bhkType}">2BHK</span>
+          <span th:if="${b.flat == null or (b.flat.bhkType == null and !T(com.floor21.util.FlatUnitTypes).isShopCode(b.flat.bhkType))}"
+                class="text-muted">—</span>
+        </td>
         <td th:text="${b.status}"></td>
         <td class="text-end text-nowrap">
           <a class="btn btn-sm btn-outline-primary"
@@ -126,7 +136,7 @@
         </td>
       </tr>
       <tr th:if="${#lists.isEmpty(bookings)}">
-        <td th:colspan="${platformAdminView ? 9 : 7}"
+        <td th:colspan="${platformAdminView ? 10 : 8}"
             class="text-muted text-center py-4">No bookings found.</td>
       </tr>
       </tbody>

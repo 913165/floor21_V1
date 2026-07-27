@@ -184,6 +184,17 @@ public interface FlatRepository extends JpaRepository<Flat, UUID> {
             @Param("amenityTypes") java.util.Collection<String> amenityTypes,
             @Param("statuses") java.util.Collection<String> statuses);
 
+    @Query(
+            """
+            select f from Flat f
+            where f.builder.id = :builderId
+              and upper(f.bhkType) = 'SHOP'
+              and f.status in :statuses
+            order by f.building.buildingName asc, f.floorNumber asc, f.unitNumber asc
+            """)
+    java.util.List<Flat> findBookableShopsByBuilder_IdAndStatusIn(
+            @Param("builderId") UUID builderId, @Param("statuses") java.util.Collection<String> statuses);
+
     long countByBuilder_Id(UUID builderId);
 
     long countByBuilder_IdAndStatus(UUID builderId, String status);

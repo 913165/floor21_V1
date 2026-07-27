@@ -27,6 +27,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -64,14 +65,29 @@ public class BookingService {
     private final VaultEntryRepository vaultEntryRepository;
     private final BookingParkingInfoService bookingParkingInfoService;
 
-    /** Residential flats the current user may book (partner allocation + availability rules). */
+    /** Residential flats and retail shops the current user may book (partner allocation + availability). */
     @Transactional(readOnly = true)
     public List<Flat> listFlatsForBookingForm(UUID builderId) {
-        List<Flat> flats =
+        List<String> bookableStatuses = List.of("AVAILABLE", "HOLD");
+        List<Flat> flats = new ArrayList<>();
+        flats.addAll(
                 flatRepository.findBookableResidentialByBuilder_IdAndStatusIn(
                         builderId,
                         FlatUnitTypes.nonBookableUnitTypeCodesUpper(),
-                        List.of("AVAILABLE", "HOLD"));
+                        bookableStatuses));
+        flats.addAll(flatRepository.findBookableShopsByBuilder_IdAndStatusIn(builderId, bookableStatuses));
+        flats.sort(
+                Comparator.comparing(
+                                (Flat f) ->
+                                        f.getBuilding() != null
+                                                ? f.getBuilding().getBuildingName()
+                                                : "")
+                        .thenComparingInt(Flat::getFloorNumber)
+                        .thenComparingInt(Flat::getUnitNumber));
+        return filterBookableByPartner(flats);
+    }
+
+    private List<Flat> filterBookableByPartner(List<Flat> flats) {
         return flats.stream()
                 .filter(
                         f ->
@@ -322,7 +338,9 @@ public class BookingService {
         entity.setUpdatedAt(Instant.now());
         Booking saved = bookingRepository.save(entity);
         bookingOwnerService.syncOwners(saved, coOwnerIds, builderId);
-        bookingParkingInfoService.syncForResidentialFlat(flat.getId());
+        if (!FlatUnitTypes.isShopCode(flat.getBhkType())) {
+            bookingParkingInfoService.syncForResidentialFlat(flat.getId());
+        }
         return bookingRepository.findByIdAndBuilder_Id(saved.getId(), builderId).orElse(saved);
     }
 

@@ -72,7 +72,8 @@
         </div>
 
         <div class="client-field-row">
-          <p class="client-field-label">Flat</p>
+          <p class="client-field-label"
+             th:text="${unitIsShop != null and unitIsShop} ? 'Shop' : 'Flat'">Flat</p>
           <p class="client-field-value" th:if="${flat != null and building != null}">
             <a th:href="@{/buildings/{bid}/flats(bid=${building.id},focusFlat=${flat.id})}"
                th:text="|${building.buildingName} — ${flat.flatNumber}|">Building — 101</a>
@@ -254,7 +255,7 @@
     <div class="client-notes-block">
       <p class="client-section-heading">Additional details</p>
 
-      <div class="client-field-row">
+      <div class="client-field-row" th:unless="${unitIsShop != null and unitIsShop}">
         <p class="client-field-label">Parking info</p>
         <div id="booking-parking-links"
              class="booking-parking-links"
